@@ -1,119 +1,130 @@
-// /encounters — list page (tenant-scoped).
+// /encounters — server-paginated encounter list page.
 //
-// Server Component. Pulls the active tenant from the session via
-// getActiveTenant() and lists that tenant's encounters newest-first.
-// Each row links to /encounters/[id] for the split-screen review.
+// Server component: loads the active tenant, the filtered/paged list
+// from `loadEncounterListPage`, the available filter facets from
+// `loadEncounterListFacets`, and hands everything to the
+// `EncounterListClient` interactive component.
 //
-// Auth + tenant scope: proxy.ts already redirects unauthenticated
-// users to /login, and getActiveTenant() returns null for a user
-// with no memberships — we render an empty state in that case
-// (matches the dashboard).
+// Auth: src/proxy.ts redirects unauthenticated users; we still call
+// `auth()` so a stale session is caught and the page renders the
+// empty state with a clear message.
+//
+// Performance: `loadEncounterListPage` does two Prisma queries
+// (count + findMany with `claim` + `findings` eager-loaded). No
+// N+1 — the seven columns come from a single row read.
 
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
-import { prisma } from "@/lib/prisma";
+import {
+  loadEncounterListFacets,
+  loadEncounterListPage,
+} from "@/lib/encounter-list";
 import { PortalNav } from "../portal-nav";
+import { EncounterListClient } from "./_components/encounters-list";
 import styles from "../shell.module.css";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const STATUS_PILL: Record<string, string> = {
-  pending: "statusPillPending",
-  auditing: "statusPillAuditing",
-  awaiting_review: "statusPillPending",
-  completed: "statusPillCompleted",
-};
-
-function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function EncountersListPage() {
+export default async function EncountersListPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login?callbackUrl=/encounters");
   }
 
   const tenant = await getActiveTenant();
+  const paramsResolved = await searchParams;
+  const params = new URLSearchParams();
 
-  const encounters = tenant
-    ? await prisma.encounter.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { dateOfService: "desc" },
-        take: 50,
-        select: {
-          id: true,
-          patientHash: true,
-          dateOfService: true,
-          specialty: true,
-          status: true,
-        },
-      })
-    : [];
+  // The Next.js `searchParams` value can be `string | string[]`. We
+  // canonicalize into a flat URLSearchParams. The list helpers expect
+  // `?status=pending&status=auditing` to be retrievable via
+  // `params.getAll("status")` — getAll on a string works for one
+  // value, and we replicate the multi-value with comma-split for
+  // repeated keys.
+  for (const [key, value] of Object.entries(paramsResolved)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v);
+    } else {
+      params.append(key, value);
+    }
+  }
 
-  return (
-    <main className={styles.shell}>
-      {tenant ? <PortalNav current="/encounters" tenant={tenant} /> : null}
-
-      <h1 className={styles.heading}>Encounters</h1>
-      <p className={styles.subheading}>
-        {tenant
-          ? `Most recent ${encounters.length} encounter${encounters.length === 1 ? "" : "s"} for ${tenant.name}.`
-          : "Tenant scope required to view encounters."}
-      </p>
-
-      {!tenant ? (
+  if (!tenant) {
+    return (
+      <main className={styles.shell}>
+        <h1 className={styles.heading}>Encounters</h1>
+        <p className={styles.subheading}>Tenant scope required to view encounters.</p>
         <section className={styles.empty}>
           <h2>No clinic connected</h2>
           <p>You aren&rsquo;t a member of a clinic yet.</p>
         </section>
-      ) : encounters.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>No encounters yet</h2>
-          <p>
-            Encounters submitted for billing review will appear here.
-            This is a route shell in the v1 milestone — the submit
-            pipeline lives in the engine service.
-          </p>
-        </section>
-      ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Date of service</th>
-              <th>Specialty</th>
-              <th>Patient (hashed)</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {encounters.map((e) => {
-              const pillKey = STATUS_PILL[e.status] ?? "statusPill";
-              return (
-                <tr key={e.id}>
-                  <td>{formatDate(e.dateOfService)}</td>
-                  <td>{e.specialty}</td>
-                  <td>
-                    <code style={{ fontSize: 12 }}>{e.patientHash.slice(0, 12)}…</code>
-                  </td>
-                  <td>
-                    <span className={`${styles.statusPill} ${styles[pillKey] ?? ""}`}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td>
-                    <Link href={`/encounters/${e.id}`}>Review →</Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+      </main>
+    );
+  }
+
+  // Both queries are tenant-scoped, so a missing tenant is the only
+  // case that returns empty. Inside the tenant scope we always
+  // render the full filter UI, even with zero rows, so the user can
+  // see which facets are available.
+  const [list, facets] = await Promise.all([
+    loadEncounterListPage(tenant.id, params),
+    loadEncounterListFacets(tenant.id),
+  ]);
+
+  // Serialize the rows to plain primitives before crossing the
+  // server/client boundary — Date objects don't survive RSC's
+  // serialization intact.
+  const rows = list.rows.map((r) => ({
+    id: r.id,
+    dateOfService: r.dateOfService.toISOString(),
+    provider: r.provider,
+    providerNpi: r.providerNpi,
+    payer: r.payer,
+    status: r.status,
+    findingCount: r.findingCount,
+    estImpactCents: r.estImpactCents,
+  }));
+
+  return (
+    <main className={styles.shell}>
+      <PortalNav current="/encounters" tenant={tenant} />
+
+      <h1 className={styles.heading}>Encounters</h1>
+      <p className={styles.subheading}>
+        {list.totalCount === 0
+          ? `No encounters for ${tenant.name} match the current filters.`
+          : `${list.totalCount} encounter${list.totalCount === 1 ? "" : "s"} for ${tenant.name}.`}
+      </p>
+
+      <Suspense fallback={<div className={styles.muted}>Loading…</div>}>
+        <EncounterListClient
+          rows={rows}
+          facets={facets}
+          page={list.page}
+          pageSize={list.pageSize}
+          totalCount={list.totalCount}
+          totalPages={list.totalPages}
+          sortColumn={list.sort.column}
+          sortDirection={list.sort.direction}
+          activeFilters={{
+            dateFrom: list.filters.dateFrom ?? "",
+            dateTo: list.filters.dateTo ?? "",
+            providers: list.filters.providers,
+            payers: list.filters.payers,
+            statuses: list.filters.statuses,
+            findingCategories: list.filters.findingCategories,
+            search: list.filters.search,
+          }}
+        />
+      </Suspense>
     </main>
   );
 }

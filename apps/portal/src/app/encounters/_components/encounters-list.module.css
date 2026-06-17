@@ -1,0 +1,356 @@
+/* /encounters list page — server-rendered table + filter toolbar.
+   Shared with the per-encounter split-review styles? No — the
+   split-review page has its own _components module. This file is
+   the list-page stylesheet only. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- Filter toolbar --------------------------------------------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: flex-start;
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 0;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9aa3bd;
+  margin: 0;
+}
+
+.input {
+  background: #0b1020;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #e7ecf6;
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 140px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2dd4bf;
+}
+
+.select {
+  background: #0b1020;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #e7ecf6;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.facet {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.facet legend {
+  margin-bottom: 4px;
+}
+
+.facetOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: 280px;
+}
+
+.facetOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #e7ecf6;
+  cursor: pointer;
+}
+
+.facetOption input[type="checkbox"] {
+  accent-color: #2dd4bf;
+}
+
+.facetOptionMuted {
+  color: #6b7280;
+}
+
+.clearButton {
+  background: transparent;
+  border: 1px solid #28324f;
+  color: #9aa3bd;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.clearButton:hover {
+  border-color: #2dd4bf;
+  color: #2dd4bf;
+}
+
+/* ---- Bulk action toolbar --------------------------------------- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.selectionSummary {
+  font-size: 13px;
+  color: #9aa3bd;
+}
+
+.exportForm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.button {
+  display: inline-block;
+  background: #2dd4bf;
+  color: #042f2e;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.button:hover { background: #5eead4; }
+.button:disabled { background: #28324f; color: #6b7280; cursor: not-allowed; }
+
+.buttonSecondary {
+  background: transparent;
+  color: #2dd4bf;
+  border: 1px solid #2dd4bf;
+}
+
+.buttonSecondary:hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+/* ---- Table ----------------------------------------------------- */
+
+.tableScroller {
+  overflow-x: auto;
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 1000px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #28324f;
+  white-space: nowrap;
+}
+
+.table th {
+  color: #9aa3bd;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.02);
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:hover {
+  background: rgba(45, 212, 191, 0.04);
+}
+
+.rowSelected {
+  background: rgba(45, 212, 191, 0.10);
+}
+
+.checkboxCol {
+  width: 36px;
+  text-align: center;
+}
+
+.sortable {
+  user-select: none;
+}
+
+.sortableActive {
+  color: #2dd4bf;
+}
+
+.sortButton {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+}
+
+.sortButton:hover {
+  color: #e7ecf6;
+}
+
+.sortArrow {
+  font-size: 10px;
+  width: 10px;
+  text-align: center;
+}
+
+.numericCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtle {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.encounterLink {
+  color: #2dd4bf;
+  text-decoration: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.encounterLink:hover {
+  text-decoration: underline;
+}
+
+.encounterLink code {
+  background: transparent;
+}
+
+.empty {
+  text-align: center;
+  color: #9aa3bd;
+  padding: 32px 12px;
+  font-size: 14px;
+}
+
+/* ---- Status badges --------------------------------------------- */
+
+.statusBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+}
+
+.statusPending {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.statusAuditing {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+}
+
+.statusAwaiting {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.statusCompleted {
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+}
+
+.statusDefault {
+  background: rgba(154, 163, 189, 0.12);
+  color: #9aa3bd;
+}
+
+/* ---- Pager ----------------------------------------------------- */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 4px;
+}
+
+.pagerInfo {
+  font-size: 13px;
+  color: #9aa3bd;
+}
+
+.pagerControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pageIndicator {
+  font-size: 13px;
+  color: #9aa3bd;
+  padding: 0 8px;
+  min-width: 90px;
+  text-align: center;
+}
