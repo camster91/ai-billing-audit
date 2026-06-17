@@ -34,6 +34,7 @@ const PUBLIC_PREFIXES = [
   "/api/onboarding", // first-run wizard — Stripe success_url lands here, must work w/o auth
   "/login",
   "/pricing",       // marketing page, public
+  "/how-it-works",  // marketing page, public (3-step explainer + Loom + CTA)
   "/portal/onboarding", // Stripe success_url lands here, must work w/o auth
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
