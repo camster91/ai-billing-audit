@@ -1,0 +1,14 @@
+{
+  "train_size": 5,
+  "val_size": 3,
+  "best_val_f1": 1.0,
+  "final_val_f1": 1.0,
+  "reloaded_val_f1": 1.0,
+  "baseline_val_f1": 1.0,
+  "total_trials": 84,
+  "wall_clock_seconds": 0.18525218963623047,
+  "artifact_dir": "/Users/biancabienaime/projects/ai-billing-audit/artifacts/miprov2_best_val_f1_1_0000_prog",
+  "metadata_path": "/Users/biancabienaime/projects/ai-billing-audit/artifacts/miprov2_best_val_f1_1.0000.json",
+  "latest_path": "/Users/biancabienaime/projects/ai-billing-audit/artifacts/miprov2_best.json",
+  "llm_provider": "smoke"
+}

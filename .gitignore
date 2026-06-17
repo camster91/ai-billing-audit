@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Tooling
+.idea/
+.vscode/
+.DS_Store
+
+# Secrets and runtime artifacts (v0.1.0-rc1 mirror)
+.env
+.env.local
+.env.*.local
+logs/*.jsonl
+data/synth/
+artifacts/*_prog
+node_modules/
+.next/
+
+# apps/portal is a separate Next.js stack — not part of the api/worker image
+# but we still keep the source tree under apps/ for context. node_modules
+# inside apps/portal is excluded by the node_modules/ rule above.

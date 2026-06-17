@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Tooling
+.idea/
+.vscode/
+.DS_Store
+
+# Test data, scratch outputs, and anything that is not the api/worker
+# code or its package metadata. These are generated at runtime and
+# either live in /data / /artifacts mounts or in the API's in-process
+# JSONL log under /app/logs.
+tests/
+data/
+artifacts/
+docs/
+logs/
+scripts/
+prompts/
+rules/
+audit_trail.sql
+README.md
+CHANGELOG.md
+*.md
+.benchmarks/
+
+# apps/portal is a separate Next.js stack and not part of the api/worker image.
+apps/
+
+# Anything git-related (the source isn't a git repo yet, but if it
+# becomes one, .git must not enter the image).
+.git/
+.gitignore
+.gitattributes

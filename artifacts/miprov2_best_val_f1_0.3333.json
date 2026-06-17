@@ -1,0 +1,7 @@
+{
+  "best_val_f1": 0.3333333333333333,
+  "artifact_dir": "/Users/biancabienaime/projects/ai-billing-audit/artifacts/miprov2_best_val_f1_0_3333_prog",
+  "train_size": 5,
+  "val_size": 3,
+  "total_trials": 42
+}

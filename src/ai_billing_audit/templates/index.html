@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}demo encounters — ai-billing-audit{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>Demo encounters</h1>
+  <p class="muted">
+    {{ n_registered }} encounter{{ "" if n_registered == 1 else "s" }} registered
+    for the demo dashboard. Each card links to a full audit panel with the
+    clinical note, the claim, the retrieved rules, and the ground-truth
+    findings (with the evidence quote highlighted in the note).
+  </p>
+</section>
+
+{% if cards|length == 0 %}
+  <p class="empty">No demo encounters registered yet.</p>
+{% else %}
+  <ul class="encounter-grid">
+    {% for card in cards %}
+    <li class="encounter-card encounter-card--{{ card.difficulty|lower }}">
+      <div class="encounter-card__head">
+        <span class="badge badge--{{ card.difficulty|lower }}">{{ card.difficulty }}</span>
+        {% if card.available %}
+          {% if card.is_flagged %}
+            <span class="badge badge--flag">flagged · {{ card.n_findings }} finding{{ "" if card.n_findings == 1 else "s" }}</span>
+          {% else %}
+            <span class="badge badge--clean">clean</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge--missing">record missing</span>
+        {% endif %}
+      </div>
+      <h2 class="encounter-card__id">
+        <a href="/encounter/{{ card.encounter_id }}">{{ card.encounter_id }}</a>
+      </h2>
+      <p class="encounter-card__summary">{{ card.summary }}</p>
+      <div class="encounter-card__actions">
+        <a class="btn btn--primary" href="/encounter/{{ card.encounter_id }}">open audit panel</a>
+        <a class="btn btn--ghost" href="/encounter/{{ card.encounter_id }}/json">raw json</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}

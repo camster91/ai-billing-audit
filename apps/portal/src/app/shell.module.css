@@ -1,0 +1,278 @@
+/* Shared layout for the spec route shells (/login, /dashboard,
+   /encounters, /findings, /billing, /settings, /team).
+
+   Dark, slightly gradient, matches the existing portal/onboarding
+   page.module.css palette. Two pieces:
+     - .shell:        full-height container, used by the post-login pages
+     - .loginCard:    centered card variant, used by /login
+   The route shell pages each import this module and pick the
+   variants they need. */
+
+.shell {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b1020 0%, #0d1428 100%);
+  color: #e7ecf6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  padding: 32px clamp(16px, 4vw, 48px);
+}
+
+.nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid #28324f;
+  padding-bottom: 16px;
+  margin-bottom: 32px;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: #e7ecf6;
+  margin-right: auto;
+}
+
+.navLink {
+  color: #9aa3bd;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: #e7ecf6;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.navLinkActive {
+  color: #2dd4bf;
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.tenantChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 999px;
+  padding: 4px 12px 4px 4px;
+  font-size: 13px;
+  color: #9aa3bd;
+}
+
+.tenantDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #2dd4bf;
+  display: inline-block;
+}
+
+.tenantDotPastDue { background: #fbbf24; }
+.tenantDotCanceled { background: #f87171; }
+
+.heading {
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
+}
+
+.subheading {
+  color: #9aa3bd;
+  font-size: 15px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.card {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.cardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.muted {
+  color: #9aa3bd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty {
+  border: 1px dashed #28324f;
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  color: #9aa3bd;
+}
+
+.empty h2 {
+  color: #e7ecf6;
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #28324f;
+}
+
+.table th {
+  color: #9aa3bd;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table a {
+  color: #2dd4bf;
+  text-decoration: none;
+}
+
+.table a:hover {
+  text-decoration: underline;
+}
+
+.statusPill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+}
+
+.statusPillPending { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.statusPillAuditing { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+.statusPillCompleted { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; }
+
+/* /login: centered card on the same dark background. */
+
+.loginPage {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b1020 0%, #0d1428 100%);
+  color: #e7ecf6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.loginCard {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.loginCard h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}
+
+.loginCard p {
+  color: #9aa3bd;
+  margin: 8px 0 24px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9aa3bd;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  background: #0b1020;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #e7ecf6;
+  font-size: 15px;
+  font-family: inherit;
+  margin-bottom: 16px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2dd4bf;
+}
+
+.button {
+  width: 100%;
+  background: #2dd4bf;
+  color: #042f2e;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.button:hover { background: #5eead4; }
+.button:disabled { background: #28324f; color: #6b7280; cursor: not-allowed; }
+
+.flash {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.flashOk {
+  background: rgba(45, 212, 191, 0.08);
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  color: #99f6e4;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}

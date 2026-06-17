@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "notes": "Append-only manifest of prompt optimization runs. Each new optimization pass appends one entry to `entries`; existing entries are never modified or reordered. The diff between an entry's `version_hash`/`parent_hash` and its `optimizer_config` represents what the optimizer changed relative to the previous run. To add a run: append a new entry, set its `parent_hash` to the previous entry's `version_hash`, and compute `version_hash` over the new prompt content.",
+  "entries": [
+    {
+      "version_hash": "sha256:9f1c2b7e4a5d6f8c0b3a1e7d2c4b6a8f0d2e4c6b8a0d2f4e6c8b0a2d4f6e8c0a",
+      "parent_hash": null,
+      "created_at": "2026-06-16T17:54:00Z",
+      "llm_provider": "openai",
+      "model_version": "gpt-4o-mini",
+      "optimizer_config": {
+        "optimizer": "miprov2",
+        "strategy": "bootstrap-fewshot",
+        "auto": "medium",
+        "num_candidates": 18,
+        "num_trials": 24,
+        "max_bootstrapped_demos": 4,
+        "max_labeled_demos": 6,
+        "init_temperature": 1.0,
+        "metric": "grader_metric"
+      },
+      "train_R": 0.842,
+      "val_R": 0.813,
+      "val_P": 0.187,
+      "test_R": null,
+      "test_P": null,
+      "seed": 42
+    }
+  ]
+}

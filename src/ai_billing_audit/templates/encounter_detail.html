@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{{ encounter_id }} — audit panel{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="crumbs"><a href="/">all encounters</a> &rsaquo; {{ encounter_id }}</p>
+  <h1>
+    <span class="encounter-id">{{ encounter_id }}</span>
+    <span class="badge badge--{{ difficulty|lower }}">{{ difficulty }}</span>
+    {% if is_flagged %}
+      <span class="badge badge--flag">flagged</span>
+    {% else %}
+      <span class="badge badge--clean">clean</span>
+    {% endif %}
+  </h1>
+  <p class="muted">{{ summary }}</p>
+</section>
+
+<section class="panel">
+  <h2>Clinical note</h2>
+  {% if findings and findings[0].quote %}
+    <p class="clinical-note">
+      {{ clinical_note | highlight_quote(findings[0].quote) }}
+    </p>
+    <p class="muted small">
+      Highlighted span is the evidence quote for finding
+      <code class="finding-id">{{ findings[0].finding_id }}</code> (rule
+      <code class="rule-id">{{ findings[0].rule_id }}</code>).
+    </p>
+  {% else %}
+    <p class="clinical-note">{{ clinical_note }}</p>
+    <p class="muted small">No evidence quote on the primary finding.</p>
+  {% endif %}
+</section>
+
+<section class="panel-grid">
+  <section class="panel">
+    <h2>Claim</h2>
+    <dl class="kv">
+      <dt>CPT codes</dt>
+      <dd>
+        {% if claim.cpt_codes %}
+          {% for c in claim.cpt_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
+        {% else %}
+          <span class="muted">none billed</span>
+        {% endif %}
+      </dd>
+      <dt>ICD-10 codes</dt>
+      <dd>
+        {% if claim.icd10_codes %}
+          {% for c in claim.icd10_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
+        {% else %}
+          <span class="muted">none</span>
+        {% endif %}
+      </dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2>Retrieved rules</h2>
+    {% if rules %}
+      <ul class="rule-list">
+        {% for r in rules %}
+        <li>
+          <code class="rule-id">{{ r.rule_id }}</code>
+          <span class="rule-cat">{{ r.category }}</span>
+          <span class="badge badge--{{ r.severity|lower }}">{{ r.severity }}</span>
+          <p class="rule-trigger">{{ r.trigger }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No rules retrieved for this encounter.</p>
+    {% endif %}
+  </section>
+</section>
+
+<section class="panel">
+  <h2>Ground-truth findings <span class="muted small">({{ n_findings }})</span></h2>
+  {% if findings %}
+    <ul class="finding-list">
+      {% for f in findings %}
+      <li class="finding finding--{{ f.severity|lower }}">
+        <div class="finding__head">
+          <code class="finding-id">{{ f.finding_id }}</code>
+          <span class="badge badge--{{ f.severity|lower }}">{{ f.severity }}</span>
+          <span class="badge badge--cat">{{ f.category }}</span>
+          <code class="rule-id rule-id-inline">rule: {{ f.rule_id }}</code>
+          {% if f.suggested_is_verdict %}
+            <span class="suggested suggested--verdict suggested--verdict-{{ f.suggested_verdict }}">{{ f.suggested_code }}</span>
+          {% else %}
+            <code class="suggested">suggested: {{ f.suggested_code }}</code>
+          {% endif %}
+        </div>
+        <blockquote class="finding-quote">{{ f.quote }}</blockquote>
+        <div class="finding__actions">
+          <button type="button" class="btn btn--ghost" data-action="copy-quote"
+                  data-finding-id="{{ f.finding_id }}">copy quote</button>
+          <button type="button" class="btn btn--ghost" data-action="scroll-to-note"
+                  data-finding-id="{{ f.finding_id }}">show in note</button>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No ground-truth findings for this encounter.</p>
+  {% endif %}
+</section>
+
+<section class="panel panel--actions">
+  <h2>Actions</h2>
+  <div class="action-row">
+    <a class="btn btn--primary" href="/">back to index</a>
+    <a class="btn btn--ghost" href="/encounter/{{ encounter_id }}/json">view raw json</a>
+    <button type="button" class="btn btn--ghost" id="btn-toggle-mark">toggle evidence highlight</button>
+  </div>
+  {% if difficulty == "HARD" %}
+  {# Advanced actions are unique to hard encounters — they are only
+     meaningful when the audit panel has many findings across many
+     categories, which is the hard-tier complexity band. #}
+  <div class="action-row action-row--hard">
+    <span class="action-row__label">Advanced (hard tier):</span>
+    <button type="button" class="btn btn--hard" id="btn-jump-high"
+            data-target-severity="high">jump to high-severity finding</button>
+    <button type="button" class="btn btn--hard" id="btn-next-finding">next finding</button>
+    <button type="button" class="btn btn--hard" id="btn-severity-filter"
+            data-severity="all">filter: all</button>
+  </div>
+  {% endif %}
+</section>
+
+<script>
+  // Three tiny, dependency-free interactions. Each button is real
+  // (no disabled state) and writes to the DOM — the visual-qa pass
+  // (kanban t_e88a2734) verifies that the buttons produce a visible
+  // effect and don't throw.
+  (function () {
+    var noteEl = document.querySelector(".clinical-note");
+    var copyButtons = document.querySelectorAll('[data-action="copy-quote"]');
+    copyButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var fid = btn.getAttribute("data-finding-id");
+        var li = btn.closest(".finding");
+        var quote = li ? li.querySelector(".finding-quote") : null;
+        var text = quote ? quote.textContent : "";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            btn.textContent = "copied " + fid;
+            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
+          }, function () {
+            btn.textContent = "copy failed";
+            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
+          });
+        } else {
+          btn.textContent = "copied " + fid;
+          setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
+        }
+      });
+    });
+    var scrollButtons = document.querySelectorAll('[data-action="scroll-to-note"]');
+    scrollButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (noteEl) {
+          noteEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          noteEl.classList.add("flash");
+          setTimeout(function () { noteEl.classList.remove("flash"); }, 1200);
+        }
+      });
+    });
+    var toggleBtn = document.getElementById("btn-toggle-mark");
+    if (toggleBtn && noteEl) {
+      toggleBtn.addEventListener("click", function () {
+        noteEl.classList.toggle("evidence-off");
+        var marks = noteEl.querySelectorAll("mark.evidence");
+        marks.forEach(function (m) { m.classList.toggle("evidence-off"); });
+      });
+    }
+
+    // --- Advanced actions (hard tier only) ----------------------------
+    // These buttons only render when difficulty is HARD — see the
+    // conditional block in the actions panel above. Each handler is
+    // real (writes to the DOM, scrolls, or toggles a class) and never
+    // throws. The visual-qa pass verifies they produce a visible effect.
+    var findingEls = Array.prototype.slice.call(
+      document.querySelectorAll(".finding")
+    );
+    var nextIdx = 0;
+    var nextBtn = document.getElementById("btn-next-finding");
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        if (!findingEls.length) return;
+        // Drop the active class on the previous one.
+        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
+        var el = findingEls[nextIdx % findingEls.length];
+        el.classList.add("finding--active");
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        nextIdx += 1;
+      });
+    }
+    var jumpHighBtn = document.getElementById("btn-jump-high");
+    if (jumpHighBtn) {
+      jumpHighBtn.addEventListener("click", function () {
+        var target = null;
+        for (var i = 0; i < findingEls.length; i++) {
+          if (findingEls[i].classList.contains("finding--high")) {
+            target = findingEls[i];
+            break;
+          }
+        }
+        if (!target) return;
+        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
+        target.classList.add("finding--active");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+    var filterBtn = document.getElementById("btn-severity-filter");
+    if (filterBtn) {
+      var severities = ["all", "critical", "high", "medium", "low", "info"];
+      var fIdx = 0;
+      filterBtn.addEventListener("click", function () {
+        fIdx = (fIdx + 1) % severities.length;
+        var sev = severities[fIdx];
+        filterBtn.setAttribute("data-severity", sev);
+        filterBtn.textContent = "filter: " + sev;
+        if (sev === "all") {
+          findingEls.forEach(function (el) { el.style.display = ""; });
+        } else {
+          findingEls.forEach(function (el) {
+            var elSev = (el.className.match(/finding--(critical|high|medium|low|info)/) || [])[1];
+            el.style.display = (elSev === sev) ? "" : "none";
+          });
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

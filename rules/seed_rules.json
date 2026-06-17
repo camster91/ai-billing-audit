@@ -1,0 +1,269 @@
+{
+  "_meta": {
+    "purpose": "Seed [Payer_Rules] context block injected into the v1 MVP Auditor prompt. Static JSON file per Doc 1 \u00a75; vector DB lookup is explicitly post-MVP.",
+    "version": "1.0.0",
+    "vintage": "Illustrative seed based on commonly-cited CMS E/M and NCCI guidance. Not a substitute for the live CMS IOCE, NCCI PTP, or MUE edit files. Codes and rule phrasings are realistic but should be re-validated against the current CMS quarterly release before production use.",
+    "counts": {
+      "em": 14,
+      "ncci": 12
+    },
+    "sources": [
+      "CMS Documentation Guidelines for E/M Services (2021 outpatient office visit overhaul; 2023 inpatient/observation changes)",
+      "CMS Internet-Only Manual (IOM), Publication 100-04, Chapter 12 \u00a7\u00a7 30.1-30.6 (E/M visit codes)",
+      "CMS National Correct Coding Initiative (NCCI) Procedure-to-Procedure (PTP) Edits - illustrative examples",
+      "CMS Medically Unlikely Edits (MUE) - illustrative thresholds"
+    ]
+  },
+  "rules": [
+    {
+      "id": "EM-001",
+      "rule_id": "EM-001",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - New vs Established",
+      "rule_text": "A 'new patient' (CPT 99201-99205) is one who has not received any professional service from the physician, or another physician of the same specialty/subspecialty in the same group practice, within the past 3 years. If the patient has been seen within 3 years, the encounter must be billed as 'established' (99211-99215).",
+      "applies_to_codes": ["99201", "99202", "99203", "99204", "99205", "99211", "99212", "99213", "99214", "99215"],
+      "lookback_years": 3
+    },
+    {
+      "id": "EM-002",
+      "rule_id": "EM-002",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - MDM Elements",
+      "rule_text": "For office/outpatient E/M visits (99202-99215), the level of service is selected based on the level of the Medical Decision Making (MDM) \u2014 specifically the highest level met across the three MDM elements: (1) number/complexity of problems addressed, (2) amount/complexity of data reviewed and analyzed, (3) risk of complications and/or morbidity or mortality. Time is an alternate criterion when counseling/coordination dominates the visit.",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-003",
+      "rule_id": "EM-003",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Time Ranges",
+      "rule_text": "Office/outpatient new patient (99202-99205) typical time ranges: 99202 = 15-29 min, 99203 = 30-44 min, 99204 = 45-59 min, 99205 = 60-74 min. Office/outpatient established (99212-99215): 99212 = 10-19 min, 99213 = 20-29 min, 99214 = 30-39 min, 99215 = 40-54 min. When billing by time, documentation must include a time statement and a description of what was discussed.",
+      "time_ranges_minutes": {
+        "99202": "15-29",
+        "99203": "30-44",
+        "99204": "45-59",
+        "99205": "60-74",
+        "99212": "10-19",
+        "99213": "20-29",
+        "99214": "30-39",
+        "99215": "40-54"
+      }
+    },
+    {
+      "id": "EM-004",
+      "rule_id": "EM-004",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - History/Exam",
+      "rule_text": "History and physical examination are no longer used as the controlling elements for office/outpatient E/M code selection (99202-99215). The visit level is determined by MDM or total time on the date of the encounter. The encounter documentation must still include a medically appropriate history and exam, but no specific level of H&P is required.",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-005",
+      "rule_id": "EM-005",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Problem Complexity",
+      "rule_text": "The 'number and complexity of problems addressed' MDM element: Straightforward (1 self-limited or minor problem), Low (2+ self-limited or minor problems; 1 stable chronic illness; 1 acute uncomplicated illness/injury), Moderate (1+ chronic illnesses with exacerbation/progression; 2+ stable chronic illnesses; 1 undiagnosed problem with uncertain prognosis; 1 acute illness with systemic symptoms; 1 acute complicated injury), High (1+ chronic illnesses with severe exacerbation/progression; 1 acute or chronic illness/injury that poses a threat to life or bodily function).",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-006",
+      "rule_id": "EM-006",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Data Review",
+      "rule_text": "The 'amount and/or complexity of data to be reviewed and analyzed' MDM element: Limited (up to 2 of: review of prior external note, review of test results, ordering of tests) requires the unique source identifier. Moderate (any 3 of the Limited category) or meets a moderate threshold. High (any 2 of: review of prior external note from a unique source, review of the results of each unique test, ordering of each unique test, or discussion of the case with another physician or other appropriate source). Independent interpretation of a test performed by another physician counts as one of the High-category items.",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-007",
+      "rule_id": "EM-007",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Risk of Complications",
+      "rule_text": "Risk of complications and/or morbidity or mortality of patient management: Straightforward (minimal risk; OTC drug management). Low (low risk; prescription drug management; decision regarding minor surgery with no identified risk factors). Moderate (decision regarding minor surgery with identified risk factors; decision regarding elective major surgery without identified risk factors; diagnosis or treatment significantly limited by social determinants of health). High (decision regarding elective major surgery with identified risk factors; decision regarding emergency major surgery; decision regarding hospitalization or escalation of hospital-level care; drug therapy requiring intensive monitoring for toxicity).",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-008",
+      "rule_id": "EM-008",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Same-Day Same-Specialty Bundling",
+      "rule_text": "Only one E/M visit is billable per patient per physician (or physician of the same specialty/subspecialty in the same group practice) on the same date of service. If two unrelated E/Ms occur on the same day (e.g., scheduled visit plus urgent walk-in), documentation must clearly demonstrate they are separate and distinct; the second visit is typically reported with modifier -25 on the E/M code when a separately identifiable service is performed on the same day as a procedure.",
+      "modifier": "25",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215"]
+    },
+    {
+      "id": "EM-009",
+      "rule_id": "EM-009",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Inpatient/Observation",
+      "rule_text": "Initial hospital care (99221-99223) requires the three MDM elements (problems, data, risk) or total time on the floor/unit on the date of the encounter. Subsequent hospital care (99231-99232-99233) is selected on the same MDM/time framework, with the caveat that 'stable' or 'recovering' problems typically do not support 99233. Discharge day management (99238-99239) requires documentation of the discharge and a face-to-face encounter.",
+      "applies_to_codes": ["99221", "99222", "99223", "99231", "99232", "99233", "99238", "99239"]
+    },
+    {
+      "id": "EM-010",
+      "rule_id": "EM-010",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Critical Care",
+      "rule_text": "Critical care (99291, 99292) is the direct delivery of medical care by a physician for a critically ill or injured patient. Documentation must include the time spent in critical care, the condition(s) treated, and the therapeutic interventions. 99291 covers the first 30-74 minutes; 99292 covers each additional 30 minutes. Time must be in continuous attendance and exclusive of separately billable procedures.",
+      "time_thresholds_minutes": {"99291": "30-74", "99292_additional": "30+"},
+      "applies_to_codes": ["99291", "99292"]
+    },
+    {
+      "id": "EM-011",
+      "rule_id": "EM-011",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Preventive Medicine",
+      "rule_text": "Preventive medicine codes (99381-99397) are distinct from problem-oriented E/M. A preventive visit may not be billed on the same date as a problem-oriented E/M unless a significant, separately identifiable problem is addressed; in that case, append modifier -25 to the preventive code and document the additional problem.",
+      "modifier": "25",
+      "applies_to_codes": ["99381", "99382", "99383", "99384", "99385", "99386", "99387", "99391", "99392", "99393", "99394", "99395", "99396", "99397"]
+    },
+    {
+      "id": "EM-012",
+      "rule_id": "EM-012",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Prolonged Service",
+      "rule_text": "Prolonged service codes (99417 for outpatient, 99418 for inpatient) are add-on codes used when the total time of the primary E/M exceeds the maximum typical time by 15 minutes or more. The prolonged service must be face-to-face (or floor/unit time for inpatient) and documented in the same note as the primary E/M.",
+      "applies_to_codes": ["99417", "99418", "99205", "99215", "99223", "99233", "99236"]
+    },
+    {
+      "id": "EM-013",
+      "rule_id": "EM-013",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Signature & Authorship",
+      "rule_text": "Each encounter note must be signed and dated by the rendering provider (or contain a valid electronic signature). Authorship must be unambiguous: 'Dictated but not read and signed' is not a valid signature. A teaching physician must comply with documentation rules for residents (e.g., presence during the key portion of the visit and a personally performed statement or macro that meets CMS teaching physician requirements).",
+      "applies_to_codes": ["99201", "99202", "99203", "99204", "99205", "99211", "99212", "99213", "99214", "99215", "99221", "99222", "99223", "99231", "99232", "99233"]
+    },
+    {
+      "id": "EM-014",
+      "rule_id": "EM-014",
+      "source": "CMS E/M",
+      "category": "E/M Documentation - Telehealth",
+      "rule_text": "Synchronous audio-video telehealth E/M visits (e.g., 99213-99215 billed with POS 02 or 10 as required by the current CMS telehealth list) must include documentation that the visit was conducted via telehealth, the technology used, the patient's consent, and that the provider is licensed in the state where the patient is located at the time of the visit. Audio-only visits are limited to specific codes (e.g., 99441-99443) and are not a substitute for in-person care when in-person is clinically required.",
+      "applies_to_codes": ["99202", "99203", "99204", "99205", "99212", "99213", "99214", "99215", "99441", "99442", "99443"]
+    },
+    {
+      "id": "NCCI-001",
+      "rule_id": "NCCI-001",
+      "source": "NCCI",
+      "category": "NCCI PTP - E/M With Procedure",
+      "rule_text": "An E/M code (99202-99215) reported on the same date of service as a procedure (e.g., 11042, 20610, 90471) is generally not separately payable without modifier -25. The documentation must support that the E/M is a significant, separately identifiable service above and beyond the usual preoperative and postoperative work of the procedure.",
+      "CPT1": "99213",
+      "CPT2": "11042",
+      "modifier_indicator": "1",
+      "modifier_required": "-25 on the E/M to unbundle"
+    },
+    {
+      "id": "NCCI-002",
+      "rule_id": "NCCI-002",
+      "source": "NCCI",
+      "category": "NCCI PTP - E/M With Procedure",
+      "rule_text": "An E/M code reported with a major procedure (e.g., 99204 with 49505) is bundled into the global surgical package and not separately payable; the global period covers the day before, the day of, and a defined postoperative window (typically 0, 10, or 90 days). Same-day E/M with modifier -57 is allowed only when the E/M is the decision for surgery.",
+      "CPT1": "99204",
+      "CPT2": "49505",
+      "modifier_indicator": "1",
+      "modifier_required": "-57 on the E/M only if the visit resulted in the decision for surgery"
+    },
+    {
+      "id": "NCCI-003",
+      "rule_id": "NCCI-003",
+      "source": "NCCI",
+      "category": "NCCI PTP - Injection With E/M",
+      "rule_text": "Reporting an E/M code and a vaccine/toxoid administration (90460-90474) on the same date of service requires modifier -25 on the E/M when the E/M is significant and separately identifiable. Administration codes (90460-90474) include counseling when performed; the administration code itself may not be unbundled from the E/M.",
+      "CPT1": "99213",
+      "CPT2": "90471",
+      "modifier_indicator": "1",
+      "modifier_required": "-25 on E/M when separately identifiable"
+    },
+    {
+      "id": "NCCI-004",
+      "rule_id": "NCCI-004",
+      "source": "NCCI",
+      "category": "NCCI PTP - Procedure Component Edits",
+      "rule_text": "A comprehensive procedure (CPT column 1) generally bundles the more limited procedure (CPT column 2). Example: 45385 (colonoscopy with polypectomy) bundles 45378 (diagnostic colonoscopy). Modifier -59 (or a more specific X-modifier like -XE/-XS/-XP/-XU) is allowed when the two services are performed at separate sites/sessions, but the documentation must support a distinct procedural service.",
+      "CPT1": "45385",
+      "CPT2": "45378",
+      "modifier_indicator": "1",
+      "modifier_required": "-59 (or X{ESU}) to unbundle when at separate sites/sessions"
+    },
+    {
+      "id": "NCCI-005",
+      "rule_id": "NCCI-005",
+      "source": "NCCI",
+      "category": "NCCI PTP - Mutually Exclusive",
+      "rule_text": "Two codes with a '0' modifier indicator are mutually exclusive and may not be unbundled under any circumstance. (The 0 indicator edits cannot be modified.) Example: bilateral and unilateral versions of the same procedure are mutually exclusive for the same anatomic site on the same day.",
+      "CPT1": "69210",
+      "CPT2": "69210_50",
+      "modifier_indicator": "0",
+      "modifier_required": null
+    },
+    {
+      "id": "NCCI-006",
+      "rule_id": "NCCI-006",
+      "source": "NCCI",
+      "category": "NCCI MUE - Frequency Threshold",
+      "rule_text": "Medically Unlikely Edit (MUE) cap: many procedures have a per-day maximum allowable units of service (e.g., a given lab test or diagnostic procedure may have an MUE of 1 per day on a single patient). Submission of units in excess of the MUE will be denied.",
+      "threshold": "Per-code, varies; check current CMS MUE tables",
+      "applies_to_codes": ["G0438", "G0439", "36415", "71046"]
+    },
+    {
+      "id": "NCCI-007",
+      "rule_id": "NCCI-007",
+      "source": "NCCI",
+      "category": "NCCI Add-On Code Rule",
+      "rule_text": "Add-on codes (denoted by a '+' in the CPT book) cannot be reported as standalone codes; they must be reported in conjunction with the parent procedure code identified in the add-on code descriptor. Reporting an add-on without the parent is a denial trigger.",
+      "applies_to_codes": ["11001", "11008", "90472", "90474", "96375", "96376", "96411", "96415", "96417", "99100", "99116", "99135", "99140", "99354", "99355", "99356", "99357", "99417"]
+    },
+    {
+      "id": "NCCI-008",
+      "rule_id": "NCCI-008",
+      "source": "NCCI",
+      "category": "NCCI PTP - Same Provider/Group Same DOS",
+      "rule_text": "When two CPT codes are reported by the same provider (or same group/same specialty) for the same patient on the same date of service and are NCCI PTP edits, the column 2 code is denied unless modifier -59 (or appropriate X-modifier) is appended and the documentation supports a separate, distinct service. Different providers in different groups may not require modifier -59 if the services are at different sites/sessions.",
+      "CPT1": "11042",
+      "CPT2": "11045",
+      "modifier_indicator": "1",
+      "modifier_required": "-59 or -X{ESU} when appropriate"
+    },
+    {
+      "id": "NCCI-009",
+      "rule_id": "NCCI-009",
+      "source": "NCCI",
+      "category": "NCCI PTP - Diagnostic Imaging Component",
+      "rule_text": "Diagnostic imaging is often bundled when performed on the same anatomic region on the same day. Example: a chest X-ray (71045) is bundled into a chest CT (71250) for the same session; modifier -59 (or -XS) is required to unbundle when performed as separate, distinct studies (e.g., the CT is of the chest and the X-ray is of the abdomen).",
+      "CPT1": "71250",
+      "CPT2": "71045",
+      "modifier_indicator": "1",
+      "modifier_required": "-XS when a different anatomic site"
+    },
+    {
+      "id": "NCCI-010",
+      "rule_id": "NCCI-010",
+      "source": "NCCI",
+      "category": "NCCI PTP - Lab Panel Unbundling",
+      "rule_text": "When a comprehensive metabolic panel (80053) or basic metabolic panel (80048) is reported, the individual component tests (e.g., 82310 calcium, 84295 sodium, 84520 potassium, 82565 creatinine, 82947 glucose) are not separately reportable. Unbundling the panel is a common audit finding and triggers recoupment if the components were ordered only as part of the panel.",
+      "CPT1": "80053",
+      "CPT2": "82310",
+      "modifier_indicator": "1",
+      "modifier_required": null
+    },
+    {
+      "id": "NCCI-011",
+      "rule_id": "NCCI-011",
+      "source": "NCCI",
+      "category": "NCCI PTP - E/M With Minor Procedure (Modifier -25)",
+      "rule_text": "A same-day E/M (99212-99215) with a minor procedure (e.g., 17000 destruction of premalignant lesion) is only separately payable when the documentation supports a significant, separately identifiable E/M above and beyond the work of the procedure. The -25 modifier must be appended to the E/M code; medical-necessity documentation must stand on its own.",
+      "CPT1": "99213",
+      "CPT2": "17000",
+      "modifier_indicator": "1",
+      "modifier_required": "-25 on E/M"
+    },
+    {
+      "id": "NCCI-012",
+      "rule_id": "NCCI-012",
+      "source": "NCCI",
+      "category": "NCCI MUE - Anatomic Site Cap",
+      "rule_text": "Many surgical procedures are capped by MUE at a per-anatomic-site rate (e.g., one debridement of the skin per anatomic site per day). Reporting multiple units without modifier -76, -77, or -59 (as applicable) and without distinct documentation for each service is a denial trigger.",
+      "threshold": "Per-code, varies by anatomic site; check current MUE tables",
+      "applies_to_codes": ["11042", "11043", "11044", "11045", "11046", "11047"]
+    }
+  ]
+}

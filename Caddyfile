@@ -1,0 +1,30 @@
+# ai-billing-audit — internal Caddyfile (in-stack reverse proxy)
+#
+# This Caddy runs INSIDE the docker-compose stack and listens on plain
+# HTTP (port 80 inside the container, mapped to 127.0.0.1:3018 on the
+# host). The PUBLIC HTTPS edge is Traefik on the host (port 443 with
+# Let's Encrypt auto-issuance for ai-billing-audit.ashbi.ca).
+#
+# Traefik → http://127.0.0.1:3018 → caddy:80 (this) → api:8000.
+#
+# TLS termination is intentionally NOT configured here. The stack
+# could enable Caddy's on-demand TLS, but with Traefik upstream
+# already issuing a public cert, layering a second TLS hop on the
+# internal network would add latency and a second cert for no gain.
+
+:80 {
+    # Forward every path to the FastAPI service. The Caddy container
+    # shares the ai_billing_audit_net bridge network with the api
+    # service, so the DNS name "api" resolves.
+    reverse_proxy api:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

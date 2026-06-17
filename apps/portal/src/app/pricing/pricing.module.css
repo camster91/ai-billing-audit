@@ -1,0 +1,253 @@
+/* /pricing — visual style sheet. Mirrors the t_f00717ff design (dark
+   mode, recommended-tier glow, two price lines per tier) but
+   rendered as a Next.js Server Component. */
+
+.page {
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --panel-2: #1a2340;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #4f8cff;
+  --accent-2: #2dd4bf;
+  --warn: #f59e0b;
+  --good: #22c55e;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.header {
+  padding: 48px 24px 16px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: 36px;
+  letter-spacing: -0.5px;
+}
+
+.header p {
+  margin: 0 auto;
+  max-width: 680px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin: 32px 0;
+}
+
+.tier {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.recommended {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(79, 140, 255, 0.15);
+}
+
+.recommended::before {
+  content: "Most clinics";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.tier h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.cap {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.priceBlock {
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.priceLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 6px 0;
+}
+
+.priceLine .amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.priceLinePrimary .amount {
+  font-size: 28px;
+}
+
+.priceLineSecondary .amount {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.priceLine .label {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+  flex: 1;
+}
+
+.features li {
+  padding: 6px 0 6px 22px;
+  position: relative;
+}
+
+.features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--good);
+  font-weight: 700;
+}
+
+.ctaRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.ctaWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cta {
+  display: block;
+  text-align: center;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.cta:hover { background: #233056; }
+.cta:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ctaPrimary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.ctaPrimary:hover { background: #3d75e6; }
+
+.ctaSecondary {
+  background: var(--panel-2);
+  border-color: var(--line);
+}
+
+.ctaGhost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 500;
+}
+.ctaGhost:hover { background: rgba(255, 255, 255, 0.04); }
+
+.ctaError {
+  font-size: 12px;
+  color: var(--warn);
+  line-height: 1.3;
+}
+
+.compliance {
+  margin: 40px 0 0;
+  background: rgba(45, 212, 191, 0.06);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 12px;
+  padding: 24px 28px;
+}
+
+.compliance h3 {
+  margin: 0 0 8px;
+  color: var(--accent-2);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compliance p {
+  margin: 8px 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.ref {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compliance ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compliance ul li { margin: 3px 0; }
+
+.footer {
+  text-align: center;
+  padding: 32px 24px 48px;
+  color: var(--muted);
+  font-size: 13px;
+}

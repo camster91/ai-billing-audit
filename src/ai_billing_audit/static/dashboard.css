@@ -1,0 +1,203 @@
+/* ai-billing-audit demo dashboard — minimal, dependency-free styles */
+
+:root {
+  --bg: #0f1216;
+  --bg-elev: #1a1f26;
+  --bg-elev-2: #232a33;
+  --fg: #e6e8eb;
+  --fg-muted: #8b95a1;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --border: #2a313a;
+  --evidence-bg: #fff3a3;
+  --evidence-fg: #1a1a1a;
+  --easy: #4cb782;
+  --medium: #d49a3a;
+  --hard: #d96b6b;
+  --low: #4cb782;
+  --info: #58a6ff;
+  --medium-sev: #d49a3a;
+  --high: #d96b6b;
+  --critical: #b73a3a;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 0.92em; background: var(--bg-elev-2); padding: 1px 5px; border-radius: 3px; color: #f3d4a0; }
+.muted { color: var(--fg-muted); }
+.small { font-size: 0.85em; }
+h1, h2, h3 { line-height: 1.25; margin: 0 0 0.5rem 0; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 600; color: var(--fg); font-size: 1.05rem; }
+.brand:hover { text-decoration: none; }
+.brand-sub { color: var(--fg-muted); font-weight: 400; font-size: 0.85em; margin-left: 0.5rem; }
+.topnav a { color: var(--fg-muted); margin-left: 1rem; font-size: 0.9rem; }
+.topnav a:hover { color: var(--fg); text-decoration: none; }
+
+.container { flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 1.5rem; }
+.footer { padding: 1rem 1.5rem; text-align: center; color: var(--fg-muted); font-size: 0.8rem; border-top: 1px solid var(--border); }
+
+.page-head { margin-bottom: 1.5rem; }
+.page-head h1 { font-size: 1.5rem; }
+.crumbs { color: var(--fg-muted); font-size: 0.85em; margin: 0 0 0.5rem 0; }
+.encounter-id { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; color: #f3d4a0; margin-right: 0.5rem; }
+
+/* index grid */
+.encounter-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.encounter-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; }
+.encounter-card__head { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+.encounter-card__id { font-size: 1.1rem; margin: 0 0 0.4rem 0; }
+.encounter-card__id a { color: var(--fg); font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+.encounter-card__summary { color: var(--fg-muted); font-size: 0.9rem; flex: 1; margin: 0 0 0.75rem 0; }
+.encounter-card__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* badges */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-elev-2); color: var(--fg); border: 1px solid var(--border); }
+.badge--easy { background: rgba(76, 183, 130, 0.15); color: var(--easy); border-color: rgba(76, 183, 130, 0.3); }
+.badge--medium { background: rgba(212, 154, 58, 0.15); color: var(--medium); border-color: rgba(212, 154, 58, 0.3); }
+.badge--hard { background: rgba(217, 107, 107, 0.15); color: var(--hard); border-color: rgba(217, 107, 107, 0.3); }
+.badge--flag { background: rgba(217, 107, 107, 0.12); color: var(--high); border-color: rgba(217, 107, 107, 0.3); }
+.badge--clean { background: rgba(76, 183, 130, 0.12); color: var(--low); border-color: rgba(76, 183, 130, 0.3); }
+.badge--missing { background: rgba(212, 154, 58, 0.12); color: var(--medium); border-color: rgba(212, 154, 58, 0.3); }
+.badge--cat { background: var(--bg-elev-2); color: var(--fg-muted); }
+.badge--low { background: rgba(76, 183, 130, 0.12); color: var(--low); }
+.badge--info { background: rgba(88, 166, 255, 0.12); color: var(--info); }
+.badge--medium_sev { background: rgba(212, 154, 58, 0.12); color: var(--medium-sev); }
+.badge--high { background: rgba(217, 107, 107, 0.12); color: var(--high); }
+.badge--critical { background: rgba(183, 58, 58, 0.18); color: var(--critical); }
+
+/* buttons */
+.btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.88rem; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; text-decoration: none; }
+.btn:hover { text-decoration: none; }
+.btn--primary { background: var(--accent); color: #0a0d11; border-color: var(--accent); }
+.btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #0a0d11; }
+.btn--ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+.btn--ghost:hover { background: var(--bg-elev-2); border-color: var(--accent); color: var(--fg); }
+
+/* panels */
+.panel { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+.panel h2 { font-size: 1rem; margin: 0 0 0.75rem 0; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 720px) { .panel-grid { grid-template-columns: 1fr; } }
+
+.clinical-note { background: var(--bg-elev-2); border-radius: 6px; padding: 0.9rem 1rem; line-height: 1.7; font-size: 0.96rem; border-left: 3px solid var(--accent); }
+mark.evidence { background: var(--evidence-bg); color: var(--evidence-fg); padding: 1px 3px; border-radius: 3px; font-weight: 600; }
+mark.evidence.evidence-off { background: transparent; color: inherit; padding: 0; font-weight: inherit; }
+.clinical-note.flash { animation: note-flash 1.2s ease; }
+@keyframes note-flash { 0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); } 50% { box-shadow: 0 0 0 8px rgba(88, 166, 255, 0.15); } 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } }
+
+/* kv list */
+.kv { margin: 0; display: grid; grid-template-columns: 110px 1fr; gap: 0.4rem 0.75rem; }
+.kv dt { color: var(--fg-muted); font-size: 0.85rem; }
+.kv dd { margin: 0; }
+
+/* rules */
+.rule-list { list-style: none; padding: 0; margin: 0; }
+.rule-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.rule-list li:last-child { border-bottom: none; }
+/* Rule codes are *identifiers the user scans for*, not decoration.
+   The default `code` style (muted amber) is correct for in-line CPT
+   tokens, but rule_overlap_001 / rule_ecg_001 etc. need to pop on
+   the dark theme. Outlined purple/indigo reads as "this is the rule
+   the system applied", distinct from CPT/ICD code chips and from
+   finding-id badges. */
+.rule-id { display: inline-block; margin-right: 0.5rem; background: rgba(167, 139, 250, 0.10); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.45); padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+.rule-cat { color: var(--fg-muted); margin-right: 0.5rem; font-size: 0.85rem; }
+.rule-trigger { margin: 0.25rem 0 0 0; color: var(--fg); font-size: 0.92rem; }
+
+/* findings */
+.finding-list { list-style: none; padding: 0; margin: 0; }
+.finding { background: var(--bg-elev-2); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.6rem; border-left: 3px solid var(--fg-muted); }
+.finding--low { border-left-color: var(--low); }
+.finding--info { border-left-color: var(--info); }
+.finding--medium { border-left-color: var(--medium-sev); }
+.finding--high { border-left-color: var(--high); }
+.finding--critical { border-left-color: var(--critical); }
+.finding__head { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; row-gap: 0.35rem; }
+.finding__head .finding-id,
+.finding__head .rule-id-inline,
+.finding__head .suggested { display: inline-block; }
+/* Finding-id badge (gt0, gt1, ...): the card itself is --bg-elev-2
+   (#232a33) and the global `code` fill is the same, so the chip
+   disappears. Lift it to --bg-elev (#1a1f26) and add a 1px neutral
+   border so it reads as a distinct identifier. */
+.finding-id { background: var(--bg-elev); border: 1px solid #3a434f; }
+/* Suggested code chip — default muted look (for CPT/ICD tokens). */
+.suggested { color: var(--fg-muted); }
+/* Verdict pill — bold caps, colored, used when suggested_code is
+   a decision word like "DENY" or "REVIEW" instead of a billing code.
+   The user needs to act on these, so the visual weight is closer
+   to a severity badge than to a code chip. */
+.suggested--verdict { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid transparent; }
+.suggested--verdict-deny { background: rgba(217, 107, 107, 0.18); color: #f3a5a5; border-color: rgba(217, 107, 107, 0.55); }
+.suggested--verdict-review { background: rgba(212, 154, 58, 0.18); color: #f0c574; border-color: rgba(212, 154, 58, 0.55); }
+.finding-quote { margin: 0.4rem 0 0.6rem 0; padding: 0.5rem 0.8rem; background: var(--bg); border-radius: 4px; font-style: italic; color: #f3d4a0; border-left: 2px solid var(--evidence-bg); }
+.finding__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+
+.panel--actions { background: var(--bg-elev-2); }
+.action-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.action-row--hard { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--border); align-items: center; }
+.action-row__label { color: var(--hard); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 0.25rem; }
+.btn--hard { background: rgba(217, 107, 107, 0.12); color: var(--hard); border-color: rgba(217, 107, 107, 0.4); }
+.btn--hard:hover { background: rgba(217, 107, 107, 0.2); border-color: var(--hard); color: var(--fg); }
+.finding--active { box-shadow: 0 0 0 2px var(--accent); }
+
+.empty { color: var(--fg-muted); padding: 2rem 0; text-align: center; }
+
+/* upload portal */
+.upload-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.upload-tab { background: var(--bg-elev); color: var(--fg-muted); border: 1px solid var(--border); padding: 0.5rem 0.9rem; border-radius: 6px; font-size: 0.9rem; cursor: pointer; font-weight: 500; }
+.upload-tab:hover { color: var(--fg); border-color: var(--accent); }
+.upload-tab.is-active { background: var(--accent); color: #0a0d11; border-color: var(--accent); }
+
+.dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; min-height: 110px; border: 1.5px dashed var(--border); border-radius: 8px; padding: 1.5rem; cursor: pointer; text-align: center; transition: background 0.12s, border-color 0.12s; }
+.dropzone:hover, .dropzone--over { border-color: var(--accent); background: rgba(88, 166, 255, 0.05); }
+.dropzone__hint { color: var(--fg-muted); font-size: 0.95rem; }
+.dropzone__filename { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+
+.paste-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 0.8rem; }
+.paste-grid label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--fg-muted); }
+.paste-grid__full { grid-column: 1 / -1; }
+.paste-grid input, .paste-grid select { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.5rem; color: var(--fg); font-size: 0.92rem; font-family: inherit; }
+.paste-grid input:focus, .paste-grid select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.paste-grid .btn { grid-column: 1 / -1; justify-self: start; }
+
+.preview-table-wrap { overflow-x: auto; margin-bottom: 0.8rem; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.preview-table th, .preview-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.preview-table th { color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; font-weight: 600; }
+.preview-table tr.row-bad { background: rgba(217, 107, 107, 0.05); }
+.preview-table tr.row-ok { background: rgba(76, 183, 130, 0.04); }
+.cell-error { color: var(--high); font-size: 0.8rem; margin-top: 2px; }
+.preview-raw { margin-top: 0.6rem; }
+.preview-raw pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; max-height: 240px; overflow: auto; font-size: 0.78rem; color: var(--fg-muted); white-space: pre-wrap; }
+.preview-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
+
+.upload-status { margin-top: 0.6rem; }
+
+.job-list { list-style: none; padding: 0; margin: 0; }
+.job-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.job-row:last-child { border-bottom: none; }
+.job-row__id { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; color: var(--fg-muted); }
+.job-row__enc { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; color: #f3d4a0; }

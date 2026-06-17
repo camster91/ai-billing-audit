@@ -1,0 +1,1740 @@
+{
+  "encounter_count": 50,
+  "encounter_error_count": 0,
+  "input": {
+    "val_path": "data/val.json",
+    "prompt_path": "prompts/v0/auditor_prompt.txt",
+    "llm_provider": "smoke",
+    "llm_model": "deterministic-ground-truth-extractor"
+  },
+  "convention": {
+    "macro": "unweighted mean of per-encounter precision/recall/F1 across all encounters with metrics. Per-encounter P/R is 1.0 for encounters with zero gold AND zero predicted (true negative; matches the grader's MatchResult convention). Encounter-level errors contribute 0.0 for P/R/F1.",
+    "per_category_recall": "sum_of_tp_in_category / sum_of_gold_in_category over the whole split; support = total gold findings in category. Categories with zero gold are reported as recall=null, support=0 rather than silently zeroed.",
+    "overall": "pooled micro precision/recall/F1 across all categories and all encounters. 0/0 returns 0.0 to avoid inflating precision over zero examples; support is reported alongside."
+  },
+  "spec_categories": [
+    "under_coding",
+    "missed_charge",
+    "modifier"
+  ],
+  "spec_category_note": "under_coding and missed_charge are NOT categories in the current ground-truth taxonomy (the project uses granular clinical categories: cardiology, diagnosis, evaluation, imaging, laboratory, missing-dx, modifier, preventive, procedure, duplicate). They are reported as support=0, recall=null. modifier is a real category.",
+  "overall": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "support": 164,
+    "tp": 164,
+    "fp": 0,
+    "fn": 0
+  },
+  "macro": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "n": 50
+  },
+  "per_category": {
+    "under_coding": {
+      "recall": null,
+      "support": 0,
+      "tp": 0,
+      "fn": 0
+    },
+    "missed_charge": {
+      "recall": null,
+      "support": 0,
+      "tp": 0,
+      "fn": 0
+    },
+    "modifier": {
+      "recall": 1.0,
+      "support": 3,
+      "tp": 3,
+      "fn": 0
+    }
+  },
+  "wall_clock_seconds": 0.003,
+  "timestamp_utc": "2026-06-17T00:35:13Z",
+  "per_encounter": [
+    {
+      "encounter_id": "enc_10000",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10001",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10002",
+      "n_predicted": 2,
+      "n_gold": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10003",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10004",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10005",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "modifier": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10006",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10007",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10008",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10009",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10010",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10011",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10012",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10013",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10014",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10015",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10016",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10017",
+      "n_predicted": 2,
+      "n_gold": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10018",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10019",
+      "n_predicted": 2,
+      "n_gold": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10020",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "modifier": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10021",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10022",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10023",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10024",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10025",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10026",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10027",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10028",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10029",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10030",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10031",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10032",
+      "n_predicted": 1,
+      "n_gold": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10033",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10034",
+      "n_predicted": 2,
+      "n_gold": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10035",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "modifier": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10036",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10037",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10038",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10039",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10040",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10041",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10042",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10043",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10044",
+      "n_predicted": 0,
+      "n_gold": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {}
+    },
+    {
+      "encounter_id": "enc_10045",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "cardiology": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "missing-dx": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10046",
+      "n_predicted": 5,
+      "n_gold": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "gold": 2,
+          "predicted": 2
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10047",
+      "n_predicted": 2,
+      "n_gold": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "preventive": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "duplicate": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10048",
+      "n_predicted": 4,
+      "n_gold": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "laboratory": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "imaging": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    },
+    {
+      "encounter_id": "enc_10049",
+      "n_predicted": 3,
+      "n_gold": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "per_category": {
+        "evaluation": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "procedure": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        },
+        "diagnosis": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "gold": 1,
+          "predicted": 1
+        }
+      }
+    }
+  ]
+}

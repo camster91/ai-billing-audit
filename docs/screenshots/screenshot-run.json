@@ -1,0 +1,27 @@
+{
+  "base": "http://127.0.0.1:8765",
+  "out_dir": "/Users/biancabienaime/projects/ai-billing-audit/docs/screenshots",
+  "n_registered": 3,
+  "results": [
+    {
+      "path": "/Users/biancabienaime/projects/ai-billing-audit/docs/screenshots/encounter-index.png",
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "path": "/Users/biancabienaime/projects/ai-billing-audit/docs/screenshots/encounter-enc_10032.png",
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "path": "/Users/biancabienaime/projects/ai-billing-audit/docs/screenshots/encounter-enc_0007.png",
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "path": "/Users/biancabienaime/projects/ai-billing-audit/docs/screenshots/encounter-enc_0000.png",
+      "consoleErrors": [],
+      "failedRequests": []
+    }
+  ]
+}

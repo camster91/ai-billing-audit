@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}ai-billing-audit dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">ai-billing-audit <span class="brand-sub">demo dashboard</span></a>
+    <nav class="topnav">
+      <a href="/">index</a>
+      <a href="/encounters/upload">upload</a>
+      <a href="/healthz">health</a>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <span>ai-billing-audit v0.1.0 · demo dashboard</span>
+  </footer>
+</body>
+</html>

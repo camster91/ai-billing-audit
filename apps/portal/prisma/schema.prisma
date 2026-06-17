@@ -1,0 +1,547 @@
+// Prisma schema for the client portal.
+//
+// Two model groups live here:
+//   1. NextAuth.js (Auth.js v5) PrismaAdapter models:
+//      User, Account, Session, VerificationToken, Authenticator
+//      Shapes and compound unique keys are dictated by @auth/prisma-adapter.
+//   2. Tenant / Membership models for clinic orgs and the user↔tenant join.
+//
+// Database: dev is sqlite (no infra). Production target is PostgreSQL
+// (ca-central-1 or us-east-1 per the ai-billing-audit board spec). The
+// schema is written so the same models work on both — only the datasource
+// provider block changes between environments.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------------------------------------------------------------------------
+// NextAuth.js / Auth.js v5 models
+// Required shape: @auth/prisma-adapter reads/writes these tables directly.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts       Account[]
+  sessions       Session[]
+  authenticators Authenticator[]
+  memberships    Membership[]
+  redeemedSessions RedeemedCheckoutSession[]
+  actionedFindings Finding[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Active tenant selected for this session — written by the tenant-scope
+  // middleware. Null when the user has memberships but hasn't picked one
+  // yet (caller falls back to the first membership).
+  activeTenantId String?
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Optional WebAuthn table — required by the adapter if you use the
+// WebAuthn provider, harmless to keep otherwise.
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+}
+
+// ---------------------------------------------------------------------------
+// Tenant / Membership models — the clinic org tree.
+// ---------------------------------------------------------------------------
+
+// SQLite note: Prisma + SQLite does not support native enums (no ENUM type).
+// We model these as String fields and validate at the app layer
+// (src/lib/tenant.ts). When you switch the datasource to PostgreSQL for
+// production, you can convert these to real Prisma enums and add Zod
+// validation that mirrors the enum shape.
+//
+//   tenant.tier:                "small" | "mid" | "large"
+//   tenant.subscriptionStatus:  "active" | "past_due" | "canceled"
+//   membership.role:            "owner" | "admin" | "auditor" | "viewer"
+//   encounter.status:           "pending" | "auditing" | "awaiting_review" | "completed"
+//   finding.category:           "em_level" | "documentation" | "medical_necessity" | "modifier" | "code_mismatch" | "payer_policy" | "other"
+//   finding.status:             "pending" | "accepted" | "dismissed"
+//   finding.dismissReason:      "wrong_payer_policy" | "hallucinated_fact" | "too_conservative" | "other_with_text"
+//
+// The valid value sets are exported from src/lib/encounter-types.ts
+// alongside Zod schemas — see that file for the canonical lists.
+
+model Tenant {
+  id                 String   @id @default(cuid())
+  // Display name for the clinic / org.
+  name               String
+  // URL-safe slug — used in the /t/<slug> namespace if we add public
+  // tenant-scoped routes later. Unique to prevent slug collisions.
+  slug               String   @unique
+  // Sizing bucket — drives the audit_quota_limit default if not overridden.
+  tier               String   @default("small")
+  // Stripe billing linkage.
+  // - stripeCustomerId: set on first Checkout Session completion (or on
+  //   Customer Portal open). Unique — one customer per tenant.
+  // - stripeSubscriptionId: set on the first invoice.paid / customer.subscription.created
+  //   event after checkout. Null between checkout completion and the first
+  //   invoice webhook arriving.
+  // - subscriptionStatus mirrors the Stripe status string ("active",
+  //   "past_due", "canceled", etc.). Defaults to "active" so manually-seeded
+  //   tenants don't appear trialing.
+  subscriptionStatus String   @default("active")
+  stripeCustomerId   String?  @unique
+  stripeSubscriptionId String? @unique
+  // Audit quota tracking — the billing-audit engine increments
+  // audit_quota_used on each claim submitted for review; the portal UI
+  // surfaces used/limit and warns near the cap.
+  auditQuotaUsed     Int      @default(0)
+  auditQuotaLimit    Int      @default(100)
+
+  // -----------------------------------------------------------------------
+  // Subscription lifecycle (t_c12cf722). Populated by the Stripe webhook
+  // handlers in src/app/api/billing/webhook/route.ts.
+  //
+  // canceledAt: set on customer.subscription.deleted. A nightly
+  //   cleanup job (scripts/purge-canceled-tenants.ts) hard-deletes
+  //   tenants whose canceledAt is older than the retention window
+  //   (default 30 days). Within that window the tenant data stays in
+  //   place so the owner can still sign in and re-subscribe without a
+  //   cold start.
+  //
+  // firstPaymentFailureAt: timestamp of the FIRST consecutive
+  //   invoice.payment_failed event for this tenant. Stays set across
+  //   subsequent failures in the same streak; cleared the moment a
+  //   payment succeeds (invoice.payment_succeeded handler). The
+  //   past_due transition fires only when the failure streak is
+  //   older than 3 days (PAYMENT_FAILURE_GRACE_DAYS in the webhook
+  //   handler).
+  //
+  // lastPaymentFailureAt: timestamp of the most recent failure. Lets
+  //   the dashboard surface "X days of payment failure" without
+  //   re-counting from firstPaymentFailureAt.
+  // -----------------------------------------------------------------------
+  canceledAt                 DateTime?
+  firstPaymentFailureAt     DateTime?
+  lastPaymentFailureAt      DateTime?
+
+  // -----------------------------------------------------------------------
+  // First-run onboarding fields (t_84668464). Populated by the
+  // /portal/onboarding wizard after Stripe Checkout success.
+  //
+  // clinicName: duplicated from `name` (the canonical display name) so
+  //   the wizard can capture a separate human-readable clinic name on
+  //   step 2 without forcing the stripe-derived default. Falls back to
+  //   `name` when the user skips the rename.
+  //
+  // clinicNpi + clinicTimezone: optional. clinicNpi is the billing NPI
+  //   (10-digit US NPI; for non-US clinics we accept any 6–15 char
+  //   alphanumeric). clinicTimezone is an IANA tz string (e.g.
+  //   "America/Toronto") used to default the encounter date picker.
+  //
+  // dataResidencyRegion: "ca-central-1" | "us-east-1" | null. Set on
+  //   step 3. residencyRegionLocked flips to true on wizard completion
+  //   — once locked, the /settings page must not allow changes.
+  //
+  // ehrConnectionMode: "sftp" | "manual" | null. Set on step 4.
+  //   - "sftp": ehrSftpHost/Port/Username must be populated.
+  //   - "manual": the user explicitly skipped SFTP, opting to upload
+  //     837P files through the encounter upload UI.
+  //
+  // firstEncounterUploadMode: "uploaded" | "skipped" | null. Set on
+  //   step 5. When "uploaded", firstEncounterFilePath points at a
+  //   server-staged 837P file ready for the audit pipeline.
+  // -----------------------------------------------------------------------
+  clinicName                 String?
+  clinicNpi                  String?
+  clinicTimezone             String?
+  dataResidencyRegion        String?
+  residencyRegionLocked      Boolean  @default(false)
+  ehrConnectionMode          String?
+  ehrSftpHost                String?
+  ehrSftpPort                Int?
+  ehrSftpUsername            String?
+  // SFTP password/passphrase is stored as a ciphertext blob (envelope
+  // encrypted by KMS in production; raw for the dev fixture). Never
+  // returned via the API.
+  ehrSftpPasswordCiphertext  String?
+  firstEncounterUploadMode   String?
+  firstEncounterFilePath     String?
+  firstEncounterFileName     String?
+  firstEncounterUploadedAt   DateTime?
+
+  // onboardingStep: 0 (not started) → 1 (clinic profile) → 2 (region) →
+  // 3 (EHR) → 4 (first encounter) → 5 (complete). Persisted so a
+  // returning user lands on the right step.
+  // onboardingCompletedAt: timestamp the wizard completed. Null until
+  // then.
+  onboardingStep             Int      @default(0)
+  onboardingCompletedAt      DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  memberships Membership[]
+  encounters  Encounter[]
+  auditEntries AuditTrailEntry[]
+  redeemedSessions RedeemedCheckoutSession[]
+  invoices    Invoice[]
+  processedStripeEvents ProcessedStripeEvent[]
+}
+
+// Stripe checkout session redemption ledger.
+//
+// One row per Stripe Checkout Session ID that the onboarding wizard
+// has "redeemed" — i.e. the user signed in and we attached them as the
+// owner Membership of the tenant created from the session. The unique
+// sessionId index dedupes the redemption at the DB layer; the wizard's
+// GET handler uses this to recognize "you've already started" without
+// having to re-query Stripe on every page load.
+//
+// The wizard DOES NOT need this row to also bind a tenant; the
+// webhook's checkout.session.completed handler already creates the
+// Tenant from the same session. The ledger exists purely for
+// membership-attachment idempotency.
+model RedeemedCheckoutSession {
+  id            String   @id @default(cuid())
+  // Stripe's Checkout Session id (cs_xxx). For demo-mode flows the
+  // wizard writes a synthetic "demo_xxx" id here instead.
+  sessionId     String   @unique
+  // User who claimed owner role.
+  userId        String
+  // Tenant the user was attached to.
+  tenantId      String
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+// Join table: a user can belong to many tenants (e.g. a billing consultant
+// who works across multiple clinics) and a tenant can have many users.
+// `role` is the per-tenant role; the global superadmin flag is intentionally
+// absent here (out of scope for this milestone).
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+}
+
+// ---------------------------------------------------------------------------
+// Encounter / Finding / Audit models — the client-portal review surface.
+//
+// `Encounter` is a single billable visit: clinical narrative (free text),
+// a structured billed `EncounterClaim` (CPT codes, payer, provider, charge),
+// and zero-to-many `Finding`s the AI auditor produced against the encounter.
+//
+// `Finding` carries the auditor's verdict on a specific billing concern:
+// current_code -> suggested_code, evidence_quote (the span in the
+// narrative the finding is anchored to), the rule reference, the
+// estimated financial impact, and a status (pending / accepted / dismissed).
+//
+// `AuditTrailEntry` is the append-only log of every reviewer action
+// (accept / dismiss) and the hash chain signature that closes it. The
+// chain shape is documented in src/lib/audit-chain.ts; the SQL DDL for
+// the production Postgres is in audit_trail.sql at the repo root.
+//
+// All status / category / reason columns are plain `String` because
+// SQLite has no enum type. The valid value sets are exported as TS
+// string-literal unions from src/lib/encounter-types.ts and validated
+// with Zod at the route boundary.
+// ---------------------------------------------------------------------------
+
+model Encounter {
+  id            String   @id @default(cuid())
+  // Tenant isolation — every query joins through tenantId. Indexed for the
+  // /encounters list (server-paginated) and the audit log filter.
+  tenantId      String
+  patientHash   String   // SHA-256 hex of patient identifier; never PII
+  dateOfService DateTime
+  specialty     String
+  // Free-text clinical narrative. The /encounters/[id] page renders this
+  // verbatim and highlights the evidence_quote spans for each finding.
+  clinicalNote  String
+  // FK to the EncounterClaim row holding the structured billed claim JSON.
+  // 1:1 — every encounter has exactly one billed claim at review time.
+  claimId       String   @unique
+  // "pending" | "auditing" | "awaiting_review" | "completed"
+  status        String   @default("awaiting_review")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  claim         EncounterClaim @relation(fields: [claimId], references: [id])
+  findings      Finding[]
+  auditEntries  AuditTrailEntry[]
+
+  @@index([tenantId, status, dateOfService])
+  @@index([tenantId, dateOfService])
+}
+
+model EncounterClaim {
+  id              String   @id @default(cuid())
+  // Canonicalized payer / provider / NPI strings — these are the columns
+  // the biller filters on in the /encounters list.
+  payer           String
+  providerNpi     String
+  providerName    String
+  // CPT code list, stored as JSON text. The portal renders this below the
+  // clinical note; the auditor uses it to compute the financial impact.
+  cptCodesJson    String   // JSON array of { code, modifier?, units? }
+  // Total billed in cents (integer). Stored on EncounterClaim so the
+  // list page can sum without joining through findings.
+  billedCents     Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  encounter       Encounter?
+}
+
+model Finding {
+  id                       String   @id @default(cuid())
+  encounterId              String
+  // "em_level" | "documentation" | "medical_necessity" | "modifier" |
+  // "code_mismatch" | "payer_policy" | "other". Drives the badge color
+  // in the split-screen; billing_rule_reference is the human-readable
+  // citation shown under the quote (e.g. "AMA CPT 2026 §99214").
+  category                 String
+  billingRuleReference     String
+  // Suggested code change: the current code the biller filed with and
+  // the auditor's recommended replacement (null when the finding is a
+  // pure documentation / policy note, not a code swap).
+  currentCode              String?
+  suggestedCode            String?
+  // The span in the encounter.clinicalNote this finding is anchored to.
+  // The /encounters/[id] page wraps matching occurrences in a clickable
+  // highlight span and scrolls the first one into view on demand.
+  evidenceQuote            String
+  // Estimated financial impact in cents. Positive = revenue the clinic
+  // recovers if the change is applied; negative = revenue the clinic
+  // gives up. Shown on the card as a signed dollar amount.
+  estFinancialImpactCents  Int      @default(0)
+  // "pending" | "accepted" | "dismissed". Reviewer disposition. Pending
+  // is not yet acted on; accepted/dismissed is terminal — the portal
+  // disallows undoing without writing a second audit row.
+  status                   String   @default("pending")
+  // Set on dismiss with the chosen reason; null on accept. For
+  // "other_with_text" the free-text body is in `dismissText` and must
+  // be non-empty (enforced at the route layer with Zod).
+  dismissReason            String?
+  dismissText              String?
+  // Audit fields — the user that took the action and when.
+  actionedByUserId         String?
+  actionedAt               DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  encounter                Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  actionedBy               User?     @relation(fields: [actionedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([encounterId, status])
+  @@index([encounterId, category])
+}
+
+// Append-only audit log. Every accept and dismiss writes exactly one
+// row here. The hash chain is computed in src/lib/audit-chain.ts
+// (port of src/audit_log.py) using the same GENESIS_PREVIOUS_SIGNATURE
+// and CHAIN_FIELDS shape so the on-disk representation is identical
+// regardless of the implementation language. Production DDL with the
+// append-only trigger is in audit_trail.sql at the repo root.
+model AuditTrailEntry {
+  id                     String   @id @default(cuid())
+  // Per-tenant chain — we never join across tenants in the walk.
+  tenantId               String
+  // Monotonically increasing, ties broken by event_id (cuid). The chain
+  // walk sorts by (timestamp, event_id) so the order is deterministic.
+  eventId                String   @unique @default(cuid())
+  timestamp              DateTime @default(now())
+  // The user that took the action. Populated from the auth session at
+  // accept/dismiss time; null only for system-emitted events.
+  userIdentifier         String
+  // "accept" or "dismiss" — the action verbs on the finding card.
+  action                 String
+  // The finding this entry refers to. Indexed for the per-finding
+  // history view (out of scope for this milestone, but the column
+  // is cheap to keep and we want the FK).
+  findingId              String
+  // Optional reason payload for dismiss events. null on accept. The
+  // reason is one of the dismiss reason values; for "other_with_text"
+  // the text is in `reasonText`.
+  reason                 String?
+  reasonText             String?
+  // ---- Hash-chain payload fields ----
+  // These four columns are part of the chain payload (see CHAIN_FIELDS
+  // in src/lib/audit-chain.ts and the Python sibling src/audit_log.py).
+  // They are persisted on the row so the on-site auditor can re-walk
+  // and re-verify the chain offline without joining back to the
+  // encounter table.
+  //
+  //   patientHash: SHA-256 hex of the patient identifier. We hash at
+  //     ingest time so the row carries no PII. (Mirrors Encounter.patientHash.)
+  //   dataElements: canonical JSON of { findingId, reason, reasonText }.
+  //     The Python port asserts keys are sorted and the JSON is
+  //     compact (no whitespace) so the digest is stable.
+  //   modelRunId: for human review actions, "portal-review". For LLM
+  //     audit actions, the run id of the auditor pass. The column
+  //     exists so the chain shape does not change when we start
+  //     writing LLM-driven rows.
+  patientHash            String
+  dataElements           String
+  modelRunId             String
+  // Hash chain link fields. previousSignature is 64 zeros on the first
+  // row of each tenant chain; cryptographicSignature is the SHA-256
+  // over (previous_signature || chain_payload) — see src/lib/audit-chain.ts.
+  previousSignature      String
+  cryptographicSignature String
+  // The encounter the action is scoped to, kept for fast filtering
+  // in the per-encounter audit panel.
+  encounterId            String
+
+  tenant                 Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  encounter              Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, timestamp, eventId])
+  @@index([findingId])
+  @@index([encounterId])
+}
+
+// ---------------------------------------------------------------------------
+// Stripe webhook persistence models (t_c12cf722).
+//
+// ProcessedStripeEvent is the receiver-side dedup table. The webhook
+// route inserts (eventId, type, receivedAt) on every accepted event;
+// a duplicate delivery hits the unique index on eventId and the
+// handler short-circuits with a 200 ack. The row is intentionally
+// kept around (not deleted) so a forensic audit can see which events
+// arrived and when. Cleanup is out of scope for this milestone; a
+// future cron can prune rows older than N days.
+//
+// Invoice is the append-only log of paid Stripe invoices. Every
+// invoice.payment_succeeded event upserts by stripeInvoiceId; the
+// payloadJson column stores the full Stripe Invoice object so the
+// billing UI can render line items without re-querying Stripe.
+// ---------------------------------------------------------------------------
+
+model ProcessedStripeEvent {
+  id         String   @id @default(cuid())
+  // Stripe's event id (evt_xxx). The unique index is the dedup
+  // contract — every webhook handler runs inside a try/catch around
+  // the createMany; a duplicate throws P2002 and we ack-and-skip.
+  eventId    String   @unique
+  // The Stripe event type (e.g. "invoice.payment_succeeded"). Stored
+  // so the /billing admin view can show recent activity without
+  // joining back to Tenant.
+  type       String
+  // Tenant the event was attributed to (nullable — events that
+  // reference an unknown customer land here as null and are
+  // logged-and-acked).
+  tenantId   String?
+  receivedAt DateTime @default(now())
+
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, receivedAt])
+  @@index([type, receivedAt])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  // Stripe's invoice id (in_xxx). The unique index is the upsert key
+  // for invoice.payment_succeeded re-deliveries.
+  stripeInvoiceId String   @unique
+  // Stripe customer id this invoice belongs to. Indexed so the
+  // /portal/billing page can list invoices for a tenant via
+  // tenant.stripeCustomerId.
+  stripeCustomerId String
+  tenantId        String
+  // Stripe subscription id (sub_xxx). Null on manual / one-off
+  // invoices that aren't tied to a subscription. Indexed for the
+  // subscription-detail join.
+  stripeSubscriptionId String?
+  // Stripe's status string at the time we received the event
+  // (typically "paid" for payment_succeeded). Free-form because
+  // Stripe's invoice status set is broader than our domain enum
+  // would need.
+  status          String
+  // Amount in the smallest currency unit (cents for USD/CAD). Stored
+  // as Int for arithmetic stability — never store money as Float.
+  amountCents     Int
+  currency        String
+  // Full Stripe Invoice object (line items, period, etc.) so the UI
+  // can render the detail view without a second Stripe round-trip.
+  payloadJson     String
+  // The Stripe event id that produced this row. Set on insert from
+  // the webhook. Useful when debugging "why is this row showing
+  // status=paid but the next event overwrote it" — a forensic view
+  // can pull the originating event.
+  createdFromEventId String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}

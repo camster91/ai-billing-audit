@@ -1,0 +1,3 @@
+# Keep the fuzz scratch under version control but ignore the JSON output.
+_findings.json
+__pycache__/

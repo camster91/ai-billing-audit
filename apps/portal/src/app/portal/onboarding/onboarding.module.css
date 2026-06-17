@@ -1,0 +1,359 @@
+.page {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b1020 0%, #0d1428 100%);
+  color: #e7ecf6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 560px;
+  width: 100%;
+}
+
+.badge {
+  display: inline-block;
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.card h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  letter-spacing: -0.5px;
+}
+
+.card h2 {
+  margin: 24px 0 8px;
+  font-size: 20px;
+}
+
+.card p {
+  color: #9aa3bd;
+  margin: 8px 0;
+  line-height: 1.55;
+}
+
+.card code {
+  background: #1a2340;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #e7ecf6;
+}
+
+.summary {
+  margin: 24px 0 0;
+  padding: 16px 0;
+  border-top: 1px solid #28324f;
+  border-bottom: 1px solid #28324f;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  row-gap: 8px;
+  font-size: 14px;
+}
+
+.summary dt {
+  color: #9aa3bd;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 12px;
+  align-self: center;
+}
+
+.summary dd {
+  margin: 0;
+  color: #e7ecf6;
+}
+
+.tenantReady,
+.tenantPending,
+.tenantDemo {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #28324f;
+  border-radius: 10px;
+}
+
+.tenantReady h2 { color: #22c55e; }
+
+.tenantPending {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.tenantDemo {
+  border-color: rgba(79, 140, 255, 0.4);
+  background: rgba(79, 140, 255, 0.06);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.btn,
+.btnGhost {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 14px;
+  border: 1px solid transparent;
+  transition: background 0.15s;
+}
+
+.btn {
+  background: #4f8cff;
+  color: white;
+}
+.btn:hover { background: #3d75e6; }
+
+.btnGhost {
+  background: transparent;
+  color: #e7ecf6;
+  border-color: #28324f;
+}
+.btnGhost:hover { background: rgba(255, 255, 255, 0.04); }
+
+.link {
+  color: #4f8cff;
+  text-decoration: none;
+  font-weight: 500;
+}
+.link:hover { text-decoration: underline; }
+
+/* -------------------------------------------------------------------------
+   Onboarding wizard styles
+   ------------------------------------------------------------------------- */
+
+.steps {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0;
+  list-style: none;
+  padding: 0;
+}
+
+.steps li {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7691;
+  text-align: center;
+}
+
+.steps li .stepDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a2340;
+  color: #6b7691;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #28324f;
+}
+
+.steps li.active .stepDot {
+  background: #4f8cff;
+  color: white;
+  border-color: #4f8cff;
+}
+
+.steps li.done .stepDot {
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+
+.steps li.active,
+.steps li.done {
+  color: #e7ecf6;
+}
+
+.stepBody {
+  margin-top: 8px;
+}
+
+.stepBody label {
+  display: block;
+  font-size: 13px;
+  color: #9aa3bd;
+  margin: 12px 0 4px;
+  font-weight: 500;
+}
+
+.stepBody input[type="text"],
+.stepBody input[type="number"],
+.stepBody input[type="password"],
+.stepBody select {
+  width: 100%;
+  background: #0d1428;
+  color: #e7ecf6;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.stepBody input:focus,
+.stepBody select:focus {
+  outline: 2px solid #4f8cff;
+  outline-offset: 1px;
+  border-color: #4f8cff;
+}
+
+.stepBody .helpText {
+  color: #6b7691;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.regionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.regionOption {
+  border: 1px solid #28324f;
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  background: #0d1428;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #9aa3bd;
+}
+
+.regionOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.regionOption.selected {
+  border-color: #4f8cff;
+  background: rgba(79, 140, 255, 0.08);
+  color: #e7ecf6;
+}
+
+.regionOption strong {
+  color: #e7ecf6;
+  font-size: 14px;
+}
+
+.dropZone {
+  border: 2px dashed #28324f;
+  border-radius: 12px;
+  padding: 28px 16px;
+  text-align: center;
+  color: #6b7691;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  margin: 12px 0;
+}
+
+.dropZone.hasFile {
+  border-style: solid;
+  border-color: #22c55e;
+  color: #e7ecf6;
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.dropZone input[type="file"] {
+  display: block;
+  margin: 12px auto 0;
+  color: #9aa3bd;
+  font-size: 12px;
+}
+
+.skipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #9aa3bd;
+  font-size: 13px;
+}
+
+.skipRow input { width: auto; }
+
+.errorBanner {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.navRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.navRow .btn[disabled],
+.navRow .btnGhost[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.completed {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.completed .bigCheck {
+  font-size: 48px;
+  color: #22c55e;
+}
+
+.signInRow {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(79, 140, 255, 0.06);
+  border: 1px solid rgba(79, 140, 255, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #c4d2ff;
+}
+
+.signInRow a {
+  color: #4f8cff;
+  font-weight: 600;
+}

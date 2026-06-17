@@ -1,0 +1,153 @@
+# ai-billing-audit — production docker-compose
+#
+# Four services per the v1 task spec (kanban t_7f6ffde6):
+#
+#   api       FastAPI + uvicorn on :8000. Serves the demo dashboard,
+#             encounter upload portal, and /healthz. The /healthz
+#             endpoint returns the running version string.
+#   worker    Job-queue sidecar. v1 keeps the queue in-process inside
+#             the api; the worker container is a no-op heartbeat loop
+#             so the 4-service topology matches the spec. A future
+#             card replaces this with a broker-backed worker.
+#   postgres  Postgres 16 with the pgvector extension available. The
+#             v1 synth mode does not require pgvector to be loaded,
+#             but the image ships it so the v1 vector KB is one
+#             `CREATE EXTENSION` away. The audit-trail schema
+#             (audit_trail.sql) is mounted into /docker-entrypoint-
+#             initdb.d/ and auto-applied on first boot.
+#   caddy     Internal reverse proxy. The PUBLIC TLS edge is
+#             Traefik on the host (port 80/443 with Let's Encrypt
+#             auto-issuance). This in-stack Caddy terminates the
+#             internal hop on plain HTTP and forwards to the api
+#             service. Exposed on host port 3018 (loopback only);
+#             host Traefik reverse-proxies ai-billing-audit.ashbi.ca
+#             to 127.0.0.1:3018.
+#
+# Persistent volumes:
+#   - ai_billing_audit_data      → /data (job-queue JSONL, run logs)
+#   - ai_billing_audit_artifacts → /artifacts (synth outputs, audit exports)
+#   - ai_billing_audit_pgdata    → /var/lib/postgresql/data (postgres cluster)
+#
+# Environment:
+#   - .env (or environment block below) provides LLM_PROVIDER, MINIMAX_API_KEY,
+#     MINIMAX_BASE_URL, DATABASE_URL, AUDIT_TRAIL_DB. Secrets are loaded
+#     from /root/ai-billing-audit/.env on the host (written by deploy-to-vps.sh).
+#   - MINIMAX_API_KEY is a placeholder; the deploy script injects the real key
+#     from /root/coolify-secrets/... on the host.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-billing-audit:0.1.0
+    container_name: ai-billing-audit-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-minimax}
+      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.chat/v1}
+      DATABASE_URL: ${DATABASE_URL}
+      AUDIT_TRAIL_DB: ${AUDIT_TRAIL_DB}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ai_billing_audit_data:/data
+      - ai_billing_audit_artifacts:/artifacts
+    expose:
+      - "8000"
+    networks:
+      - ai_billing_audit_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      caddy:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-billing-audit:0.1.0
+    container_name: ai-billing-audit-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-minimax}
+      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.chat/v1}
+      DATABASE_URL: ${DATABASE_URL}
+      AUDIT_TRAIL_DB: ${AUDIT_TRAIL_DB}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ai_billing_audit_data:/data
+      - ai_billing_audit_artifacts:/artifacts
+    networks:
+      - ai_billing_audit_net
+    # Override CMD: the worker runs the heartbeat loop instead of uvicorn.
+    command: ["python", "-m", "ai_billing_audit.worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-billing-audit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_billing_audit
+      POSTGRES_USER: audit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-audit}
+    volumes:
+      - ai_billing_audit_pgdata:/var/lib/postgresql/data
+      # audit_trail.sql ships in the repo (Phase 4 hash-chained log
+      # schema). On first boot the entrypoint auto-applies every
+      # *.sql in /docker-entrypoint-initdb.d/. The init script is
+      # idempotent (CREATE TABLE IF NOT EXISTS) so re-applying on
+      # subsequent boots is a no-op.
+      - ./audit_trail.sql:/docker-entrypoint-initdb.d/01-audit_trail.sql:ro
+    networks:
+      - ai_billing_audit_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit -d ai_billing_audit"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ai-billing-audit-caddy
+    restart: unless-stopped
+    ports:
+      # Bound to loopback only — host Traefik reaches the stack via 127.0.0.1:3018.
+      # Public HTTPS is terminated by Traefik with Let's Encrypt auto-issuance.
+      - "127.0.0.1:3018:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ai_billing_audit_net
+    depends_on:
+      - api
+
+volumes:
+  ai_billing_audit_data:
+  ai_billing_audit_artifacts:
+  ai_billing_audit_pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  ai_billing_audit_net:
+    driver: bridge
+    name: ai_billing_audit_net

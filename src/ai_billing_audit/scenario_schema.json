@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-billing-audit.local/scenario.schema.json",
+  "title": "Variability-Matrix Scenario",
+  "description": "One scenario in the audit variability matrix (5 payers x 5 specialties x 14 E/M codes x 3 num_problems x 3 MDM tiers x 3 difficulty tiers). Defines the input fields (chief complaint, patient demographics, history items) the Auditor Agent consumes, the metadata that drives the sampling / coverage matrix, and the expected-output fields the Grader scores against. Consumed by t_43ff3e89 (sampling strategy), t_785d35c1 (v1 sample set of 100), t_221a3d69 (rubric / ground truth), and the Auditor + Grader runtime in src/ai_billing_audit/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario_id",
+    "metadata",
+    "input",
+    "expected_output"
+  ],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sc_[a-zA-Z0-9_]+$",
+      "description": "Stable identifier of the form 'sc_<short-descriptor>'. Used as the primary key across the sample manifest, the coverage report, and the rubric's gold set."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payer",
+        "specialty",
+        "em_code",
+        "num_problems",
+        "mdm_tier",
+        "difficulty"
+      ],
+      "description": "The six variability-matrix axes. Every combination of these axes is a unique cell in the 9,450-combination space; the sampler in t_43ff3e89 picks 100 of them.",
+      "properties": {
+        "payer": {
+          "type": "string",
+          "enum": ["UHC", "Aetna", "BCBS", "Medicare", "Medicaid"],
+          "description": "Insurance payer. Drives payer-specific E/M rule lookups (e.g. Medicare's split/shared visit policy vs. commercial payer rules)."
+        },
+        "specialty": {
+          "type": "string",
+          "enum": ["primary_care", "ortho", "derm", "gi", "cardiology"],
+          "description": "Clinical specialty of the rendering provider. Drives the typical code distribution (e.g. cardiology leans toward 93000 ECG + E/M)."
+        },
+        "em_code": {
+          "type": "string",
+          "enum": [
+            "99202", "99203", "99204", "99205",
+            "99211", "99212", "99213", "99214", "99215",
+            "99221", "99222", "99223",
+            "99231", "99232", "99233",
+            "99238", "99239"
+          ],
+          "description": "E/M CPT code being billed. Office/outpatient (99202-99215), initial inpatient (99221-99223), subsequent inpatient (99231-99233), and discharge (99238-99239) are all valid; the 9,450-cell count uses 99202-99215 only."
+        },
+        "num_problems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Number of distinct problems addressed at the encounter (1 = single problem, 2 = dual problem, 3 = multi problem). Drives MDM complexity per the 2021 E/M guidelines."
+        },
+        "mdm_tier": {
+          "type": "string",
+          "enum": ["Minimal", "Moderate", "High"],
+          "description": "Medical Decision Making tier that the documented encounter supports. Must be consistent with num_problems and risk per the 2021 E/M MDM table; the rubric in t_221a3d69 flags mismatches."
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "hard"],
+          "description": "Difficulty tier for the Auditor. 'easy' = single problem, no Rx, no modifier flags. 'medium' = dual problem with Rx drug management. 'hard' = chronic + acute with surgery + global period + modifier-25 trap."
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chief_complaint", "patient", "history_items"],
+      "description": "Everything the Auditor Agent sees. Mirrors the shape of a real chart note minus the billing lines (those are in expected_output for grading).",
+      "properties": {
+        "chief_complaint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The patient's stated reason for the visit, in 1-2 sentences. Always populated; never an empty string."
+        },
+        "patient": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["age", "sex"],
+          "description": "Demographics relevant to coding. Age and sex are the only required fields; chronic conditions and allergies are optional context.",
+          "properties": {
+            "age": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 130,
+              "description": "Age in years at the time of the encounter."
+            },
+            "sex": {
+              "type": "string",
+              "enum": ["M", "F", "O"],
+              "description": "Sex on file: M (male), F (female), O (other / not specified)."
+            },
+            "chronic_conditions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Optional list of chronic-condition labels (free text, e.g. 'Type 2 diabetes', 'CKD stage 3'). Not validated against ICD-10; provided for narrative realism."
+            }
+          }
+        },
+        "history_items": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Bulleted HPI / ROS / PFSH items the provider documented. At least one item is required; in practice easy scenarios have 2-4, medium 4-7, hard 6-12.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["category", "text"],
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": ["HPI", "ROS", "PFSH"],
+                "description": "Which history block the item belongs to. HPI = history of present illness, ROS = review of systems, PFSH = past family / social history."
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The verbatim line as it would appear in the chart."
+              }
+            }
+          }
+        },
+        "vitals": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Optional vitals block. Free-form key/value pairs (e.g. {'bp': '142/88', 'hr': 78}). Not constrained; the rubric does not score vitals values."
+        }
+      }
+    },
+    "expected_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagnosis_codes", "mdm_rationale", "code_selection"],
+      "description": "The ground truth the Grader scores the Auditor's output against. Always includes at least one diagnosis code, at least one CPT line, and a one-paragraph MDM rationale that justifies the level.",
+      "properties": {
+        "diagnosis_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "description"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][0-9][0-9](\\.[0-9A-Z]{1,4})?([A-Z])?$",
+                "description": "ICD-10-CM code, e.g. 'E11.9' (type 2 diabetes uncomplicated), 'I10' (essential hypertension), 'K40.90' (unilateral inguinal hernia)."
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable label for the code. Used in the gold-set rubric (t_221a3d69) and the grader's TP/FP matching."
+              },
+              "is_primary": {
+                "type": "boolean",
+                "default": false,
+                "description": "True for the diagnosis that drives the E/M level. Exactly one code should be marked primary; the rubric fails the scenario if zero or more than one is primary."
+              }
+            }
+          },
+          "description": "List of ICD-10-CM codes the encounter supports, in billing order. First entry is conventionally (but not required to be) the primary diagnosis."
+        },
+        "mdm_rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-paragraph natural-language justification for the MDM tier. Should explicitly mention (a) the number of problems addressed, (b) the data reviewed (labs, imaging, records), and (c) the risk of complications and/or morbidity. The rubric checks that each of those three axes is named."
+        },
+        "code_selection": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "rationale"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[0-9A-Z]{5}$",
+                "description": "CPT/HCPCS code. 5 digits, or 5 alphanumeric characters for Category II/III / HCPCS."
+              },
+              "modifier": {
+                "type": "string",
+                "description": "Optional CPT modifier (e.g. '25' for separately identifiable E/M on the same day as a procedure with a global period). The rubric requires modifier-25 on the E/M line for any scenario with surgery_with_global_period=true; absence is a hard flag."
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Why this CPT applies. For E/M: the MDM tier and history items that justify the level. For procedures: the diagnosis that supports medical necessity."
+              }
+            }
+          },
+          "description": "CPT/HCPCS lines the encounter should bill. The E/M line (99202-99215 / 99221-99239) is always present; additional procedure lines are present for hard scenarios (surgery, joint injection, etc.)."
+        },
+        "surgery_with_global_period": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if the encounter involves a procedure with a CMS global period (10/90-day). When true, the rubric enforces modifier-25 on the E/M line."
+        }
+      }
+    }
+  }
+}

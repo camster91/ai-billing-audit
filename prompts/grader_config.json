@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "name": "ai-billing-audit grader",
+  "description": "Deterministic LLM-based grader configuration. Guarantees same-input -> same-output reproducibility via temperature=0 and an explicit seed.",
+  "judge": {
+    "model": "gpt-4o-mini",
+    "provider": "openai",
+    "temperature": 0,
+    "seed": 42,
+    "max_tokens": 1024,
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "GraderVerdict",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["verdict", "score", "rationale"],
+          "properties": {
+            "verdict": {
+              "type": "string",
+              "enum": ["match", "no_match", "partial"]
+            },
+            "score": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "rationale": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "prompt_templates": {
+    "grader_prompt": "prompts/grader_prompt.txt",
+    "system": "prompts/grader_prompt.txt"
+  },
+  "reproducibility": {
+    "guarantee": "same-input -> same-output",
+    "enforced_by": [
+      "temperature=0: fully deterministic greedy decoding (no top-p, top-k, or temperature sampling).",
+      "seed=42: provider-side RNG seeded identically on every call so sampling-based ties (extremely rare at temperature=0, but provider implementations may still consult seed for tie-breaking) resolve identically.",
+      "response_format=json_schema with strict=true: the provider's constrained decoder rejects any response that does not match the schema byte-for-byte, eliminating any post-hoc resampling or repair logic.",
+      "Prompt template is loaded from a versioned file (prompts/grader_prompt.txt) that is committed alongside this config; no string interpolation, timestamp, or thread-ordering fields are included in the rendered prompt.",
+      "Grader helper (ai_billing_audit.grader.Grader) resolves model and seed from this config at construction time; no environment-variable overrides are consulted at judge-call time."
+    ],
+    "verification": "Run `python scripts/verify_grader_reproducibility.py` to exercise the grader twice on a fixed sample input and confirm byte-identical output.",
+    "non_determinism_audit": "Python-side: random.seed(42) is called at grader construction; os.urandom is not consulted; thread-pool ordering is fixed by using a single worker for the deterministic path. LLM-side: see 'enforced_by' above."
+  }
+}

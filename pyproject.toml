@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-billing-audit"
+version = "0.1.0"
+description = "Audit LLM usage and billing across providers with a single, vendor-neutral interface."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Cameron Ashley" },
+]
+keywords = ["llm", "billing", "audit", "litellm", "dspy"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "dspy>=2.5",
+    "litellm>=1.40",
+    "fastapi>=0.110",
+    "jinja2>=3.1",
+    "optuna>=3.6",  # required by dspy.MIPROv2 at runtime
+    "python-multipart>=0.0.9",  # required by FastAPI File() / Form() parsing
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "dspy[optuna]>=2.5",  # the compile-mode tests exercise MIPROv2 end-to-end
+]
+
+[project.urls]
+Homepage = "https://github.com/camster91/ai-billing-audit"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"ai_billing_audit" = ["auditor_prompt.txt"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+pythonpath = ["src"]
+markers = [
+    "integration: hits a real network endpoint (skipped automatically when the required API key is unset)",
+]

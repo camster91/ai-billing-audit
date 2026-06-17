@@ -1,0 +1,615 @@
+/* Encounter split-screen review — mirrors templates/dashboard/split_review.html
+ * and static/css/split_review.css (the auditor FastAPI app), adapted to
+ * CSS Modules and the Next.js 16 RSC / RSC-streaming model.
+ *
+ * The visual design is the same: two-column 50/50 split on desktop, single
+ * column on tablet with findings first, full-width cards on phone. The
+ * evidence-quote highlight gets a soft accent on desktop and a left yellow
+ * border on phone. Accept/Dismiss become 44px-tall full-width buttons
+ * below 600px.
+ *
+ * All class names are local to this module (CSS Modules convention), so the
+ * page can drop into any Next.js app without colliding with globals.
+ */
+
+/* ---- Layout root ------------------------------------------------------- */
+
+.split-screen {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--fg, #e2e8f0);
+  background: var(--bg, #0f172a);
+}
+
+.split-screen *,
+.split-screen *::before,
+.split-screen *::after {
+  box-sizing: border-box;
+}
+
+.pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 1.5rem 1.75rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 7rem);
+}
+
+.paneNote {
+  border-right: 1px solid #475569;
+}
+
+.paneFindings {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.paneHeader {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.paneHeader h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.005em;
+  font-weight: 600;
+}
+
+.paneCount {
+  margin: 0;
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.emptyState {
+  color: var(--muted, #94a3b8);
+  font-style: italic;
+  padding: 1.5rem 0;
+}
+
+/* ---- Encounter header (left pane) ------------------------------------- */
+
+.encounterKv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0.5rem 0 0 0;
+  font-size: 0.92rem;
+}
+
+.encounterKv dt {
+  color: var(--muted, #94a3b8);
+}
+
+.encounterKv dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: 0.5rem;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.statusBadgePending {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.statusBadgeAuditing {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.statusBadgeAwaitingReview {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.statusBadgeCompleted {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+/* ---- Clinical note pane ----------------------------------------------- */
+
+.clinicalNote {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg, #e2e8f0);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.clinicalNote :global(mark.evidence) {
+  background: rgba(56, 189, 248, 0.18);
+  color: #e0f2fe;
+  padding: 0.05em 0.2em;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+  border: 1px solid transparent;
+}
+
+.clinicalNote :global(mark.evidence:hover) {
+  background: rgba(56, 189, 248, 0.3);
+}
+
+.clinicalNote :global(mark.evidence.is-active) {
+  background: rgba(245, 158, 11, 0.32);
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4);
+}
+
+/* ---- Claim JSON (below the clinical note) ----------------------------- */
+
+.claimSection {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.claimSection h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #94a3b8);
+  font-weight: 600;
+}
+
+.claimKv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.85rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.claimKv dt {
+  color: var(--muted, #94a3b8);
+}
+
+.claimKv dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.claimJson {
+  background: #0b1220;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+/* ---- Finding cards (right pane) --------------------------------------- */
+
+.finding {
+  background: #0b1220;
+  border-left: 3px solid var(--info, #38bdf8);
+  border-radius: 6px;
+  padding: 0.95rem 1.1rem;
+  margin: 0 0 0.95rem 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.findingWarn {
+  border-left-color: var(--warn, #f59e0b);
+}
+
+.findingHigh {
+  border-left-color: #ef4444;
+}
+
+.findingAccepted {
+  opacity: 0.72;
+  border-left-color: #22c55e;
+}
+
+.findingDismissed {
+  opacity: 0.55;
+  border-left-color: #94a3b8;
+  background: #0a1018;
+}
+
+.findingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.findingCategory {
+  color: var(--muted, #94a3b8);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.findingStatus {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.findingStatusAccepted {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.findingStatusDismissed {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.codeChange {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.65rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.codeCurrent {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+.codeArrow {
+  color: var(--muted, #94a3b8);
+  font-size: 0.8rem;
+}
+
+.codeSuggested {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+.quote {
+  margin: 0.4rem 0 0.65rem 0;
+  padding: 0;
+  border: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+  cursor: pointer;
+  border-left: 2px solid rgba(56, 189, 248, 0.4);
+  padding-left: 0.7rem;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  border-radius: 0 4px 4px 0;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.quote:hover {
+  background: rgba(56, 189, 248, 0.06);
+  border-left-color: #38bdf8;
+}
+
+.quoteLabel {
+  display: block;
+  color: var(--muted, #94a3b8);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.quoteText {
+  display: block;
+  font-style: italic;
+  color: #e2e8f0;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.85rem;
+  margin: 0.5rem 0 0.85rem 0;
+  font-size: 0.88rem;
+}
+
+.meta dt {
+  color: var(--muted, #94a3b8);
+}
+
+.meta dd {
+  margin: 0;
+}
+
+.impact {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-size: 0.95rem;
+}
+
+.impactPositive {
+  color: #86efac;
+}
+
+.impactNegative {
+  color: #fca5a5;
+}
+
+.impactZero {
+  color: var(--muted, #94a3b8);
+}
+
+.dismissContext {
+  margin: 0.5rem 0 0.75rem 0;
+  padding: 0.55rem 0.7rem;
+  background: rgba(148, 163, 184, 0.06);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  border-left: 2px solid #94a3b8;
+}
+
+.dismissContext strong {
+  color: #e2e8f0;
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+}
+
+/* ---- Action forms (Accept / Dismiss) --------------------------------- */
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0 0;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.actionForm {
+  display: contents;
+}
+
+.btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  cursor: pointer;
+  background: transparent;
+  color: var(--fg, #e2e8f0);
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 100px;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnAccept {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
+
+.btnAccept:hover:not(:disabled),
+.btnAccept:focus-visible {
+  background: rgba(34, 197, 94, 0.32);
+  outline: none;
+}
+
+.btnDismiss {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+}
+
+.btnDismiss:hover:not(:disabled),
+.btnDismiss:focus-visible {
+  background: rgba(148, 163, 184, 0.28);
+  outline: none;
+}
+
+.dismissPanel {
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dismissPanel label {
+  font-size: 0.8rem;
+  color: var(--muted, #94a3b8);
+  font-weight: 500;
+}
+
+.reasonSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #0b1220;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.92rem;
+  width: 100%;
+}
+
+.reasonSelect:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+  border-color: #38bdf8;
+}
+
+.reasonText {
+  background: #0b1220;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  font-size: 0.92rem;
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+  font-family: inherit;
+}
+
+.reasonText:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+  border-color: #38bdf8;
+}
+
+.dismissPanelActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.errorBanner {
+  margin: 0.5rem 0 0 0;
+  padding: 0.5rem 0.65rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fecaca;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+/* ---- Tablet (single column) ----------------------------------------- */
+
+@media (max-width: 900px) {
+  .split-screen {
+    flex-direction: column;
+  }
+
+  .pane {
+    flex: 1 1 100%;
+    width: 100%;
+    max-height: none;
+    padding: 1.25rem 1.25rem;
+  }
+
+  .paneNote {
+    border-right: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+  }
+
+  .paneFindings {
+    order: 1;
+  }
+
+  .paneNote {
+    order: 2;
+  }
+
+  .finding {
+    margin-bottom: 1rem;
+  }
+}
+
+/* ---- Phone (full-width cards, 44px touch targets) ------------------ */
+
+@media (max-width: 600px) {
+  .pane {
+    padding: 1rem 0.9rem;
+  }
+
+  .clinicalNote :global(mark.evidence) {
+    display: block;
+    background: rgba(245, 158, 11, 0.12);
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 4px 4px 0;
+    padding: 0.6rem 0.75rem;
+    margin: 0.25rem 0 0.5rem 0;
+    color: #fde68a;
+  }
+
+  .impact {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+  }
+}

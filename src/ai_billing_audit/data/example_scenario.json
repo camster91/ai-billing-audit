@@ -1,0 +1,100 @@
+{
+  "scenario_id": "sc_medicare_pc_hard_001",
+  "metadata": {
+    "payer": "Medicare",
+    "specialty": "primary_care",
+    "em_code": "99214",
+    "num_problems": 2,
+    "mdm_tier": "High",
+    "difficulty": "hard"
+  },
+  "input": {
+    "chief_complaint": "58-year-old established patient with longstanding type 2 diabetes and chronic kidney disease stage 3 presents for pre-operative clearance of an acute, symptomatic right inguinal hernia reducible for 2 weeks.",
+    "patient": {
+      "age": 58,
+      "sex": "M",
+      "chronic_conditions": [
+        "Type 2 diabetes mellitus, uncomplicated",
+        "Chronic kidney disease, stage 3 (eGFR 45-59)"
+      ]
+    },
+    "history_items": [
+      {
+        "category": "HPI",
+        "text": "Right inguinal bulge noticed 2 weeks ago while lifting; reducible, no skin changes, no overlying erythema, no femoral bulge on contralateral exam."
+      },
+      {
+        "category": "HPI",
+        "text": "Home blood glucose logs averaging 140-160; metformin 1000 mg BID continued; lisinopril 20 mg daily continued."
+      },
+      {
+        "category": "HPI",
+        "text": "Last HbA1c 7.4 (3 months ago); most recent creatinine 1.6 (baseline 1.5-1.7)."
+      },
+      {
+        "category": "ROS",
+        "text": "Denies chest pain, shortness of breath, dysuria, fever, abdominal pain, nausea, vomiting."
+      },
+      {
+        "category": "ROS",
+        "text": "Endocrine: no polyuria, polydipsia, polyphagia, or unintentional weight loss in the last 3 months."
+      },
+      {
+        "category": "ROS",
+        "text": "Cardiovascular: no palpitations, edema, orthopnea, or PND."
+      },
+      {
+        "category": "PFSH",
+        "text": "Past surgical history: appendectomy 1998, no complications."
+      },
+      {
+        "category": "PFSH",
+        "text": "Family history significant for type 2 diabetes (father) and coronary artery disease (mother, age 65 stent)."
+      },
+      {
+        "category": "PFSH",
+        "text": "Social history: former smoker (quit 2010, 20 pack-years), drinks 1-2 beers/week, works as an accountant."
+      }
+    ],
+    "vitals": {
+      "bp": "138/86",
+      "hr": 78,
+      "temp_c": 36.7,
+      "spo2_pct": 98,
+      "weight_kg": 88,
+      "height_cm": 178
+    }
+  },
+  "expected_output": {
+    "diagnosis_codes": [
+      {
+        "code": "E11.9",
+        "description": "Type 2 diabetes mellitus without complications",
+        "is_primary": false
+      },
+      {
+        "code": "N18.3",
+        "description": "Chronic kidney disease, stage 3 (moderate)",
+        "is_primary": false
+      },
+      {
+        "code": "K40.90",
+        "description": "Unilateral inguinal hernia, without obstruction or gangrene, not specified as recurrent",
+        "is_primary": true
+      }
+    ],
+    "mdm_rationale": "High complexity. Two stable chronic illnesses (type 2 diabetes, CKD stage 3) plus one acute surgical problem (right inguinal hernia requiring repair). Data review is extensive: home glucose logs, prior HbA1c, baseline creatinine, surgical history, family history, social history. Risk of complications is high — diabetic patient with CKD stage 3 undergoing general anesthesia for a 90-day global-period procedure; risk of perioperative AKI, hyperglycemia, and infection requires medication review and dose adjustment. Pre-operative clearance includes separate evaluation and management of the chronic conditions beyond the surgical indication, which supports a separately identifiable E/M with modifier -25.",
+    "code_selection": [
+      {
+        "code": "99214",
+        "modifier": "25",
+        "rationale": "Established patient, moderate-to-high MDM with two stable chronic illnesses and one acute surgical problem, plus pre-op medication review for metformin and lisinopril in the setting of CKD stage 3. Modifier -25 is required because the E/M is on the same day as a procedure with a 90-day global period (49505, open inguinal hernia repair) and the E/M is separately identifiable from the pre-op surgical workup."
+      },
+      {
+        "code": "49505",
+        "rationale": "Open repair of inguinal hernia, age 5 and over; reducible unilateral right inguinal hernia without obstruction or gangrene. Carries a 90-day global period per CMS. Diagnosis K40.90 supports medical necessity."
+      }
+    ],
+    "surgery_with_global_period": true
+  }
+}
