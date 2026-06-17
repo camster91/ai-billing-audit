@@ -13,6 +13,10 @@
 //     percent: number,           // 0..100, 1 dp
 //     periodStart: "YYYY-MM-DD", // UTC
 //     resetsAt:    "YYYY-MM-DD"  // UTC
+//     state: "ok" | "warn" | "blocked",
+//     blocked: boolean,          // convenience mirror of state === "blocked"
+//     warningSentThisPeriod: boolean,
+//     upgradeUrl: string         // present when state === "blocked"
 //   }
 //
 // Errors:
@@ -23,11 +27,12 @@
 import { NextResponse } from "next/server";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { loadUsageSnapshot } from "@/lib/billing-page";
+import { buildUpgradeUrl, loadQuotaSnapshot } from "@/lib/audit-quota";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json(
@@ -37,12 +42,25 @@ export async function GET() {
   }
   try {
     const snapshot = await loadUsageSnapshot(tenant.id);
-    return NextResponse.json(snapshot, {
-      headers: {
-        // Usage is per-user, per-tenant — never share between users.
-        "Cache-Control": "private, no-store",
+    const quota = await loadQuotaSnapshot(tenant.id);
+    const upgradeUrl = quota.blocked
+      ? buildUpgradeUrl(request.headers.get("origin"))
+      : null;
+    return NextResponse.json(
+      {
+        ...snapshot,
+        state: quota.state,
+        blocked: quota.blocked,
+        warningSentThisPeriod: quota.warningSentThisPeriod,
+        ...(upgradeUrl ? { upgradeUrl } : {}),
       },
-    });
+      {
+        headers: {
+          // Usage is per-user, per-tenant — never share between users.
+          "Cache-Control": "private, no-store",
+        },
+      },
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown";
     console.error("[/api/usage] DB error:", message);

@@ -37,6 +37,7 @@ import {
   loadUsageSnapshot,
   getPricingConfig,
 } from "@/lib/billing-page";
+import { loadQuotaSnapshot, buildUpgradeUrl } from "@/lib/audit-quota";
 import { isDemoMode } from "@/lib/stripe";
 import { PortalNav } from "../portal-nav";
 import styles from "../shell.module.css";
@@ -83,7 +84,7 @@ export default async function BillingPage() {
   // the three queries run in parallel — the page renders only
   // after all three resolve. Each helper handles its own error
   // paths internally and returns safe defaults.
-  const [subscription, usage, invoices, tenantRow, pricing] =
+  const [subscription, usage, invoices, tenantRow, pricing, quota] =
     await Promise.all([
       loadSubscriptionSnapshot(tenant.id),
       loadUsageSnapshot(tenant.id),
@@ -98,6 +99,7 @@ export default async function BillingPage() {
         },
       }),
       Promise.resolve(getPricingConfig()),
+      loadQuotaSnapshot(tenant.id),
     ]);
 
   const tierName =
@@ -129,6 +131,36 @@ export default async function BillingPage() {
           {tenantRow.canceledAt.toISOString().slice(0, 10)}. Data is retained
           for 30 days — re-subscribe anytime from the pricing page to restore
           your account.
+        </section>
+      ) : null}
+      {quota.blocked ? (
+        <section className={styles.alertDanger} data-testid="quota-exhausted-banner">
+          <strong>Audit quota exhausted.</strong> You&rsquo;ve used{" "}
+          {quota.used.toLocaleString("en-US")} of{" "}
+          {quota.quota.toLocaleString("en-US")} audits this billing period.
+          New audit submissions are blocked until your next paid period
+          resets the counter, or you upgrade your tier.{" "}
+          <a
+            className={styles.link}
+            href={buildUpgradeUrl(null)}
+            data-testid="quota-upgrade-link"
+          >
+            Upgrade your tier →
+          </a>
+        </section>
+      ) : quota.state === "warn" ? (
+        <section className={styles.alertWarn} data-testid="quota-warning-banner">
+          <strong>You&rsquo;re at {quota.percent.toFixed(1)}% of your audit quota.</strong>{" "}
+          {quota.warningSentThisPeriod
+            ? "We already emailed the owner — new audits will be blocked once you reach 100%."
+            : "An email has been sent to the owner. New audits will be blocked once you reach 100%."}{" "}
+          <a
+            className={styles.link}
+            href={buildUpgradeUrl(null)}
+            data-testid="quota-upgrade-link"
+          >
+            Upgrade your tier →
+          </a>
         </section>
       ) : null}
 
