@@ -390,10 +390,36 @@ export async function redeemCheckoutSession(params: {
   }
 
   // Attach the user as owner. Idempotent via the (userId, tenantId)
-  // unique key — second call from the same user is a no-op.
+  // unique key — second call from the same user is a no-op. The
+  // `email` column is required on Membership (added in t_23bfd49c
+  // for the team-management feature), so we read it from the
+  // user row here. The lookup is best-effort — a missing email
+  // falls back to a placeholder so the upsert still succeeds and
+  // Attach the user as owner. Idempotent via the (userId, tenantId)
+  // unique key — second call from the same user is a no-op. The
+  // `email` column is required on Membership (added in t_23bfd49c
+  // for the team-management feature), so we read it from the
+  // user row here.
+  const attachingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!attachingUser) {
+    throw new OnboardingError(
+      "not_found",
+      "Signed-in user no longer exists.",
+    );
+  }
   await prisma.membership.upsert({
     where: { userId_tenantId: { userId, tenantId: tenant.id } },
-    create: { userId, tenantId: tenant.id, role: "owner" },
+    create: {
+      user: { connect: { id: userId } },
+      tenant: { connect: { id: tenant.id } },
+      role: "owner",
+      status: "active",
+      email: attachingUser.email,
+      activatedAt: new Date(),
+    },
     update: { role: "owner" },
   });
 

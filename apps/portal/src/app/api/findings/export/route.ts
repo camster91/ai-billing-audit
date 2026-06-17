@@ -126,6 +126,15 @@ export async function GET(request: Request): Promise<Response> {
             { id: "asc" },
           ];
 
+  // Re-read the tenant's redactPatientNamesInExports flag so the
+  // export reflects the user's current /settings preference. Same
+  // default-to-on contract as the encounters export.
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: tenant.id },
+    select: { redactPatientNamesInExports: true },
+  });
+  const redact = tenantRow?.redactPatientNamesInExports ?? true;
+
   const rows = await prisma.finding.findMany({
     where,
     orderBy,
@@ -165,23 +174,26 @@ export async function GET(request: Request): Promise<Response> {
       for (const r of rows) {
         controller.enqueue(
           encoder.encode(
-            encodeRow({
-              id: r.id,
-              encounterId: r.encounterId,
-              dateOfService: r.encounter.dateOfService,
-              category: r.category,
-              categoryLabel: CATEGORY_LABEL[r.category] ?? r.category,
-              currentCode: r.currentCode,
-              suggestedCode: r.suggestedCode,
-              ruleRef: r.billingRuleReference,
-              evidenceQuote: r.evidenceQuote,
-              payer: r.encounter.claim.payer,
-              providerName: r.encounter.claim.providerName,
-              providerNpi: r.encounter.claim.providerNpi,
-              estImpactCents: r.estFinancialImpactCents,
-              status: r.status,
-              patientHash: r.encounter.patientHash,
-            }),
+            encodeRow(
+              {
+                id: r.id,
+                encounterId: r.encounterId,
+                dateOfService: r.encounter.dateOfService,
+                category: r.category,
+                categoryLabel: CATEGORY_LABEL[r.category] ?? r.category,
+                currentCode: r.currentCode,
+                suggestedCode: r.suggestedCode,
+                ruleRef: r.billingRuleReference,
+                evidenceQuote: r.evidenceQuote,
+                payer: r.encounter.claim.payer,
+                providerName: r.encounter.claim.providerName,
+                providerNpi: r.encounter.claim.providerNpi,
+                estImpactCents: r.estFinancialImpactCents,
+                status: r.status,
+                patientHash: r.encounter.patientHash,
+              },
+              redact,
+            ),
           ),
         );
       }
@@ -197,6 +209,7 @@ export async function GET(request: Request): Promise<Response> {
       "content-disposition": `attachment; filename="${filename}"`,
       "cache-control": "no-store",
       "x-row-count": String(rows.length),
+      "x-phi-redacted": redact ? "true" : "false",
     },
   });
 }
@@ -245,7 +258,7 @@ interface ExportRow {
   patientHash: string;
 }
 
-function encodeRow(r: ExportRow): string {
+function encodeRow(r: ExportRow, redact: boolean): string {
   const evidence =
     r.evidenceQuote.length > EVIDENCE_QUOTE_CSV_MAX
       ? r.evidenceQuote.slice(0, EVIDENCE_QUOTE_CSV_MAX - 1) + "…"
@@ -265,7 +278,7 @@ function encodeRow(r: ExportRow): string {
     r.payer,
     String(r.estImpactCents),
     r.status,
-    r.patientHash.slice(0, 12),
+    redact ? "[redacted]" : r.patientHash.slice(0, 12),
   ];
   return cells.map(csvEscape).join(",") + "\n";
 }

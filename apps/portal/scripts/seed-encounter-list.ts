@@ -103,10 +103,11 @@ async function main() {
       where: { userId_tenantId: { userId: demoUser.id, tenantId: tenant.id } },
       update: { role: "admin" },
       create: {
-        id: cuidLike(),
-        userId: demoUser.id,
-        tenantId: tenant.id,
+        user: { connect: { id: demoUser.id } },
+        tenant: { connect: { id: tenant.id } },
         role: "admin",
+        status: "active",
+        email: demoUser.email,
       },
     });
   }

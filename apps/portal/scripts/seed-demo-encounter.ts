@@ -14,13 +14,10 @@
 // fast path that gives the /encounters/[id] page something to render
 // without going through Resend.
 
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
 import { wrapEvidenceQuotes } from "../src/lib/encounter-format";
-
-function sha256Hex(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
+import { hashPatientId } from "../src/lib/patient-hash";
 
 function cuidLike(): string {
   return `c${randomBytes(12).toString("hex")}`;
@@ -59,10 +56,11 @@ async function main() {
     where: { userId_tenantId: { userId: user.id, tenantId: tenant.id } },
     update: { role: "admin" },
     create: {
-      id: cuidLike(),
-      userId: user.id,
-      tenantId: tenant.id,
+      user: { connect: { id: user.id } },
+      tenant: { connect: { id: tenant.id } },
       role: "admin",
+      status: "active",
+      email: userEmail,
     },
   });
 
@@ -78,7 +76,11 @@ async function main() {
     "regimen, recheck lipids in 3 months.";
 
   const patientId = "patient-demo-001";
-  const patientHash = sha256Hex(patientId);
+  // Peppered SHA-256 — see src/lib/patient-hash.ts. The pepper comes
+  // from the PATIENT_HASH_PEPPER env var; the dev fallback is used in
+  // non-production. Do not log the env var or the digest in the seed
+  // output (no PHI exposure in the demo script's stdout).
+  const patientHash = hashPatientId(patientId);
 
   const claimId = cuidLike();
   const claim = await prisma.encounterClaim.upsert({
