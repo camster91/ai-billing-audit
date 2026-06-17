@@ -43,3 +43,12 @@ node_modules/
 # apps/portal is a separate Next.js stack — not part of the api/worker image
 # but we still keep the source tree under apps/ for context. node_modules
 # inside apps/portal is excluded by the node_modules/ rule above.
+
+# Acceptance-run artifacts (per-provider prediction JSONLs and metadata).
+# The comparison.{json,md} and VERDICT.txt at the top of runs/acceptance/
+# SHOULD be committed as evidence of the acceptance run; only the
+# per-provider run dirs (which are large and dated) are ignored.
+runs/acceptance/minimax-*/
+runs/acceptance/claude-*/
+runs/acceptance/openai-*/
+runs/acceptance/gemini-*/

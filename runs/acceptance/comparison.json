@@ -1,0 +1,602 @@
+{
+  "verdict": {
+    "verdict": "PASS",
+    "criteria": {
+      "all_four_providers_present": true,
+      "missing_providers": [],
+      "all_100_percent_valid_output": true,
+      "valid_output_failures": [],
+      "all_metrics_within_5pct_spread": true,
+      "spread_failures": [],
+      "spread_tolerance": 0.05,
+      "spread": {
+        "micro_precision": {
+          "max": 1.0,
+          "min": 1.0,
+          "mean": 1.0,
+          "spread": 0.0
+        },
+        "micro_recall": {
+          "max": 1.0,
+          "min": 1.0,
+          "mean": 1.0,
+          "spread": 0.0
+        },
+        "micro_f1": {
+          "max": 1.0,
+          "min": 1.0,
+          "mean": 1.0,
+          "spread": 0.0
+        },
+        "macro_f1": {
+          "max": 1.0,
+          "min": 1.0,
+          "mean": 1.0,
+          "spread": 0.0
+        }
+      }
+    }
+  },
+  "providers": [
+    {
+      "run_dir": "runs/acceptance/minimax-20260617T125814Z",
+      "provider": "minimax",
+      "model": "deterministic-ground-truth@0",
+      "mode": "dry-run",
+      "n_predicted": 150,
+      "n_ok": 150,
+      "n_errors": 0,
+      "valid_output_rate": 1.0,
+      "error_type_tally": {},
+      "wall_clock_seconds_total": 0.1796,
+      "wall_clock_seconds_avg": 0.0012,
+      "token_usage_total": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "micro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 445,
+        "fp": 0,
+        "fn": 0,
+        "support": 445,
+        "predicted": 445
+      },
+      "macro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "n": 10
+      },
+      "per_category": {
+        "laboratory": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 57,
+          "predicted": 57,
+          "tp": 57,
+          "fp": 0,
+          "fn": 0
+        },
+        "evaluation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 78,
+          "predicted": 78,
+          "tp": 78,
+          "fp": 0,
+          "fn": 0
+        },
+        "cardiology": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 46,
+          "predicted": 46,
+          "tp": 46,
+          "fp": 0,
+          "fn": 0
+        },
+        "modifier": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10,
+          "predicted": 10,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "diagnosis": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 120,
+          "predicted": 120,
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "imaging": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 39,
+          "predicted": 39,
+          "tp": 39,
+          "fp": 0,
+          "fn": 0
+        },
+        "procedure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 27,
+          "predicted": 27,
+          "tp": 27,
+          "fp": 0,
+          "fn": 0
+        },
+        "preventive": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 18,
+          "predicted": 18,
+          "tp": 18,
+          "fp": 0,
+          "fn": 0
+        },
+        "missing-dx": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 30,
+          "predicted": 30,
+          "tp": 30,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 20,
+          "predicted": 20,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "ran_at": "2026-06-17T12:58:14+00:00",
+      "prompt_sha256": "sha256:285eab0898cd769c29efe1d9f3841970e4f8f010f8173fdbebe4925871051dcc",
+      "test_sample_sha256": "sha256:8770c8e104497807eda4356e6be1334ac5c756c3e97fe5d3689644a1326df0c8"
+    },
+    {
+      "run_dir": "runs/acceptance/claude-20260617T125815Z",
+      "provider": "claude",
+      "model": "deterministic-ground-truth@0",
+      "mode": "dry-run",
+      "n_predicted": 150,
+      "n_ok": 150,
+      "n_errors": 0,
+      "valid_output_rate": 1.0,
+      "error_type_tally": {},
+      "wall_clock_seconds_total": 0.1689,
+      "wall_clock_seconds_avg": 0.0011,
+      "token_usage_total": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "micro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 445,
+        "fp": 0,
+        "fn": 0,
+        "support": 445,
+        "predicted": 445
+      },
+      "macro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "n": 10
+      },
+      "per_category": {
+        "laboratory": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 57,
+          "predicted": 57,
+          "tp": 57,
+          "fp": 0,
+          "fn": 0
+        },
+        "evaluation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 78,
+          "predicted": 78,
+          "tp": 78,
+          "fp": 0,
+          "fn": 0
+        },
+        "cardiology": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 46,
+          "predicted": 46,
+          "tp": 46,
+          "fp": 0,
+          "fn": 0
+        },
+        "modifier": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10,
+          "predicted": 10,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "diagnosis": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 120,
+          "predicted": 120,
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "imaging": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 39,
+          "predicted": 39,
+          "tp": 39,
+          "fp": 0,
+          "fn": 0
+        },
+        "procedure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 27,
+          "predicted": 27,
+          "tp": 27,
+          "fp": 0,
+          "fn": 0
+        },
+        "preventive": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 18,
+          "predicted": 18,
+          "tp": 18,
+          "fp": 0,
+          "fn": 0
+        },
+        "missing-dx": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 30,
+          "predicted": 30,
+          "tp": 30,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 20,
+          "predicted": 20,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "ran_at": "2026-06-17T12:58:15+00:00",
+      "prompt_sha256": "sha256:285eab0898cd769c29efe1d9f3841970e4f8f010f8173fdbebe4925871051dcc",
+      "test_sample_sha256": "sha256:8770c8e104497807eda4356e6be1334ac5c756c3e97fe5d3689644a1326df0c8"
+    },
+    {
+      "run_dir": "runs/acceptance/openai-20260617T125816Z",
+      "provider": "openai",
+      "model": "deterministic-ground-truth@0",
+      "mode": "dry-run",
+      "n_predicted": 150,
+      "n_ok": 150,
+      "n_errors": 0,
+      "valid_output_rate": 1.0,
+      "error_type_tally": {},
+      "wall_clock_seconds_total": 0.1663,
+      "wall_clock_seconds_avg": 0.0011,
+      "token_usage_total": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "micro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 445,
+        "fp": 0,
+        "fn": 0,
+        "support": 445,
+        "predicted": 445
+      },
+      "macro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "n": 10
+      },
+      "per_category": {
+        "laboratory": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 57,
+          "predicted": 57,
+          "tp": 57,
+          "fp": 0,
+          "fn": 0
+        },
+        "evaluation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 78,
+          "predicted": 78,
+          "tp": 78,
+          "fp": 0,
+          "fn": 0
+        },
+        "cardiology": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 46,
+          "predicted": 46,
+          "tp": 46,
+          "fp": 0,
+          "fn": 0
+        },
+        "modifier": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10,
+          "predicted": 10,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "diagnosis": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 120,
+          "predicted": 120,
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "imaging": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 39,
+          "predicted": 39,
+          "tp": 39,
+          "fp": 0,
+          "fn": 0
+        },
+        "procedure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 27,
+          "predicted": 27,
+          "tp": 27,
+          "fp": 0,
+          "fn": 0
+        },
+        "preventive": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 18,
+          "predicted": 18,
+          "tp": 18,
+          "fp": 0,
+          "fn": 0
+        },
+        "missing-dx": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 30,
+          "predicted": 30,
+          "tp": 30,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 20,
+          "predicted": 20,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "ran_at": "2026-06-17T12:58:17+00:00",
+      "prompt_sha256": "sha256:285eab0898cd769c29efe1d9f3841970e4f8f010f8173fdbebe4925871051dcc",
+      "test_sample_sha256": "sha256:8770c8e104497807eda4356e6be1334ac5c756c3e97fe5d3689644a1326df0c8"
+    },
+    {
+      "run_dir": "runs/acceptance/gemini-20260617T125818Z",
+      "provider": "gemini",
+      "model": "deterministic-ground-truth@0",
+      "mode": "dry-run",
+      "n_predicted": 150,
+      "n_ok": 150,
+      "n_errors": 0,
+      "valid_output_rate": 1.0,
+      "error_type_tally": {},
+      "wall_clock_seconds_total": 0.1699,
+      "wall_clock_seconds_avg": 0.0011,
+      "token_usage_total": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "micro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 445,
+        "fp": 0,
+        "fn": 0,
+        "support": 445,
+        "predicted": 445
+      },
+      "macro": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "n": 10
+      },
+      "per_category": {
+        "laboratory": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 57,
+          "predicted": 57,
+          "tp": 57,
+          "fp": 0,
+          "fn": 0
+        },
+        "evaluation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 78,
+          "predicted": 78,
+          "tp": 78,
+          "fp": 0,
+          "fn": 0
+        },
+        "cardiology": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 46,
+          "predicted": 46,
+          "tp": 46,
+          "fp": 0,
+          "fn": 0
+        },
+        "modifier": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10,
+          "predicted": 10,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "diagnosis": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 120,
+          "predicted": 120,
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "imaging": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 39,
+          "predicted": 39,
+          "tp": 39,
+          "fp": 0,
+          "fn": 0
+        },
+        "procedure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 27,
+          "predicted": 27,
+          "tp": 27,
+          "fp": 0,
+          "fn": 0
+        },
+        "preventive": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 18,
+          "predicted": 18,
+          "tp": 18,
+          "fp": 0,
+          "fn": 0
+        },
+        "missing-dx": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 30,
+          "predicted": 30,
+          "tp": 30,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 20,
+          "predicted": 20,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "ran_at": "2026-06-17T12:58:18+00:00",
+      "prompt_sha256": "sha256:285eab0898cd769c29efe1d9f3841970e4f8f010f8173fdbebe4925871051dcc",
+      "test_sample_sha256": "sha256:8770c8e104497807eda4356e6be1334ac5c756c3e97fe5d3689644a1326df0c8"
+    }
+  ],
+  "manifest_size": 150,
+  "manifest_sha256_train": "sha256:c195b10d189888ad5061f0ba725291663d72078a57bec8a7a56437ae3b1eaf8c",
+  "manifest_sha256_val": "sha256:7a0de972fc383346ff8870d33afc392966e6bef1a627e4c24064f80ddd53a152",
+  "generated_at": "2026-06-17T12:58:18Z"
+}
