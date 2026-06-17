@@ -1,0 +1,631 @@
+{
+  "p0": [],
+  "page_results": {
+    "dashboard_desktop": {
+      "route": "/dashboard",
+      "name": "dashboard",
+      "viewport": "desktop",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Dashboard",
+      "finalUrl": "http://localhost:3000/dashboard",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/dashboard-desktop.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    },
+    "encounters_desktop": {
+      "route": "/encounters",
+      "name": "encounters",
+      "viewport": "desktop",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Encounters",
+      "finalUrl": "http://localhost:3000/encounters",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/encounters-desktop.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    },
+    "encounter-detail_desktop": {
+      "route": "/encounters/enc-list-0040",
+      "name": "encounter-detail",
+      "viewport": "desktop",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "finalUrl": "http://localhost:3000/encounters/enc-list-0040",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/encounter-detail-desktop.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": {
+        "hasFindingsList": true,
+        "hasNarrative": true,
+        "findingsCount": 1
+      }
+    },
+    "findings_desktop": {
+      "route": "/findings",
+      "name": "findings",
+      "viewport": "desktop",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Findings",
+      "finalUrl": "http://localhost:3000/findings",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/findings-desktop.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    },
+    "dashboard_mobile": {
+      "route": "/dashboard",
+      "name": "dashboard",
+      "viewport": "mobile",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Dashboard",
+      "finalUrl": "http://localhost:3000/dashboard",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/dashboard-mobile.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    },
+    "encounters_mobile": {
+      "route": "/encounters",
+      "name": "encounters",
+      "viewport": "mobile",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Encounters",
+      "finalUrl": "http://localhost:3000/encounters",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/encounters-mobile.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    },
+    "encounter-detail_mobile": {
+      "route": "/encounters/enc-list-0040",
+      "name": "encounter-detail",
+      "viewport": "mobile",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "finalUrl": "http://localhost:3000/encounters/enc-list-0040",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/encounter-detail-mobile.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        }
+      ],
+      "horizontalOverflow": false,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": {
+        "hasFindingsList": true,
+        "hasNarrative": true,
+        "findingsCount": 1
+      }
+    },
+    "findings_mobile": {
+      "route": "/findings",
+      "name": "findings",
+      "viewport": "mobile",
+      "status": 200,
+      "title": "AI Pre-Bill Audit",
+      "h1": "Findings",
+      "finalUrl": "http://localhost:3000/findings",
+      "screenshot": "/Users/biancabienaime/.hermes/kanban/boards/ai-billing-audit/workspaces/t_542dd82e/screenshots/findings-mobile.png",
+      "navLinks": [
+        {
+          "text": "AI Pre-Bill Audit",
+          "href": "/"
+        },
+        {
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "text": "Security",
+          "href": "/security"
+        },
+        {
+          "text": "Contact",
+          "href": "/contact"
+        },
+        {
+          "text": "Dashboard",
+          "href": "/dashboard"
+        },
+        {
+          "text": "Encounters",
+          "href": "/encounters"
+        },
+        {
+          "text": "Findings",
+          "href": "/findings"
+        },
+        {
+          "text": "Billing",
+          "href": "/billing"
+        },
+        {
+          "text": "Team",
+          "href": "/team"
+        },
+        {
+          "text": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "horizontalOverflow": true,
+      "has5xxBanner": false,
+      "has404": true,
+      "consoleMsgs": [],
+      "pageErrors": [],
+      "http5xx": [],
+      "pane": null
+    }
+  },
+  "button_exercise": {
+    "encounter_accept_dismiss_desktop": {
+      "viewport": "desktop",
+      "accept": {
+        "clicked": true,
+        "firstFindingId": "fnd-list-0040-1",
+        "before_active": 3,
+        "after_accepted": 1,
+        "before_audit": 0,
+        "after_audit": 1,
+        "auditRowAdded": true
+      },
+      "dismiss": {
+        "clicked": true,
+        "reasonDropdown": {
+          "count": 4,
+          "populated": true,
+          "sample": [
+            {
+              "value": "wrong_payer_policy",
+              "label": "Wrong payer policy"
+            },
+            {
+              "value": "hallucinated_fact",
+              "label": "Hallucinated fact"
+            },
+            {
+              "value": "too_conservative",
+              "label": "Too conservative"
+            },
+            {
+              "value": "other_with_text",
+              "label": "Other (specify)"
+            }
+          ]
+        },
+        "auditBefore": 1,
+        "auditAfter": 2,
+        "auditRowAdded": true
+      },
+      "consoleMsgs": [],
+      "http5xx": []
+    },
+    "encounter_accept_dismiss_mobile": {
+      "viewport": "mobile",
+      "accept": {
+        "clicked": true,
+        "firstFindingId": "fnd-list-0040-1",
+        "before_active": 1,
+        "after_accepted": 2,
+        "before_audit": 2,
+        "after_audit": 3,
+        "auditRowAdded": true
+      },
+      "dismiss": {
+        "clicked": true,
+        "reasonDropdown": {
+          "count": 4,
+          "populated": true,
+          "sample": [
+            {
+              "value": "wrong_payer_policy",
+              "label": "Wrong payer policy"
+            },
+            {
+              "value": "hallucinated_fact",
+              "label": "Hallucinated fact"
+            },
+            {
+              "value": "too_conservative",
+              "label": "Too conservative"
+            },
+            {
+              "value": "other_with_text",
+              "label": "Other (specify)"
+            }
+          ]
+        },
+        "auditBefore": 3,
+        "auditAfter": 3,
+        "auditRowAdded": false
+      },
+      "consoleMsgs": [],
+      "http5xx": []
+    },
+    "findings_bulk_desktop": {
+      "viewport": "desktop",
+      "checkboxes": 62,
+      "bulkAccept": {
+        "clicked": true,
+        "after_accepted": 23,
+        "auditBefore": 36,
+        "auditAfter": 38,
+        "auditRowsAdded": true
+      },
+      "bulkDismiss": {
+        "clicked": true,
+        "confirmed": true,
+        "reasonChosen": "wrong_payer_policy",
+        "auditBefore": 38,
+        "auditAfter": 40,
+        "auditRowsAdded": true
+      },
+      "before_active": 62,
+      "consoleMsgs": [],
+      "http5xx": []
+    },
+    "findings_bulk_mobile": {
+      "viewport": "mobile",
+      "checkboxes": 58,
+      "bulkAccept": {
+        "clicked": true,
+        "after_accepted": 25,
+        "auditBefore": 40,
+        "auditAfter": 42,
+        "auditRowsAdded": true
+      },
+      "bulkDismiss": {
+        "clicked": true,
+        "confirmed": true,
+        "reasonChosen": "wrong_payer_policy",
+        "auditBefore": 42,
+        "auditAfter": 44,
+        "auditRowsAdded": true
+      },
+      "before_active": 58,
+      "consoleMsgs": [],
+      "http5xx": []
+    }
+  },
+  "console_errors": [],
+  "http_5xx": []
+}
