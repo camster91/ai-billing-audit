@@ -191,10 +191,23 @@ export async function loadSubscriptionSnapshot(
   const status = row?.subscriptionStatus ?? "active";
   const hasStripeCustomer = Boolean(row?.stripeCustomerId);
   if (!hasStripeCustomer || isDemoMode()) {
+    // Demo mode (or no Stripe linkage) — we cannot ask Stripe for
+    // the real next-invoice date. The portal's billing model is
+    // monthly (quota resets on the 1st of next month, see
+    // loadUsageSnapshot) and the invoice for a monthly subscription
+    // is issued at the same boundary. Fall back to that date so
+    // the "Next invoice" line on /billing does not render as a
+    // bare em-dash for a brand-new account. The same value is
+    // already shown on the Monthly usage card as "resets YYYY-MM-DD",
+    // so the two lines agree.
+    const start = startOfCurrentMonthUtc();
+    const nextInvoiceAt = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
+    ).toISOString();
     return {
       tier,
       status,
-      nextInvoiceAt: null,
+      nextInvoiceAt,
       nextInvoiceAmount: null,
       demo: isDemoMode(),
       hasStripeCustomer,
@@ -205,10 +218,21 @@ export async function loadSubscriptionSnapshot(
       row!.stripeCustomerId!,
       row!.stripeSubscriptionId ?? null,
     );
+    // If Stripe didn't surface a period-end on the subscription
+    // (e.g. a legacy sub without items, or a paused sub), fall
+    // back to the same monthly boundary we use in demo mode. The
+    // amount is left null because we don't know it from Stripe.
+    let nextInvoiceAt = live.nextInvoiceAt ?? null;
+    if (!nextInvoiceAt) {
+      const start = startOfCurrentMonthUtc();
+      nextInvoiceAt = new Date(
+        Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
+      ).toISOString();
+    }
     return {
       tier,
       status,
-      nextInvoiceAt: live.nextInvoiceAt ?? null,
+      nextInvoiceAt,
       nextInvoiceAmount: live.nextInvoiceAmount ?? null,
       demo: false,
       hasStripeCustomer: true,
@@ -222,10 +246,14 @@ export async function loadSubscriptionSnapshot(
     // functional when Stripe is down. The status string on the
     // tenant row is the most-recent webhook snapshot — close
     // enough.
+    const start = startOfCurrentMonthUtc();
+    const nextInvoiceAt = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
+    ).toISOString();
     return {
       tier,
       status,
-      nextInvoiceAt: null,
+      nextInvoiceAt,
       nextInvoiceAmount: null,
       demo: false,
       hasStripeCustomer: true,

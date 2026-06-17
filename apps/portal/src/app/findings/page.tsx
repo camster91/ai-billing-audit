@@ -28,6 +28,10 @@ import {
 } from "@/lib/encounter-types";
 import { PortalNav } from "../portal-nav";
 import { FindingsInbox } from "./_components/findings-inbox";
+import {
+  EmptyStateCTA,
+  onboardingWizardHref,
+} from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +81,14 @@ export default async function FindingsPage({ searchParams }: PageProps) {
   const providers = toList(sp.provider);
 
   const tenant = await getActiveTenant();
+
+  // Tenant-level encounter count, used to disambiguate the empty
+  // state: a fresh tenant (0 encounters) gets an "upload your first
+  // encounter" CTA, while a tenant with encounters but no findings
+  // matching the filter keeps the existing "adjust filters" copy.
+  const encounterCount = tenant
+    ? await prisma.encounter.count({ where: { tenantId: tenant.id } })
+    : 0;
 
   // Single Prisma round-trip: findings + their encounter's claim
   // (for provider/payer display). Eager-loaded so the inbox render
@@ -180,6 +192,27 @@ export default async function FindingsPage({ searchParams }: PageProps) {
           <h2>No clinic connected</h2>
           <p>You aren&rsquo;t a member of a clinic yet.</p>
         </section>
+      ) : encounterCount === 0 ? (
+        // Fresh tenant: no encounters at all, so the existing
+        // "Nothing in this view — adjust filters" copy is wrong.
+        // Replace with an onboarding CTA that drives the user to
+        // upload an encounter (the only way to generate findings).
+        <EmptyStateCTA
+          variant="block"
+          testId="findings-fresh-tenant-cta"
+          title="No findings yet"
+          description="Findings appear here as soon as the auditor reviews an encounter. Upload a clinical note to get started."
+          primaryAction={{
+            label: "Upload your first encounter",
+            href: onboardingWizardHref(),
+            testId: "findings-upload-first-encounter",
+          }}
+          secondaryAction={{
+            label: "View encounters",
+            href: "/encounters",
+            testId: "findings-view-encounters",
+          }}
+        />
       ) : (
         <FindingsInbox
           rows={initialRows}

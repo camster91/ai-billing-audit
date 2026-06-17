@@ -23,6 +23,10 @@ import {
 } from "@/lib/encounter-list";
 import { PortalNav } from "../portal-nav";
 import { EncounterListClient } from "./_components/encounters-list";
+import {
+  EmptyStateCTA,
+  onboardingWizardHref,
+} from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -103,6 +107,29 @@ export default async function EncountersListPage({ searchParams }: PageProps) {
           ? `No encounters for ${tenant.name} match the current filters.`
           : `${list.totalCount} encounter${list.totalCount === 1 ? "" : "s"} for ${tenant.name}.`}
       </p>
+
+      {/* Zero-data CTA — rendered above the filter row so a fresh
+          user does not have to interpret the empty filter set as
+          "no results, try harder". Only shown when the table is
+          actually empty (filter state matches the data state). */}
+      {list.totalCount === 0 ? (
+        <EmptyStateCTA
+          variant="inline"
+          testId="encounters-fresh-tenant-cta"
+          title="No encounters yet"
+          description="Upload a clinical note and the auditor will surface any documentation gaps before you bill."
+          primaryAction={{
+            label: "Upload your first encounter",
+            href: onboardingWizardHref(),
+            testId: "encounters-upload-first-encounter",
+          }}
+          secondaryAction={{
+            label: "How it works",
+            href: "/how-it-works",
+            testId: "encounters-how-it-works",
+          }}
+        />
+      ) : null}
 
       <Suspense fallback={<div className={styles.muted}>Loading…</div>}>
         <EncounterListClient

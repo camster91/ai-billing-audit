@@ -131,6 +131,83 @@
   line-height: 1.5;
 }
 
+/* In-flow empty-state block (used above tables / inside cards).
+   Same visual language as `.empty` but left-aligned and supporting
+   an inline primary CTA + secondary link. Use this when the page has
+   other content the empty state should not visually outweigh
+   (e.g. /encounters with the filter UI present). */
+.emptyInline {
+  border: 1px dashed #28324f;
+  border-radius: 12px;
+  padding: 24px 20px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyInlineBody {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.emptyInlineBody h2 {
+  color: #e7ecf6;
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.emptyInlineBody p {
+  margin: 0;
+  color: #9aa3bd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyInlineActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-block;
+  background: #2dd4bf;
+  color: #0b1020;
+  border: 1px solid #2dd4bf;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ctaPrimary:hover {
+  background: #5eead4;
+  border-color: #5eead4;
+  text-decoration: none;
+}
+
+.ctaSecondary {
+  display: inline-block;
+  background: transparent;
+  color: #2dd4bf;
+  border: 1px solid #2dd4bf;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ctaSecondary:hover {
+  background: rgba(45, 212, 191, 0.08);
+  text-decoration: none;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -176,6 +253,31 @@
 .statusPillPending { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
 .statusPillAuditing { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
 .statusPillCompleted { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; }
+
+/* /team — role + status badges (shared with team-client.tsx). */
+.badgeOwner,
+.badgeAuditor,
+.badgeViewer,
+.badgeActive,
+.badgePending,
+.badgeInactive {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.badgeOwner   { background: rgba(167, 139, 250, 0.14); color: #c4b5fd; border-color: rgba(167, 139, 250, 0.4); }
+.badgeAuditor { background: rgba(96, 165, 250, 0.14);  color: #93c5fd; border-color: rgba(96, 165, 250, 0.4); }
+.badgeViewer  { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4); }
+
+.badgeActive   { background: rgba(45, 212, 191, 0.14);  color: #5eead4; border-color: rgba(45, 212, 191, 0.4); }
+.badgePending  { background: rgba(251, 191, 36, 0.14);  color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+.badgeInactive { background: rgba(127, 29, 29, 0.2);    color: #fca5a5; border-color: rgba(220, 38, 38, 0.5); }
 
 /* /billing — alert banners, card grid, invoice table, usage progress. */
 .alertWarn {
