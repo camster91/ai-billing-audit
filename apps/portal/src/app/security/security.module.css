@@ -273,21 +273,21 @@
 
 .ctaButton {
   display: inline-block;
-  background: var(--accent);
+  background: #1d4ed8; /* blue-700, 6.0:1 contrast against white — passes WCAG AA */
   color: white;
   padding: 16px 36px;
   border-radius: 10px;
   font-weight: 700;
   font-size: 16px;
   text-decoration: none;
-  border: 1px solid var(--accent);
+  border: 1px solid #1d4ed8;
   transition: background 0.15s;
   font-family: inherit;
   cursor: pointer;
 }
 
 .ctaButton:hover {
-  background: #3d75e6;
+  background: #1e40af; /* blue-800 */
 }
 
 .ctaButton:focus-visible {

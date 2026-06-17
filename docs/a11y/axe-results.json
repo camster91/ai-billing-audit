@@ -1,0 +1,267 @@
+[
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2F",
+    "scannedAt": "2026-06-17T05:50:03.318Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "marketing-home",
+    "path": "/",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/pricing",
+    "scannedAt": "2026-06-17T05:50:04.708Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 1,
+      "passes": 18
+    },
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+        "nodeCount": 15,
+        "samples": [
+          {
+            "target": "h1",
+            "html": "<h1>Pricing</h1>"
+          },
+          {
+            "target": ".pricing-module__2D9g-G__header > p",
+            "html": "<p>Flat monthly fees, volume-bracketed. Built for Canadian and US clinics that need a billing-audit engine without per-claim revenue share.</p>"
+          },
+          {
+            "target": ".pricing-module__2D9g-G__recommended > .pricing-module__2D9g-G__priceBlock > .pricing-module__2D9g-G__priceLinePrimary.pricing-module__2D9g-G__priceLine > .pricing-module__2D9g-G__label",
+            "html": "<span class=\"pricing-module__2D9g-G__label\">CAD<!-- --> / month</span>"
+          }
+        ]
+      }
+    ],
+    "route": "marketing-pricing",
+    "path": "/pricing",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/how-it-works",
+    "scannedAt": "2026-06-17T05:50:06.108Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 1,
+      "passes": 22
+    },
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+        "nodeCount": 35,
+        "samples": [
+          {
+            "target": ".how-it-works-module__TnSYVG__eyebrow",
+            "html": "<span class=\"how-it-works-module__TnSYVG__eyebrow\">How it works</span>"
+          },
+          {
+            "target": "h1",
+            "html": "<h1>Three steps. Your claims, checked before they go out.</h1>"
+          },
+          {
+            "target": ".how-it-works-module__TnSYVG__header > p",
+            "html": "<p>We sit between your billing system and the payer. Every claim gets read by an AI auditor first. Your team reviews what it finds. Nothing goes out the door unchecked.</p>"
+          }
+        ]
+      }
+    ],
+    "route": "marketing-how-it-works",
+    "path": "/how-it-works",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/security",
+    "scannedAt": "2026-06-17T05:50:07.518Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 1,
+      "passes": 21
+    },
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+        "nodeCount": 18,
+        "samples": [
+          {
+            "target": ".security-module__FTozOG__eyebrow",
+            "html": "<span class=\"security-module__FTozOG__eyebrow\">Security &amp; compliance</span>"
+          },
+          {
+            "target": "h1",
+            "html": "<h1>How we handle your data, your claims, and your risk</h1>"
+          },
+          {
+            "target": ".security-module__FTozOG__header > p",
+            "html": "<p>Healthcare buyers should not have to read legalese to know their patient data is safe and their billing is honest. This page is the short version. The PDF one-pager is for your privacy officer and "
+          }
+        ]
+      }
+    ],
+    "route": "marketing-security",
+    "path": "/security",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login",
+    "scannedAt": "2026-06-17T05:50:08.884Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "login",
+    "path": "/login",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fdashboard",
+    "scannedAt": "2026-06-17T05:50:10.267Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "dashboard",
+    "path": "/dashboard",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fencounters",
+    "scannedAt": "2026-06-17T05:50:11.642Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "encounters-list",
+    "path": "/encounters",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fencounters%2Fenc-list-0001",
+    "scannedAt": "2026-06-17T05:50:13.003Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "encounter-detail",
+    "path": "/encounters/enc-list-0001",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Ffindings",
+    "scannedAt": "2026-06-17T05:50:14.359Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "findings",
+    "path": "/findings",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fbilling",
+    "scannedAt": "2026-06-17T05:50:15.725Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "billing",
+    "path": "/billing",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fsettings",
+    "scannedAt": "2026-06-17T05:50:17.088Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "settings",
+    "path": "/settings",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/login?callbackUrl=%2Fteam",
+    "scannedAt": "2026-06-17T05:50:18.464Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 20
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "team",
+    "path": "/team",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/portal/onboarding",
+    "scannedAt": "2026-06-17T05:50:19.829Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 14
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "onboarding",
+    "path": "/portal/onboarding",
+    "httpStatus": 200
+  },
+  {
+    "url": "http://127.0.0.1:3102/portal/billing",
+    "scannedAt": "2026-06-17T05:50:21.199Z",
+    "summary": {
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 14
+    },
+    "violations": [],
+    "incomplete": [],
+    "route": "portal-billing",
+    "path": "/portal/billing",
+    "httpStatus": 200
+  }
+]

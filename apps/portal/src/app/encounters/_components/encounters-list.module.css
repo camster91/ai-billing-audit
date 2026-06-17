@@ -56,6 +56,12 @@
   border-color: #2dd4bf;
 }
 
+.input:focus-visible {
+  outline: 2px solid #4f8cff;
+  outline-offset: 2px;
+  border-color: #2dd4bf;
+}
+
 .select {
   background: #0b1020;
   border: 1px solid #28324f;

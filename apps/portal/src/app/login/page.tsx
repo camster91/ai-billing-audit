@@ -65,9 +65,9 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </p>
 
         {error === "missing_email" ? (
-          <div className={styles.flash}>Please enter your email address.</div>
+          <div role="status" aria-live="polite" className={styles.flash}>Please enter your email address.</div>
         ) : error ? (
-          <div className={styles.flash}>
+          <div role="status" aria-live="polite" className={styles.flash}>
             Couldn&rsquo;t send the link: {error}. Check the email address
             and try again.
           </div>

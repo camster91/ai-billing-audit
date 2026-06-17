@@ -1,0 +1,2148 @@
+[
+  {
+    "route": "marketing-home",
+    "path": "/",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "marketing-pricing",
+    "path": "/pricing",
+    "httpStatus": 200,
+    "tabCount": 12,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start CAD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 219,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start USD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 367,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start CAD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 576,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start USD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 724,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start CAD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 934,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Start USD plan",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1081,
+          "y": 861,
+          "w": 140,
+          "h": 39
+        }
+      }
+    ]
+  },
+  {
+    "route": "marketing-how-it-works",
+    "path": "/how-it-works",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "See pricing",
+        "href": "/pricing",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 579,
+          "y": 669,
+          "w": 161,
+          "h": 59
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Sign in",
+        "href": "/login",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 752,
+          "y": 669,
+          "w": 109,
+          "h": 59
+        }
+      }
+    ]
+  },
+  {
+    "route": "marketing-security",
+    "path": "/security",
+    "httpStatus": 200,
+    "tabCount": 12,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "legal@ai-billing-audit.ashbi.ca",
+        "href": "mailto:legal@ai-billing-audit.ashbi.ca",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 663,
+          "y": 441,
+          "w": 207,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Download /security.pdf",
+        "href": "/security.pdf",
+        "outlineWidth": "3px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(122, 169, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 405,
+          "y": 637,
+          "w": 254,
+          "h": 59
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Request the BAA / HIC-Agent agreement",
+        "href": "mailto:legal@ai-billing-audit.ashbi.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request",
+        "outlineWidth": "3px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(122, 169, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 671,
+          "y": 637,
+          "w": 365,
+          "h": 59
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 603,
+          "y": 800,
+          "w": 44,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 675,
+          "y": 800,
+          "w": 81,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 784,
+          "y": 800,
+          "w": 53,
+          "h": 20
+        }
+      }
+    ]
+  },
+  {
+    "route": "login",
+    "path": "/login",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "dashboard",
+    "path": "/dashboard",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "encounters-list",
+    "path": "/encounters",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "encounter-detail",
+    "path": "/encounters/enc-list-0001",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "findings",
+    "path": "/findings",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "billing",
+    "path": "/billing",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "settings",
+    "path": "/settings",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "team",
+    "path": "/team",
+    "httpStatus": 200,
+    "tabCount": 8,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "email",
+        "text": "",
+        "href": "",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 521,
+          "w": 338,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "submit",
+        "text": "Send magic link",
+        "href": "",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 551,
+          "y": 581,
+          "w": 338,
+          "h": 42
+        }
+      }
+    ]
+  },
+  {
+    "route": "onboarding",
+    "path": "/portal/onboarding",
+    "httpStatus": 200,
+    "tabCount": 7,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Back to pricing →",
+        "href": "/pricing",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 481,
+          "y": 545,
+          "w": 129,
+          "h": 18
+        }
+      }
+    ]
+  },
+  {
+    "route": "portal-billing",
+    "path": "/portal/billing",
+    "httpStatus": 200,
+    "tabCount": 7,
+    "noFocusIndicatorCount": 0,
+    "noFocusIndicatorSamples": [],
+    "tabOrder": [
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Skip to content",
+        "href": "#main",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 148,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 194,
+          "y": 19,
+          "w": 118,
+          "h": 18
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Home",
+        "href": "/",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 944,
+          "y": 14,
+          "w": 45,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Pricing",
+        "href": "/pricing",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1080,
+          "y": 14,
+          "w": 87,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Security",
+        "href": "/security",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(79, 140, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 1187,
+          "y": 14,
+          "w": 59,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "type": "",
+        "text": "Back to pricing →",
+        "href": "/pricing",
+        "outlineWidth": "1px",
+        "outlineStyle": "auto",
+        "outlineColor": "rgb(153, 200, 255)",
+        "boxShadow": "none",
+        "visible": true,
+        "rect": {
+          "x": 481,
+          "y": 533,
+          "w": 129,
+          "h": 18
+        }
+      }
+    ]
+  }
+]
