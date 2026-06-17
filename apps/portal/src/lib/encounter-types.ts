@@ -156,6 +156,70 @@ export const dismissInputSchema = z
 export type DismissInput = z.infer<typeof dismissInputSchema>;
 
 // ---------------------------------------------------------------------------
+// Bulk action schemas (the /findings inbox surface).
+//
+// POST /api/findings/bulk/accept
+//   Body: { findingIds: string[] }
+//   Accepts every finding in `findingIds` (all must be pending and
+//   scoped to the active tenant) inside a single Prisma transaction,
+//   writing one audit row per finding with a shared `bulkActionId`.
+//   Order: preserved as provided.
+//
+// POST /api/findings/bulk/dismiss
+//   Body: { findingIds: string[], reason: DismissReason, reasonText?: string }
+//   Same shape as the single-finding dismiss but applied to many rows
+//   in a single transaction. `reasonText` is required when
+//   `reason === "other_with_text"` (mirrors `dismissInputSchema`).
+//
+// The id arrays are bounded to 200 entries to keep the transaction
+// time predictable and the per-batch impact total (shown in the
+// confirmation modal) cheap to compute on the client. The client
+// also enforces a hard cap of 200, but the server cap is the
+// authoritative one — a stale client that sends more gets 400.
+// ---------------------------------------------------------------------------
+
+export const BULK_FINDING_ID_MAX = 200;
+
+export const bulkFindingIdsSchema = z
+  .array(
+    z
+      .string()
+      .min(1)
+      .max(64, "finding id too long"),
+  )
+  .min(1, "at least one finding id is required")
+  .max(BULK_FINDING_ID_MAX, `bulk action is limited to ${BULK_FINDING_ID_MAX} findings`);
+
+export const bulkAcceptInputSchema = z
+  .object({
+    findingIds: bulkFindingIdsSchema,
+  })
+  .strict();
+
+export const bulkDismissInputSchema = z
+  .object({
+    findingIds: bulkFindingIdsSchema,
+    reason: dismissReasonSchema,
+    reasonText: z.string().max(2000).optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.reason !== "other_with_text" ||
+      (typeof value.reasonText === "string" &&
+        value.reasonText.trim().length > 0 &&
+        value.reasonText.trim().length <= 2000),
+    {
+      message:
+        "reasonText is required (1-2000 characters) when reason is other_with_text",
+      path: ["reasonText"],
+    },
+  );
+
+export type BulkAcceptInput = z.infer<typeof bulkAcceptInputSchema>;
+export type BulkDismissInput = z.infer<typeof bulkDismissInputSchema>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

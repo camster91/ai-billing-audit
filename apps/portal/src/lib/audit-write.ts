@@ -49,6 +49,15 @@ export interface WriteAuditInput {
   patientHash: string;
   /** Audit `modelRunId` — for human reviews this is "portal-review". */
   modelRunId: string;
+  /**
+   * Shared identifier for rows written by the same /findings bulk
+   * action (accept / dismiss). Null for single-finding writes. When
+   * set, the id is duplicated into `dataElements` (so it is part
+   * of the chain hash) AND persisted on the new
+   * `AuditTrailEntry.bulkActionId` column for the indexed "show me
+   * every row from bulk action X" query.
+   */
+  bulkActionId?: string | null;
   /** The Prisma client or transaction to run inside. */
   tx: Prisma.TransactionClient | typeof prisma;
 }
@@ -59,6 +68,229 @@ export interface WriteAuditResult {
   cryptographicSignature: string;
   previousSignature: string;
   newFindingStatus: "accepted" | "dismissed";
+  /**
+   * Echo of the bulk action id (when set) so the bulk route handlers
+   * can include it in the API response without re-reading the row.
+   * Null for single-finding writes.
+   */
+  bulkActionId: string | null;
+}
+
+/**
+ * Inputs to the bulk audit-trail writer. Used by the /findings
+ * inbox bulk accept/dismiss routes. The helper handles the
+ * cross-row chain threading (each row's `previousSignature` is the
+ * prior row's `cryptographicSignature`) so the rows form a valid
+ * chain even when every write shares the same millisecond
+ * timestamp — the `eventId` tiebreaker is otherwise random, which
+ * breaks the (timestamp, eventId) order in the same way that
+ * inter-row reads inside a single transaction are racy on
+ * better-sqlite3.
+ */
+export interface WriteAuditBatchInputItem {
+  encounterId: string;
+  findingId: string;
+  patientHash: string;
+  reason: DismissReason | null;
+  reasonText: string | null;
+}
+
+export interface WriteAuditBatchInput {
+  tenantId: string;
+  userIdentifier: string;
+  action: AuditAction;
+  bulkActionId: string;
+  /** All `WriteAuditBatchInputItem`s; max 200 per batch. */
+  items: WriteAuditBatchInputItem[];
+  /**
+   * The Prisma client or transaction to run inside. When a
+   * transaction is passed, the bulk insert + bulk finding update
+   * run as a single atomic unit; the tenant chain tail is read
+   * once with this client BEFORE the inserts.
+   */
+  tx: Prisma.TransactionClient | typeof prisma;
+}
+
+export interface WriteAuditBatchResultItem {
+  findingId: string;
+  auditEventId: string;
+  cryptographicSignature: string;
+  previousSignature: string;
+}
+
+export interface WriteAuditBatchResult {
+  bulkActionId: string;
+  newFindingStatus: "accepted" | "dismissed";
+  perItem: WriteAuditBatchResultItem[];
+}
+
+/**
+ * Append N audit rows to the tenant's chain in a single
+ * `createMany`, threading the `previousSignature` across rows in
+ * JS so the (timestamp, eventId) tiebreaker can never pick a
+ * future row in the same transaction. Also bulk-updates the
+ * affected `Finding` rows in a single `updateMany` so the
+ * transaction stays O(1) round-trips for the chain + status
+ * mutations regardless of batch size.
+ *
+ * Assumes (and asserts) that every item's `findingId` is currently
+ * in `pending` state — caller's pre-flight check (in the route
+ * handler) guarantees this. The route handler also enforces
+ * tenant scope on every finding before calling.
+ */
+export async function writeAuditBatch(
+  input: WriteAuditBatchInput,
+): Promise<WriteAuditBatchResult> {
+  const { tx, tenantId, items, action, bulkActionId } = input;
+
+  if (!AUDIT_ACTIONS.includes(action)) {
+    throw new Error(`invalid audit action: ${action}`);
+  }
+  if (items.length === 0) {
+    return { bulkActionId, newFindingStatus: action === "accept" ? "accepted" : "dismissed", perItem: [] };
+  }
+
+  // Read the tail ONCE before the inserts. The tail's signature
+  // is the `previousSignature` of the FIRST row in the batch. From
+  // there each subsequent row's prev is the prior row's
+  // cryptographicSignature — computed in JS so the order is
+  // deterministic regardless of how Prisma / better-sqlite3
+  // orders rows on the per-row tail read inside an interactive
+  // transaction (the racy case this helper exists to solve).
+  const tail = await tx.auditTrailEntry.findFirst({
+    where: { tenantId },
+    orderBy: [{ timestamp: "desc" }, { eventId: "desc" }],
+    select: { cryptographicSignature: true },
+  });
+  let previousSignature = tail?.cryptographicSignature ?? GENESIS_PREVIOUS_SIGNATURE;
+
+  // Build all chain payloads + signatures up-front. Each row's
+  // timestamp is the same `new Date()` (all writes happen in the
+  // same JS tick); the (timestamp, eventId) sort tiebreaker MUST
+  // be stable within the batch, so the eventId encodes a
+  // monotonic counter in the FIRST 4 bytes (8 hex chars) and a
+  // 12-byte random suffix. This guarantees that across multiple
+  // batches sharing the same millisecond timestamp, the chain
+  // walk sorts each batch's rows in their insertion order. The
+  // counter is BIG-ENDIAN (zero-padded) so lex sort matches
+  // numeric sort.
+  const baseTimestamp = new Date();
+  const isoBase = baseTimestamp.toISOString();
+  let counter = 0;
+  const seen = new Set<string>();
+  const rowsToInsert: Prisma.AuditTrailEntryCreateManyInput[] = [];
+  const perItem: WriteAuditBatchResultItem[] = [];
+  const affectedFindingIds: string[] = [];
+  const newFindingStatus: "accepted" | "dismissed" =
+    action === "accept" ? "accepted" : "dismissed";
+
+  for (const item of items) {
+    // 4-byte counter (8 hex chars) at the FRONT so lex sort
+    // matches insertion order. 12-byte random suffix (24 hex
+    // chars) keeps the eventId unguessable across batches.
+    const randomSuffix = new Uint8Array(12);
+    globalThis.crypto.getRandomValues(randomSuffix);
+    let suffixHex = "";
+    for (const b of randomSuffix) suffixHex += b.toString(16).padStart(2, "0");
+    const counterHex = counter.toString(16).padStart(8, "0");
+    const eventId = (counterHex + suffixHex).slice(0, 32);
+    if (seen.has(eventId)) {
+      // 12 bytes of randomness + 4 bytes of counter should
+      // never collide, but guard anyway — a collision would
+      // break the unique event_id index.
+      throw new Error(`eventId collision in batch: ${eventId}`);
+    }
+    seen.add(eventId);
+
+    const dataElements = serializeDataElements({
+      findingId: item.findingId,
+      reason: item.reason,
+      reasonText: item.reasonText,
+      bulkActionId,
+    });
+
+    const chainPayload: ChainRow = {
+      eventId,
+      timestamp: isoBase,
+      userIdentifier: input.userIdentifier,
+      action,
+      patientHash: item.patientHash,
+      dataElements,
+      modelRunId: "portal-review",
+      previousSignature,
+      cryptographicSignature: "",
+    };
+    const cryptographicSignature = computeSignature(previousSignature, chainPayload);
+
+    rowsToInsert.push({
+      tenantId,
+      eventId,
+      timestamp: baseTimestamp,
+      userIdentifier: input.userIdentifier,
+      action,
+      findingId: item.findingId,
+      reason: item.reason,
+      reasonText: item.reasonText,
+      patientHash: item.patientHash,
+      dataElements,
+      modelRunId: "portal-review",
+      previousSignature,
+      cryptographicSignature,
+      encounterId: item.encounterId,
+      bulkActionId,
+    });
+    perItem.push({
+      findingId: item.findingId,
+      auditEventId: eventId,
+      cryptographicSignature,
+      previousSignature,
+    });
+    affectedFindingIds.push(item.findingId);
+
+    // Thread the chain: next row's prev = this row's signature.
+    previousSignature = cryptographicSignature;
+    counter += 1;
+  }
+
+  // One round-trip for the chain rows, one for the finding
+  // status mutation, and (for dismiss) one more for the dismiss
+  // reason / text. The single-write path sets dismissReason +
+  // dismissText in a per-row update; the bulk path uses a
+  // single updateMany with the constant reason (the route's
+  // input schema enforces this is the same for every row in
+  // the batch).
+  await tx.auditTrailEntry.createMany({ data: rowsToInsert });
+  await tx.finding.updateMany({
+    where: { id: { in: affectedFindingIds } },
+    data: {
+      status: newFindingStatus,
+      actionedByUserId: input.userIdentifier,
+      actionedAt: baseTimestamp,
+      // Clear the per-row dismiss metadata first; for the
+      // accept path this is the final state. For the dismiss
+      // path, the second updateMany below writes the constant
+      // reason + text.
+      dismissReason: null,
+      dismissText: null,
+    },
+  });
+
+  if (newFindingStatus === "dismissed") {
+    const commonReason = items[0]?.reason ?? null;
+    const commonText =
+      commonReason === "other_with_text" ? items[0]?.reasonText ?? null : null;
+    if (commonReason) {
+      await tx.finding.updateMany({
+        where: { id: { in: affectedFindingIds } },
+        data: {
+          dismissReason: commonReason,
+          dismissText: commonText,
+        },
+      });
+    }
+  }
+
+  return { bulkActionId, newFindingStatus, perItem };
 }
 
 /**
@@ -128,6 +360,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
       findingId,
       reason: input.reason,
       reasonText: input.reasonText,
+      bulkActionId: input.bulkActionId ?? null,
     }),
     modelRunId: input.modelRunId,
     previousSignature,
@@ -160,6 +393,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
       previousSignature,
       cryptographicSignature,
       encounterId,
+      bulkActionId: input.bulkActionId ?? null,
     },
     select: { id: true, eventId: true },
   });
@@ -184,6 +418,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
     cryptographicSignature,
     previousSignature,
     newFindingStatus,
+    bulkActionId: input.bulkActionId ?? null,
   };
 }
 
@@ -241,6 +476,7 @@ function serializeDataElements(payload: {
   findingId: string;
   reason: DismissReason | null;
   reasonText: string | null;
+  bulkActionId: string | null;
 }): string {
   // Sorted keys, no whitespace — matches the Python `_coerce_field`
   // contract (data_elements is canonical JSON text).

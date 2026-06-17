@@ -23,6 +23,12 @@
 
 BEGIN;
 
+-- pgvector is available on the pgvector/pgvector:pg16 image; the v1
+-- audit_trail schema does not use the vector type directly, but the
+-- extension must be enabled per the deploy spec
+-- (kanban t_7f6ffde6) so the future v1 vector KB is one DDL away.
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- -------------------------------------------------------------------
 -- 1. audit_trail table
 -- -------------------------------------------------------------------
@@ -47,11 +53,25 @@ CREATE TABLE IF NOT EXISTS audit_trail (
     previous_signature     TEXT NOT NULL DEFAULT REPEAT('0', 64),
     cryptographic_signature TEXT NOT NULL,
 
+    -- Shared id for rows written by the same /findings bulk action.
+    -- Null for single-finding writes. NOT part of the chain hash —
+    -- the id is duplicated into ``data_elements`` so the chain
+    -- payload is canonical JSON; this column is just the indexed
+    -- handle for "give me every row from bulk action X". Matches
+    -- apps/portal/prisma/schema.prisma ``AuditTrailEntry.bulkActionId``.
+    bulk_action_id         TEXT,
+
     -- Bookkeeping for the backfill / verifier runbook
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT audit_trail_signature_hex     CHECK (cryptographic_signature ~ '^[0-9a-f]{64}$'),
     CONSTRAINT audit_trail_previous_hex      CHECK (previous_signature     ~ '^[0-9a-f]{64}$'),
+    -- Phase-4 hardening: require the patient_hash column to be a
+    -- 64-char lowercase hex digest. A misspelled or raw-value write
+    -- would otherwise slip past application validation. The application
+    -- helper that produces this value is apps/portal/src/lib/patient-hash.ts
+    -- (peppered SHA-256 — see kanban t_ba435c61 for the PHI review).
+    CONSTRAINT audit_trail_patient_hash_hex  CHECK (patient_hash          ~ '^[0-9a-f]{64}$'),
     CONSTRAINT audit_trail_event_id_unique   UNIQUE (event_id)
 );
 
@@ -64,6 +84,8 @@ ALTER TABLE audit_trail
     ADD COLUMN IF NOT EXISTS previous_signature      TEXT NOT NULL DEFAULT REPEAT('0', 64);
 ALTER TABLE audit_trail
     ADD COLUMN IF NOT EXISTS cryptographic_signature  TEXT;
+ALTER TABLE audit_trail
+    ADD COLUMN IF NOT EXISTS bulk_action_id          TEXT;
 
 -- Now enforce NOT NULL on cryptographic_signature.  The backfill in
 -- step 4 must run before this ALTER fires on a populated table.
@@ -77,6 +99,11 @@ ALTER TABLE audit_trail
 -- -------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS audit_trail_chain_order_idx
     ON audit_trail ("timestamp" ASC, event_id ASC);
+
+-- Index for the /findings bulk-action "give me every row from
+-- bulk action X" query on the billing-team review surface.
+CREATE INDEX IF NOT EXISTS audit_trail_bulk_action_id_idx
+    ON audit_trail (bulk_action_id) WHERE bulk_action_id IS NOT NULL;
 
 -- -------------------------------------------------------------------
 -- 4. Backfill: for any row where ``cryptographic_signature`` IS NULL
@@ -188,7 +215,7 @@ BEGIN
     RAISE EXCEPTION
         'audit_trail is append-only: % on row id=% with non-null '
         'cryptographic_signature is not permitted (PHIPA / HIA '
-        'evidence-of-record)', TG_OP
+        'evidence-of-record)', TG_OP, OLD.id
         USING ERRCODE = 'integrity_constraint_violation';
 END;
 $$ LANGUAGE plpgsql;

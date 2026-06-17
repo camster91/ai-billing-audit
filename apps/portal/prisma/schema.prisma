@@ -457,6 +457,13 @@ model AuditTrailEntry {
   // The encounter the action is scoped to, kept for fast filtering
   // in the per-encounter audit panel.
   encounterId            String
+  // Shared identifier for rows written by the same /findings bulk
+  // action (accept / dismiss). Null for single-finding writes. The id
+  // is also embedded in `dataElements` so the chain payload remains
+  // canonical JSON; this column exists purely for the indexed
+  // "show me everything from bulk action X" query on the billing
+  // team / runbook review surface.
+  bulkActionId           String?
 
   tenant                 Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   encounter              Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
@@ -464,6 +471,7 @@ model AuditTrailEntry {
   @@index([tenantId, timestamp, eventId])
   @@index([findingId])
   @@index([encounterId])
+  @@index([bulkActionId])
 }
 
 // ---------------------------------------------------------------------------

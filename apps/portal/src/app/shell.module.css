@@ -276,3 +276,250 @@
   font-size: 13px;
   margin-bottom: 16px;
 }
+
+/* /findings inbox: filter bar, multi-select table, bulk action bar,
+   confirmation modals. Lives in the same module so the dark theme
+   stays consistent across the portal. */
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.filterLabel {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9aa3bd;
+  font-weight: 600;
+}
+
+.filterSelect {
+  background: #0b1020;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  color: #e7ecf6;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 8px 10px;
+  min-height: 38px;
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: #2dd4bf;
+}
+
+.exportLink {
+  margin-left: auto;
+  color: #2dd4bf;
+  font-size: 13px;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #28324f;
+  background: #0b1020;
+}
+
+.exportLink:hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(45, 212, 191, 0.06);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.bulkBar button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.bulkAccept {
+  background: #2dd4bf;
+  color: #042f2e;
+}
+
+.bulkAccept:hover { background: #5eead4; }
+.bulkAccept:disabled { background: #28324f; color: #6b7280; cursor: not-allowed; }
+
+.bulkDismiss {
+  background: transparent;
+  color: #e7ecf6;
+  border-color: #f87171;
+}
+
+.bulkDismiss:hover { background: rgba(248, 113, 113, 0.08); }
+.bulkDismiss:disabled { color: #6b7280; border-color: #28324f; cursor: not-allowed; }
+
+.bulkClear {
+  background: transparent;
+  color: #9aa3bd;
+  border-color: #28324f;
+  margin-left: auto;
+}
+
+.bulkClear:hover { color: #e7ecf6; }
+
+.selectCell {
+  width: 32px;
+  text-align: center;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #2dd4bf;
+  cursor: pointer;
+}
+
+.impactPositive { color: #2dd4bf; font-family: ui-monospace, monospace; font-size: 13px; }
+.impactNegative { color: #f87171; font-family: ui-monospace, monospace; font-size: 13px; }
+.impactZero { color: #9aa3bd; font-family: ui-monospace, monospace; font-size: 13px; }
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.modal {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  color: #e7ecf6;
+  font-family: inherit;
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.modal p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #cbd5f5;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.modalCancel {
+  background: transparent;
+  color: #9aa3bd;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modalCancel:hover { color: #e7ecf6; }
+
+.modalConfirm {
+  background: #2dd4bf;
+  color: #042f2e;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modalConfirm:hover { background: #5eead4; }
+.modalConfirm:disabled { background: #28324f; color: #6b7280; cursor: not-allowed; }
+
+.modalConfirmDanger {
+  background: #f87171;
+  color: #1f0709;
+}
+
+.modalConfirmDanger:hover { background: #fca5a5; }
+.modalConfirmDanger:disabled { background: #28324f; color: #6b7280; cursor: not-allowed; }
+
+.modalField {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9aa3bd;
+  margin: 12px 0 6px;
+}
+
+.modalSelect,
+.modalTextarea {
+  width: 100%;
+  background: #0b1020;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  color: #e7ecf6;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+
+.modalSelect:focus,
+.modalTextarea:focus {
+  outline: none;
+  border-color: #2dd4bf;
+}
+
+.modalTextarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.impactTotal {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2dd4bf;
+  font-family: ui-monospace, monospace;
+  margin: 4px 0 0;
+}
+
+.impactTotalNegative { color: #f87171; }
