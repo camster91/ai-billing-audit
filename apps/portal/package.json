@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:onboarding": "node --import tsx --test tests/onboarding.test.ts"
+    "test:onboarding": "node --import tsx --test tests/onboarding.test.ts",
+    "test:patient-hash": "node --import tsx --test tests/patient-hash.test.ts",
+    "test:billing-page": "node --import tsx --test tests/billing-page.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

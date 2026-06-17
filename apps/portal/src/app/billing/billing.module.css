@@ -1,0 +1,180 @@
+/* /billing — page-specific styles.
+ *
+ * The page composes a few primitives from shell.module.css
+ * (.shell, .heading, .subheading, .nav, .empty, .link) and adds
+ * the billing-specific ones below: a 3-up card grid, status
+ * pills, a progress bar, and an invoice table.
+ */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.actionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.actionBlock:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.actionBlock h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #9aa3bd;
+}
+
+.muted {
+  color: #9aa3bd;
+  font-size: 13px;
+  margin: 0;
+}
+
+.demoHint {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.canceledHint {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #9aa3bd;
+}
+
+.field span {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.field select {
+  background: #131a2e;
+  color: #e7ecf6;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button {
+  background: #4f8cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.05s ease;
+  align-self: flex-start;
+  font-family: inherit;
+}
+
+.button:hover:not(:disabled) {
+  background: #3b78e8;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonSecondary {
+  background: transparent;
+  color: #9aa3bd;
+  border: 1px solid #28324f;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  color: #e7ecf6;
+  border-color: #4f8cff;
+}
+
+.buttonSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonDanger {
+  background: #dc2626;
+}
+
+.buttonDanger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.confirmRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.warning {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.error {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.link {
+  color: #2dd4bf;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
