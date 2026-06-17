@@ -47,3 +47,78 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Marketing-site header (added in layout.tsx) */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(11, 16, 32, 0.85);
+  backdrop-filter: saturate(160%) blur(10px);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  border-bottom: 1px solid var(--line, #28324f);
+  color: #e7ecf6;
+}
+
+.site-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.site-brand {
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #e7ecf6;
+  font-size: 16px;
+}
+
+.site-brand:hover {
+  color: #7aa9ff;
+}
+
+.site-nav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.site-nav-link {
+  color: #c5cbe0;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 4px;
+  border-radius: 4px;
+}
+
+.site-nav-link:hover {
+  color: #ffffff;
+}
+
+.site-nav-link:focus-visible {
+  outline: 2px solid #4f8cff;
+  outline-offset: 4px;
+}
+
+/* Skip link (accessibility) */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: #4f8cff;
+  color: white;
+  padding: 10px 16px;
+  z-index: 100;
+  font-weight: 600;
+  border-radius: 0 0 6px 0;
+}
+
+.skip-link:focus {
+  left: 0;
+}

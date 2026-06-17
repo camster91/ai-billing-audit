@@ -35,6 +35,8 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/pricing",       // marketing page, public
   "/how-it-works",  // marketing page, public (3-step explainer + Loom + CTA)
+  "/security",      // marketing page, public (PHIPA/HIPAA/AKS explainer + compliance matrix)
+  "/security.pdf",  // one-pager download, public (linked from /security CTA)
   "/portal/onboarding", // Stripe success_url lands here, must work w/o auth
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
