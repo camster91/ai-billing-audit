@@ -9,6 +9,9 @@
 //
 // Writes exactly one audit_trail row and updates the finding's status
 // + dismissReason + dismissText in a single transaction.
+//
+// Authorization: same as accept (t_23bfd49c) — owner | auditor
+// | admin can dismiss, viewers receive 403.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -16,6 +19,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { normalizeDismissInput, writeAuditEntry } from "@/lib/audit-write";
 import { dismissInputSchema } from "@/lib/encounter-types";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 interface RouteContext {
   params: Promise<{ id: string; findingId: string }>;
@@ -34,6 +38,17 @@ export async function POST(
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+
+  // Role check (t_23bfd49c): dismiss is the same capability as
+  // accept — auditor and above, not viewer.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "accept_or_dismiss",
+  );
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error ?? "forbidden" }, { status: 403 });
   }
 
   let raw: unknown;

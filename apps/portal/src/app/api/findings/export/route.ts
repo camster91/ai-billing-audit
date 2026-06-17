@@ -13,18 +13,24 @@
 // chars so the file stays a reasonable size for Excel), and the
 // estimated impact in dollars.
 //
-// Auth: same as the inbox — `auth()` + `getActiveTenant()` with a
-// 401/403 fallthrough. Scoping: every row's `encounter.tenantId`
-// must equal the active tenant. The single SELECT uses an `in:`
-// filter on the encounter ids (which the inbox page just queried
-// for the current view) so the export is bounded by what the user
-// is actually looking at.
+// Auth: the proxy redirects unauthenticated users; this route also
+// re-checks via `auth()` + `getActiveTenant()` and returns 401/403
+// if the session has gone stale. Role gate (t_23bfd49c): any
+// active member with the `read` capability (viewer / auditor /
+// owner / admin) can export. Disabled members and non-members
+// receive 403.
+//
+// Scoping: every row's `encounter.tenantId` must equal the active
+// tenant. The single SELECT uses an `in:` filter on the encounter
+// ids (which the inbox page just queried for the current view)
+// so the export is bounded by what the user is actually looking at.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { FINDING_CATEGORY_LABEL, FINDING_STATUSES } from "@/lib/encounter-types";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +64,19 @@ export async function GET(request: Request): Promise<Response> {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+  // Role gate (t_23bfd49c): export is a read — every active
+  // member role qualifies.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "read",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
+      { status: 403 },
+    );
   }
 
   const url = new URL(request.url);

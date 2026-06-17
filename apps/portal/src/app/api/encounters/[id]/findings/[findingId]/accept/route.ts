@@ -4,6 +4,10 @@
 // row to the audit_trail chain inside a single transaction and updates
 // the finding's status. Idempotent on repeat (returns 409) — accepted
 // findings are terminal.
+//
+// Authorization: owner | auditor | admin can accept. Viewers
+// receive 403 (role enforcement from t_23bfd49c — accept is
+// the read-side mutation the spec allows for auditors).
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -11,6 +15,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { writeAuditEntry } from "@/lib/audit-write";
 import { acceptInputSchema } from "@/lib/encounter-types";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 interface RouteContext {
   params: Promise<{ id: string; findingId: string }>;
@@ -29,6 +34,17 @@ export async function POST(
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+
+  // Role check (t_23bfd49c): accept requires the
+  // "accept_or_dismiss" capability — auditor and above, not viewer.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "accept_or_dismiss",
+  );
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error ?? "forbidden" }, { status: 403 });
   }
 
   // Empty body — `acceptInputSchema` is {} but the strict() call rejects

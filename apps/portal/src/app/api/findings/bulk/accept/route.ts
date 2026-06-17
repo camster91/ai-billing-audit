@@ -19,6 +19,9 @@
 //
 // Response: 200 with `{ ok: true, bulkActionId, acceptedFindingIds,
 // perFinding: [{ findingId, auditEventId, signature }] }`.
+//
+// Authorization: same as single accept (t_23bfd49c) — auditor
+// and above, viewers blocked.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -26,6 +29,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { writeAuditBatch } from "@/lib/audit-write";
 import { bulkAcceptInputSchema } from "@/lib/encounter-types";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +42,17 @@ export async function POST(request: Request): Promise<NextResponse> {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+
+  // Role check (t_23bfd49c): bulk accept requires the
+  // "accept_or_dismiss" capability — auditor and above, not viewer.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "accept_or_dismiss",
+  );
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error ?? "forbidden" }, { status: 403 });
   }
 
   let raw: unknown;

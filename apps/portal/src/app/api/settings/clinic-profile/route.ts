@@ -15,6 +15,7 @@ import {
   saveClinicProfileSettings,
   SettingsError,
 } from "@/lib/settings";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,20 @@ export async function POST(request: Request) {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+  // Role gate (t_23bfd49c): clinic-profile edit is a write action.
+  // Viewers are rejected; auditors are also rejected (auditors
+  // can read everything but not mutate non-finding data).
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "write",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
+      { status: 403 },
+    );
   }
 
   let body: Body;

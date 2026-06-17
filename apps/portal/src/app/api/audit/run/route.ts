@@ -23,7 +23,8 @@
 //       upgradeUrl: string }
 //
 //   401 — not signed in
-//   403 — no active tenant
+//   403 — no active tenant, or caller lacks the `write` capability
+//         (viewers cannot run audits; t_23bfd49c)
 //
 // The hard cap is server-side authoritative. There is no client flag
 // that can bypass the check; the only way to call this route is via
@@ -31,12 +32,14 @@
 // row that's read at request time.
 
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import {
   buildUpgradeUrl,
   consumeAuditQuota,
   type ConsumeResult,
 } from "@/lib/audit-quota";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 // Audit runs are not cacheable — the quota is per-request, per-tenant.
@@ -57,10 +60,27 @@ function isAuditRunBody(value: unknown): value is AuditRunBody {
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json(
       { error: "no_tenant" },
+      { status: 403 },
+    );
+  }
+  // Role gate (t_23bfd49c): running an audit is a write
+  // action. Viewers and disabled members are rejected.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "write",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
       { status: 403 },
     );
   }

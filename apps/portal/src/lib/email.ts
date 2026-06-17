@@ -116,7 +116,8 @@ export type TemplateId =
   | "first_audit_complete"
   | "weekly_digest"
   | "password_reset"
-  | "quota_warning";
+  | "quota_warning"
+  | "team_invite";
 
 export interface SendTemplateInput {
   /** Recipient address. Lowercased before the suppress-list check. */

@@ -12,6 +12,14 @@
 // x-tenant-id header injection. Membership is verified server-side
 // so a signed-in user can't peek at another tenant's subscription.
 //
+// Role gate (t_23bfd49c): any active member with the `read`
+// capability (viewer / auditor / owner / admin) can fetch the
+// subscription snapshot. The billing-snapshot data is read-only
+// tenant metadata, not a billing-side mutation; non-billing roles
+// that need it (e.g. a viewer dashboard) still see it. The
+// mutations (change-tier, cancel) remain owner-only via the
+// `billing` capability.
+//
 // Response shape (200):
 //   {
 //     tier: "small" | "mid" | "large" | null,
@@ -25,13 +33,13 @@
 // Errors:
 //   400 — tenantId missing
 //   401 — not signed in
-//   403 — not a member of the named tenant
+//   403 — not a member of the named tenant, or membership inactive
 //   500 — unexpected error
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { loadSubscriptionSnapshot } from "@/lib/billing-page";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,12 +57,16 @@ export async function GET(request: Request) {
       { status: 400 },
     );
   }
-  // Membership check.
-  const membership = await prisma.membership.findFirst({
-    where: { userId: session.user.id, tenantId },
-    select: { id: true },
-  });
-  if (!membership) {
+  // Role gate (t_23bfd49c): read capability covers every active
+  // member role. The previous check (just `findFirst` on membership
+  // existence) didn't catch inactive members or wrong-role
+  // callers; the gate does both.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenantId,
+    "read",
+  );
+  if (!gate.ok) {
     return NextResponse.json(
       { error: "forbidden", message: "Not a member of this tenant." },
       { status: 403 },

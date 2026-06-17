@@ -90,15 +90,27 @@ export async function POST(request: Request) {
     );
   }
 
-  // Membership check: only members of the target tenant can change
-  // its subscription. This is the only authz on this route.
+  // Membership check (t_23bfd49c): only OWNER | ADMIN of the
+  // target tenant can change the subscription tier. Auditor
+  // and viewer are rejected with 403. The previous check
+  // only verified membership existence; the spec says
+  // "billing actions are owner-only".
   const membership = await prisma.membership.findFirst({
     where: { userId: session.user.id, tenantId },
-    select: { id: true },
+    select: { id: true, role: true, status: true },
   });
-  if (!membership) {
+  if (!membership || membership.status === "inactive") {
     return NextResponse.json(
       { error: "forbidden", message: "Not a member of this tenant." },
+      { status: 403 },
+    );
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    return NextResponse.json(
+      {
+        error: "forbidden",
+        message: "Only owners can change the subscription tier.",
+      },
       { status: 403 },
     );
   }

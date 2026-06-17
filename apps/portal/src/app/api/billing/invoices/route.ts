@@ -32,8 +32,8 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { loadInvoiceHistory } from "@/lib/billing-page";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,12 +51,14 @@ export async function GET(request: Request) {
       { status: 400 },
     );
   }
-  // Membership check.
-  const membership = await prisma.membership.findFirst({
-    where: { userId: session.user.id, tenantId },
-    select: { id: true },
-  });
-  if (!membership) {
+  // Role gate (t_23bfd49c): invoice history is a read — every
+  // active member role qualifies.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenantId,
+    "read",
+  );
+  if (!gate.ok) {
     return NextResponse.json(
       { error: "forbidden", message: "Not a member of this tenant." },
       { status: 403 },
