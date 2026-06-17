@@ -10,7 +10,10 @@
     "test:patient-hash": "node --import tsx --test tests/patient-hash.test.ts",
     "test:email": "node --import tsx --test tests/email.test.ts",
     "test:billing-page": "node --import tsx --test tests/billing-page.test.ts",
-    "test:audit-quota": "node --import tsx --test tests/audit-quota.test.ts"
+    "test:team-management": "node --import tsx --test tests/team-management.test.ts",
+    "test:audit-quota": "node --import tsx --test tests/audit-quota.test.ts",
+    "test:leads-direct": "node --import tsx --test tests/leads-direct.test.ts",
+    "test:contact-form": "node --import tsx --test tests/contact-form.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.2",
