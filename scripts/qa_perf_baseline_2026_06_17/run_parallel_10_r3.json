@@ -1,0 +1,254 @@
+{
+  "shape": "parallel_10",
+  "n": 10,
+  "parallel": true,
+  "run_id": "r3",
+  "started_at_wall": 0.335104791,
+  "submit_window_ms": 192.06770900000004,
+  "poll_window_ms": 59.45554099999995,
+  "wall_clock_ms": 251.52324999999996,
+  "summary": {
+    "n": 10,
+    "n_ok": 10,
+    "n_failed": 0,
+    "submit_latency_ms": {
+      "min": 163.63475000000005,
+      "max": 187.26349999999996,
+      "median": 173.9624165,
+      "mean": 175.0236791
+    },
+    "queue_wait_ms": {
+      "min": 0.17642974853515625,
+      "max": 1.5172958374023438,
+      "median": 0.3802776336669922,
+      "mean": 0.6252765655517578
+    },
+    "runner_ms": {
+      "min": 0.12063980102539062,
+      "max": 1.489877700805664,
+      "median": 0.35858154296875,
+      "mean": 0.5679130554199219
+    },
+    "end_to_end_ms": {
+      "min": 0.43129920959472656,
+      "max": 1.730203628540039,
+      "median": 1.1658668518066406,
+      "mean": 1.1931896209716797,
+      "p50": 1.1658668518066406,
+      "p95": 1.6965150833129883,
+      "p99": 1.723465919494629
+    }
+  },
+  "records": [
+    {
+      "seq": 1,
+      "encounter_id": "ENC-PERF-0001-e4b50053",
+      "job_id": "a908fbe32483",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 170.886458,
+      "queue_wait_ms": 0.4711151123046875,
+      "runner_ms": 0.3769397735595703,
+      "end_to_end_ms": 0.8480548858642578,
+      "poll_count": 1,
+      "poll_ms": 52.84837499999995,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_753e8d24",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 446974064,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 3,
+      "encounter_id": "ENC-PERF-0003-b3e926d4",
+      "job_id": "0e0a7db143cb",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 173.31170799999995,
+      "queue_wait_ms": 0.2894401550292969,
+      "runner_ms": 0.7483959197998047,
+      "end_to_end_ms": 1.0378360748291016,
+      "poll_count": 1,
+      "poll_ms": 53.199291000000095,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_2415db4d",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 1534034192,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 9,
+      "encounter_id": "ENC-PERF-0009-02c86b1c",
+      "job_id": "93e771c0c810",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 163.63475000000005,
+      "queue_wait_ms": 0.28014183044433594,
+      "runner_ms": 0.9322166442871094,
+      "end_to_end_ms": 1.2123584747314453,
+      "poll_count": 1,
+      "poll_ms": 54.97529100000009,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_ccf23fb9",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 1453190873,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 7,
+      "encounter_id": "ENC-PERF-0007-8f9174b3",
+      "job_id": "d070cb388138",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 174.61312500000003,
+      "queue_wait_ms": 0.7221698760986328,
+      "runner_ms": 0.2472400665283203,
+      "end_to_end_ms": 0.9694099426269531,
+      "poll_count": 1,
+      "poll_ms": 48.17212500000001,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_7c52a297",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 2910651,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 2,
+      "encounter_id": "ENC-PERF-0002-03e411f0",
+      "job_id": "b4f511a39397",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 179.278292,
+      "queue_wait_ms": 0.17642974853515625,
+      "runner_ms": 0.2548694610595703,
+      "end_to_end_ms": 0.43129920959472656,
+      "poll_count": 1,
+      "poll_ms": 51.197582999999995,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_f9b4e7d4",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 11124663,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 8,
+      "encounter_id": "ENC-PERF-0008-83265552",
+      "job_id": "064bce1e3832",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 169.39545799999993,
+      "queue_wait_ms": 1.3151168823242188,
+      "runner_ms": 0.3402233123779297,
+      "end_to_end_ms": 1.6553401947021484,
+      "poll_count": 1,
+      "poll_ms": 48.925832999999976,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_da8e5250",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 208421369,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 4,
+      "encounter_id": "ENC-PERF-0004-5cb4085b",
+      "job_id": "69597161efcb",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 177.65900000000002,
+      "queue_wait_ms": 0.25343894958496094,
+      "runner_ms": 1.0366439819335938,
+      "end_to_end_ms": 1.2900829315185547,
+      "poll_count": 1,
+      "poll_ms": 50.694167000000064,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_9b14f317",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 479249943,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 10,
+      "encounter_id": "ENC-PERF-0010-89170fe6",
+      "job_id": "88e15be05b06",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 169.52579200000005,
+      "queue_wait_ms": 0.9872913360595703,
+      "runner_ms": 0.13208389282226562,
+      "end_to_end_ms": 1.119375228881836,
+      "poll_count": 1,
+      "poll_ms": 44.632916999999935,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_07a7cefe",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 628193450,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 6,
+      "encounter_id": "ENC-PERF-0006-b4daf119",
+      "job_id": "78cd21462297",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 184.66870799999995,
+      "queue_wait_ms": 0.240325927734375,
+      "runner_ms": 1.489877700805664,
+      "end_to_end_ms": 1.730203628540039,
+      "poll_count": 1,
+      "poll_ms": 41.748290999999995,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_45a70e65",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 1784587004,
+        "ran_via": "upload_portal"
+      }
+    },
+    {
+      "seq": 5,
+      "encounter_id": "ENC-PERF-0005-b2a3a509",
+      "job_id": "a12345dd7f21",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 187.26349999999996,
+      "queue_wait_ms": 1.5172958374023438,
+      "runner_ms": 0.12063980102539062,
+      "end_to_end_ms": 1.6379356384277344,
+      "poll_count": 1,
+      "poll_ms": 42.159500000000016,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_39e4ede1",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 62589605,
+        "ran_via": "upload_portal"
+      }
+    }
+  ]
+}
