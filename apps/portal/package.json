@@ -8,6 +8,7 @@
     "start": "next start",
     "test:onboarding": "node --import tsx --test tests/onboarding.test.ts",
     "test:patient-hash": "node --import tsx --test tests/patient-hash.test.ts",
+    "test:email": "node --import tsx --test tests/email.test.ts",
     "test:billing-page": "node --import tsx --test tests/billing-page.test.ts"
   },
   "dependencies": {

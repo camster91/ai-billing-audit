@@ -23,6 +23,7 @@ import {
   isWelcomeEmailMockMode,
   sendWelcomeEmail,
 } from "@/lib/welcome-email";
+import { maybeSendFirstAuditComplete } from "@/lib/emails/trigger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +76,27 @@ export async function POST(request: Request) {
     magicLink,
   });
 
+  // First-audit-complete follow-up. Idempotent — fires the first
+  // time a tenant has a real encounter + findings, and never again
+  // (Tenant.firstAuditEmailSentAt is the dedup key). Runs after the
+  // welcome send because a) the welcome is the user-visible primary
+  // and b) we want the "first audit ready" email to land in a
+  // mailbox that already has the welcome's magic link in it.
+  let firstAudit:
+    | { sent: true; id: string; encounterId: string }
+    | { skipped: true; reason: string }
+    | { sent: false; error: string }
+    | null = null;
+  try {
+    firstAudit = await maybeSendFirstAuditComplete(tenantId);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "unknown error";
+    console.error(
+      "[/api/onboarding/complete] maybeSendFirstAuditComplete threw:",
+      message,
+    );
+  }
+
   return NextResponse.json(
     {
       tenant: result,
@@ -82,6 +104,7 @@ export async function POST(request: Request) {
       emailSent: dispatch.sent,
       emailMock: dispatch.mock || isWelcomeEmailMockMode(),
       emailId: dispatch.id ?? null,
+      firstAudit,
     },
     { status: 200 },
   );
