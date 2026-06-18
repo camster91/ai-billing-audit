@@ -22,6 +22,7 @@ Public surface:
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Callable
 
 import litellm
@@ -120,6 +121,31 @@ class LLMClient:
     ) -> Any:
         """Dispatch a chat completion through the configured backend."""
         kwargs.setdefault("model", self._resolve_model(kwargs))
+        # Pass through LLM_BASE_URL as api_base so litellm knows
+        # where to dial. Without this, litellm falls back to its
+        # default for the provider, which for ollama is
+        # localhost:11434 (refused inside the container).
+        if "api_base" not in kwargs:
+            base = os.environ.get("LLM_BASE_URL")
+            if base:
+                kwargs["api_base"] = base
+        # Map LLM_API_KEY → api_key if the caller didn't set one.
+        # Many providers (Ollama, OpenRouter, OpenAI-compatible
+        # gateways) read the key from the env when api_key is not
+        # passed explicitly; setting it here makes LLMClient match
+        # that contract.
+        if "api_key" not in kwargs:
+            key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+            if key:
+                kwargs["api_key"] = key
+        # T0.AC (2026-06-18): for the openai provider pointing at Ollama
+        # cloud (https://ollama.com/v1), litellm routes the call to
+        # /v1/chat/completions as expected. But if a caller passes
+        # api_base without model prefix, the model name must already
+        # include the "openai/" prefix. This block normalises that.
+        model = kwargs.get("model", "")
+        if model and "/" not in model:
+            kwargs["model"] = "openai/" + model
         if self._timeout is not None and "timeout" not in kwargs:
             kwargs["timeout"] = self._timeout
         return self._complete(messages=messages, **kwargs)
@@ -161,6 +187,13 @@ class LLMClient:
         }
         response = self.complete(messages, response_format=json_schema_envelope, **kwargs)
         content = response["choices"][0]["message"]["content"]
+        # Strip markdown fences if the model wraps the JSON in ```json ... ```
+        # (common with reasoning models and some local servers). Without
+        # this, json.loads raises on the first ``` line. Fixes BUG-LLM-02.
+        if content is not None:
+            fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
+            if fence_match:
+                content = fence_match.group(1).strip()
         parsed = json.loads(content)
         try:
             jsonschema.validate(instance=parsed, schema=json_schema)
