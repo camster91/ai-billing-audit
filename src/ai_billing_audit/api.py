@@ -569,6 +569,94 @@ def create_app() -> FastAPI:
             }
         )
 
+    # ---- Reviewer actions: accept-all / dismiss / rerun / flag ----
+    # Persisted via audit_actions.append(); each row is SHA-256-chained
+    # so the trail is tamper-evident. The encounter detail page posts
+    # to these endpoints when the biller clicks Accept / Dismiss / etc.
+
+    @app.post("/encounter/{encounter_id}/accept-all")
+    async def encounter_accept_all(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        try:
+            findings_count = int(body.get("findings_count", 0))
+        except (TypeError, ValueError):
+            findings_count = 0
+        event = audit_append(
+            action="accept_all",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            extra={"findings_count": findings_count},
+        )
+        return JSONResponse({"ok": True, "n_accepted": findings_count, "event": event})
+
+    @app.post("/encounter/{encounter_id}/dismiss")
+    async def encounter_dismiss(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        finding_id = str(body.get("finding_id", "") or "")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        event = audit_append(
+            action="dismiss",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            findings=[{"finding_id": finding_id}],
+        )
+        return JSONResponse({"ok": True, "finding_id": finding_id, "event": event})
+
+    @app.post("/encounter/{encounter_id}/rerun")
+    async def encounter_rerun(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        event = audit_append(
+            action="rerun",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({"ok": True, "event": event})
+
+    @app.post("/encounter/{encounter_id}/flag")
+    async def encounter_flag(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        event = audit_append(
+            action="flag",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({"ok": True, "event": event})
+
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         return {
@@ -577,6 +665,28 @@ def create_app() -> FastAPI:
             "title": app.title,
             "n_registered": len(list_demo_encounters()),
         }
+
+    @app.get("/activity", response_class=HTMLResponse)
+    def activity_page(request: Request) -> HTMLResponse:
+        """Show recent reviewer actions across all encounters.
+
+        Reads /app/logs/audit_trail.jsonl and renders the last N
+        events in reverse chronological order. Each row shows the
+        action type, encounter_id, finding_id (for dismiss), and
+        the SHA-256 signature so the privacy officer can verify
+        the chain is intact.
+        """
+        try:
+            from .audit_actions import read_all
+            events = read_all(limit=50)
+        except Exception:
+            events = []
+        events = list(reversed(events))  # newest first
+        return templates.TemplateResponse(
+            request,
+            "activity.html",
+            {"items": events, "n_events": len(events)},
+        )
 
     # -------------------------------------------------------------------
     # /encounters/upload — staff upload portal

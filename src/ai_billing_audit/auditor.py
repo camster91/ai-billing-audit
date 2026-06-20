@@ -118,6 +118,7 @@ class Finding:
     severity: str
     rule_ids: tuple[str, ...] = field(default_factory=tuple)
     finding_id: str = ""
+    explanation: str = ""
 
 
 @dataclass(frozen=True)
@@ -279,7 +280,11 @@ def validate_findings(
             raise AuditValidationError(
                 f"findings[{i}] is not a JSON object (got {type(item).__name__})"
             )
-        for key in ("category", "suggested_code", "quote", "severity"):
+        # Required: quote (the evidence) and severity (so the dashboard
+        # can colour-code). category and suggested_code are optional —
+        # the model often omits category for documentation-only findings
+        # (e.g. "rule_missing_dx_001" has no code to suggest).
+        for key in ("quote", "severity"):
             if key not in item:
                 raise AuditValidationError(f"findings[{i}] missing required field '{key}'")
         # Accept the rule id in either of two shapes:
@@ -314,6 +319,7 @@ def validate_findings(
                 severity=str(item["severity"]),
                 rule_ids=tuple(rule_ids),
                 finding_id=str(item.get("finding_id", "") or ""),
+                explanation=str(item.get("explanation", "")),
             )
         )
     return tuple(findings)

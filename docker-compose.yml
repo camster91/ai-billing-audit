@@ -26,6 +26,11 @@
 # Persistent volumes:
 #   - ai_billing_audit_data      → /data (job-queue JSONL, run logs)
 #   - ai_billing_audit_artifacts → /artifacts (synth outputs, audit exports)
+#   - ai_billing_audit_logs      → /app/logs (uploaded_notes, audit_trail.jsonl,
+#                                       doctor_emails.jsonl, opt-outs.json,
+#                                       NPI email cache) — survives container
+#                                       recreates so the biller doesn't lose
+#                                       their action history
 #   - ai_billing_audit_pgdata    → /var/lib/postgresql/data (postgres cluster)
 #
 # Environment:
@@ -54,6 +59,7 @@ services:
     volumes:
       - ai_billing_audit_data:/data
       - ai_billing_audit_artifacts:/artifacts
+      - ai_billing_audit_logs:/app/logs
     expose:
       - "8000"
     networks:
@@ -67,8 +73,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      caddy:
-        condition: service_started
 
   worker:
     build:
@@ -88,6 +92,7 @@ services:
     volumes:
       - ai_billing_audit_data:/data
       - ai_billing_audit_artifacts:/artifacts
+      - ai_billing_audit_logs:/app/logs
     networks:
       - ai_billing_audit_net
     # Override CMD: the worker runs the heartbeat loop instead of uvicorn.
@@ -137,12 +142,16 @@ services:
       - caddy_config:/config
     networks:
       - ai_billing_audit_net
-    depends_on:
-      - api
+    # Caddy starts independently of api so there's no dependency
+    # cycle. The api's `start_period: 30s` plus the caddy sidecar
+    # sharing the same docker network means caddy can resolve the
+    # `api` DNS name as soon as the api container is on the network,
+    # even before its healthcheck flips green.
 
 volumes:
   ai_billing_audit_data:
   ai_billing_audit_artifacts:
+  ai_billing_audit_logs:
   ai_billing_audit_pgdata:
   caddy_data:
   caddy_config:
