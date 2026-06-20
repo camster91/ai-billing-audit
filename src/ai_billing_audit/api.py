@@ -778,6 +778,136 @@ def create_app() -> FastAPI:
             {"items": events, "n_events": len(events)},
         )
 
+    # ---- Appeal-letter generator --------------------------------------
+    # When a claim is denied by a payer, the biller POSTs here with
+    # the finding_id and the denial reason. We pull the finding +
+    # the encounter metadata + the zorva_context, build the prompt,
+    # call the LLM, and return a Markdown letter the biller can
+    # review + send. The body is PHI-scrubbed before being logged
+    # to /app/logs/appeal_letters.jsonl.
+
+    @app.post("/encounter/{encounter_id}/appeal", response_class=JSONResponse)
+    async def encounter_appeal(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .appeal_letter import (
+                generate_appeal_letter,
+                log_appeal_letter,
+            )
+            from .llm import LLMClient
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503, detail=f"appeal_letter module unavailable: {e}"
+            )
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        # The biller may pass either a finding_id (preferred) or
+        # a rule_id (the LLM doesn't always emit a stable finding_id).
+        # We try finding_id first; if no match, we try rule_id.
+        finding_id = str(body.get("finding_id", "") or "")
+        rule_id = str(body.get("rule_id", "") or "")
+        if not finding_id and not rule_id:
+            raise HTTPException(
+                status_code=400,
+                detail="finding_id or rule_id required",
+            )
+        denial_reason = str(body.get("denial_reason", "") or "").strip()
+        if not denial_reason:
+            raise HTTPException(status_code=400, detail="denial_reason required")
+
+        # Find the most recent real audit for this encounter (the
+        # biller is appealing a finding from this audit) and pull
+        # the matching finding from its findings list.
+        real_audit = _latest_real_audit_for(encounter_id)
+        if real_audit is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"no audit found for {encounter_id!r}; "
+                       "upload + audit a claim first",
+            )
+        target_finding = None
+        for f in real_audit.get("findings", []):
+            if finding_id and f.get("finding_id") == finding_id:
+                target_finding = f
+                break
+        if target_finding is None and rule_id:
+            for f in real_audit.get("findings", []):
+                rid = f.get("rule_id") or (
+                    f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
+                )
+                if rid == rule_id:
+                    target_finding = f
+                    break
+        if target_finding is None:
+            key = f"finding_id={finding_id!r}" if finding_id else f"rule_id={rule_id!r}"
+            raise HTTPException(
+                status_code=404,
+                detail=f"{key} not in the most recent audit",
+            )
+        zctx = real_audit.get("zorva_context") or {}
+        # Build a minimal encounter dict the generator can consume.
+        # The clinical_note isn't persisted to upload_jobs.jsonl yet
+        # (v0 only stores the audit result), so the generator gets
+        # the finding's quote as a stand-in for the note text. v1:
+        # persist the clinical_note alongside the audit result.
+        clinical_note = target_finding.get("quote", "")
+        encounter_for_letter = {
+            "encounter_id": encounter_id,
+            "claim": {
+                "encounter_id": encounter_id,
+                "date_of_service": "",
+                "line_items": [],
+            },
+        }
+        # Use the LLM client. The generator wants a free-text
+        # completion (no JSON schema constraint — the prose is
+        # markdown), so we use complete() not complete_json(). v0
+        # falls through to a template-only letter if the LLM call
+        # fails.
+        llm_client = LLMClient()
+        def llm_complete(prompt: str) -> str:
+            response = llm_client.complete(
+                messages=[{"role": "user", "content": prompt}],
+            )
+            # litellm returns a dict with the OpenAI response shape;
+            # pull the content string out of the first choice.
+            return (response.get("choices", [{}])[0]
+                          .get("message", {})
+                          .get("content", ""))
+
+        try:
+            letter = generate_appeal_letter(
+                finding=target_finding,
+                encounter=encounter_for_letter,
+                clinical_note=clinical_note,
+                denial_reason=denial_reason,
+                zorva_context=zctx,
+                llm_complete=llm_complete,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"appeal-letter generation failed: {e}",
+            )
+        if letter is None:
+            raise HTTPException(
+                status_code=500,
+                detail="appeal-letter generation returned no result",
+            )
+        # Log metadata only (body already PHI-scrubbed by the generator).
+        log_appeal_letter(letter, encounter_id)
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "finding_id": finding_id,
+            "letter": letter,
+        })
+
     # -------------------------------------------------------------------
     # /encounters/upload — staff upload portal
     # -------------------------------------------------------------------

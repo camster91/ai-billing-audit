@@ -105,6 +105,9 @@
           {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
           {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
           <span class="grow"></span>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-toggle" data-finding-id="{{ f.finding_id }}">
+            Appeal denial
+          </button>
           <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-toggle" data-finding-id="{{ f.finding_id }}">
             Dismiss
           </button>
@@ -151,6 +154,41 @@
               Confirm dismiss
             </button>
           </div>
+        </form>
+        {# Inline appeal form: collapsed by default, expands when the
+           "Appeal denial" button is clicked. Asks for the payer's
+           denial reason and generates a letter. #}
+        <form
+          class="appeal-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/appeal"
+          hidden
+        >
+          <input type="hidden" name="rule_id" value="{{ f.rule_id }}">
+          <label class="dismiss-form__label">
+            Why did the payer deny this claim?
+            <input
+              type="text"
+              name="denial_reason"
+              class="dismiss-form__input"
+              maxlength="500"
+              required
+              placeholder="e.g. Modifier -25 not supported without separate documentation"
+            />
+          </label>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Generate appeal letter
+            </button>
+          </div>
+          <div
+            class="appeal-letter-output muted small mono"
+            data-finding-id="{{ f.finding_id }}"
+            hidden
+          ></div>
         </form>
       </li>
     {% endfor %}
@@ -228,11 +266,34 @@
       // the page and replacing the action bar's adjacent section.
       window.location.reload();
     }
+    // Toggle buttons: dismiss-toggle / appeal-toggle expand the
+    // inline form; dismiss-cancel / appeal-cancel collapse it.
     document.querySelectorAll('[data-action]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var action = btn.dataset.action;
-        var endpoint = btn.dataset.endpoint;
         var findingId = btn.dataset.findingId;
+        if (action === 'dismiss-toggle') {
+          var form = document.querySelector('.dismiss-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
+        }
+        if (action === 'dismiss-cancel') {
+          var form = document.querySelector('.dismiss-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        if (action === 'appeal-toggle') {
+          var form = document.querySelector('.appeal-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
+        }
+        if (action === 'appeal-cancel') {
+          var form = document.querySelector('.appeal-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        // Action-bar buttons: accept-all, rerun, flag
+        var endpoint = btn.dataset.endpoint;
         var body = null;
         if (action === 'dismiss') body = {finding_id: findingId};
         btn.disabled = true;
@@ -254,6 +315,67 @@
         }).catch(function (err) {
           btn.disabled = false;
           if (window.showToast) window.showToast("Network error: " + err);
+        });
+      });
+    });
+    // Inline dismiss-form submit: POSTs the reason to /encounter/{id}/dismiss
+    document.querySelectorAll('.dismiss-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var body = {
+          finding_id: findingId,
+          reason_category: fd.get('reason_category') || '',
+          reason_text: fd.get('reason_text') || '',
+        };
+        form.querySelector('button[type="submit"]').disabled = true;
+        post(endpoint, body).then(function (resp) {
+          form.querySelector('button[type="submit"]').disabled = false;
+          if (resp && resp.ok) {
+            if (window.showToast) window.showToast(
+              "Dismissed " + resp.finding_id + " (category: " +
+              (resp.reason_category || 'none') + ")."
+            );
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Dismiss failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        });
+      });
+    });
+    // Inline appeal-form submit: POSTs the denial reason to /encounter/{id}/appeal,
+    // then renders the returned letter in the .appeal-letter-output div
+    document.querySelectorAll('.appeal-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        // The LLM often emits empty finding_id and a non-empty
+        // rule_id, so we send both. The endpoint prefers finding_id
+        // and falls back to rule_id.
+        var ruleId = fd.get('rule_id') || '';
+        var body = {
+          finding_id: findingId,
+          rule_id: ruleId,
+          denial_reason: fd.get('denial_reason') || '',
+        };
+        var submit = form.querySelector('button[type="submit"]');
+        var output = form.querySelector('.appeal-letter-output');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok && resp.letter) {
+            if (window.showToast) window.showToast("Appeal letter generated (" + (resp.letter.template_only ? "template" : "LLM") + ").");
+            // Render the letter body inline; biller copies to clipboard
+            // or prints. v1: add a copy-to-clipboard button.
+            output.textContent = resp.letter.letter_markdown;
+            output.hidden = false;
+          } else {
+            if (window.showToast) window.showToast("Appeal generation failed: " + (resp.detail || JSON.stringify(resp)));
+          }
         });
       });
     });

@@ -634,3 +634,52 @@ main.page {
   justify-content: flex-end;
   margin-top: var(--space-2);
 }
+
+/* ---------- Inline review forms (dismiss + appeal) ---------- */
+.dismiss-form,
+.appeal-form {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dismiss-form__label,
+.appeal-form .dismiss-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-muted);
+}
+.dismiss-form__select,
+.dismiss-form__input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--font-size);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+.dismiss-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.appeal-letter-output {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  max-height: 360px;
+  overflow-y: auto;
+}
