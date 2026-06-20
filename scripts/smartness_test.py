@@ -141,6 +141,8 @@ class EncounterResult:
 
 def _score_encounter(
     enc: dict[str, Any],
+    *,
+    prompt_path: str | None = None,
 ) -> EncounterResult:
     eid = enc["encounter_id"]
     audit_input = {
@@ -154,8 +156,11 @@ def _score_encounter(
     gold = enc.get("ground_truth", [])
     t0 = time.time()
     err = None
+    kwargs: dict[str, Any] = {}
+    if prompt_path is not None:
+        kwargs["prompt_path"] = prompt_path
     try:
-        result = run_audit(audit_input)
+        result = run_audit(audit_input, **kwargs)
         preds = [
             {
                 "finding_id": f.finding_id,
@@ -422,6 +427,8 @@ def main() -> int:
                         help="Don't print per-encounter progress")
     parser.add_argument("--model", default=None,
                         help="Override LLM_MODEL for this run")
+    parser.add_argument("--prompt", default=None,
+                        help="Path to a non-default auditor prompt")
     args = parser.parse_args()
 
     if args.model:
@@ -443,7 +450,7 @@ def main() -> int:
 
     results: list[EncounterResult] = []
     for i, enc in enumerate(encounters):
-        r = _score_encounter(enc)
+        r = _score_encounter(enc, prompt_path=args.prompt)
         results.append(r)
         if not args.quiet:
             status = "OK" if not r.error else f"ERR ({r.error[:30]})"
