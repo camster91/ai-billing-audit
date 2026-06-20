@@ -683,3 +683,41 @@ main.page {
   max-height: 360px;
   overflow-y: auto;
 }
+
+
+/* ---------- Denial-risk score ---------- */
+.denial-risk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--font-size);
+}
+.denial-risk__pct {
+  font-size: var(--font-size-xl, 1.5rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.denial-risk__label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-muted);
+}
+.denial-risk__top {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-muted);
+}
+.denial-risk--low .denial-risk__pct { color: var(--color-clean); }
+.denial-risk--medium .denial-risk__pct { color: var(--sev-medium); }
+.denial-risk--high .denial-risk__pct { color: var(--sev-high); }
+.denial-risk--critical {
+  border-color: var(--color-flag);
+  background: var(--color-flag-soft);
+}
+.denial-risk--critical .denial-risk__pct { color: var(--color-flag); }

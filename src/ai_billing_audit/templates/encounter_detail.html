@@ -73,6 +73,27 @@
     {% else %}
       <p class="muted">No summary recorded.</p>
     {% endif %}
+    {# Denial-risk score. Computed from the LLM's findings using
+       severity weights + rule-family multipliers. The tier
+       (low / medium / high / critical) drives the colour and
+       the call-to-action. v0: heuristic weights. v1: logistic
+       regression on the first pilot clinic's historical denial
+       log. #}
+    {% if denial_risk %}
+      <div class="denial-risk denial-risk--{{ denial_risk.tier }}">
+        <span class="denial-risk__pct">{{ (denial_risk.denial_probability * 100) | round(1) }}%</span>
+        <span class="denial-risk__label">denial risk ({{ denial_risk.tier }})</span>
+        {% if denial_risk.top_risk %}
+          <span class="denial-risk__top">
+            top risk:
+            {% if denial_risk.top_risk.rule_id %}
+              <span class="mono">{{ denial_risk.top_risk.rule_id }}</span>
+            {% endif %}
+            ({{ (denial_risk.top_risk.risk * 100) | round(1) }}%)
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
     <div class="audit-card__chips mt-2">
       {% if findings|length == 0 %}
         <span class="badge badge-clean">0 findings</span>

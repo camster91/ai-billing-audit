@@ -434,6 +434,26 @@ def create_app() -> FastAPI:
             # n_findings badge reflects what the biller would actually
             # see in the detail page.
             min_sev = _min_severity_threshold()
+            # Score denial risk from the gold findings. Demo cards
+            # get a deterministic score that mirrors what the biller
+            # sees when they click through.
+            visible_for_card = []
+            if record is not None:
+                visible_for_card = [
+                    f for f in _finding_dicts(record)
+                    if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+                ]
+            from .denial_risk import compute_denial_risk
+            if visible_for_card:
+                card_risk = compute_denial_risk(
+                    visible_for_card, min_severity=min_sev
+                )
+            else:
+                card_risk = {
+                    "denial_probability": 0.0,
+                    "tier": "low",
+                    "top_risk": None,
+                }
             cards.append(
                 {
                     "encounter_id": entry.encounter_id,
@@ -442,6 +462,7 @@ def create_app() -> FastAPI:
                     "is_flagged": bool(record.get("is_flagged")) if record else False,
                     "n_findings": n_findings,
                     "available": record is not None,
+                    "denial_risk": card_risk,
                 }
             )
         # Filter chips (counts) and clean-rate hero (metrics). Both
@@ -547,6 +568,14 @@ def create_app() -> FastAPI:
             ]
             hidden_count = len(findings) - len(visible_findings)
             real_audit = _latest_real_audit_for(encounter_id)
+            # Score denial risk from the visible findings. Demo
+            # encounters don't get a separate real-audit risk score
+            # because the gold findings are deterministic; we
+            # score from the same finding list the page shows.
+            from .denial_risk import compute_denial_risk
+            denial_risk = compute_denial_risk(
+                visible_findings, min_severity=min_sev
+            )
             return templates.TemplateResponse(
                 request,
                 "encounter_detail.html",
@@ -565,6 +594,7 @@ def create_app() -> FastAPI:
                     "min_severity": min_sev,
                     "real_audit": real_audit,
                     "is_uploaded_encounter": False,
+                    "denial_risk": denial_risk,
                 },
             )
 
@@ -587,6 +617,14 @@ def create_app() -> FastAPI:
             if SEVERITY_RANK.get(str(f.get("severity", "info")).lower(), 0) >= min_sev
         ]
         hidden_count = len(uploaded_findings) - len(visible_uploaded)
+        # Score denial risk. For uploaded encounters this is the
+        # REAL risk — it's the LLM's actual findings from the
+        # clinic's data, not the demo's gold findings. This is
+        # the number the biller actually cares about.
+        from .denial_risk import compute_denial_risk
+        denial_risk = compute_denial_risk(
+            uploaded_findings, min_severity=min_sev
+        )
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
@@ -610,6 +648,7 @@ def create_app() -> FastAPI:
                 "real_audit": uploaded_audit,
                 "is_uploaded_encounter": True,
                 "zorva_context": uploaded_audit.get("zorva_context"),
+                "denial_risk": denial_risk,
             },
         )
         real_audit = _latest_real_audit_for(encounter_id)
