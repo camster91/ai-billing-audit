@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Activity — ai-billing-audit{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Activity</h1>
+    <p class="sub">All reviewer actions across every encounter audit, in chronological order. Every row is part of a SHA-256 hash chain — retroactive edits break the chain.</p>
+  </div>
+  <a class="btn btn-ghost" href="/activity">Refresh</a>
+</div>
+
+{% if items %}
+  <table class="audit-trail-table">
+    <thead>
+      <tr>
+        <th style="width: 180px;">When</th>
+        <th style="width: 200px;">Action</th>
+        <th style="width: 200px;">Encounter</th>
+        <th>Details</th>
+        <th style="width: 160px;">Signature</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td class="muted small mono">{{ item.timestamp }}</td>
+          <td>{{ item.action }}</td>
+          <td>
+            {% set enc_id = item.encounter_id or item.data_elements.encounter_id %}
+            {% if enc_id %}
+              <a class="mono" href="/encounter/{{ enc_id }}">{{ enc_id }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="muted small mono">
+            {% set nf = item.n_findings if item.n_findings != "" else item.data_elements.n_findings %}
+            {% if nf is defined and nf != "" %}{{ nf }} finding{{ "s" if nf != 1 else "" }}{% endif %}
+          </td>
+          <td class="hash" title="First 16 chars of the SHA-256 chain signature">{{ item.cryptographic_signature[:16] if item.cryptographic_signature else "" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted small mt-4">{{ n_events }} event{{ "" if n_events == 1 else "s" }} recorded.</p>
+{% else %}
+  <div class="empty-state">
+    <h2>No activity yet</h2>
+    <p>Once you upload an 837P and start accepting or dismissing findings, every reviewer action will appear here with its hash-chain signature.</p>
+    <div class="actions">
+      <a class="btn btn-primary btn-lg" href="/encounters/upload">Upload an 837P file</a>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

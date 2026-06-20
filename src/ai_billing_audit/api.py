@@ -352,10 +352,17 @@ def create_app() -> FastAPI:
         Returns a small dict (job_id, findings, summary, etc.) or None
         if no match. Used by the index and encounter-detail handlers
         to surface live LLM audit results alongside the demo cards.
+
+        Log path is configurable via the UPLOAD_AUDIT_LOG_PATH env
+        var so tests can point at a tmp file. Default is the
+        production path inside the container.
         """
         try:
             from pathlib import Path as _P
-            log_path = _P("/app/logs/upload_jobs.jsonl")
+            log_path = _P(os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH",
+                "/app/logs/upload_jobs.jsonl",
+            ))
             if not log_path.is_file():
                 return None
             with log_path.open() as fh:
@@ -492,60 +499,104 @@ def create_app() -> FastAPI:
 
     @app.get("/encounter/{encounter_id}", response_class=HTMLResponse)
     def encounter_detail(request: Request, encounter_id: str) -> HTMLResponse:
+        """Render the encounter detail page.
+
+        Three lookup paths, in order:
+        1. Demo registry (encounters registered in demo_entries.py)
+        2. Real uploaded encounter with a completed audit (reads
+           /app/logs/upload_jobs.jsonl for the most recent audit
+           for this encounter_id)
+        3. 404 if neither
+
+        The detail template is shared across all three; demo
+        encounters use gold-ground-truth findings, uploaded
+        encounters use real-LLM-audit findings.
+        """
         demo = get_demo_encounter(encounter_id)
-        if demo is None:
+        if demo is not None:
+            record = load_encounter_record(encounter_id)
+            if record is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"encounter {encounter_id!r} is registered but the "
+                        "underlying record could not be located in data/val.json "
+                        "or data/train.json."
+                    ),
+                )
+            findings = _finding_dicts(record)
+            min_sev = _min_severity_threshold()
+            visible_findings = [
+                f for f in findings
+                if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+            ]
+            hidden_count = len(findings) - len(visible_findings)
+            real_audit = _latest_real_audit_for(encounter_id)
+            return templates.TemplateResponse(
+                request,
+                "encounter_detail.html",
+                {
+                    "encounter_id": encounter_id,
+                    "difficulty": demo.difficulty,
+                    "summary": demo.summary,
+                    "is_flagged": record.get("is_flagged", False),
+                    "clinical_note": record.get("clinical_note", ""),
+                    "claim": record.get("claim", {}),
+                    "rules": record.get("rules", []),
+                    "findings": visible_findings,
+                    "n_findings": len(visible_findings),
+                    "n_findings_total": len(findings),
+                    "n_findings_hidden": hidden_count,
+                    "min_severity": min_sev,
+                    "real_audit": real_audit,
+                    "is_uploaded_encounter": False,
+                },
+            )
+
+        # Path 2: uploaded encounter. Look up the most recent audit
+        # for this encounter_id in the upload-jobs JSONL log.
+        uploaded_audit = _latest_real_audit_for(encounter_id)
+        if uploaded_audit is None:
             raise HTTPException(
                 status_code=404,
                 detail=(
                     f"encounter {encounter_id!r} is not registered on the "
-                    "demo dashboard. Use one of the registered ids."
+                    "demo dashboard, and no completed audit was found "
+                    "for it in the upload history."
                 ),
             )
-        record = load_encounter_record(encounter_id)
-        if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    f"encounter {encounter_id!r} is registered but the "
-                    "underlying record could not be located in data/val.json "
-                    "or data/train.json."
-                ),
-            )
-        findings = _finding_dicts(record)
-        # Apply the per-tenant severity threshold. Findings with
-        # severity BELOW the threshold are hidden from the detail
-        # view but counted in n_findings_total so the biller knows
-        # there are hidden ones.
+        uploaded_findings = uploaded_audit.get("findings", []) or []
         min_sev = _min_severity_threshold()
-        visible_findings = [
-            f for f in findings
-            if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+        visible_uploaded = [
+            f for f in uploaded_findings
+            if SEVERITY_RANK.get(str(f.get("severity", "info")).lower(), 0) >= min_sev
         ]
-        hidden_count = len(findings) - len(visible_findings)
-        # If the demo encounter has a real-audit run on the live URL
-        # (matches by encounter_id), surface that as a sidebar. The
-        # JSONL log lists every job; we walk back to the most recent
-        # "done" line that matches this id and has audit_status=ok.
-        real_audit = _latest_real_audit_for(encounter_id)
+        hidden_count = len(uploaded_findings) - len(visible_uploaded)
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
             {
                 "encounter_id": encounter_id,
-                "difficulty": demo.difficulty,
-                "summary": demo.summary,
-                "is_flagged": record.get("is_flagged", False),
-                "clinical_note": record.get("clinical_note", ""),
-                "claim": record.get("claim", {}),
-                "rules": record.get("rules", []),
-                "findings": visible_findings,
-                "n_findings": len(visible_findings),
-                "n_findings_total": len(findings),
+                "difficulty": uploaded_audit.get("difficulty_tier", ""),
+                "summary": uploaded_audit.get("summary", ""),
+                "is_flagged": bool(uploaded_findings),
+                "clinical_note": "",
+                "claim": {
+                    "encounter_id": encounter_id,
+                    "line_items": [],
+                    "diagnosis_codes": [],
+                },
+                "rules": [],
+                "findings": visible_uploaded,
+                "n_findings": len(visible_uploaded),
+                "n_findings_total": len(uploaded_findings),
                 "n_findings_hidden": hidden_count,
                 "min_severity": min_sev,
-                "real_audit": real_audit,
+                "real_audit": uploaded_audit,
+                "is_uploaded_encounter": True,
             },
         )
+        real_audit = _latest_real_audit_for(encounter_id)
 
     @app.get("/encounter/{encounter_id}/json")
     def encounter_json(encounter_id: str) -> JSONResponse:

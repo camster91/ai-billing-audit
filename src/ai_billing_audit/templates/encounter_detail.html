@@ -1,236 +1,217 @@
 {% extends "base.html" %}
-{% block title %}{{ encounter_id }} — audit panel{% endblock %}
+{% block title %}{{ encounter_id }} — audit{% endblock %}
 {% block content %}
-<section class="page-head">
-  <p class="crumbs"><a href="/">all encounters</a> &rsaquo; {{ encounter_id }}</p>
-  <h1>
-    <span class="encounter-id">{{ encounter_id }}</span>
-    <span class="badge badge--{{ difficulty|lower }}">{{ difficulty }}</span>
-    {% if is_flagged %}
-      <span class="badge badge--flag">flagged</span>
-    {% else %}
-      <span class="badge badge--clean">clean</span>
+
+<div class="page-head">
+  <div>
+    <p class="sub"><a href="/">&larr; Back to audits</a></p>
+    <h1 style="margin: 0;">
+      <span class="mono">{{ encounter_id }}</span>
+      {% if is_uploaded_encounter %}
+        <span class="badge badge-uploaded">Uploaded</span>
+      {% endif %}
+      {% if is_flagged %}
+        <span class="badge badge-flagged">Flagged</span>
+      {% else %}
+        <span class="badge badge-clean">Clean</span>
+      {% endif %}
+    </h1>
+    {% if difficulty or source or job_id %}
+    <p class="sub mono">
+      {% if difficulty %}{{ difficulty }}{% endif %}
+      {% if source %} &middot; via {{ source }}{% endif %}
+      {% if job_id %} &middot; job <a href="/encounter/{{ encounter_id }}/json">{{ job_id[:8] }}</a>{% endif %}
+    </p>
     {% endif %}
-  </h1>
-  <p class="muted">{{ summary }}</p>
-</section>
+  </div>
+  <div class="row">
+    <span class="muted small">Ran {{ time_ago }}</span>
+  </div>
+</div>
 
-<section class="panel">
-  <h2>Clinical note</h2>
-  {% if findings and findings[0].quote %}
-    <p class="clinical-note">
-      {{ clinical_note | highlight_quote(findings[0].quote) }}
-    </p>
-    <p class="muted small">
-      Highlighted span is the evidence quote for finding
-      <code class="finding-id">{{ findings[0].finding_id }}</code> (rule
-      <code class="rule-id">{{ findings[0].rule_id }}</code>).
-    </p>
-  {% else %}
-    <p class="clinical-note">{{ clinical_note }}</p>
-    <p class="muted small">No evidence quote on the primary finding.</p>
-  {% endif %}
-</section>
-
-<section class="panel-grid">
-  <section class="panel">
-    <h2>Claim</h2>
-    <dl class="kv">
-      <dt>CPT codes</dt>
-      <dd>
-        {% if claim.cpt_codes %}
-          {% for c in claim.cpt_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
-        {% else %}
-          <span class="muted">none billed</span>
-        {% endif %}
-      </dd>
-      <dt>ICD-10 codes</dt>
-      <dd>
-        {% if claim.icd10_codes %}
-          {% for c in claim.icd10_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
-        {% else %}
-          <span class="muted">none</span>
-        {% endif %}
-      </dd>
-    </dl>
+<div class="detail-grid">
+  <section class="card">
+    <h2 style="margin-top: 0;">Claim</h2>
+    {% if claim.cpt_codes or claim.dx_codes %}
+      <div class="detail-row">
+        <div class="detail-label">CPT</div>
+        <div class="detail-value mono">{{ claim.cpt_codes|join(" &middot; ") or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">ICD-10</div>
+        <div class="detail-value mono">{{ claim.dx_codes|join(" &middot; ") or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Patient</div>
+        <div class="detail-value">{{ claim.patient_id or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Provider NPI</div>
+        <div class="detail-value mono">{{ claim.npi or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Date of service</div>
+        <div class="detail-value">{{ claim.date_of_service or "—" }}</div>
+      </div>
+    {% else %}
+      <p class="muted">No claim data parsed. This audit ran against a paste-form or a non-837P input.</p>
+    {% endif %}
   </section>
 
-  <section class="panel">
-    <h2>Retrieved rules</h2>
-    {% if rules %}
-      <ul class="rule-list">
-        {% for r in rules %}
-        <li>
-          <code class="rule-id">{{ r.rule_id }}</code>
-          <span class="rule-cat">{{ r.category }}</span>
-          <span class="badge badge--{{ r.severity|lower }}">{{ r.severity }}</span>
-          <p class="rule-trigger">{{ r.trigger }}</p>
-        </li>
+  <section class="card">
+    <h2 style="margin-top: 0;">Audit summary</h2>
+    {% if summary %}
+      <p style="font-size: var(--font-size-lg); line-height: 1.5;">{{ summary }}</p>
+    {% else %}
+      <p class="muted">No summary recorded.</p>
+    {% endif %}
+    <div class="audit-card__chips mt-2">
+      {% if findings|length == 0 %}
+        <span class="badge badge-clean">0 findings</span>
+      {% else %}
+        <span class="badge badge-flagged">{{ findings|length }} finding{{ "" if findings|length == 1 else "s" }}</span>
+        {% for f in findings %}
+          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
         {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No rules retrieved for this encounter.</p>
-    {% endif %}
+      {% endif %}
+    </div>
   </section>
-</section>
+</div>
 
-<section class="panel">
-  <h2>Ground-truth findings <span class="muted small">({{ n_findings }})</span></h2>
-  {% if findings %}
-    <ul class="finding-list">
-      {% for f in findings %}
-      <li class="finding finding--{{ f.severity|lower }}">
-        <div class="finding__head">
-          <code class="finding-id">{{ f.finding_id }}</code>
-          <span class="badge badge--{{ f.severity|lower }}">{{ f.severity }}</span>
-          <span class="badge badge--cat">{{ f.category }}</span>
-          <code class="rule-id rule-id-inline">rule: {{ f.rule_id }}</code>
-          {% if f.suggested_is_verdict %}
-            <span class="suggested suggested--verdict suggested--verdict-{{ f.suggested_verdict }}">{{ f.suggested_code }}</span>
-          {% else %}
-            <code class="suggested">suggested: {{ f.suggested_code }}</code>
-          {% endif %}
+{% if findings %}
+<section class="section">
+  <h2>Findings ({{ findings|length }})</h2>
+  {% if n_findings_hidden %}
+    <p class="muted small" style="margin: 0 0 var(--space-3);">
+      Showing {{ findings|length }} of {{ n_findings_total }} findings.
+      {{ n_findings_hidden }} below the severity threshold are hidden.
+      Set <code>MIN_SEVERITY_TO_SHOW=info</code> in the env to see them.
+    </p>
+  {% endif %}
+  <ul class="finding-list">
+    {% for f in findings %}
+      <li class="finding-item" id="finding-{{ f.finding_id }}">
+        <div class="finding-item__head">
+          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
+          {% if f.category %}<span class="badge badge-neutral">{{ f.category }}</span>{% endif %}
+          {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
+          {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
+          <span class="grow"></span>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss" data-finding-id="{{ f.finding_id }}">
+            Dismiss
+          </button>
         </div>
-        <blockquote class="finding-quote">{{ f.quote }}</blockquote>
-        <div class="finding__actions">
-          <button type="button" class="btn btn--ghost" data-action="copy-quote"
-                  data-finding-id="{{ f.finding_id }}">copy quote</button>
-          <button type="button" class="btn btn--ghost" data-action="scroll-to-note"
-                  data-finding-id="{{ f.finding_id }}">show in note</button>
-        </div>
+        {% if f.quote %}
+          <div class="finding-item__quote">&ldquo;{{ f.quote }}&rdquo;</div>
+        {% endif %}
+        {% if f.explanation %}
+          <p class="finding-item__explain">{{ f.explanation }}</p>
+        {% endif %}
       </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if clinical_note %}
+<section class="section">
+  <h2>Clinical note</h2>
+  <pre class="clinical-note">{{ clinical_note }}</pre>
+</section>
+{% endif %}
+
+<div class="action-bar">
+  <button class="btn btn-primary" data-action="accept-all" data-endpoint="/encounter/{{ encounter_id }}/accept-all"
+          {% if findings|length == 0 %}disabled{% endif %}>
+    Accept all {{ findings|length }} finding{{ "" if findings|length == 1 else "s" }}
+  </button>
+  <button class="btn btn-ghost" data-action="rerun" data-endpoint="/encounter/{{ encounter_id }}/rerun">
+    Re-run audit
+  </button>
+  <button class="btn btn-ghost" data-action="flag" data-endpoint="/encounter/{{ encounter_id }}/flag">
+    Flag for review
+  </button>
+  <span class="grow"></span>
+  <a class="btn btn-ghost" href="/encounter/{{ encounter_id }}/json">View raw JSON</a>
+</div>
+
+{% if audit_trail %}
+<section class="section">
+  <h2>Audit trail <span class="muted small">({{ audit_trail|length }} event{{ "" if audit_trail|length == 1 else "s" }})</span></h2>
+  <table class="audit-trail-table">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Action</th>
+        <th>Details</th>
+        <th>Signature</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in audit_trail %}
+        <tr>
+          <td class="muted small mono">{{ row.timestamp }}</td>
+          <td>{{ row.action|replace("_", " ")|title }}</td>
+          <td class="muted small mono">
+            {% if row.data_elements.n_findings is defined %}{{ row.data_elements.n_findings }} finding{{ "s" if row.data_elements.n_findings != 1 else "" }}{% endif %}
+            {% if row.data_elements.finding_id is defined and row.data_elements.finding_id %} finding={{ row.data_elements.finding_id }}{% endif %}
+          </td>
+          <td class="hash" title="{{ row.cryptographic_signature }}">{{ row.cryptographic_signature[:16] }}…</td>
+        </tr>
       {% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">No ground-truth findings for this encounter.</p>
-  {% endif %}
+    </tbody>
+  </table>
 </section>
+{% endif %}
 
-<section class="panel panel--actions">
-  <h2>Actions</h2>
-  <div class="action-row">
-    <a class="btn btn--primary" href="/">back to index</a>
-    <a class="btn btn--ghost" href="/encounter/{{ encounter_id }}/json">view raw json</a>
-    <button type="button" class="btn btn--ghost" id="btn-toggle-mark">toggle evidence highlight</button>
-  </div>
-  {% if difficulty == "HARD" %}
-  {# Advanced actions are unique to hard encounters — they are only
-     meaningful when the audit panel has many findings across many
-     categories, which is the hard-tier complexity band. #}
-  <div class="action-row action-row--hard">
-    <span class="action-row__label">Advanced (hard tier):</span>
-    <button type="button" class="btn btn--hard" id="btn-jump-high"
-            data-target-severity="high">jump to high-severity finding</button>
-    <button type="button" class="btn btn--hard" id="btn-next-finding">next finding</button>
-    <button type="button" class="btn btn--hard" id="btn-severity-filter"
-            data-severity="all">filter: all</button>
-  </div>
-  {% endif %}
-</section>
+{% endblock %}
 
+{% block scripts %}
 <script>
-  // Three tiny, dependency-free interactions. Each button is real
-  // (no disabled state) and writes to the DOM — the visual-qa pass
-  // (kanban t_e88a2734) verifies that the buttons produce a visible
-  // effect and don't throw.
   (function () {
-    var noteEl = document.querySelector(".clinical-note");
-    var copyButtons = document.querySelectorAll('[data-action="copy-quote"]');
-    copyButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var fid = btn.getAttribute("data-finding-id");
-        var li = btn.closest(".finding");
-        var quote = li ? li.querySelector(".finding-quote") : null;
-        var text = quote ? quote.textContent : "";
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () {
-            btn.textContent = "copied " + fid;
-            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
-          }, function () {
-            btn.textContent = "copy failed";
-            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
-          });
-        } else {
-          btn.textContent = "copied " + fid;
-          setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
-        }
-      });
-    });
-    var scrollButtons = document.querySelectorAll('[data-action="scroll-to-note"]');
-    scrollButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (noteEl) {
-          noteEl.scrollIntoView({ behavior: "smooth", block: "center" });
-          noteEl.classList.add("flash");
-          setTimeout(function () { noteEl.classList.remove("flash"); }, 1200);
-        }
-      });
-    });
-    var toggleBtn = document.getElementById("btn-toggle-mark");
-    if (toggleBtn && noteEl) {
-      toggleBtn.addEventListener("click", function () {
-        noteEl.classList.toggle("evidence-off");
-        var marks = noteEl.querySelectorAll("mark.evidence");
-        marks.forEach(function (m) { m.classList.toggle("evidence-off"); });
-      });
+    // Each [data-action] button POSTs to its endpoint, shows a
+    // toast on success, and refreshes the audit trail table.
+    function post(url, body) {
+      return fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: body ? JSON.stringify(body) : null,
+      }).then(function (r) { return r.json(); });
     }
-
-    // --- Advanced actions (hard tier only) ----------------------------
-    // These buttons only render when difficulty is HARD — see the
-    // conditional block in the actions panel above. Each handler is
-    // real (writes to the DOM, scrolls, or toggles a class) and never
-    // throws. The visual-qa pass verifies they produce a visible effect.
-    var findingEls = Array.prototype.slice.call(
-      document.querySelectorAll(".finding")
-    );
-    var nextIdx = 0;
-    var nextBtn = document.getElementById("btn-next-finding");
-    if (nextBtn) {
-      nextBtn.addEventListener("click", function () {
-        if (!findingEls.length) return;
-        // Drop the active class on the previous one.
-        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
-        var el = findingEls[nextIdx % findingEls.length];
-        el.classList.add("finding--active");
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        nextIdx += 1;
-      });
+    function refreshTrail() {
+      // Reload just the audit trail + audit summary by re-fetching
+      // the page and replacing the action bar's adjacent section.
+      window.location.reload();
     }
-    var jumpHighBtn = document.getElementById("btn-jump-high");
-    if (jumpHighBtn) {
-      jumpHighBtn.addEventListener("click", function () {
-        var target = null;
-        for (var i = 0; i < findingEls.length; i++) {
-          if (findingEls[i].classList.contains("finding--high")) {
-            target = findingEls[i];
-            break;
+    document.querySelectorAll('[data-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = btn.dataset.action;
+        var endpoint = btn.dataset.endpoint;
+        var findingId = btn.dataset.findingId;
+        var body = null;
+        if (action === 'dismiss') body = {finding_id: findingId};
+        btn.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          btn.disabled = false;
+          if (resp && resp.ok) {
+            var msg = {
+              'accept-all': "Accepted " + resp.n_accepted + " finding" + (resp.n_accepted === 1 ? "" : "s") + ".",
+              'rerun': "Re-run queued. Reload in a few seconds.",
+              'flag': "Flagged for review.",
+              'dismiss': "Dismissed finding " + resp.finding_id + "."
+            }[action] || 'Action recorded.';
+            if (window.showToast) window.showToast(msg);
+            // Refresh the page so the audit trail table updates.
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Action failed: " + (resp.detail || JSON.stringify(resp)));
           }
-        }
-        if (!target) return;
-        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
-        target.classList.add("finding--active");
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }).catch(function (err) {
+          btn.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
       });
-    }
-    var filterBtn = document.getElementById("btn-severity-filter");
-    if (filterBtn) {
-      var severities = ["all", "critical", "high", "medium", "low", "info"];
-      var fIdx = 0;
-      filterBtn.addEventListener("click", function () {
-        fIdx = (fIdx + 1) % severities.length;
-        var sev = severities[fIdx];
-        filterBtn.setAttribute("data-severity", sev);
-        filterBtn.textContent = "filter: " + sev;
-        if (sev === "all") {
-          findingEls.forEach(function (el) { el.style.display = ""; });
-        } else {
-          findingEls.forEach(function (el) {
-            var elSev = (el.className.match(/finding--(critical|high|medium|low|info)/) || [])[1];
-            el.style.display = (elSev === sev) ? "" : "none";
-          });
-        }
-      });
-    }
+    });
   })();
 </script>
 {% endblock %}
