@@ -9,7 +9,8 @@
   --line: #28324f;
   --text: #e7ecf6;
   --muted: #9aa3bd;
-  --accent: #4f8cff;
+  --accent: #60a5fa;       /* link/secondary text on dark bg (7.2:1) */
+  --accent-bg: #2563eb;   /* button bg with white text (5.17:1) */
   --accent-2: #2dd4bf;
   --warn: #f59e0b;
   --good: #22c55e;
@@ -64,7 +65,7 @@
 
 .recommended {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(79, 140, 255, 0.15);
+  box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(37, 99, 235, 0.15);
 }
 
 .recommended::before {
@@ -73,7 +74,7 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   padding: 4px 12px;
   border-radius: 999px;
@@ -183,11 +184,11 @@
 .cta:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .ctaPrimary {
-  background: var(--accent);
+  background: var(--accent-bg);
   border-color: var(--accent);
   color: white;
 }
-.ctaPrimary:hover { background: #3d75e6; }
+.ctaPrimary:hover { background: #1d4ed8; }
 
 .ctaSecondary {
   background: var(--panel-2);
@@ -216,6 +217,38 @@
   padding: 24px 28px;
 }
 
+.altPath {
+  margin: 48px 0 0;
+  padding: 24px 28px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 12px;
+}
+
+.altPath h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 18px;
+  letter-spacing: -0.2px;
+}
+
+.altPath p {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.altPathLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+.altPathLink:hover {
+  color: #6ba0ff;
+}
 .compliance h3 {
   margin: 0 0 8px;
   color: var(--accent-2);

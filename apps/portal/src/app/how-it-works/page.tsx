@@ -26,6 +26,14 @@ export default function HowItWorksPage() {
           read by an AI auditor first. Your team reviews what it finds.
           Nothing goes out the door unchecked.
         </p>
+        <div className={styles.ctaRow}>
+          <Link href="/contact" className={styles.ctaButton}>
+            Book a 15-min walkthrough
+          </Link>
+          <Link href="/pricing" className={styles.ctaSecondary}>
+            See pricing
+          </Link>
+        </div>
       </header>
 
       <main className={styles.main}>
@@ -137,17 +145,17 @@ export default function HowItWorksPage() {
 function ConnectIllustration() {
   return (
     <svg viewBox="0 0 240 120" fill="none" aria-hidden="true">
-      <rect x="8" y="20" width="64" height="80" rx="8" fill="#1a2340" stroke="#4f8cff" strokeWidth="1.5" />
+      <rect x="8" y="20" width="64" height="80" rx="8" fill="#1a2340" stroke="#2563eb" strokeWidth="1.5" />
       <text x="40" y="55" fill="#9aa3bd" fontSize="9" textAnchor="middle" fontFamily="sans-serif">
         EHR
       </text>
-      <text x="40" y="70" fill="#4f8cff" fontSize="8" textAnchor="middle" fontFamily="sans-serif" fontWeight="600">
+      <text x="40" y="70" fill="#2563eb" fontSize="8" textAnchor="middle" fontFamily="sans-serif" fontWeight="600">
         AdvMD
       </text>
       <text x="40" y="84" fill="#9aa3bd" fontSize="8" textAnchor="middle" fontFamily="sans-serif">
         Athena
       </text>
-      <line x1="72" y1="60" x2="168" y2="60" stroke="#4f8cff" strokeWidth="1.5" strokeDasharray="4 3" />
+      <line x1="72" y1="60" x2="168" y2="60" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="4 3" />
       <rect x="168" y="40" width="64" height="40" rx="6" fill="#1a2340" stroke="#2dd4bf" strokeWidth="1.5" />
       <text x="200" y="58" fill="#2dd4bf" fontSize="9" textAnchor="middle" fontFamily="sans-serif" fontWeight="600">
         SFTP
@@ -174,10 +182,10 @@ function AuditIllustration() {
       <line x1="14" y1="82" x2="80" y2="82" stroke="#28324f" strokeWidth="1" />
       <line x1="14" y1="90" x2="72" y2="90" stroke="#28324f" strokeWidth="1" />
 
-      <line x1="86" y1="60" x2="106" y2="60" stroke="#4f8cff" strokeWidth="1.5" />
+      <line x1="86" y1="60" x2="106" y2="60" stroke="#2563eb" strokeWidth="1.5" />
 
-      <rect x="106" y="14" width="60" height="92" rx="6" fill="#1a2340" stroke="#4f8cff" strokeWidth="1.5" />
-      <text x="136" y="28" fill="#4f8cff" fontSize="8" textAnchor="middle" fontFamily="sans-serif" fontWeight="600">
+      <rect x="106" y="14" width="60" height="92" rx="6" fill="#1a2340" stroke="#2563eb" strokeWidth="1.5" />
+      <text x="136" y="28" fill="#2563eb" fontSize="8" textAnchor="middle" fontFamily="sans-serif" fontWeight="600">
         AI AUDIT
       </text>
       <circle cx="118" cy="44" r="3" fill="#22c55e" />
@@ -197,7 +205,7 @@ function AuditIllustration() {
         missed chg
       </text>
 
-      <line x1="166" y1="60" x2="186" y2="60" stroke="#4f8cff" strokeWidth="1.5" />
+      <line x1="166" y1="60" x2="186" y2="60" stroke="#2563eb" strokeWidth="1.5" />
 
       <rect x="186" y="34" width="46" height="52" rx="6" fill="#1a2340" stroke="#28324f" strokeWidth="1" />
       <text x="209" y="48" fill="#9aa3bd" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
@@ -226,10 +234,10 @@ function ReviewIllustration() {
       <line x1="14" y1="84" x2="100" y2="84" stroke="#28324f" strokeWidth="1" />
       <line x1="14" y1="92" x2="96" y2="92" stroke="#28324f" strokeWidth="1" />
 
-      <line x1="118" y1="60" x2="122" y2="60" stroke="#4f8cff" strokeWidth="2" />
+      <line x1="118" y1="60" x2="122" y2="60" stroke="#2563eb" strokeWidth="2" />
 
-      <rect x="122" y="14" width="110" height="92" rx="6" fill="#1a2340" stroke="#4f8cff" strokeWidth="1" />
-      <text x="128" y="28" fill="#4f8cff" fontSize="7" fontFamily="sans-serif" fontWeight="600">
+      <rect x="122" y="14" width="110" height="92" rx="6" fill="#1a2340" stroke="#2563eb" strokeWidth="1" />
+      <text x="128" y="28" fill="#2563eb" fontSize="7" fontFamily="sans-serif" fontWeight="600">
         AI findings
       </text>
       <rect x="128" y="36" width="98" height="18" rx="3" fill="#131a2e" stroke="#f59e0b" strokeWidth="1" />

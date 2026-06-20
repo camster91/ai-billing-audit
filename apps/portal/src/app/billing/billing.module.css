@@ -89,7 +89,7 @@
 }
 
 .button {
-  background: #4f8cff;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
@@ -128,7 +128,7 @@
 
 .buttonSecondary:hover:not(:disabled) {
   color: #e7ecf6;
-  border-color: #4f8cff;
+  border-color: #2563eb;
 }
 
 .buttonSecondary:disabled {

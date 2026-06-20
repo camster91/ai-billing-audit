@@ -1,142 +1,179 @@
+/* / — marketing landing page styles.
+   Mirrors the dark blue gradient theme used by /pricing, /how-it-works,
+   /security, and /contact so the marketing surface feels like one
+   product, not four. */
+
 .page {
-  --background: #fafafa;
-  --foreground: #fff;
-
-  --text-primary: #000;
-  --text-secondary: #666;
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #60a5fa;       /* link/secondary text on dark bg (7.2:1) */
+  --accent-bg: #2563eb;   /* button bg with white text (5.17:1) */
+  --accent-2: #2dd4bf;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
   display: flex;
-  flex: 1;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-geist-sans);
-  background-color: var(--background);
 }
 
 .main {
-  display: flex;
   flex: 1;
   width: 100%;
-  max-width: 800px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  background-color: var(--foreground);
-  padding: 120px 60px;
-}
-
-.intro {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 80px 24px 64px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  gap: 56px;
+}
+
+.hero {
   text-align: left;
-  gap: 24px;
+  max-width: 720px;
 }
 
-.intro h1 {
-  max-width: 320px;
-  font-size: 40px;
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 12px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
-  text-wrap: balance;
-  color: var(--text-primary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.intro p {
-  max-width: 440px;
+.headline {
+  margin: 0 0 16px;
+  font-size: 44px;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.subhead {
+  margin: 0 0 28px;
   font-size: 18px;
-  line-height: 32px;
-  text-wrap: balance;
-  color: var(--text-secondary);
+  color: var(--muted);
+  max-width: 640px;
 }
 
-.intro a {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.ctas {
+.ctaRow {
   display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: 440px;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
+}
+
+.primary,
+.secondary {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.primary {
+  background: var(--accent-bg);
+  color: #ffffff;
+}
+
+.primary:hover {
+  background: #1d4ed8;
+}
+
+.secondary {
+  color: var(--accent);
+  border-color: rgba(37, 99, 235, 0.45);
+  background: transparent;
+}
+
+.secondary:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.pillar {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.pillar h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.pillar p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.altPath {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
   font-size: 14px;
 }
 
-.ctas a {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
+.altPath h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-a.primary {
-  background: var(--text-primary);
-  color: var(--background);
-  gap: 8px;
+.altPath p {
+  margin: 0;
 }
 
-a.secondary {
-  border-color: var(--button-secondary-border);
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
-  }
-
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
+.link:hover {
+  color: #6ba0ff;
 }
 
 @media (max-width: 600px) {
   .main {
-    padding: 48px 24px;
+    padding: 48px 16px;
+    gap: 40px;
   }
-
-  .intro {
-    gap: 16px;
-  }
-
-  .intro h1 {
+  .headline {
     font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
+    letter-spacing: -0.5px;
   }
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-
-  .page {
-    --background: #000;
-    --foreground: #000;
-
-    --text-primary: #ededed;
-    --text-secondary: #999;
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
+  .subhead {
+    font-size: 16px;
   }
 }

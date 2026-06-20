@@ -42,6 +42,14 @@ export default function SecurityPage() {
           short version. The PDF one-pager is for your privacy officer and
           your procurement team.
         </p>
+        <div className={styles.ctaRow}>
+          <Link href="/security.pdf" className={styles.ctaButton}>
+            Download the security one-pager
+          </Link>
+          <Link href="/contact" className={styles.ctaSecondary}>
+            Talk to security →
+          </Link>
+        </div>
       </header>
 
       <main className={styles.main} id="main">

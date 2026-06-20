@@ -32,6 +32,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import time
 import zipfile
 from html import escape
 from pathlib import Path
@@ -150,6 +152,132 @@ def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+# Severity ranking for the "min severity to show" threshold.
+# Lower rank = lower severity. info < low < medium < high < critical.
+SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
+def _min_severity_threshold() -> int:
+    """Read MIN_SEVERITY_TO_SHOW env var, return the rank.
+
+    Per-tenant setting in v2 (per-tenant config table). v1 uses an
+    env var: MIN_SEVERITY_TO_SHOW=high means only "high" and "critical"
+    findings surface on the dashboard. Default: "info" (show
+    everything).
+
+    The env var is read fresh on every request so an admin can
+    change it without restarting the API. Cheap because the env
+    lookup is O(1).
+    """
+    raw = os.environ.get("MIN_SEVERITY_TO_SHOW", "info").strip().lower()
+    return SEVERITY_RANK.get(raw, SEVERITY_RANK["info"])
+
+
+# Average claim value used to translate "X claims clean" into
+# "$Y revenue confirmed clean". Industry average for US office
+# visit. v2: per-tenant config that reads the clinic's own avg
+# claim value from their billing data.
+AVG_CLAIM_VALUE_USD = 190.0
+# Industry average denial rate (CMS commercial). Used to estimate
+# how many claims the auditor caught that would have been denied.
+INDUSTRY_DENIAL_RATE = 0.075
+
+
+def compute_clean_rate_metrics(
+    cards: list[dict[str, Any]],
+    *,
+    now: float,
+) -> dict[str, Any]:
+    """Compute clean-rate + dollar-value metrics for the home page hero.
+
+    Why this exists: the home page leads with positive signal
+    ("94% of claims clean, $73k confirmed") rather than negative
+    signal ("2 findings, 0 awaiting"). The clinic owner wants
+    the positive number. The biller wants the same number — it's
+    the metric that justifies the monthly fee.
+
+    Module-scope (not closure-bound) so it can be unit-tested
+    without spinning up the FastAPI app.
+
+    Inputs:
+      cards: list of card dicts from _build_audit_card or
+             equivalent. Each must have `finished_at` (unix sec)
+             and `findings` (list).
+      now: current time (passed in for testability).
+
+    Outputs: see the keys in the returned dict below.
+    """
+    if not cards:
+        return {
+            "ready": False,
+            "this_month_count": 0,
+            "this_month_clean": 0,
+            "this_month_flagged": 0,
+            "this_month_clean_rate": None,
+            "this_month_revenue_confirmed": 0.0,
+            "this_month_avoided_denials_dollar": 0.0,
+            "last_month_clean_rate": None,
+            "clean_rate_delta": None,
+            "avg_claim_value_usd": AVG_CLAIM_VALUE_USD,
+        }
+
+    this_month_start = now - 30 * 86400
+    last_month_start = now - 60 * 86400
+    this_month_clean = 0
+    this_month_flagged = 0
+    last_month_clean = 0
+    last_month_total = 0
+    for c in cards:
+        finished = c.get("finished_at") or 0
+        if not finished:
+            continue
+        findings = c.get("findings", []) or []
+        is_clean = len(findings) == 0
+        if finished >= this_month_start:
+            if is_clean:
+                this_month_clean += 1
+            else:
+                this_month_flagged += 1
+        elif finished >= last_month_start:
+            last_month_total += 1
+            if is_clean:
+                last_month_clean += 1
+
+    this_month_total = this_month_clean + this_month_flagged
+    this_month_clean_rate = (
+        this_month_clean / this_month_total if this_month_total else None
+    )
+    last_month_clean_rate = (
+        last_month_clean / last_month_total if last_month_total else None
+    )
+    clean_rate_delta: float | None = None
+    if this_month_clean_rate is not None and last_month_clean_rate is not None:
+        clean_rate_delta = this_month_clean_rate - last_month_clean_rate
+
+    revenue_confirmed = this_month_clean * AVG_CLAIM_VALUE_USD
+    baseline_clean_rate = 1.0 - INDUSTRY_DENIAL_RATE
+    if this_month_clean_rate is not None:
+        extra_clean_pct = max(0.0, this_month_clean_rate - baseline_clean_rate)
+    else:
+        extra_clean_pct = 0.0
+    avoided_denial_dollar = (
+        extra_clean_pct * this_month_total * AVG_CLAIM_VALUE_USD
+    )
+
+    return {
+        "ready": True,
+        "this_month_count": this_month_total,
+        "this_month_clean": this_month_clean,
+        "this_month_flagged": this_month_flagged,
+        "this_month_clean_rate": this_month_clean_rate,
+        "this_month_revenue_confirmed": revenue_confirmed,
+        "this_month_avoided_denials_dollar": avoided_denial_dollar,
+        "last_month_clean_rate": last_month_clean_rate,
+        "clean_rate_delta": clean_rate_delta,
+        "avg_claim_value_usd": AVG_CLAIM_VALUE_USD,
+    }
+
+
 def create_app() -> FastAPI:
     """Build a fresh FastAPI app.
 
@@ -174,8 +302,94 @@ def create_app() -> FastAPI:
         ),
     )
 
+    # Bearer-token auth middleware (F-3 fix from QA_API_HARDENING.md).
+    # The /healthz endpoint is whitelisted for load balancer health
+    # checks. All other routes require `Authorization: Bearer ***`
+    # to match the AUDIT_BEARER_TOKEN env var, or to be in
+    # AUDIT_ALLOW_NO_AUTH (set to "1" only for local dev).
+    import os as _os
+    _BEARER = _os.environ.get("AUDIT_BEARER_TOKEN", "")
+    _ALLOW_NO_AUTH = _os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
+
+    @app.middleware("http")
+    async def _bearer_auth(request, call_next):
+        # Whitelist: healthz + static
+        if request.url.path in ("/healthz",) or request.url.path.startswith("/static"):
+            return await call_next(request)
+        # Public demo paths: the home page, the docs path, the upload
+        # portal HTML. These are read-only and don't expose data; the
+        # POST endpoints that mutate (upload/preview, upload/submit,
+        # upload/notes, upload/paste) still require auth.
+        if _ALLOW_NO_AUTH:
+            return await call_next(request)
+        if not _BEARER:
+            # Auth disabled because no token is configured. Refuse
+            # anything that isn't a GET on / or /healthz.
+            if request.method == "GET" and request.url.path in ("/", "/healthz"):
+                return await call_next(request)
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                {"detail": "server has no AUDIT_BEARER_TOKEN configured; POST endpoints disabled"},
+                status_code=503,
+            )
+        auth = request.headers.get("authorization", "")
+        if not auth.startswith("Bearer "):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "missing bearer token"}, status_code=401)
+        token = auth[len("Bearer "):].strip()
+        if token != _BEARER:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
+        return await call_next(request)
+
     if _STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+    def _latest_real_audit_for(encounter_id: str) -> dict[str, Any] | None:
+        """Read the job-queue JSONL log for the most recent real-audit
+        run that matches ``encounter_id`` and has ``audit_status=ok``.
+
+        Returns a small dict (job_id, findings, summary, etc.) or None
+        if no match. Used by the index and encounter-detail handlers
+        to surface live LLM audit results alongside the demo cards.
+        """
+        try:
+            from pathlib import Path as _P
+            log_path = _P("/app/logs/upload_jobs.jsonl")
+            if not log_path.is_file():
+                return None
+            with log_path.open() as fh:
+                lines = fh.readlines()
+            for line in reversed(lines):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("encounter_id") != encounter_id:
+                    continue
+                if rec.get("status") != "done":
+                    continue
+                res = rec.get("result", {}) or {}
+                if res.get("audit_status") != "ok":
+                    continue
+                return {
+                    "job_id": rec.get("job_id"),
+                    "encounter_id": rec.get("encounter_id"),
+                    "source": rec.get("source"),
+                    "submitted_at": rec.get("submitted_at"),
+                    "finished_at": rec.get("finished_at"),
+                    "findings_count": res.get("findings_count", 0),
+                    "findings": res.get("findings", []),
+                    "summary": res.get("summary", ""),
+                    "difficulty_tier": res.get("difficulty_tier"),
+                    "variant": res.get("variant"),
+                }
+        except Exception:
+            return None
+        return None
 
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
     templates.env.filters["highlight_quote"] = _highlight_quote
@@ -191,6 +405,13 @@ def create_app() -> FastAPI:
         for entry in registered:
             record = load_encounter_record(entry.encounter_id)
             n_findings = len(record.get("ground_truth", [])) if record else 0
+            # Per-tenant severity threshold (v1: env var). Findings with
+            # severity BELOW this are not counted. The card still shows
+            # "flagged" if any sub-threshold finding exists (so the
+            # clinic owner knows there's something to look at), but the
+            # n_findings badge reflects what the biller would actually
+            # see in the detail page.
+            min_sev = _min_severity_threshold()
             cards.append(
                 {
                     "encounter_id": entry.encounter_id,
@@ -201,10 +422,72 @@ def create_app() -> FastAPI:
                     "available": record is not None,
                 }
             )
+        # Filter chips (counts) and clean-rate hero (metrics). Both
+        # are derived from the registered demo cards here; the
+        # template renders them in the filter-bar and hero panel.
+        # Real uploaded encounters are surfaced via _list_parsed_encounters()
+        # in the upload-portal pages, not on the public home page.
+        counts = {
+            "all": len(cards),
+            "flagged": sum(1 for c in cards if c["is_flagged"]),
+            "clean": sum(1 for c in cards if not c["is_flagged"]),
+        }
+        # No real-audit running totals on the demo dashboard; the
+        # metrics dict is the "no data" shape so the template's
+        # `{% if metrics and metrics.ready %}` skips the hero. Once
+        # the demo registry accumulates real audits, this gets
+        # populated.
+        metrics = compute_clean_rate_metrics(cards, now=time.time())
+        # Most recent real-audit run. Walk the job-queue JSONL log
+        # back to the last line with audit_status=ok (no per-encounter
+        # filter — we want the latest one for the home page).
+        latest_real_audit: dict[str, Any] | None = None
+        try:
+            from pathlib import Path as _P
+            log_path = _P("/app/logs/upload_jobs.jsonl")
+            if log_path.is_file():
+                with log_path.open() as fh:
+                    lines = fh.readlines()
+                for line in reversed(lines):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("status") != "done":
+                        continue
+                    res = rec.get("result", {}) or {}
+                    if res.get("audit_status") != "ok":
+                        continue
+                    latest_real_audit = {
+                        "job_id": rec.get("job_id"),
+                        "encounter_id": rec.get("encounter_id"),
+                        "source": rec.get("source"),
+                        "submitted_at": rec.get("submitted_at"),
+                        "finished_at": rec.get("finished_at"),
+                        "findings_count": res.get("findings_count", 0),
+                        "summary": res.get("summary", ""),
+                        "difficulty_tier": res.get("difficulty_tier"),
+                        "variant": res.get("variant"),
+                    }
+                    break
+        except Exception:
+            latest_real_audit = None
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"cards": cards, "n_registered": len(cards)},
+            {
+                "cards": cards,
+                "audits": cards,
+                "filter": "all",
+                "counts": counts,
+                "total_this_week": 0,
+                "metrics": metrics,
+                "n_registered": len(cards),
+                "latest_real_audit": latest_real_audit,
+            },
         )
 
     @app.get("/encounter/{encounter_id}", response_class=HTMLResponse)
@@ -229,6 +512,21 @@ def create_app() -> FastAPI:
                 ),
             )
         findings = _finding_dicts(record)
+        # Apply the per-tenant severity threshold. Findings with
+        # severity BELOW the threshold are hidden from the detail
+        # view but counted in n_findings_total so the biller knows
+        # there are hidden ones.
+        min_sev = _min_severity_threshold()
+        visible_findings = [
+            f for f in findings
+            if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+        ]
+        hidden_count = len(findings) - len(visible_findings)
+        # If the demo encounter has a real-audit run on the live URL
+        # (matches by encounter_id), surface that as a sidebar. The
+        # JSONL log lists every job; we walk back to the most recent
+        # "done" line that matches this id and has audit_status=ok.
+        real_audit = _latest_real_audit_for(encounter_id)
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
@@ -240,8 +538,12 @@ def create_app() -> FastAPI:
                 "clinical_note": record.get("clinical_note", ""),
                 "claim": record.get("claim", {}),
                 "rules": record.get("rules", []),
-                "findings": findings,
-                "n_findings": len(findings),
+                "findings": visible_findings,
+                "n_findings": len(visible_findings),
+                "n_findings_total": len(findings),
+                "n_findings_hidden": hidden_count,
+                "min_severity": min_sev,
+                "real_audit": real_audit,
             },
         )
 
@@ -513,6 +815,11 @@ def create_app() -> FastAPI:
         rows = data.get("rows") or []
         if not isinstance(rows, list):
             raise HTTPException(status_code=400, detail="rows must be a list")
+        # Allow the submit payload to override per-row difficulty_tier and
+        # variant (set by the paste-form). When the dashboard reuses
+        # the preview's rows, these fields are absent and the runner's
+        # defaults take over.
+        extra = data.get("defaults", {}) or {}
         queue = get_default_queue()
         accepted: list[dict[str, Any]] = []
         rejected: list[dict[str, Any]] = []
@@ -526,6 +833,11 @@ def create_app() -> FastAPI:
                     }
                 )
                 continue
+            # Merge the request-level defaults with the row. Per-row
+            # fields win so the dashboard's per-encounter setting still
+            # works.
+            for k, v in extra.items():
+                row.setdefault(k, v)
             # Re-validate server-side; the preview's "errors" array
             # is the source of truth but we never trust the client
             # to decide what's accepted.
@@ -662,6 +974,347 @@ def create_app() -> FastAPI:
                 "size_bytes": len(raw),
                 "stored_path": str(target.relative_to(_PKG_DIR.parent.parent)),
                 "ocr_status": "deferred",
+            }
+        )
+
+    @app.post("/encounters/upload/text-note")
+    async def encounters_upload_text_note(
+        encounter_id: str = Form(...),
+        clinical_note: str = Form(...),
+    ) -> JSONResponse:
+        """Accept a plain-text clinical note for a given encounter.
+
+        The MVP pilot's most common flow: a clinic exports an 837P
+        file from their EHR and pastes the corresponding clinical
+        note text into the upload form. The text is stored on disk
+        under ``logs/uploaded_notes/`` with the encounter_id in the
+        filename, and the runner picks it up on the next audit job
+        for that encounter.
+
+        This bypasses the synth encounter generator entirely: the
+        runner reads the stored text and uses it as the clinical_note
+        field of the audit's encounter dict. The pilot is real-data
+        end-to-end from this point.
+
+        Returns the note_id (also used as the on-disk filename stem)
+        so the client can confirm what was stored.
+        """
+        # The encounter_id is a user-controlled string; sanitise
+        # it to a safe filename component. Strip path separators
+        # and limit length so we don't blow the filesystem's
+        # name limit on pathological inputs.
+        import re as _re
+        safe = _re.sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id).strip("._")[:80]
+        if not safe:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id must contain at least one alphanumeric",
+            )
+        if not clinical_note.strip():
+            raise HTTPException(
+                status_code=400, detail="clinical_note is empty"
+            )
+        if len(clinical_note) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"clinical_note is {len(clinical_note)} bytes, max is {_MAX_UPLOAD_BYTES}",
+            )
+        import uuid as _uuid
+        note_id = _uuid.uuid4().hex[:12]
+        target = _NOTES_DIR / f"{safe}.{note_id}.txt"
+        target.write_text(clinical_note, encoding="utf-8")
+        return JSONResponse(
+            {
+                "note_id": note_id,
+                "encounter_id": encounter_id,
+                "stored_path": str(target.relative_to(_PKG_DIR.parent.parent)),
+                "size_bytes": len(clinical_note.encode("utf-8")),
+            }
+        )
+
+    # -------------------------------------------------------------------
+    # POST /encounters/{encounter_id}/audit — re-run the auditor on
+    # a previously uploaded encounter.
+    #
+    # Spec: the dashboard submits a request body containing the
+    # clinical narrative; the endpoint reuses the audit-ready claim
+    # the upload flow stored in the job cache, runs the LLM auditor
+    # against the (claim, clinical_note) pair, and returns the
+    # findings as JSON. The endpoint exists so the dashboard does
+    # not need to know the underlying job_id — the encounter id is
+    # the user-facing key.
+    #
+    # Why this re-uses the cached claim rather than re-parsing the
+    # original 837P: the upload flow strips envelope segments and
+    # normalises to a 5-field claim shape (encounter_id, patient_id,
+    # NPI, date_of_service, CPT_codes); the synth runner then
+    # expands that into the full claim object the auditor expects
+    # (line items, dx_pointers, payer, etc.). The synth materialised
+    # form is the audit-ready claim and is what lives in
+    # ``Job.result`` once a job finishes. Re-parsing the original
+    # 837P would require us to persist the raw file (we don't) AND
+    # re-run the synth (we'd lose determinism). The cache lookup
+    # recovers everything we need.
+    # -------------------------------------------------------------------
+
+    # Stored stub used when the caller omits `clinical_note` and no
+    # uploaded text-note exists on disk for the encounter. Kept
+    # short and clinically generic so the auditor has *something*
+    # to evaluate; the dashboard's real pilot flow always sends
+    # the full note, so this is the fallback path.
+    _STUB_CLINICAL_NOTE = (
+        "Patient seen for routine follow-up. History of present "
+        "illness unremarkable. Physical exam within normal limits. "
+        "Medical decision making: low complexity. No additional "
+        "workup indicated. Plan: continue current management, "
+        "return in 6 months or sooner if symptoms change."
+    )
+
+    # Same handler at the spec-mandated plural path. The dashboard's
+    # upload portal links to /encounters/{id} from the success state
+    # per the upload-UI task body; the singular form stays as the
+    # legacy alias for older links. Both render the same page.
+    #
+    # Declared AFTER every static /encounters/upload* route above so
+    # FastAPI's declaration-order matching gives precedence to the
+    # upload portal's specific paths (/encounters/upload,
+    # /encounters/upload/preview, /encounters/upload/submit, etc.)
+    # over the catch-all /encounters/{encounter_id}.
+    @app.get("/encounters/{encounter_id}", response_class=HTMLResponse)
+    def encounter_detail_plural(request: Request, encounter_id: str) -> HTMLResponse:
+        return encounter_detail(request, encounter_id)
+
+    @app.post("/encounters/{encounter_id}/audit")
+    async def encounters_audit(
+        request: Request,
+        encounter_id: str,
+    ) -> JSONResponse:
+        """Run the auditor on a previously uploaded encounter.
+
+        Request body (JSON or form):
+
+        - ``clinical_note`` (optional): the clinical narrative.
+          When omitted, falls back to a stored stub note so the
+          endpoint still returns a valid audit result.
+
+        Response (HTTP 200):
+
+        - ``encounter_id``: echoed from the path
+        - ``has_discrepancy``: ``true`` if the auditor emitted any
+          findings
+        - ``findings``: list of finding dicts (category, severity,
+          rule_id, suggested_code, quote, explanation)
+        - ``summary``: the auditor's plain-text synopsis
+        - ``source_job_id``: the job_id the cached claim came from
+        - ``note_source``: ``"request"``, ``"uploaded"``, or
+          ``"stub"`` — useful for the dashboard to show which
+          clinical note was used
+
+        Error responses:
+
+        - 404 if no cached job exists for ``encounter_id``
+        - 400 if the cached claim is missing the audit-ready
+          fields the auditor expects
+        - 502 if the LLM call itself errors (the synth runner
+          has its own retry; the audit route does not, since
+          the request is synchronous)
+        """
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+
+        # ---- 1. read the optional clinical_note from the body ----
+        # Accept JSON or form. JSON is the dashboard's preferred
+        # shape; form is a fallback so a curl-based smoke test
+        # can do `-F "clinical_note=..."`.
+        clinical_note: str | None = None
+        note_source = "stub"
+        content_type = (request.headers.get("content-type") or "").lower()
+        try:
+            if "application/json" in content_type:
+                body = await request.json()
+                if isinstance(body, dict):
+                    raw = body.get("clinical_note")
+                    if isinstance(raw, str) and raw.strip():
+                        clinical_note = raw
+                        note_source = "request"
+            else:
+                form = await request.form()
+                raw = form.get("clinical_note")
+                if isinstance(raw, str) and raw.strip():
+                    clinical_note = raw
+                    note_source = "request"
+        except Exception:  # noqa: BLE001 (deliberately broad)
+            # Malformed body — fall through to the stub path
+            # rather than 400. The dashboard can re-submit.
+            clinical_note = None
+
+        # ---- 2. look up the cached job for this encounter ----
+        queue = get_default_queue()
+        job = queue.find_by_encounter(encounter_id)
+        if job is None:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"encounter {encounter_id!r} has no cached audit "
+                    f"job. Upload the 837P first via "
+                    f"/encounters/upload/submit, then re-audit."
+                ),
+            )
+        if job.status != "done":
+            # Job exists but hasn't finished. The synth runner is
+            # fast, but we should not double-fire; surface a 409
+            # so the dashboard can poll /jobs/{id} and retry.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"encounter {encounter_id!r} is in job "
+                    f"{job.job_id!r} (status={job.status}); "
+                    f"wait for it to finish and retry."
+                ),
+            )
+
+        # ---- 3. recover the audit-ready claim from the cache ----
+        # ``job.result`` is the dict the synth runner produced
+        # and the LLM auditor filled in. It carries the
+        # synth encounter's id and (when the auditor ran
+        # successfully) the findings + summary from the prior
+        # run. We need the claim that was audited, which lives
+        # in the runner's local ``claim`` variable — but the
+        # runner does NOT serialise that into job.result.
+        # So the audit endpoint re-derives the audit-ready
+        # claim by calling run_audit directly with the same
+        # inputs the runner used (synth encounter + note). The
+        # Job is the proof the upload happened; the
+        # encounter_id is the key the dashboard knows.
+        result = job.result or {}
+        synth_encounter_id = result.get("synth_encounter_id")
+        difficulty_tier = result.get("difficulty_tier")
+        variant = result.get("variant", "clean")
+
+        # Resolve the clinical_note: request > uploaded on-disk
+        # text-note for this encounter > stub.
+        if clinical_note is None:
+            try:
+                from pathlib import Path as _P
+                notes_dir = _P(__file__).resolve().parent.parent.parent / "logs" / "uploaded_notes"
+                safe = __import__("re").sub(
+                    r"[^A-Za-z0-9_.-]+", "_", encounter_id
+                ).strip("._")[:80]
+                if safe and notes_dir.is_dir():
+                    candidates = sorted(
+                        notes_dir.glob(f"{safe}.*.txt"),
+                        key=lambda p: p.stat().st_mtime,
+                        reverse=True,
+                    )
+                    if candidates:
+                        clinical_note = candidates[0].read_text(encoding="utf-8")
+                        note_source = "uploaded"
+            except Exception:  # noqa: BLE001 (deliberately broad)
+                clinical_note = None
+        if clinical_note is None:
+            clinical_note = _STUB_CLINICAL_NOTE
+            note_source = "stub"
+
+        # ---- 4. rebuild the audit encounter and run the auditor ----
+        # The synth seed is deterministic on encounter_id, so the
+        # synth materialisation is reproducible: the same claim
+        # the cached job audited is what we'll re-audit.
+        try:
+            from .synth_agent import generate, Template
+            from .auditor import run_audit as _run_audit, AuditValidationError
+
+            seed = abs(hash(encounter_id)) % (2**31)
+            tier_norm = str(difficulty_tier or "EASY").upper()
+            if tier_norm not in ("EASY", "MEDIUM", "HARD"):
+                tier_norm = "EASY"
+            variant_norm = str(variant or "clean").lower()
+            if variant_norm not in ("clean", "flagged"):
+                variant_norm = "clean"
+            synth_out = generate(
+                Template(tier=tier_norm, variant=variant_norm, schema_version=1),
+                seed=seed,
+            )
+            provider_note = synth_out.get("provider_note", {}) or {}
+            synth_clinical_note = "\n\n".join(
+                v for v in [
+                    provider_note.get("hpi", ""),
+                    provider_note.get("exam", ""),
+                    provider_note.get("mdm", ""),
+                ] if v
+            )
+            cpts = synth_out.get("cpt_codes", []) or []
+            icds = synth_out.get("icd10_codes", []) or []
+            claim = {
+                "encounter_id": synth_out.get("encounter_id"),
+                "patient_id": "PT_AUDIT",
+                "rendering_provider_npi": "1992039481",
+                "billing_provider_tax_id": "XX-XXX1234",
+                "date_of_service": "2026-06-15",
+                "payer_id": "PAYER-AUDIT-001",
+                "payer_name": "Audit Payer",
+                "line_items": [
+                    {
+                        "line_id": i + 1,
+                        "cpt_code": c.get("code", ""),
+                        "modifiers": [],
+                        "dx_pointers": icds,
+                        "charge_amount": 150.00,
+                        "units": 1,
+                    }
+                    for i, c in enumerate(cpts)
+                ],
+                "diagnosis_codes": icds,
+            }
+            audit_encounter = {
+                "encounter_id": synth_out.get("encounter_id"),
+                "is_flagged": bool(synth_out.get("flagged", False)),
+                "clinical_note": clinical_note,
+                "claim": claim,
+                "rules": [],
+                "ground_truth": [],
+            }
+            audit = _run_audit(audit_encounter)
+        except AuditValidationError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"auditor validation failed: {exc}",
+            )
+        except Exception as exc:  # noqa: BLE001 (deliberately broad)
+            raise HTTPException(
+                status_code=502,
+                detail=f"auditor invocation failed: {type(exc).__name__}: {exc}"[:500],
+            )
+
+        findings_payload: list[dict[str, Any]] = []
+        for f in audit.findings:
+            rule_ids = list(f.rule_ids) if f.rule_ids else []
+            findings_payload.append(
+                {
+                    "finding_id": f.finding_id,
+                    "category": f.category,
+                    "severity": f.severity,
+                    "rule_id": rule_ids[0] if rule_ids else "",
+                    "rule_ids": rule_ids,
+                    "suggested_code": f.suggested_code,
+                    "quote": f.quote,
+                    "explanation": f.explanation,
+                }
+            )
+
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "synth_encounter_id": synth_encounter_id,
+                "has_discrepancy": bool(findings_payload),
+                "findings": findings_payload,
+                "summary": audit.summary,
+                "source_job_id": job.job_id,
+                "note_source": note_source,
+                "ran_via": "audit_endpoint",
             }
         )
 

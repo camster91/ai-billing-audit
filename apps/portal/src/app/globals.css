@@ -102,7 +102,7 @@ a {
 }
 
 .site-nav-link:focus-visible {
-  outline: 2px solid #4f8cff;
+  outline: 2px solid #2563eb;
   outline-offset: 4px;
 }
 
@@ -111,7 +111,7 @@ a {
   position: absolute;
   left: -9999px;
   top: 0;
-  background: #4f8cff;
+  background: #2563eb;
   color: white;
   padding: 10px 16px;
   z-index: 100;

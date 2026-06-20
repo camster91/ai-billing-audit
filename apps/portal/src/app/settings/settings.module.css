@@ -138,7 +138,7 @@
 .input:focus-visible,
 .textarea:focus-visible,
 .select:focus-visible {
-  outline: 2px solid #4f8cff;
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 
