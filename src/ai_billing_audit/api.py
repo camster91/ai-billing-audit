@@ -156,6 +156,20 @@ def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
 # Lower rank = lower severity. info < low < medium < high < critical.
 SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
+# Dismissal reasons — the closed-loop learning signal. When the biller
+# dismisses a finding, they pick one of these + an optional free-text
+# note. The categories are coarse on purpose: they're meant to bucket
+# "why was the AI wrong" so we can group prompts-iteration examples
+# later. ``false_positive`` is the most valuable bucket — every
+# dismissal in this category becomes a candidate few-shot example
+# for the next prompt revision.
+_DISMISS_CATEGORIES = frozenset({
+    "false_positive",     # The finding is wrong; the auditor is overcalling
+    "already_documented", # The finding is right but the note already covers it
+    "not_applicable",     # Payer-specific override (e.g. this payer doesn't require modifier-25)
+    "other",              # Free text; review later for new categories
+})
+
 
 def _min_severity_threshold() -> int:
     """Read MIN_SEVERITY_TO_SHOW env var, return the rank.
@@ -393,6 +407,7 @@ def create_app() -> FastAPI:
                     "summary": res.get("summary", ""),
                     "difficulty_tier": res.get("difficulty_tier"),
                     "variant": res.get("variant"),
+                    "zorva_context": res.get("zorva_context"),
                 }
         except Exception:
             return None
@@ -594,6 +609,7 @@ def create_app() -> FastAPI:
                 "min_severity": min_sev,
                 "real_audit": uploaded_audit,
                 "is_uploaded_encounter": True,
+                "zorva_context": uploaded_audit.get("zorva_context"),
             },
         )
         real_audit = _latest_real_audit_for(encounter_id)
@@ -668,13 +684,36 @@ def create_app() -> FastAPI:
         finding_id = str(body.get("finding_id", "") or "")
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
+        # Closed-loop learning signal: why did the biller dismiss this
+        # finding? Captured as a free-text reason + a coarse category
+        # (false_positive, already_documented, not_applicable, other).
+        # Persisted in audit_actions.append via the ``note`` field so
+        # the existing chain signature still covers the dismissal.
+        reason_category = str(body.get("reason_category", "") or "").strip()
+        reason_text = str(body.get("reason_text", "") or "").strip()[:500]
+        if reason_category and not _DISMISS_CATEGORIES.__contains__(reason_category):
+            reason_category = ""
+        note = ""
+        if reason_category or reason_text:
+            parts = []
+            if reason_category:
+                parts.append(f"category={reason_category}")
+            if reason_text:
+                parts.append(reason_text)
+            note = " | ".join(parts)
         event = audit_append(
             action="dismiss",
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
             findings=[{"finding_id": finding_id}],
+            note=note,
         )
-        return JSONResponse({"ok": True, "finding_id": finding_id, "event": event})
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "reason_category": reason_category,
+            "event": event,
+        })
 
     @app.post("/encounter/{encounter_id}/rerun")
     async def encounter_rerun(

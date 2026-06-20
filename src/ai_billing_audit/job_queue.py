@@ -40,6 +40,7 @@ The synth call uses the encounter's normalised fields to build a
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -47,6 +48,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Iterable
+
+logger = logging.getLogger(__name__)
 
 # Local copy of _PKG_DIR — the runner is a module-level function
 # (the default closure for JobQueue), so it can't see the closure
@@ -108,6 +111,14 @@ def _send_doctor_emails(
     Returns the number of emails actually sent (or written to the
     dev fallback mailbox).
 
+    Doctor email resolution (in order):
+    1. encounter.provider_email  (explicit override, e.g. from a
+       custom upload form that captured it)
+    2. encounter.doctor_email    (legacy field name)
+    3. encounter.NPI → doctor_email_for_provider(NPI) lookup
+       (queries the CMS NPI Registry; results cached on disk)
+    4. None → no email sent
+
     Lazy-imports ai_billing_audit.doctor_email so the module isn't
     required for tests that only exercise the synth path.
     """
@@ -119,9 +130,47 @@ def _send_doctor_emails(
     if not findings:
         return 0
     try:
-        from .doctor_email import build_doctor_summary, send_doctor_summary
+        from .doctor_email import (
+            build_doctor_summary,
+            doctor_email_for_provider,
+            send_doctor_summary,
+        )
     except ImportError:
         return 0
+
+    # Resolve the doctor's email address. The portal paste-form
+    # doesn't collect a provider_email field; the runner falls back
+    # to looking up the email by NPI via the CMS public registry.
+    doctor_email = (
+        encounter.get("provider_email")
+        or encounter.get("doctor_email")
+    )
+    if not doctor_email:
+        npi = (encounter.get("NPI") or "").strip()
+        # Skip the registry lookup for invalid NPI shapes — the
+        # helper itself rejects non-10-digit values, but checking
+        # here avoids the function call entirely and keeps the
+        # call-site behaviour obvious from a quick read.
+        if npi and npi.isdigit() and len(npi) == 10:
+            try:
+                doctor_email = doctor_email_for_provider(npi)
+            except Exception:
+                # NPI Registry unreachable (offline, rate-limited,
+                # or malformed). Fall through to "no email" — the
+                # audit still ran; the biller can forward it
+                # manually.
+                doctor_email = None
+    if not doctor_email:
+        logger.info(
+            "no doctor email resolvable (no provider_email field, "
+            "no usable NPI). Skipping doctor summary email.",
+            extra={"encounter_id": encounter.get("encounter_id")},
+        )
+        return 0
+
+    # Build the encounter dict the email builder expects, with the
+    # resolved email injected.
+    encounter_with_email = {**encounter, "doctor_email": doctor_email}
 
     sent = 0
     # Email the doctor about the most severe finding only. Sending
@@ -137,7 +186,7 @@ def _send_doctor_emails(
     for finding in ranked[:1]:
         summary = build_doctor_summary(
             finding=finding,
-            encounter={**encounter, "clinical_note": clinical_note},
+            encounter={**encounter_with_email, "clinical_note": clinical_note},
         )
         if summary is None:
             continue
@@ -589,6 +638,19 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
         "rules": [],
         "ground_truth": [],
     }
+    # Add the Zorva system context to the encounter envelope. The
+    # auditor doesn't see this prose — it's a structured payload that
+    # downstream consumers (dashboard, appeal-letter generator, audit
+    # trail) read. The auditor's prompt stays focused on rule
+    # matching; we don't pollute it with vision/market text.
+    from .zorva_context import build_context_for_encounter
+    zorva_ctx = build_context_for_encounter(
+        country_code=encounter.get("country_code"),
+        payer_id=encounter.get("payer_id"),
+        province=encounter.get("province"),
+        health_number=encounter.get("patient_id"),
+    )
+    audit_encounter["zorva_context"] = zorva_ctx
 
     # Call the real auditor. LLMClient reads LLM_PROVIDER / LLM_BASE_URL /
     # LLM_MODEL / OLLAMA_API_KEY from env (set by the docker-compose env_file).
@@ -625,6 +687,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             "findings_count": len(findings),
             "findings": findings,
             "summary": result.summary,
+            "zorva_context": zorva_ctx,
             "doctor_emails_sent": _send_doctor_emails(
                 encounter, clinical_note, findings, synth_out
             ),

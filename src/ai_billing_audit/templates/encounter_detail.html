@@ -10,12 +10,20 @@
       {% if is_uploaded_encounter %}
         <span class="badge badge-uploaded">Uploaded</span>
       {% endif %}
+      {% if zorva_context and zorva_context.market %}
+        <span class="badge badge-neutral" title="{{ zorva_context.billing_authority or zorva_context.compliance_law or '' }}">{{ zorva_context.market }}{% if zorva_context.province %} · {{ zorva_context.province }}{% endif %}</span>
+      {% endif %}
       {% if is_flagged %}
         <span class="badge badge-flagged">Flagged</span>
       {% else %}
         <span class="badge badge-clean">Clean</span>
       {% endif %}
     </h1>
+    {% if zorva_context and zorva_context.compliance_law %}
+    <p class="sub mono muted">
+      {{ zorva_context.compliance_law }}{% if zorva_context.billing_authority %} &middot; {{ zorva_context.billing_authority }}{% endif %}{% if zorva_context.invoice_format %} &middot; {{ zorva_context.invoice_format }}{% endif %}
+    </p>
+    {% endif %}
     {% if difficulty or source or job_id %}
     <p class="sub mono">
       {% if difficulty %}{{ difficulty }}{% endif %}
@@ -97,7 +105,7 @@
           {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
           {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
           <span class="grow"></span>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss" data-finding-id="{{ f.finding_id }}">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-toggle" data-finding-id="{{ f.finding_id }}">
             Dismiss
           </button>
         </div>
@@ -107,6 +115,43 @@
         {% if f.explanation %}
           <p class="finding-item__explain">{{ f.explanation }}</p>
         {% endif %}
+        {# Inline dismiss form: collapsed by default, expands when the
+           Dismiss button above is clicked. Captures the closed-loop
+           learning signal (why was the AI wrong) before sending. #}
+        <form
+          class="dismiss-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/dismiss"
+          hidden
+        >
+          <label class="dismiss-form__label">
+            Why dismiss?
+            <select name="reason_category" class="dismiss-form__select">
+              <option value="false_positive">False positive — the auditor is wrong</option>
+              <option value="already_documented">Already documented in the note</option>
+              <option value="not_applicable">Doesn't apply (payer-specific)</option>
+              <option value="other">Other (explain)</option>
+            </select>
+          </label>
+          <label class="dismiss-form__label">
+            Detail (optional)
+            <input
+              type="text"
+              name="reason_text"
+              class="dismiss-form__input"
+              maxlength="500"
+              placeholder="e.g. note already says 'modifier 25 applied'"
+            />
+          </label>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Confirm dismiss
+            </button>
+          </div>
+        </form>
       </li>
     {% endfor %}
   </ul>
