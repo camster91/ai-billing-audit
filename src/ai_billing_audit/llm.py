@@ -195,6 +195,15 @@ class LLMClient:
             if fence_match:
                 content = fence_match.group(1).strip()
         parsed = json.loads(content)
+        # Normalize severity to lowercase BEFORE jsonschema validation.
+        # Different models echo back "CRITICAL" vs "critical"; the schema
+        # enum is lowercase. We lowercase the field on every finding
+        # so a model that wrote "CRITICAL" gets accepted and the rest
+        # of the audit pipeline (which assumes lowercase) stays simple.
+        if isinstance(parsed, dict) and isinstance(parsed.get("findings"), list):
+            for f in parsed["findings"]:
+                if isinstance(f, dict) and isinstance(f.get("severity"), str):
+                    f["severity"] = f["severity"].strip().lower()
         try:
             jsonschema.validate(instance=parsed, schema=json_schema)
         except jsonschema.ValidationError as exc:

@@ -287,6 +287,14 @@ def validate_findings(
         for key in ("quote", "severity"):
             if key not in item:
                 raise AuditValidationError(f"findings[{i}] missing required field '{key}'")
+        # Normalize severity to lowercase. Different models echo
+        # back "CRITICAL" vs "critical"; we only care about the value.
+        sev_raw = str(item.get("severity", "")).strip().lower()
+        if sev_raw not in {"info", "low", "medium", "high", "critical"}:
+            raise AuditValidationError(
+                f"findings[{i}].severity not in "
+                f"[info, low, medium, high, critical]: got {item.get('severity')!r}"
+            )
         # Accept the rule id in either of two shapes:
         #   - rule_id:  "rule_em_001"
         #   - rule_ids: ["rule_em_001", "rule_em_002"]
@@ -345,6 +353,13 @@ def run_audit(
     prompt = load_prompt(prompt_path)
     messages = build_messages(encounter, prompt=prompt)
     payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA)
+    # Normalize severity to lowercase. Different models echo
+    # back "CRITICAL" vs "critical"; the jsonschema enum requires
+    # lowercase but the model prompt often writes uppercase.
+    # We accept both shapes by lowercasing before validation.
+    for f in payload.get("findings") or []:
+        if isinstance(f, dict) and "severity" in f:
+            f["severity"] = str(f["severity"]).strip().lower()
     clinical_note = str(encounter.get("clinical_note", "") or "")
     findings = validate_findings(payload, clinical_note=clinical_note)
     summary = str(payload.get("summary", "") or "")
