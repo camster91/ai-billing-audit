@@ -196,6 +196,17 @@ AVG_CLAIM_VALUE_USD = 190.0
 # how many claims the auditor caught that would have been denied.
 INDUSTRY_DENIAL_RATE = 0.075
 
+# Multi-tenant scoping. ``TENANT_NAME`` is the human-readable
+# label shown in the topbar pill. ``TENANT_ID`` is the stable
+# identifier used in the audit trail's tenant_id field to
+# scope reads per-clinic. Both default to "Acme Family Practice"
+# until the first pilot signs; v2 reads from a per-session auth
+# payload. Setting TENANT_ID explicitly to a non-"default"
+# value gives the activity feed row-level isolation per clinic.
+import os as _os
+_TENANT_NAME = _os.environ.get("TENANT_NAME", "Acme Family Practice")
+_TENANT_ID = _os.environ.get("TENANT_ID", "default")
+
 
 def compute_clean_rate_metrics(
     cards: list[dict[str, Any]],
@@ -415,6 +426,8 @@ def create_app() -> FastAPI:
 
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
     templates.env.filters["highlight_quote"] = _highlight_quote
+    templates.env.globals["tenant_name"] = _TENANT_NAME
+    templates.env.globals["tenant_id"] = _TENANT_ID
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
@@ -702,6 +715,7 @@ def create_app() -> FastAPI:
             action="accept_all",
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
             extra={"findings_count": findings_count},
         )
         return JSONResponse({"ok": True, "n_accepted": findings_count, "event": event})
@@ -744,6 +758,7 @@ def create_app() -> FastAPI:
             action="dismiss",
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
             findings=[{"finding_id": finding_id}],
             note=note,
         )
@@ -767,6 +782,7 @@ def create_app() -> FastAPI:
             action="rerun",
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
         )
         return JSONResponse({"ok": True, "event": event})
 
@@ -783,6 +799,7 @@ def create_app() -> FastAPI:
             action="flag",
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
         )
         return JSONResponse({"ok": True, "event": event})
 
@@ -807,7 +824,7 @@ def create_app() -> FastAPI:
         """
         try:
             from .audit_actions import read_all
-            events = read_all(limit=50)
+            events = read_all(limit=50, tenant_id=_TENANT_ID)
         except Exception:
             events = []
         events = list(reversed(events))  # newest first
