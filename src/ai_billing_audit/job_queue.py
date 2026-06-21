@@ -235,6 +235,7 @@ class Job:
         "encounter_id",
         "source",
         "source_filename",
+        "tenant_id",
         "status",
         "error",
         "result",
