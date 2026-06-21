@@ -437,7 +437,8 @@ def main() -> int:
                         help="Number of val encounters to score (default: all 50)")
     parser.add_argument("--start", type=int, default=0,
                         help="Start index in val.json (default: 0)")
-    parser.add_argument("--val", default=str(REPO_ROOT / "data" / "val.json"))
+    parser.add_argument("--val", action="append", default=None,
+                        help="Path to val.json (repeatable; default: data/val.json)")
     parser.add_argument("--out", default=None,
                         help="Write JSON results to this path")
     parser.add_argument("--quiet", action="store_true",
@@ -451,12 +452,22 @@ def main() -> int:
     if args.model:
         os.environ["LLM_MODEL"] = args.model
 
-    val_path = Path(args.val)
-    if not val_path.is_file():
-        print(f"val.json not found at {val_path}", file=sys.stderr)
-        return 1
-    with val_path.open() as f:
-        data = json.load(f)
+    val_paths = args.val or [
+        str(REPO_ROOT / "data" / "val.json"),
+        str(REPO_ROOT / "data" / "val_ca.json"),
+    ]
+    for path in val_paths:
+        if not Path(path).is_file():
+            print(f"val file not found at {path}", file=sys.stderr)
+            return 1
+    data: list[dict[str, Any]] = []
+    for path in val_paths:
+        with Path(path).open() as f:
+            data.extend(json.load(f))
+    print(f"Loaded {len(data)} encounters from {len(val_paths)} val file(s):")
+    for path in val_paths:
+        print(f"  {path}")
+    print()
     encounters = data[args.start:args.start + args.n] if args.n else data[args.start:]
 
 
