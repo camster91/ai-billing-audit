@@ -1,0 +1,428 @@
+{
+  "summary": {
+    "n_encounters": 5,
+    "mean_per_encounter": {
+      "precision": 0.45,
+      "recall": 0.9,
+      "f1": 0.5933333333333333
+    },
+    "micro_aggregate": {
+      "precision": 0.4375,
+      "recall": 0.875,
+      "f1": 0.5833333333333334,
+      "true_positives": 7,
+      "total_predicted": 16,
+      "total_gold": 8
+    },
+    "clean_encounters": {
+      "n_gold_clean": 0,
+      "n_pred_clean": 0,
+      "n_overcalled_clean": 0
+    },
+    "per_rule": {
+      "rule_ahcip_dx_linkage": {
+        "tp": 2,
+        "fp": 3,
+        "fn": 1,
+        "precision": 0.4,
+        "recall": 0.6666666666666666
+      },
+      "rule_ahcip_em_level": {
+        "tp": 2,
+        "fp": 3,
+        "fn": 0,
+        "precision": 0.4,
+        "recall": 1.0
+      },
+      "rule_ahcip_em_level_upcode": {
+        "tp": 1,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.3333333333333333,
+        "recall": 1.0
+      },
+      "rule_ahcip_global_window": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_referring_npi": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.5,
+        "recall": 1.0
+      }
+    },
+    "per_severity": {
+      "info": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.29166666666666663,
+        "mean_r": 1.0,
+        "mean_f1": 0.45
+      },
+      "medium": {
+        "n_encounters": 1,
+        "n_gold_findings": 1,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "high": {
+        "n_encounters": 3,
+        "n_gold_findings": 3,
+        "mean_p": 0.3611111111111111,
+        "mean_r": 1.0,
+        "mean_f1": 0.5222222222222223
+      },
+      "critical": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.29166666666666663,
+        "mean_r": 1.0,
+        "mean_f1": 0.45
+      }
+    },
+    "latency": {
+      "mean_s": 34.975935554504396,
+      "p95_s": 57.87583112716675,
+      "n_errors": 0
+    }
+  },
+  "results": [
+    {
+      "encounter_id": "ca_ahcip_001",
+      "n_gold": 2,
+      "n_pred": 3,
+      "n_matched": 2,
+      "p": 0.6666666666666666,
+      "r": 1.0,
+      "f1": 0.8,
+      "latency_s": 41.588765144348145,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "comprehensive assessment for diabetes follow-up",
+          "explanation": "Encounter is billed as 03.04A (comprehensive assessment), which is consistent with the documented comprehensive assessment for an established patient with multiple chronic conditions, including review of multiple lab values, two medication changes, dietary counseling, and a defined follow-up plan."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "eGFR 58, ACR 32",
+          "explanation": "Patient has eGFR 58 (CKD stage 3a) and ACR 32 mg/g (moderately increased albuminuria) in the setting of established T2DM, consistent with diabetic nephropathy. The more specific code E11.22 (Type 2 diabetes mellitus with diabetic chronic kidney disease) should be used in place of (or in addition to) the nonspecific E11.9. This is a missing diagnosis code for a clinically reportable complication of diabetes, and the addition of perindopril suggests active renoprotective management that supports the more specific code."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "A1C 8.9",
+          "explanation": "A1C of 8.9% indicates poorly controlled diabetes, which prompted up-titration of metformin to 1000mg BID. The more specific code E11.65 (Type 2 diabetes mellitus with hyperglycemia) would better reflect the clinical picture than E11.9 (Type 2 diabetes mellitus without complications), given the documented hyperglycemia and resulting treatment intensification."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca1",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "comprehensive assessment for diabetes follow-up"
+        },
+        {
+          "finding_id": "ca2",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10",
+          "clinical_evidence_quote": "labs: A1C 8.9"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_002",
+      "n_gold": 2,
+      "n_pred": 4,
+      "n_matched": 1,
+      "p": 0.25,
+      "r": 0.5,
+      "f1": 0.3333333333333333,
+      "latency_s": 57.87583112716675,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "consultation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_referring_npi",
+          "rule_ids": [
+            "rule_ahcip_referring_npi"
+          ],
+          "quote": "referred by Dr. Smith",
+          "explanation": "The clinical note explicitly documents a referral from Dr. Smith (a formal consultation request), but referring_provider_npi is null on the claim. AHCIP requires the referring provider identifier when a consultation or referred visit is billed."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "New patient consultation",
+          "explanation": "Documentation supports a new-patient encounter for a referred assessment. E/M level (03.04A) should match the documented scope \u2014 flag for review."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "New patient consultation",
+          "explanation": "The note describes a formal consultation (referred by another physician) which in the SOMB maps to 03.03A, but the claim bills 03.04A (comprehensive office visit). Potential code mismatch \u2014 confirm whether 03.03A consultation criteria (referral, written reply to referring physician) are met before submitting 03.04A."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "hypertension management",
+          "explanation": "I10 (Essential hypertension) is appropriately linked to a visit whose stated reason is hypertension management. Linkage is reasonable."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca3",
+          "rule_id": "rule_ahcip_referring_npi",
+          "severity": "high",
+          "category": "consultation",
+          "suggested_code": "03.03A",
+          "clinical_evidence_quote": "referred by Dr. Smith"
+        },
+        {
+          "finding_id": "ca4",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "medium",
+          "category": "diagnosis",
+          "suggested_code": "I10",
+          "clinical_evidence_quote": "BP 168/102"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_003",
+      "n_gold": 2,
+      "n_pred": 4,
+      "n_matched": 2,
+      "p": 0.5,
+      "r": 1.0,
+      "f1": 0.6666666666666666,
+      "latency_s": 24.332645177841187,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "T2DM, HTN, dyslipidemia, osteoarthritis knees",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "consultation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_referring_npi",
+          "rule_ids": [
+            "rule_ahcip_referring_npi"
+          ],
+          "quote": "Referred for eye exam",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca5",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "annual comprehensive assessment"
+        },
+        {
+          "finding_id": "ca6",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10,E78.5,M17.9",
+          "clinical_evidence_quote": "T2DM, HTN, dyslipidemia, osteoarthritis knees"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_004",
+      "n_gold": 1,
+      "n_pred": 3,
+      "n_matched": 1,
+      "p": 0.3333333333333333,
+      "r": 1.0,
+      "f1": 0.5,
+      "latency_s": 18.06342911720276,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "critical",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "Office visit, brief assessment for upper respiratory symptoms",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Office visit, brief assessment for upper respiratory symptoms",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "cough x 5 days, no fever. Lungs clear. Supportive care advised",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca7",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "03.01A",
+          "clinical_evidence_quote": "Office visit, brief assessment"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_005",
+      "n_gold": 1,
+      "n_pred": 2,
+      "n_matched": 1,
+      "p": 0.5,
+      "r": 1.0,
+      "f1": 0.6666666666666666,
+      "latency_s": 33.019007205963135,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "global_surgical_package",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_global_window",
+          "rule_ids": [
+            "rule_ahcip_global_window"
+          ],
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago",
+          "explanation": "This visit occurs 8 days post-cholecystectomy, well within the AHCIP global surgical window for the operating surgeon. If the rendering provider is the same surgeon (or their group) who performed the cholecystectomy, post-operative follow-up care is included in the surgical package and is not separately billable to AHCIP. If a different provider (e.g., the patient's family physician) is performing this follow-up, it is billable, but that must be clearly documented and a -24 or analogous unlinking mechanism may be required. The note does not identify the provider's relationship to the original surgery, and no modifier has been appended to indicate a provider outside the global package."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago. Incision well-healed, no signs of infection. Patient reports mild fatigue. Discharged from surgical care.",
+          "explanation": "The documentation describes a focused, problem-specific post-operative check (incision inspection, brief symptom query, discharge from surgical service). This scope of work aligns with a 03.05A (minor assessment) or 03.01A (brief assessment), not a 03.04A (comprehensive assessment), which requires a comprehensive history and examination. The claim of 03.04A appears to be an E/M upcode relative to the documented complexity and depth of service."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca8",
+          "rule_id": "rule_ahcip_global_window",
+          "severity": "high",
+          "category": "modifier",
+          "suggested_code": "modifier -24",
+          "clinical_evidence_quote": "Post-op follow-up, cholecystectomy 8 days ago"
+        }
+      ]
+    }
+  ]
+}
