@@ -721,3 +721,80 @@ main.page {
   background: var(--color-flag-soft);
 }
 .denial-risk--critical .denial-risk__pct { color: var(--color-flag); }
+
+
+/* ---------- ROI calculator ---------- */
+.roi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+@media (max-width: 720px) {
+  .roi-grid { grid-template-columns: 1fr; }
+}
+.roi-form { padding: var(--space-4); }
+.roi-results { padding: var(--space-4); }
+.roi-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size);
+}
+.roi-form__label input,
+.roi-form__label select {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: inherit;
+  font-size: var(--font-size);
+}
+.roi-form button[type="submit"] {
+  margin-top: var(--space-2);
+  width: 100%;
+}
+.roi-summary {
+  font-size: var(--font-size-lg);
+  line-height: 1.5;
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-brand);
+  border-radius: var(--radius);
+}
+.roi-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-3) 0;
+  font-size: var(--font-size);
+}
+.roi-table th,
+.roi-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.roi-table th {
+  font-weight: 600;
+  background: var(--color-surface-2);
+}
+.roi-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.roi-loss td { color: var(--sev-high); }
+.roi-gain td { color: var(--color-clean); font-weight: 500; }
+.roi-cost td { color: var(--color-fg-muted); }
+.roi-net td { background: var(--color-surface-2); font-weight: 600; }
+.roi-net--positive td { color: var(--color-clean); }
+.roi-net--negative td { color: var(--color-flag); }
+.roi-after-subs {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--color-brand);
+}

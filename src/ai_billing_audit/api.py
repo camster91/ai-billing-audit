@@ -876,6 +876,96 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/roi", response_class=HTMLResponse)
+    @app.get("/roi/results", response_class=JSONResponse)
+    def roi_calculator(
+        request: Request,
+        monthly_claims: int = 1000,
+        current_denial_rate: float = 0.075,
+        avg_claim_value_usd: float = 190.0,
+        current_appeal_rate: float = 0.50,
+        catch_rate: float = 0.42,
+        plan_tier: str | None = None,
+    ):
+        """ROI calculator for the one-pager.
+
+        GET /roi: render the HTML form (with results embedded
+        when called from a form POST).
+        GET /roi/results: return the JSON output for an embeddable
+        widget that the marketing site can iframe.
+        POST /roi: accept form-encoded inputs and redirect back
+        to /roi?monthly_claims=...&... with the inputs as query
+        params so the URL is shareable.
+
+        Defaults reflect industry averages:
+          * 1,000 claims/month (mid-size practice)
+          * 7.5% denial rate (CMS commercial average)
+          * $190/claim (CMS commercial office-visit average)
+          * 50% manual appeal rate (industry average)
+          * 42% catch rate (v10 smartness-test F1 score)
+        """
+        from .roi import compute_roi
+
+        try:
+            result = compute_roi(
+                monthly_claims=monthly_claims,
+                current_denial_rate=current_denial_rate,
+                avg_claim_value_usd=avg_claim_value_usd,
+                current_appeal_rate=current_appeal_rate,
+                catch_rate=catch_rate,
+                plan_tier=plan_tier,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        # JSON endpoint for the embeddable widget
+        if request.url.path.endswith("/results"):
+            return JSONResponse(result)
+
+        # HTML rendering for /roi (form + result side by side)
+        return templates.TemplateResponse(
+            request,
+            "roi.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "result": result,
+                "inputs": {
+                    "monthly_claims": monthly_claims,
+                    "current_denial_rate": current_denial_rate,
+                    "avg_claim_value_usd": avg_claim_value_usd,
+                    "current_appeal_rate": current_appeal_rate,
+                    "catch_rate": catch_rate,
+                    "plan_tier": plan_tier,
+                },
+            },
+        )
+
+    @app.post("/roi", response_class=HTMLResponse)
+    async def roi_calculator_post(request: Request):
+        """Accept form-encoded POST and redirect to GET with query params.
+
+        The form is a normal HTML form (no JS) so the salesperson
+        can fill it in during a demo on a desktop browser, see the
+        results, and copy the URL to share with the prospect.
+        """
+        from fastapi.responses import RedirectResponse
+
+        form = await request.form()
+        params: dict[str, str] = {}
+        for k in (
+            "monthly_claims",
+            "current_denial_rate",
+            "avg_claim_value_usd",
+            "current_appeal_rate",
+            "catch_rate",
+            "plan_tier",
+        ):
+            v = form.get(k)
+            if v is not None and str(v).strip():
+                params[k] = str(v).strip()
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        return RedirectResponse(url=f"/roi?{qs}", status_code=303)
+
     @app.get("/activity", response_class=HTMLResponse)
     def activity_page(request: Request) -> HTMLResponse:
         """Show recent reviewer actions across all encounters.
