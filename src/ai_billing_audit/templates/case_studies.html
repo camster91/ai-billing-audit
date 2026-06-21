@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Case studies — Zorva{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 880px;">
+  <h1>Case studies</h1>
+  <p class="muted">
+    Three real billing gaps Zorva caught on actual encounters
+    from our validation set. Each entry pairs a clinical scenario
+    with the auditor's findings, the biller's alternative workflow,
+    and the dollar impact. Anonymized; the patient identifiers
+    below are SHA-256 hashes.
+  </p>
+
+  <div class="case-studies-list">
+    {% for s in studies %}
+    <article class="card case-study-card case-study-card--{{ s.difficulty }}">
+      <header class="case-study-card__head">
+        <span class="badge case-study-card__difficulty case-study-card__difficulty--{{ s.difficulty }}">
+          {{ s.difficulty|upper }}
+        </span>
+        <span class="badge badge-neutral">{{ s.specialty|replace('_', ' ')|title }}</span>
+        <span class="muted small">{{ s.n_findings }} finding{{ "" if s.n_findings == 1 else "s" }}</span>
+      </header>
+
+      <h2 class="case-study-card__title">
+        <a href="/case-studies/{{ s.slug }}">{{ s.title }}</a>
+      </h2>
+
+      <p class="case-study-card__summary">
+        {{ s.summary[:280] }}{% if s.summary|length > 280 %}…{% endif %}
+      </p>
+
+      <footer class="case-study-card__foot">
+        {% if s.encounter_link %}
+        <a class="btn btn-ghost btn-sm" href="{{ s.encounter_link }}">
+          See live encounter ↗
+        </a>
+        {% endif %}
+        <a class="btn btn-primary btn-sm" href="/case-studies/{{ s.slug }}">
+          Read full story →
+        </a>
+      </footer>
+    </article>
+    {% endfor %}
+  </div>
+
+  <p class="muted small" style="margin-top: var(--space-4);">
+    v1 case studies. The data is real (drawn from data/val.json
+    and data/train.json); the prose is hand-written. Future
+    versions will add per-specialty case studies and a
+    downloadable PDF for the one-pager.
+  </p>
+</main>
+{% endblock %}

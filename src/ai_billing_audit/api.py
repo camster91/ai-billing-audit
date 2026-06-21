@@ -876,6 +876,38 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/case-studies", response_class=HTMLResponse)
+    def case_studies_index(request: Request) -> HTMLResponse:
+        """Marketing index of worked-example case studies."""
+        from .case_studies import case_studies_index as _index
+        return templates.TemplateResponse(
+            request,
+            "case_studies.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "studies": _index(),
+            },
+        )
+
+    @app.get("/case-studies/{slug}", response_class=HTMLResponse)
+    def case_study_detail(slug: str, request: Request) -> HTMLResponse:
+        """One case study by slug."""
+        from .case_studies import get_case_study
+        cs = get_case_study(slug)
+        if cs is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"case study '{slug}' not found",
+            )
+        return templates.TemplateResponse(
+            request,
+            "case_study_detail.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "cs": cs,
+            },
+        )
+
     @app.get("/roi", response_class=HTMLResponse)
     @app.get("/roi/results", response_class=JSONResponse)
     def roi_calculator(
