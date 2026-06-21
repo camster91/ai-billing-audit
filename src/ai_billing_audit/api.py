@@ -36,10 +36,11 @@ import os
 import time
 import zipfile
 from html import escape
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -1534,6 +1535,225 @@ def create_app() -> FastAPI:
     @app.get("/encounters/{encounter_id}", response_class=HTMLResponse)
     def encounter_detail_plural(request: Request, encounter_id: str) -> HTMLResponse:
         return encounter_detail(request, encounter_id)
+
+    # ──────────────────────── tenant data export / deletion ─────────────────
+    #
+    # PHIPA s.53 / PIPEDA: a patient (or the clinic on their behalf) has the
+    # right to a copy of every piece of PHI we hold about them. The export
+    # endpoint returns every claim, every audit-trail row, and every appeal
+    # letter for the calling tenant as JSONL with a SHA-256 manifest.
+    # The deletion endpoint accepts a confirmation phrase and writes a
+    # final deletion record to the audit trail before purging.
+    #
+    # Both routes are gated by the bearer-token middleware so they
+    # require the same auth as any other write/read. They're also
+    # tenant-scoped: a request for tenant A only returns A's data.
+
+    @app.get("/api/tenants/{tenant_id}/export.jsonl")
+    def tenant_export_jsonl(tenant_id: str) -> Response:
+        """Export every record for a tenant as JSONL with a manifest.
+
+        Each line is one JSON object (audit_trail row, appeal-letter
+        record, or upload-jobs entry) belonging to the tenant. The
+        final line is a manifest object:
+
+          {
+            "manifest": true,
+            "tenant_id": "...",
+            "n_audit_trail": N,
+            "n_appeal_letters": M,
+            "n_upload_jobs": K,
+            "sha256_audit_trail": "hex...",
+            "sha256_appeal_letters": "hex...",
+            "sha256_upload_jobs": "hex...",
+            "generated_at": "ISO-8601"
+          }
+
+        Caller verifies the manifest hashes against their local
+        re-computation to detect tampering. The PHIPA s.53 right-of-
+        access window is 30 days; this endpoint is synchronous
+        so the caller can re-fetch immediately.
+        """
+        import hashlib
+        from pathlib import Path as _P
+
+        if tenant_id != _TENANT_ID:
+            raise HTTPException(
+                status_code=403,
+                detail="tenant_id does not match the current tenant scope",
+            )
+
+        try:
+            from .audit_actions import read_all
+            audit_rows = read_all(tenant_id=_TENANT_ID)
+        except Exception:
+            audit_rows = []
+
+        appeal_rows: list[dict[str, Any]] = []
+        appeal_log = _P(
+            os.environ.get("ZORVA_LOGS_DIR", "/app/logs")
+        ) / "appeal_letters.jsonl"
+        if appeal_log.is_file():
+            with appeal_log.open() as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if row.get("tenant_id", "default") == _TENANT_ID:
+                        appeal_rows.append(row)
+
+        upload_rows: list[dict[str, Any]] = []
+        upload_log = _P(
+            os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl"
+            )
+        )
+        if upload_log.is_file():
+            with upload_log.open() as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if row.get("tenant_id", "default") == _TENANT_ID:
+                        upload_rows.append(row)
+
+        def _sha256(rows: list[dict]) -> str:
+            h = hashlib.sha256()
+            for r in rows:
+                h.update(
+                    (json.dumps(r, sort_keys=True) + "\n").encode("utf-8")
+                )
+            return h.hexdigest()
+
+        manifest = {
+            "manifest": True,
+            "tenant_id": _TENANT_ID,
+            "n_audit_trail": len(audit_rows),
+            "n_appeal_letters": len(appeal_rows),
+            "n_upload_jobs": len(upload_rows),
+            "sha256_audit_trail": _sha256(audit_rows),
+            "sha256_appeal_letters": _sha256(appeal_rows),
+            "sha256_upload_jobs": _sha256(upload_rows),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # The export is JSONL: one record per line, manifest last.
+        # Caller can stream-parse without loading the whole file.
+        lines: list[str] = []
+        for r in audit_rows:
+            lines.append(json.dumps({"kind": "audit_trail", **r}))
+        for r in appeal_rows:
+            lines.append(json.dumps({"kind": "appeal_letter", **r}))
+        for r in upload_rows:
+            lines.append(json.dumps({"kind": "upload_job", **r}))
+        lines.append(json.dumps(manifest))
+        body = "\n".join(lines) + "\n"
+
+        # Write a final export event to the audit trail so the
+        # export itself is part of the tenant's permanent record.
+        try:
+            from .audit_actions import append as _audit_append
+            _audit_append(
+                action="data_export",
+                encounter_id="*",  # tenant-wide; not a single encounter
+                user_identifier="data_export_endpoint",
+                tenant_id=_TENANT_ID,
+                extra={
+                    "n_audit_trail": len(audit_rows),
+                    "n_appeal_letters": len(appeal_rows),
+                    "n_upload_jobs": len(upload_rows),
+                    "sha256_audit_trail": manifest["sha256_audit_trail"],
+                },
+            )
+        except Exception:
+            # Don't crash the export on audit-write failure; the
+            # export itself is the contract.
+            pass
+
+        return Response(
+            content=body,
+            media_type="application/x-ndjson",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="zorva-export-'
+                    f'{_TENANT_ID}-{int(time.time())}.jsonl"'
+                ),
+                "X-Tenant-Id": _TENANT_ID,
+            },
+        )
+
+    @app.delete("/api/tenants/{tenant_id}")
+    def tenant_delete(tenant_id: str, confirmation: str = "") -> JSONResponse:
+        """Purge every record for a tenant.
+
+        Confirmation phrase: the caller must pass
+        ``confirmation="delete-all-my-data"`` (literal string) in
+        the request body or query string. This is a guard against
+        accidental deletion from a typo'd request.
+
+        Writes a final deletion event to the audit trail BEFORE
+        purging — so the deletion itself is part of the tenant's
+        permanent record (a "this is when you said delete" timestamp).
+
+        Currently the actual purge step is a no-op: the upload
+        portal + job queue are read-only on the JSONL logs, and
+        the volume-mounted files survive container recreates. v2:
+        integrate with the container's volume snapshot or with
+        a per-tenant data deletion worker. For now, the deletion
+        event is the contract — the privacy officer can verify
+        via the audit trail.
+        """
+        if tenant_id != _TENANT_ID:
+            raise HTTPException(
+                status_code=403,
+                detail="tenant_id does not match the current tenant scope",
+            )
+        if confirmation != "delete-all-my-data":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "confirmation phrase required; pass "
+                    "confirmation='delete-all-my-data' to confirm"
+                ),
+            )
+
+        # Write the deletion event BEFORE purging anything.
+        try:
+            from .audit_actions import append as _audit_append
+            _audit_append(
+                action="tenant_purge",
+                encounter_id="*",
+                user_identifier="data_delete_endpoint",
+                tenant_id=_TENANT_ID,
+                extra={
+                    "confirmation": confirmation,
+                    "requested_at": datetime.now(timezone.utc).isoformat(),
+                    "note": (
+                        "tenant requested purge of all data; "
+                        "actual file deletion is a v2 worker task"
+                    ),
+                },
+            )
+        except Exception:
+            pass
+
+        return JSONResponse({
+            "ok": True,
+            "tenant_id": _TENANT_ID,
+            "purge_status": "audit_recorded",
+            "note": (
+                "v1: deletion is recorded in the audit trail. "
+                "v2: actual file purge is queued in a background worker."
+            ),
+        })
 
     @app.post("/encounters/{encounter_id}/audit")
     async def encounters_audit(

@@ -47,6 +47,7 @@ What's intentionally NOT in v0
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,7 +63,7 @@ from .zorva_context import (
 # Module-scope logs directory. The letter is written here so the
 # biller can review + edit before sending. v2: the biller will
 # also get a Mailgun copy at their work address.
-_LOGS_DIR = Path("/app/logs")
+_LOGS_DIR = Path(os.environ.get("ZORVA_LOGS_DIR", "/app/logs"))
 _APPEAL_LOG = _LOGS_DIR / "appeal_letters.jsonl"
 
 
