@@ -927,6 +927,12 @@ def create_app() -> FastAPI:
                 target_finding = f
                 break
         if target_finding is None and rule_id:
+            # Try exact rule_id match first (single key or
+            # rule_ids list), then fall back to a prefix/substring
+            # match because the LLM sometimes emits rule_ids with
+            # different endings (DX_LINKAGE_REQUIREMENT vs
+            # DX_LINKAGE_REQUIRED — singular vs plural, singular
+            # vs -MENT suffix, etc.).
             for f in real_audit.get("findings", []):
                 rid = f.get("rule_id") or (
                     f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
@@ -934,6 +940,29 @@ def create_app() -> FastAPI:
                 if rid == rule_id:
                     target_finding = f
                     break
+            if target_finding is None:
+                # Fuzzy match: same first 12 characters of the
+                # rule_id, OR one is a substring of the other.
+                # This catches singular/plural ("DX_LINKAGE_REQUIRED"
+                # vs "DX_LINKAGE_REQUIREMENT") and minor
+                # variation in the suffix. Underscores and dashes
+                # both normalize to empty so DX_LINKAGE_001 and
+                # DX-LINKAGE-001 are equivalent.
+                rule_norm = rule_id.upper().replace("_", "").replace("-", "")
+                for f in real_audit.get("findings", []):
+                    rid = f.get("rule_id") or (
+                        f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
+                    )
+                    if not rid:
+                        continue
+                    rid_norm = rid.upper().replace("_", "").replace("-", "")
+                    if (
+                        rule_norm[:12] == rid_norm[:12]
+                        or rule_norm in rid_norm
+                        or rid_norm in rule_norm
+                    ):
+                        target_finding = f
+                        break
         if target_finding is None:
             key = f"finding_id={finding_id!r}" if finding_id else f"rule_id={rule_id!r}"
             raise HTTPException(
