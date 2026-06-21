@@ -481,19 +481,30 @@ def generate_appeal_letter(
     return parsed
 
 
-def log_appeal_letter(letter: dict[str, Any], encounter_id: str | None) -> None:
+def log_appeal_letter(
+    letter: dict[str, Any],
+    encounter_id: str | None,
+    *,
+    tenant_id: str | None = None,
+) -> None:
     """Append a generated letter to the appeal_letters.jsonl log.
 
     The body is already PHI-scrubbed by generate_appeal_letter().
-    We log the metadata (encounter_id, market, compliance_law,
-    basis, cited rules) but NOT the full letter body. The biller
-    gets the full letter through the API response; the log only
-    records the audit trail.
+    We log the metadata (encounter_id, tenant_id, market,
+    compliance_law, basis, cited rules) but NOT the full letter
+    body. The biller gets the full letter through the API
+    response; the log only records the audit trail.
+
+    Multi-tenant hardening: tenant_id is recorded on every row
+    so a privacy officer can filter by tenant and so the
+    cross-tenant audit view can include appeal letters alongside
+    audit_trail and upload_jobs rows.
     """
     try:
         _LOGS_DIR.mkdir(parents=True, exist_ok=True)
         record = {
             "encounter_id": encounter_id,
+            "tenant_id": tenant_id or "default",
             "market": letter.get("market"),
             "compliance_law": letter.get("compliance_law"),
             "appeal_basis": letter.get("appeal_basis"),

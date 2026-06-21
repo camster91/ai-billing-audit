@@ -303,6 +303,74 @@ def compute_clean_rate_metrics(
     }
 
 
+def read_latest_real_audit(
+    *,
+    encounter_id: str,
+    tenant_id: str,
+    log_path: str | os.PathLike[str] = "/app/logs/upload_jobs.jsonl",
+) -> dict[str, Any] | None:
+    """Read the most recent completed LLM audit for an encounter.
+
+    Multi-tenant hardening: this function is module-level so it's
+    unit-testable in isolation (the closure-bound version inside
+    create_app() can't easily be tested without HTTP). Reads the
+    most recent row in upload_jobs.jsonl whose encounter_id
+    matches AND whose tenant_id matches the supplied tenant_id.
+
+    Returns a dict with the audit's findings, summary, and
+    metadata; None if no match. Legacy rows without a tenant_id
+    key default to "default" so existing audit trails don't
+    disappear after the upgrade.
+
+    Used by the index and encounter-detail handlers to surface
+    live LLM audit results alongside the demo cards.
+    """
+    from pathlib import Path as _P
+    log = _P(log_path)
+    if not log.is_file():
+        return None
+    try:
+        with log.open() as fh:
+            lines = fh.readlines()
+    except OSError:
+        return None
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("encounter_id") != encounter_id:
+            continue
+        # Tenant filter: skip rows that belong to a different
+        # tenant. Legacy rows (no tenant_id key) default to
+        # "default" so existing audit trails don't disappear.
+        if rec.get("tenant_id", "default") != tenant_id:
+            continue
+        if rec.get("status") != "done":
+            continue
+        res = rec.get("result", {}) or {}
+        if res.get("audit_status") != "ok":
+            continue
+        return {
+            "job_id": rec.get("job_id"),
+            "encounter_id": rec.get("encounter_id"),
+            "source": rec.get("source"),
+            "submitted_at": rec.get("submitted_at"),
+            "finished_at": rec.get("finished_at"),
+            "findings_count": res.get("findings_count", 0),
+            "findings": res.get("findings", []),
+            "summary": res.get("summary", ""),
+            "difficulty_tier": res.get("difficulty_tier"),
+            "variant": res.get("variant"),
+            "zorva_context": res.get("zorva_context"),
+            "tenant_id": rec.get("tenant_id", "default"),
+        }
+    return None
+
+
 def create_app() -> FastAPI:
     """Build a fresh FastAPI app.
 
@@ -367,62 +435,29 @@ def create_app() -> FastAPI:
             return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
         return await call_next(request)
 
-    if _STATIC_DIR.is_dir():
-        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-
     def _latest_real_audit_for(encounter_id: str) -> dict[str, Any] | None:
-        """Read the job-queue JSONL log for the most recent real-audit
-        run that matches ``encounter_id`` and has ``audit_status=ok``.
+        """Return the most recent completed LLM audit for an encounter.
 
-        Returns a small dict (job_id, findings, summary, etc.) or None
-        if no match. Used by the index and encounter-detail handlers
-        to surface live LLM audit results alongside the demo cards.
+        Tenant scoping (multi-tenant hardening): the upload_jobs
+        log is append-only and lives in /app/logs. Without a
+        tenant filter here, one tenant's encounter_id could
+        collide with another tenant's (and one tenant's biller
+        could read another tenant's findings). We delegate to
+        the module-level ``read_latest_real_audit`` and pass
+        _TENANT_ID explicitly so the function is unit-testable
+        in isolation.
 
         Log path is configurable via the UPLOAD_AUDIT_LOG_PATH env
         var so tests can point at a tmp file. Default is the
         production path inside the container.
         """
-        try:
-            from pathlib import Path as _P
-            log_path = _P(os.environ.get(
-                "UPLOAD_AUDIT_LOG_PATH",
-                "/app/logs/upload_jobs.jsonl",
-            ))
-            if not log_path.is_file():
-                return None
-            with log_path.open() as fh:
-                lines = fh.readlines()
-            for line in reversed(lines):
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if rec.get("encounter_id") != encounter_id:
-                    continue
-                if rec.get("status") != "done":
-                    continue
-                res = rec.get("result", {}) or {}
-                if res.get("audit_status") != "ok":
-                    continue
-                return {
-                    "job_id": rec.get("job_id"),
-                    "encounter_id": rec.get("encounter_id"),
-                    "source": rec.get("source"),
-                    "submitted_at": rec.get("submitted_at"),
-                    "finished_at": rec.get("finished_at"),
-                    "findings_count": res.get("findings_count", 0),
-                    "findings": res.get("findings", []),
-                    "summary": res.get("summary", ""),
-                    "difficulty_tier": res.get("difficulty_tier"),
-                    "variant": res.get("variant"),
-                    "zorva_context": res.get("zorva_context"),
-                }
-        except Exception:
-            return None
-        return None
+        return read_latest_real_audit(
+            encounter_id=encounter_id,
+            tenant_id=_TENANT_ID,
+            log_path=_os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl",
+            ),
+        )
 
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
     templates.env.filters["highlight_quote"] = _highlight_quote
@@ -956,7 +991,7 @@ def create_app() -> FastAPI:
                 detail="appeal-letter generation returned no result",
             )
         # Log metadata only (body already PHI-scrubbed by the generator).
-        log_appeal_letter(letter, encounter_id)
+        log_appeal_letter(letter, encounter_id, tenant_id=_TENANT_ID)
         return JSONResponse({
             "ok": True,
             "encounter_id": encounter_id,
@@ -1259,6 +1294,7 @@ def create_app() -> FastAPI:
                 encounter=claim,
                 source=source,
                 source_filename=row.get("source_filename") or None,
+                tenant_id=_TENANT_ID,
             )
             accepted.append(
                 {

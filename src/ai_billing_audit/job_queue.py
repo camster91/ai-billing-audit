@@ -250,11 +250,13 @@ class Job:
         encounter_id: str,
         source: str,
         source_filename: str | None,
+        tenant_id: str | None = None,
     ) -> None:
         self.job_id = job_id
         self.encounter_id = encounter_id
         self.source = source
         self.source_filename = source_filename
+        self.tenant_id = tenant_id or "default"
         self.status = "queued"
         self.error = ""
         self.result: dict[str, Any] = {}
@@ -282,6 +284,7 @@ class Job:
             "encounter_id": self.encounter_id,
             "source": self.source,
             "source_filename": self.source_filename,
+            "tenant_id": self.tenant_id,
             "status": self.status,
             "stage": self.status,
             "progress": self._STATUS_PROGRESS.get(self.status, 0),
@@ -299,6 +302,7 @@ class Job:
             encounter_id=d["encounter_id"],
             source=d["source"],
             source_filename=d.get("source_filename"),
+            tenant_id=d.get("tenant_id"),
         )
         j.status = d.get("status", "queued")
         j.error = d.get("error", "")
@@ -394,11 +398,17 @@ class JobQueue:
         encounter: dict[str, Any],
         source: str,
         source_filename: str | None = None,
+        tenant_id: str | None = None,
     ) -> Job:
         """Submit a job. Returns the freshly created Job.
 
         The job transitions through ``queued`` → ``running`` →
         ``done`` / ``failed`` in a background thread.
+
+        Multi-tenant hardening: tenant_id is recorded on the Job
+        so the JSONL log row carries the tenant. The
+        _latest_real_audit_for API handler filters by tenant
+        so one tenant's encounter can't leak to another.
         """
         jid = uuid.uuid4().hex[:12]
         encounter_id = str(encounter.get("encounter_id") or f"enc_{jid}")
@@ -407,6 +417,7 @@ class JobQueue:
             encounter_id=encounter_id,
             source=source,
             source_filename=source_filename,
+            tenant_id=tenant_id,
         )
         with self._lock:
             self._jobs[jid] = job
