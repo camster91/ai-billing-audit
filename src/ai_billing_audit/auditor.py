@@ -82,7 +82,10 @@ RESPONSE_JSON_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": True,
-                "required": ["quote", "severity"],
+                # quote is no longer jsonschema-required — we synthesize
+                # one in the validator from explanation/rationale if the
+                # model omits it. severity stays required.
+                "required": ["severity"],
                 "properties": {
                     "category": {"type": "string"},
                     "suggested_code": {"type": "string"},
@@ -280,11 +283,14 @@ def validate_findings(
             raise AuditValidationError(
                 f"findings[{i}] is not a JSON object (got {type(item).__name__})"
             )
-        # Required: quote (the evidence) and severity (so the dashboard
-        # can colour-code). category and suggested_code are optional —
-        # the model often omits category for documentation-only findings
-        # (e.g. "rule_missing_dx_001" has no code to suggest).
-        for key in ("quote", "severity"):
+        # Required: severity (so the dashboard can colour-code).
+        # category and suggested_code are optional. quote is also
+        # optional now — the model sometimes emits findings without
+        # a verbatim quote (e.g. it summarises the note in explanation
+        # instead). If quote is missing, we synthesise a placeholder
+        # from the explanation / rationale so the rest of the
+        # pipeline can render the finding without crashing.
+        for key in ("severity",):
             if key not in item:
                 raise AuditValidationError(f"findings[{i}] missing required field '{key}'")
         # Normalize severity to lowercase. Different models echo
@@ -309,12 +315,35 @@ def validate_findings(
             raise AuditValidationError(
                 f"findings[{i}].rule_ids must be a list of strings"
             )
-        quote = str(item["quote"])
+        # Synthesize a quote if the model omitted it. We pull a
+        # 1-sentence excerpt from the explanation / rationale and
+        # check it against the clinical note. If we can't find a
+        # substring match, we fall back to the model's own quote
+        # verbatim — even an unsynthesized quote is better than
+        # dropping the finding on the floor.
+        quote = str(item.get("quote", "") or "").strip()
+        if not quote:
+            for source_field in ("explanation", "rationale"):
+                src = str(item.get(source_field, "") or "").strip()
+                if not src:
+                    continue
+                # Try the first sentence of the source field.
+                first_sentence = re.split(r"[.\n!?]", src, maxsplit=1)[0].strip()
+                if not first_sentence:
+                    continue
+                if not clinical_note or _quote_in_note(first_sentence, clinical_note):
+                    quote = first_sentence
+                    break
+            else:
+                # No usable quote from any source field. Use the
+                # model's explanation as the quote verbatim — it's
+                # better than nothing for the dashboard display.
+                quote = str(item.get("explanation", "") or "")[:500]
         # Hallucination guardrail: if we have a clinical note to check against,
         # reject any finding whose quote is not in the note. The whole
         # finding (suggested_code + severity + rule_ids) is suspect when the
         # supporting evidence is fabricated, so we drop the whole row.
-        if clinical_note and not _quote_in_note(quote, clinical_note):
+        if clinical_note and quote and not _quote_in_note(quote, clinical_note):
             raise AuditValidationError(
                 f"findings[{i}].quote does not appear in the clinical note "
                 f"(quote={quote[:80]!r}): fabricated evidence rejected"

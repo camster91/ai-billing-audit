@@ -1,0 +1,531 @@
+{
+  "summary": {
+    "n_encounters": 5,
+    "mean_per_encounter": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "micro_aggregate": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "true_positives": 0,
+      "total_predicted": 16,
+      "total_gold": 8
+    },
+    "clean_encounters": {
+      "n_gold_clean": 0,
+      "n_pred_clean": 0,
+      "n_overcalled_clean": 0
+    },
+    "per_rule": {
+      "rule_ahcip_dx_linkage": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 3,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_em_level": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_em_level_upcode": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_global_window": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_referring_npi": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_documentation_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_duplicate_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_dx_linkage_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_em_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_em_002": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_em_003": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_em_level_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_icd_001": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_icd_dm_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_missing_dx_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_missing_dx_002": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_modifier_25_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_preventive_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_preventive_002": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_referral_001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      }
+    },
+    "per_severity": {
+      "info": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "medium": {
+        "n_encounters": 1,
+        "n_gold_findings": 1,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "high": {
+        "n_encounters": 3,
+        "n_gold_findings": 3,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "critical": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      }
+    },
+    "latency": {
+      "mean_s": 69.35347037315368,
+      "p95_s": 149.79047107696533,
+      "n_errors": 0
+    }
+  },
+  "results": [
+    {
+      "encounter_id": "ca_ahcip_001",
+      "n_gold": 2,
+      "n_pred": 5,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 25.505871772766113,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "critical",
+          "suggested_code": "",
+          "rule_id": "rule_missing_dx_001",
+          "rule_ids": [
+            "rule_missing_dx_001"
+          ],
+          "quote": "ACR 32",
+          "explanation": "The note documents microalbuminuria (ACR 32) in a patient with diabetes on an ACE inhibitor (perindopril) \u2014 clinical picture is classic diabetic nephropathy. ICD-10 E11.22 (Type 2 DM with diabetic chronic kidney disease) must be on the claim. Claim only carries E11.9, which undercodes the complication and may deny renal-protection rationale for perindopril."
+        },
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_missing_dx_002",
+          "rule_ids": [
+            "rule_missing_dx_002"
+          ],
+          "quote": "eGFR 58",
+          "explanation": "eGFR of 58 corresponds to CKD stage 3a (KDIGO). This is a reportable chronic condition and supports an N18.3 code on the claim. The claim omits any CKD diagnosis despite the eGFR being explicitly documented and despite the patient being started on perindopril for renal protection."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_icd_dm_001",
+          "rule_ids": [
+            "rule_icd_dm_001"
+          ],
+          "quote": "A1C 8.9",
+          "explanation": "A1C of 8.9 is well above the <7.0 target and documents poorly controlled hyperglycemia, supporting ICD-10 E11.65 (Type 2 DM with hyperglycemia). Combined with the metformin up-titration ('Increased metformin to 1000mg BID'), uncontrolled diabetes is the active management problem of the visit and should be coded."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_em_level_001",
+          "rule_ids": [
+            "rule_em_level_001"
+          ],
+          "quote": "comprehensive assessment for diabetes follow-up",
+          "explanation": "Documentation supports a comprehensive visit with moderate-to-high complexity MDM: three chronic illnesses (DM, HTN, evolving CKD/diabetic nephropathy), data review (A1C, eGFR, ACR), active medication initiation (perindopril) and dose change (metformin), and counseling on dietary modification. The biller should verify that SOM-B 03.04A is the correct comprehensive-tier code for this MDM; if a lower-tier 03.03A or 03.04 code was intended, this is under-coded."
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_dx_linkage_001",
+          "rule_ids": [
+            "rule_dx_linkage_001"
+          ],
+          "quote": "Added perindopril 4mg daily",
+          "explanation": "Perindopril was added during this visit. If a prescription-writing or medication-management service element is billed (or if 03.04A rolls in such work), the primary indication (HTN I10) is on the claim, but the equally valid secondary indication (diabetic nephropathy / proteinuria) is missing as a linked diagnosis, weakening audit defensibility of the ACEi choice."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca1",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "comprehensive assessment for diabetes follow-up"
+        },
+        {
+          "finding_id": "ca2",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10",
+          "clinical_evidence_quote": "labs: A1C 8.9"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_002",
+      "n_gold": 2,
+      "n_pred": 4,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 149.79047107696533,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_referral_001",
+          "rule_ids": [
+            "rule_referral_001"
+          ],
+          "quote": "referred by Dr. Smith for hypertension management",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_001",
+          "rule_ids": [
+            "rule_em_001"
+          ],
+          "quote": "New patient consultation, referred by Dr. Smith for hypertension management",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_icd_001",
+          "rule_ids": [
+            "rule_icd_001"
+          ],
+          "quote": "hypertension management",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "rule_documentation_001",
+          "rule_ids": [
+            "rule_documentation_001"
+          ],
+          "quote": "referred by Dr. Smith for hypertension management",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca3",
+          "rule_id": "rule_ahcip_referring_npi",
+          "severity": "high",
+          "category": "consultation",
+          "suggested_code": "03.03A",
+          "clinical_evidence_quote": "referred by Dr. Smith"
+        },
+        {
+          "finding_id": "ca4",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "medium",
+          "category": "diagnosis",
+          "suggested_code": "I10",
+          "clinical_evidence_quote": "BP 168/102"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_003",
+      "n_gold": 2,
+      "n_pred": 7,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 112.47262692451477,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "preventive",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_preventive_001",
+          "rule_ids": [
+            "rule_preventive_001"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "The 'annual comprehensive assessment' phrasing is preventive-medicine / periodic health exam language. The claim bills 03.04A and 03.05A but does not include a periodic health exam or preventive code; if a preventive component was performed, the corresponding preventive code should be on the claim and modifier considerations applied per Alberta SOM_B preventive rules."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_em_002",
+          "rule_ids": [
+            "rule_em_002"
+          ],
+          "quote": "Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees.",
+          "explanation": "Four stable chronic conditions were reviewed. Combined with the prescription drug management (atorvastatin adjustment) and the referral, the documented medical decision making is at least moderate complexity. Verify the billed SOM_B visit tier (03.04A vs 03.05A) corresponds to the moderate-to-high complexity level supported by the note; under-coding here is recoverable revenue."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_em_003",
+          "rule_ids": [
+            "rule_em_003"
+          ],
+          "quote": "Adjusted atorvastatin to 40mg.",
+          "explanation": "A dose change of an ongoing chronic-disease medication is prescription drug management, a high-complexity MDM element under the CMS MDM table (and the Alberta equivalent). This supports the upper end of moderate complexity and should be reflected in the visit code billed."
+        },
+        {
+          "finding_id": "",
+          "category": "duplicate",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_duplicate_001",
+          "rule_ids": [
+            "rule_duplicate_001"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "The claim bills two visit-level SOM_B codes (03.04A and 03.05A) for a single established-patient encounter. Most payer schedules and the Alberta SOM_B do not allow two comprehensive/detailed visit codes on the same date for the same patient; this is a likely duplicate or unbundled visit code. Verify whether 03.05A represents a separately payable component (e.g., periodic health exam) or is a duplicate of 03.04A."
+        },
+        {
+          "finding_id": "",
+          "category": "preventive",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "rule_preventive_002",
+          "rule_ids": [
+            "rule_preventive_002"
+          ],
+          "quote": "Referred for eye exam.",
+          "explanation": "Annual dilated eye exam referral for a Type 2 diabetic patient is a standard-of-care preventive service. If a care-coordination or referral code applies to the visit (e.g., periodic health exam referral component), it should be considered; otherwise the referral itself is appropriately documented but does not require an additional line item in this claim."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_icd_001",
+          "rule_ids": [
+            "rule_icd_001"
+          ],
+          "quote": "Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees.",
+          "explanation": "All four documented chronic conditions are present on the claim: E11.9 (T2DM), I10 (HTN), E78.5 (dyslipidemia), and M17.9 (knee OA). Diagnosis linkage is complete and appropriate."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_modifier_25_001",
+          "rule_ids": [
+            "rule_modifier_25_001"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "No procedure is billed on this claim and the note does not document a same-day procedure, so modifier-25 is not applicable. No modifier finding is required."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca5",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "annual comprehensive assessment"
+        },
+        {
+          "finding_id": "ca6",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10,E78.5,M17.9",
+          "clinical_evidence_quote": "T2DM, HTN, dyslipidemia, osteoarthritis knees"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_004",
+      "n_gold": 1,
+      "n_pred": 0,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 41.75010681152344,
+      "error": null,
+      "pred_findings": [],
+      "gold_findings": [
+        {
+          "finding_id": "ca7",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "03.01A",
+          "clinical_evidence_quote": "Office visit, brief assessment"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_005",
+      "n_gold": 1,
+      "n_pred": 0,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 17.24827527999878,
+      "error": null,
+      "pred_findings": [],
+      "gold_findings": [
+        {
+          "finding_id": "ca8",
+          "rule_id": "rule_ahcip_global_window",
+          "severity": "high",
+          "category": "modifier",
+          "suggested_code": "modifier -24",
+          "clinical_evidence_quote": "Post-op follow-up, cholecystectomy 8 days ago"
+        }
+      ]
+    }
+  ]
+}
