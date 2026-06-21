@@ -2,23 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{% block title %}ai-billing-audit dashboard{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ai-billing-audit{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">ai-billing-audit <span class="brand-sub">demo dashboard</span></a>
-    <nav class="topnav">
-      <a href="/">index</a>
-      <a href="/encounters/upload">upload</a>
-      <a href="/healthz">health</a>
+    <a class="brand" href="/">
+      <span class="brand-mark">A</span>
+      <span class="brand-text">ai-billing-audit</span>
+    </a>
+    <nav>
+      <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Audits</a>
+      <a href="/encounters/upload" {% if request.url.path == "/encounters/upload" %}class="is-active"{% endif %}>Upload</a>
+      <a href="/activity" {% if request.url.path == "/activity" %}class="is-active"{% endif %}>Activity</a>
+      <a href="/legal/privacy" {% if request.url.path.startswith("/legal/privacy") %}class="is-active"{% endif %}>Privacy</a>
+      <a href="/legal/terms" {% if request.url.path.startswith("/legal/terms") %}class="is-active"{% endif %}>Terms</a>
     </nav>
+    <div class="tenant-pill" title="Tenant">{{ tenant_name or "Acme Family Practice" }}</div>
   </header>
-  <main class="container">
-    {% block content %}{% endblock %}
+
+  <main class="page">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
   <footer class="footer">
-    <span>ai-billing-audit v0.1.0 · demo dashboard</span>
+    ai-billing-audit v0.1.0 &middot; tenant: <strong>Acme Family Practice</strong> &middot; <a href="/healthz">health</a>
   </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // Tiny toast helper — used by stub action buttons.
+    (function () {
+      var el = document.getElementById("toast");
+      var timer = null;
+      window.showToast = function (msg) {
+        el.textContent = msg;
+        el.classList.add("is-visible");
+        clearTimeout(timer);
+        timer = setTimeout(function () { el.classList.remove("is-visible"); }, 4000);
+      };
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

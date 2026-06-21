@@ -848,6 +848,34 @@ def create_app() -> FastAPI:
             "n_registered": len(list_demo_encounters()),
         }
 
+    @app.get("/legal/privacy", response_class=HTMLResponse)
+    def legal_privacy(request: Request) -> HTMLResponse:
+        """Privacy Policy. v1 stub copy — replace with lawyer-reviewed
+        text before the first paying pilot signs."""
+        return templates.TemplateResponse(
+            request,
+            "legal_privacy.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "tenant_id": _TENANT_ID,
+                "data_residency": "Canada (ca-central-1, AWS)",
+                "support_email": "privacy@zorva.ca",
+            },
+        )
+
+    @app.get("/legal/terms", response_class=HTMLResponse)
+    def legal_terms(request: Request) -> HTMLResponse:
+        """Terms of Service. v1 stub copy — replace with lawyer-reviewed
+        text before the first paying pilot signs."""
+        return templates.TemplateResponse(
+            request,
+            "legal_terms.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "support_email": "support@zorva.ca",
+            },
+        )
+
     @app.get("/activity", response_class=HTMLResponse)
     def activity_page(request: Request) -> HTMLResponse:
         """Show recent reviewer actions across all encounters.
