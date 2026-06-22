@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Contact sales — Zorva{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 640px;">
+  <h1>Book a 15-minute walkthrough</h1>
+  <p class="muted">
+    Tell us about your clinic. We'll run Zorva on a sample of
+    your claims (anonymized), walk you through the findings,
+    and quote your pilot pricing. The first call is free; the
+    90-day pilot is signed under a BAA / HIC-Agent agreement
+    <em>before</em> any billing starts.
+  </p>
+
+  {% if success %}
+  <div class="contact-success">
+    <h2>Thanks — we'll be in touch.</h2>
+    <p>
+      Your request is on the sales queue. We respond within 1
+      business day at <strong>{{ support_email }}</strong>.
+    </p>
+    <p class="muted small">
+      Confirmation reference:
+      <code>{{ email_hash_prefix }}</code>
+      (this is a SHA-256 prefix of your email; we use it to
+      dedupe if you submit twice).
+    </p>
+    <p>
+      <a class="btn btn-primary" href="/case-studies">Read case studies →</a>
+      <a class="btn btn-ghost" href="/roi">Try the ROI calculator →</a>
+    </p>
+  </div>
+
+  {% else %}
+  {% if error %}
+  <div class="contact-error" role="alert">
+    <strong>Couldn't submit:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  <form class="contact-form" method="post" action="/contact">
+    <label class="contact-form__label">
+      Your name
+      <input type="text" name="name" maxlength="200" required
+             value="{{ name or '' }}" />
+    </label>
+
+    <label class="contact-form__label">
+      Clinic name
+      <input type="text" name="clinic" maxlength="200" required
+             value="{{ clinic or '' }}" />
+    </label>
+
+    <label class="contact-form__label">
+      Work email
+      <input type="email" name="email" maxlength="320" required
+             value="{{ email or '' }}" />
+    </label>
+
+    <label class="contact-form__label">
+      Monthly claim volume
+      <input type="number" name="monthly_claims" min="1" max="1000000"
+             step="1" required value="{{ monthly_claims or '' }}" />
+      <span class="muted small">e.g. 1000 for a mid-size practice</span>
+    </label>
+
+    <label class="contact-form__label">
+      What would you like to see in the demo?
+      <textarea name="message" rows="5" maxlength="2000"
+                placeholder="e.g. We're a 6-physician family practice in Toronto. Currently 6% of our claims get denied. Looking for tools that catch modifier-25 and dx-linkage issues before submission.">{{ message or '' }}</textarea>
+    </label>
+
+    <p class="muted small">
+      By submitting, you agree to be contacted about Zorva.
+      We don't share your email with anyone; we don't add
+      you to a marketing list. The form submission is recorded
+      in our audit trail for your privacy.
+    </p>
+
+    <button type="submit" class="btn btn-primary contact-form__submit">
+      Request a walkthrough
+    </button>
+  </form>
+
+  <p class="muted small" style="margin-top: var(--space-4);">
+    Or email us directly at
+    <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    We respond within 1 business day.
+  </p>
+  {% endif %}
+</main>
+{% endblock %}

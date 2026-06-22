@@ -19,6 +19,7 @@
       <a href="/activity" {% if request.url.path == "/activity" %}class="is-active"{% endif %}>Activity</a>
       <a href="/roi" {% if request.url.path.startswith("/roi") %}class="is-active"{% endif %}>ROI</a>
       <a href="/case-studies" {% if request.url.path.startswith("/case-studies") %}class="is-active"{% endif %}>Case studies</a>
+      <a href="/contact" {% if request.url.path.startswith("/contact") %}class="is-active"{% endif %}>Contact</a>
       <a href="/legal/privacy" {% if request.url.path.startswith("/legal/privacy") %}class="is-active"{% endif %}>Privacy</a>
       <a href="/legal/terms" {% if request.url.path.startswith("/legal/terms") %}class="is-active"{% endif %}>Terms</a>
     </nav>

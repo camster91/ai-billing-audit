@@ -876,6 +876,81 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/contact", response_class=HTMLResponse)
+    @app.post("/contact", response_class=HTMLResponse)
+    async def contact_sales(
+        request: Request,
+        name: str = Form(""),
+        clinic: str = Form(""),
+        email: str = Form(""),
+        monthly_claims: str = Form(""),
+        message: str = Form(""),
+    ):
+        """Contact sales — book a 15-minute walkthrough.
+
+        GET: render the empty form.
+        POST: validate input, write to audit trail, render
+        the success page with a follow-up message.
+        """
+        from .contact import (
+            _append_contact_event,
+            valid_email,
+            valid_volume,
+        )
+
+        error: str | None = None
+        success = False
+        email_hash_prefix: str | None = None
+        if request.method == "POST":
+            # Validate
+            if not name or len(name) > 200:
+                error = "Please enter your name (max 200 chars)."
+            elif not clinic or len(clinic) > 200:
+                error = "Please enter your clinic name (max 200 chars)."
+            elif not valid_email(email):
+                error = (
+                    "Please enter a valid email address."
+                )
+            elif not valid_volume(monthly_claims):
+                error = (
+                    "Please enter a positive number for "
+                    "monthly claim volume (max 1,000,000)."
+                )
+            elif len(message) > 2000:
+                error = "Message is too long (max 2000 chars)."
+            if error is None:
+                row = _append_contact_event(
+                    name=name,
+                    clinic=clinic,
+                    email=email,
+                    monthly_claims=monthly_claims,
+                    message=message,
+                )
+                success = True
+                # Show first 16 chars of the email hash so the
+                # user sees that the email was registered
+                # without us showing the email itself.
+                email_hash_prefix = (
+                    row["user_identifier"][:16] + "..."
+                )
+
+        return templates.TemplateResponse(
+            request,
+            "contact.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "success": success,
+                "error": error,
+                "email_hash_prefix": email_hash_prefix,
+                "name": name if not success else "",
+                "clinic": clinic if not success else "",
+                "email": email if not success else "",
+                "monthly_claims": monthly_claims if not success else "",
+                "message": message if not success else "",
+                "support_email": "sales@zorva.ca",
+            },
+        )
+
     @app.get("/case-studies", response_class=HTMLResponse)
     def case_studies_index(request: Request) -> HTMLResponse:
         """Marketing index of worked-example case studies."""
