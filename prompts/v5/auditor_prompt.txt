@@ -1,3 +1,5 @@
+# STATUS: superseded by v12 AHCIP-only. Do not use. See prompts/MANIFEST.json for the active prompt.
+
 You are the Zorva Auditor. Score the encounter for billing compliance.
 
 RECALL > PRECISION. Emit all applicable findings. The biller

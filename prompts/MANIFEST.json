@@ -1,10 +1,25 @@
 {
   "version": 1,
+  "status_note": "This manifest is INTENTIONALLY sparse: only v0 (the unoptimized baseline) and v12 (the shipped AHCIP-only Auditor) are canonical / active. The archived v1–v11 prompts exist on disk under prompts/v{1..11}/auditor_prompt.txt for historical reference but are NOT entered here. See `archived_versions` below for a short reason per version. Adding MANIFEST entries for v1–v11 would require fabricating R/P values, which is explicitly out of scope (see audit task t_415b1e9b, 2026-06-22).",
   "notes": "Append-only manifest of prompt optimization runs. Each new optimization pass appends one entry to `entries`; existing entries are never modified or reordered. The diff between an entry's `version_hash`/`parent_hash` and its `optimizer_config` represents what the optimizer changed relative to the previous run. To add a run: append a new entry, set its `parent_hash` to the previous entry's `version_hash`, and compute `version_hash` over the new prompt content.",
+  "archived_versions": [
+    {"version": "v1", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite"},
+    {"version": "v2", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite"},
+    {"version": "v3", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite. R/P available in artifacts/smartness_baseline_v3.json (raw, pre-aggregation)"},
+    {"version": "v4", "status": "superseded_by_v12", "reason": "US-only; added concrete rule-trigger examples for rules the auditor was missing. R/P available in artifacts/smartness_v4_chunk_0.json"},
+    {"version": "v5", "status": "superseded_by_v12", "reason": "US-only; severity-normalization fix. R/P available in artifacts/smartness_v5_chunk_0.json"},
+    {"version": "v6", "status": "superseded_by_v12", "reason": "US-only; recall-over-precision framing. R/P available in artifacts/smartness_v6_chunk_0.json"},
+    {"version": "v7", "status": "superseded_by_v12", "reason": "US-only; few-shot examples + relaxed severity matcher. R/P available in artifacts/smartness_v7_chunk_0.json and smartness_v7_chunk_1.json"},
+    {"version": "v8", "status": "superseded_by_v12", "reason": "multi-market (US/CA) attempt; introduced US-modifier bleed (modifier -24 references) into a CA context. Superseded by v12 once the leak was confirmed. R/P available in artifacts/smartness_ca_v8_*.json and smartness_v8_*"},
+    {"version": "v9", "status": "superseded_by_v12", "reason": "multi-market (US/CA) attempt; still contains US modifier -24 leak in AHCIP examples. R/P available in artifacts/smartness_ca_v9_chunk_0.json"},
+    {"version": "v10", "status": "superseded_by_v12", "reason": "AHCIP-aware but still references US modifier -24 in EXAMPLE 4 (US-leak bug). Superseded by v12. R/P available in artifacts/smartness_ca_v10_*.json and smartness_us_v10_*.json"},
+    {"version": "v11", "status": "superseded_by_v12", "reason": "first AHCIP-only-aware prompt; still ships the US -24 modifier leak in the post-op global-period section. Superseded by v12. No matching smartness artifact in artifacts/"}
+  ],
   "entries": [
     {
       "version_hash": "sha256:9f1c2b7e4a5d6f8c0b3a1e7d2c4b6a8f0d2e4c6b8a0d2f4e6c8b0a2d4f6e8c0a",
       "parent_hash": null,
+      "status": "active_baseline",
       "created_at": "2026-06-16T17:54:00Z",
       "llm_provider": "openai",
       "model_version": "gpt-4o-mini",
@@ -29,6 +44,7 @@
     {
       "version_hash": "sha256:b22072d708443065d5420a3e9db4a77b9baf55dc8e12f52d92602e887551080d",
       "parent_hash": "sha256:c356e64b4eb757fcc23553dae5e3d2bfd9891fe5b447500b32ca068bccefd6fe",
+      "status": "active_current",
       "created_at": "2026-06-22T20:00:00Z",
       "llm_provider": "ollama",
       "model_version": "minimax-m3:cloud",
