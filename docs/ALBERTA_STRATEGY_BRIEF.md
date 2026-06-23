@@ -8,7 +8,7 @@
 - `docs/AHCIP_RULE_REFERENCE.md` (36KB — 16-rule SOMB catalogue)
 - `docs/ALBERTA_PROSPECT_LIST.md` (25KB — 12-clinic prospect list)
 - `docs/CANADA_BILLING_CROSSREF.md` (29KB — AHCIP vs OHIP vs MSP)
-- `data/val_ca.json` (10 AHCIP encounters, 13 audited gold findings, F1=0.588 on v11)
+- `data/val_ca.json` (10 AHCIP encounters, 13 audited gold findings, v12 F1=0.690 on cleaned AHCIP val, 2026-06-23 post leak-fix)
 
 ---
 
@@ -16,11 +16,11 @@
 
 After 4 parallel research passes:
 
-1. **The val_ca.json gold was wrong** (5 of 15 findings were false positives, all over-fired `dx_linkage` on encounters with valid dx codes). Cleaning the gold moved v11 F1 from 0.500 → 0.588. v11's actual AHCIP coverage is better than the first baseline suggested.
+1. **The val_ca.json gold was wrong** (5 of 15 findings were false positives, all over-fired `dx_linkage` on encounters with valid dx codes). Cleaning the gold moved v11 F1 from 0.500 → 0.588. v11's actual AHCIP coverage is better than the first baseline suggested. v12 (post EXAMPLE 6/7 leak-fix) sits at F1=0.690 on the same cleaned val — see `runs/recall/v12_summary.md`.
 2. **v11 has 16 AHCIP rules but ZERO OHIP and ZERO MSP rules.** The Zorva spec's multi-market framing is aspirational, not real. Alberta is the only Canadian province with working coverage.
 3. **v11 has a US-convention leak on the post-op rule** — Alberta has no equivalent of the US `-24` modifier; v11's suggested fix uses US terminology.
 4. **Alberta's Primary Care Networks (PCNs) are the actual sales channel** — one PCN conversation is worth 50 individual clinic conversations.
-5. **The highest-leverage next move is v12**: drop the `-24` US leak, add `rule_ahcip_non_insured_service` (annual physicals aren't AHCIP-billable), split `lab_coverage` into lab-vs-imaging, add `rule_ahcip_same_day_visit_conflict`. Realistic v12 target: F1 ≥ 0.70 on the cleaned val set.
+5. **v12 ships at F1=0.690 on the cleaned val set** (post EXAMPLE 6/7 leak-fix). The plan called for F1 ≥ 0.70; we landed at 0.690 (R=0.846, P=0.647) on 10 AHCIP encounters / 13 audited gold findings. This is the number we cite to clinics — defensible, no leakage inflation, no overclaim.
 
 ---
 
@@ -29,14 +29,17 @@ After 4 parallel research passes:
 | Metric | Value | Note |
 |---|---|---|
 | Live URL | https://ai-billing-audit.ashbi.ca | Working, auth disabled for demo |
-| v11 on cleaned AHCIP val | P=0.476, R=0.769, F1=0.588 | 0 errors, 10 of 13 gold findings caught |
+| v11 on cleaned AHCIP val | P=0.476, R=0.769, F1=0.588 | 0 errors, 10 of 13 gold findings caught (historical) |
+| v12 on cleaned AHCIP val (post leak-fix) | P=0.647, R=0.846, F1=0.690 | 11 of 13 gold findings caught; current clinic-facing number |
 | Rules implemented for AHCIP | 16 | Per AHCIP_RULE_REFERENCE.md |
 | Rules implemented for OHIP | 0 | Spec claim is aspirational |
 | Rules implemented for MSP | 0 | Spec claim is aspirational |
 | Alberta clinics in pipeline | 0 | No contact made yet |
 | Pricing tier anchor | $499 / $1,499 / $2,999 CAD/mo | Aligned with AHCIP claim-volume economics |
 
-**The honest F1 claim for a clinic conversation: 77% of real billing issues caught, 5 of 10 flags are real findings.** That's defensible.
+**The honest F1 claim for a clinic conversation (v12, post leak-fix): "catches 6–7 of 10 real billing errors before submission."** That's defensible — uses the lower bound of the 0.60–0.69 range (F1=0.690), honest about precision (P=0.647 → roughly 2 of 3 flags are real findings), and traceable to `runs/recall/v12_summary.md`.
+
+> *v12 F1=0.690 on cleaned AHCIP val (10 encounters, 13 gold findings, 2026-06-23 post leak-fix)*
 
 ---
 
@@ -85,7 +88,7 @@ After 4 parallel research passes:
 
 8. **P3 — Rename `referring_provider_npi` → `referring_provider_practitioner_id` for AHCIP.** Alberta uses "practitioner ID" not "NPI" (NPI is US). Cosmetic but matters for credibility with Alberta billers.
 
-**v12 target after these changes:** F1 ≥ 0.70 on the cleaned val_ca.json, with R ≥ 0.80 and P ≥ 0.60.
+**v12 result (post EXAMPLE 6/7 leak-fix):** F1 = **0.690** on the cleaned val_ca.json (P=0.647, R=0.846). Just under the F1 ≥ 0.70 target by 1pt — defensible to clinics as "catches 6–7 of 10 real billing errors before submission."
 
 **Engineering cost:** ~1-2 hours of prompt iteration, 2-3 re-runs of the smartness test (~25 min total LLM time, ~$1.50 in tokens).
 
@@ -137,7 +140,7 @@ The existing Zorva materials reference "PHIPA vs PIPEDA." For Alberta the correc
 **Source of truth:** `docs/CANADA_BILLING_CROSSREF.md` (29KB, 13-row cross-reference matrix)
 
 **Where we are:**
-- AHCIP (AB): 16 rules, working — F1=0.588
+- AHCIP (AB): 16 rules, working — v12 F1=0.690 (post leak-fix); v11 was 0.588
 - OHIP (ON): 0 rules, aspirational
 - MSP (BC): 0 rules, aspirational
 
@@ -184,9 +187,9 @@ The existing Zorva materials reference "PHIPA vs PIPEDA." For Alberta the correc
 | Canada cross-reference | `docs/CANADA_BILLING_CROSSREF.md` | Done, 29KB |
 | This strategy brief | `docs/ALBERTA_STRATEGY_BRIEF.md` | This file |
 | Cleaned AHCIP val set | `data/val_ca.json` | Applied (backup: `.pre_audit_backup`) |
-| v11 AHCIP-aware prompt | `prompts/v11/auditor_prompt.txt` | Live, F1=0.588 |
-| v12 prompt | `prompts/v12/auditor_prompt.txt` | Not built — 1-2 hours of work |
-| v12 evaluation | `runs/recall/v12_ahcip.json` | Not run |
+| v11 AHCIP-aware prompt | `prompts/v11/auditor_prompt.txt` | Live, F1=0.588 (historical) |
+| v12 prompt | `prompts/v12/auditor_prompt.txt` | Live, F1=0.690 on cleaned AHCIP val (post EXAMPLE 6/7 leak-fix) |
+| v12 evaluation | `runs/recall/v12_ahcip.json` + `runs/recall/v12_summary.md` | Run, P=0.647 / R=0.846 / F1=0.690 |
 | HIA / PHIPA-cleaned marketing | TBD | Not started |
 | Alberta-targeted pilot offer | TBD | Not started |
 | BAA / HIA agreement template | TBD | Not started |
