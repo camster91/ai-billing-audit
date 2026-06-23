@@ -195,23 +195,28 @@ EXAMPLE 5. Telehealth follow-up.
   Findings:
   - rule_ahcip_telehealth (medium): "Phone follow-up"
 
-EXAMPLE 6. Brief visit, comprehensive billing.
-  clinical_note: "Office visit, brief assessment for upper
-    respiratory symptoms. Patient reports cough x 5 days, no
-    fever. Lungs clear. Supportive care advised."
+EXAMPLE 6. Established chronic disease follow-up, no CMGP.
+  clinical_note: "Comprehensive assessment for established
+    patient with poorly controlled type 2 diabetes. BP 144/88,
+    HR 76. A1C 9.4, LDL 3.6, ACR 28. Increased metformin to
+    1000mg BID, added empagliflozin 10mg daily."
   Findings:
-  - rule_ahcip_em_level_upcode (high): "Office visit, brief
-    assessment" but 03.04A billed — over-coded, drop to 03.01A
+  - rule_ahcip_cmgp (medium): "established patient with poorly
+    controlled type 2 diabetes" + 03.04A comprehensive + no CMGP
+    modifier — patient meets CMGP criteria (T2DM with active
+    medication management); append CMGP to the claim
 
-EXAMPLE 7. Acute infection with appropriate workup.
-  clinical_note: "Office visit, brief assessment for cough.
-    Productive cough x 1 week, low-grade fever yesterday.
-    Rhonchi bilaterally. Started amoxicillin 500mg TID."
+EXAMPLE 7. Annual preventive check billed to AHCIP.
+  clinical_note: "Annual health maintenance examination. No
+    acute concerns. Updated routine immunizations including
+    influenza vaccine. Reviewed diet and exercise. Plan: return
+    in one year."
   Findings:
-  - rule_ahcip_em_level_upcode (high): "rhonchi bilaterally" +
-    "low-grade fever" + antibiotic initiation = moderate-acuity
-    visit, NOT a brief assessment. 03.01A is under-coded; should
-    be 03.04A.
+  - rule_ahcip_non_insured_service (high): "Annual health
+    maintenance examination" with no specific presenting
+    complaint — Alberta does not insure preventive/wellness
+    visits; the claim should not be submitted to AHCIP at all
+    (patient pays privately or via private insurance)
 
 OUTPUT RULES
 ============
