@@ -428,6 +428,189 @@ def _print_report(summary: dict[str, Any], results: list[EncounterResult]) -> No
             print(f"  {r.encounter_id}: {r.error[:100]}")
 
 
+# ---------- Smoke test (known-answer check) ----------
+#
+# Purpose: catch silent LLM configuration regressions BEFORE we run the
+# 50-encounter main loop. The agent #3 audit found that a bad prompt
+# version or wrong model name only surfaces as ``n_errors`` going up at
+# the end of a long run, by which time we've already burned a lot of
+# tokens and wall-clock. This smoke test runs ONE encounter with a
+# known-good expected output. If the live model can't reproduce the
+# expected rule_ids, we abort loudly with a clear pointer at the
+# likely cause (LLM_MODEL, prompt_path, or model config drift).
+#
+# The expected output is intentionally a SET of rule_ids rather than
+# a full diff. Rule_ids are the most stable signal across prompt
+# revisions — the model rarely stops emitting rule_em_002 just
+# because we tightened a prompt. Severity quotes / ordering / wording
+# change all the time, so we don't pin those.
+#
+# Skip with ZORVA_SKIP_SMOKE=1 for fast re-runs during development.
+
+
+SMOKE_ENC_ID = "enc_10000"
+
+# Expected rule_ids for enc_10000's gold findings. This is the
+# "known answer" — if the LLM no longer emits these rule_ids for this
+# input, something about the LLM config (model, prompt, or signature)
+# has drifted and we should not trust the rest of the run.
+SMOKE_EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+    "rule_em_002",
+    "rule_icd_002",
+    "rule_ecg_001",
+    "rule_missing_dx_001",
+})
+
+
+def _load_smoke_encounter(val_paths: list[str] | None = None) -> dict[str, Any]:
+    """Load enc_10000 from the val set for the smoke test.
+
+    Looks for the encounter by id across any provided val paths; falls
+    back to the default data/synth/val.json location. Raises
+    FileNotFoundError if the encounter isn't present anywhere.
+    """
+    paths = val_paths or [str(REPO_ROOT / "data" / "synth" / "val.json")]
+    for path in paths:
+        p = Path(path)
+        if not p.is_file():
+            continue
+        with p.open() as f:
+            data = json.load(f)
+        for enc in data:
+            if enc.get("encounter_id") == SMOKE_ENC_ID:
+                return enc
+    raise FileNotFoundError(
+        f"Smoke test fixture '{SMOKE_ENC_ID}' not found in any of: {paths}"
+    )
+
+
+def _run_smoke_audit(enc: dict[str, Any], *, prompt_path: str | None = None) -> list[dict[str, Any]]:
+    """Run the auditor on one encounter and return the predicted findings
+    as plain dicts (mirroring ``_score_encounter``'s shape)."""
+    audit_input = {
+        "encounter_id": enc["encounter_id"],
+        "is_flagged": enc.get("is_flagged", False),
+        "clinical_note": enc.get("clinical_note", ""),
+        "claim": enc.get("claim", {}),
+        "rules": enc.get("rules", []),
+        "ground_truth": [],  # never leak gold to the auditor
+    }
+    kwargs: dict[str, Any] = {}
+    if prompt_path is not None:
+        kwargs["prompt_path"] = prompt_path
+    try:
+        result = run_audit(audit_input, **kwargs)
+    except AuditValidationError as e:
+        raise SmokeTestError(
+            f"Smoke test FAILED: auditor raised AuditValidationError: {e}. "
+            "This usually means the LLM returned findings with fabricated "
+            "quotes or missing required fields. Check LLM_MODEL and "
+            "prompt_path before re-running."
+        ) from e
+    except Exception as e:
+        raise SmokeTestError(
+            f"Smoke test FAILED: auditor raised {type(e).__name__}: {e}. "
+            "This usually indicates an LLM config error (bad model name, "
+            "missing API key, network error). Inspect recent changes to "
+            "LLM_MODEL / .env / prompts/ before re-running."
+        ) from e
+    return [
+        {
+            "finding_id": f.finding_id,
+            "category": f.category,
+            "severity": f.severity,
+            "suggested_code": f.suggested_code,
+            "rule_id": f.rule_ids[0] if f.rule_ids else "",
+            "rule_ids": list(f.rule_ids),
+            "quote": f.quote,
+            "explanation": f.explanation,
+        }
+        for f in result.findings
+    ]
+
+
+class SmokeTestError(RuntimeError):
+    """Raised when the smartness-test smoke test fails.
+
+    Inherits RuntimeError so it's caught by the broad except in callers
+    that only care about success/failure, but is identifiable as a
+    smoke-specific failure for callers that want to handle it
+    specifically (notably ``main()`` which translates it into a
+    non-zero exit status with an actionable message).
+    """
+
+
+def _assert_smoke_test_passes(
+    preds: list[dict[str, Any]],
+    expected_rule_ids: frozenset[str] = SMOKE_EXPECTED_RULE_IDS,
+) -> None:
+    """Pure assertion function for the smoke test.
+
+    Takes a list of predicted-finding dicts (the same shape produced
+    by ``_score_encounter``) and checks that the set of rule_ids the
+    model emitted equals ``expected_rule_ids``.
+
+    Raises ``SmokeTestError`` with an actionable message on mismatch.
+
+    This function does NOT call the LLM. It exists so unit tests can
+    pin the assertion logic with synthetic inputs.
+    """
+    predicted_rule_ids: set[str] = set()
+    for p in preds:
+        if p.get("rule_id"):
+            predicted_rule_ids.add(str(p["rule_id"]))
+        for r in p.get("rule_ids") or []:
+            if r:
+                predicted_rule_ids.add(str(r))
+
+    missing = expected_rule_ids - predicted_rule_ids
+    extra = predicted_rule_ids - expected_rule_ids
+
+    if not missing and not extra:
+        return  # exact set match — smoke test passes
+
+    bits: list[str] = []
+    if missing:
+        bits.append(f"missing rule_ids: {sorted(missing)}")
+    if extra:
+        bits.append(f"unexpected rule_ids: {sorted(extra)}")
+    detail = "; ".join(bits)
+
+    predicted_str = (
+        f"[{', '.join(sorted(predicted_rule_ids))}]"
+        if predicted_rule_ids else "[]"
+    )
+    expected_str = (
+        f"[{', '.join(sorted(expected_rule_ids))}]"
+    )
+    raise SmokeTestError(
+        "Smoke test FAILED for "
+        f"{SMOKE_ENC_ID}: {detail}. "
+        f"Predicted rule_ids={predicted_str}, expected={expected_str}. "
+        "This usually indicates LLM config drift — check recent changes "
+        "to LLM_MODEL, the active prompt in prompts/, or the auditor "
+        "signature. Re-run with ZORVA_SKIP_SMOKE=1 only if you're "
+        "intentionally iterating on prompt versions."
+    )
+
+
+def _run_smoke_test(*, prompt_path: str | None = None) -> None:
+    """End-to-end smoke test: load fixture, run LLM, assert output.
+
+    Raises ``SmokeTestError`` on any failure (LLM error or output
+    mismatch). Prints a one-line status to stdout on success so the
+    user can see the smoke test ran.
+    """
+    enc = _load_smoke_encounter()
+    preds = _run_smoke_audit(enc, prompt_path=prompt_path)
+    _assert_smoke_test_passes(preds)
+    print(
+        f"[smoke] OK: {SMOKE_ENC_ID} emitted expected rule_ids "
+        f"({len(SMOKE_EXPECTED_RULE_IDS)} findings, "
+        f"{len(preds)} predicted)"
+    )
+
+
 # ---------- Main ----------
 
 
@@ -451,6 +634,29 @@ def main() -> int:
 
     if args.model:
         os.environ["LLM_MODEL"] = args.model
+
+    # ---- Smoke test (known-answer check) ----
+    # Runs FIRST so a misconfigured LLM_MODEL / prompt / signature
+    # aborts the run within seconds instead of silently inflating
+    # n_errors across the full 50-encounter loop. Skip with
+    # ZORVA_SKIP_SMOKE=1 when iterating on prompts.
+    if os.environ.get("ZORVA_SKIP_SMOKE", "").strip() in ("1", "true", "yes"):
+        print("[smoke] SKIPPED (ZORVA_SKIP_SMOKE=1)")
+    else:
+        try:
+            _run_smoke_test(prompt_path=args.prompt)
+        except SmokeTestError as e:
+            print(f"\n{'=' * 72}", file=sys.stderr)
+            print("SMARTNESS-TEST SMOKE FAILED — aborting before main loop", file=sys.stderr)
+            print("=" * 72, file=sys.stderr)
+            print(str(e), file=sys.stderr)
+            print(
+                "\nHint: this usually means LLM_MODEL, the active prompt, or "
+                "the auditor signature has drifted. Inspect recent changes, "
+                "or set ZORVA_SKIP_SMOKE=1 to bypass while iterating.",
+                file=sys.stderr,
+            )
+            return 2  # distinct exit code so CI / wrappers can detect it
 
     val_paths = args.val or [
         str(REPO_ROOT / "data" / "synth" / "val.json"),
