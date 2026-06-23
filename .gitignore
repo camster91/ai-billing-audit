@@ -52,3 +52,7 @@ runs/acceptance/minimax-*/
 runs/acceptance/claude-*/
 runs/acceptance/openai-*/
 runs/acceptance/gemini-*/
+
+# Stray bearer-token scratch files and env backups (security)
+*.tmp_bearer.txt
+.env.bak
