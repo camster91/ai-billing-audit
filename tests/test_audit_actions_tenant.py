@@ -129,10 +129,19 @@ def test_read_all_chain_signature_still_intact(tmp_log):
     _append(tmp_log, "accept_all", "E-1", tenant_id="acme")
     _append(tmp_log, "dismiss", "E-2", tenant_id="acme")
     rows = aa_mod.read_all(tenant_id="acme")
-    # Each row has a cryptographic_signature; verify_chain walks them
+    # Each row has a cryptographic_signature; the chain is intact if
+    # every row's stored signature matches compute_signature() on its
+    # (previous_signature, row) pair. (verify() was removed in
+    # t_649272eb — replicate its core check inline.)
     assert all("cryptographic_signature" in r for r in rows)
-    bad_rows = aa_mod.verify()
-    assert bad_rows == []
+    expected_prev = aa_mod._GENESIS_SIG
+    for r in rows:
+        assert r.get("previous_signature") == expected_prev
+        computed = aa_mod.compute_signature(
+            r.get("previous_signature", aa_mod._GENESIS_SIG), r
+        )
+        assert computed == r.get("cryptographic_signature")
+        expected_prev = r.get("cryptographic_signature", aa_mod._GENESIS_SIG)
 
 
 def test_read_all_empty_when_no_matches(tmp_log):

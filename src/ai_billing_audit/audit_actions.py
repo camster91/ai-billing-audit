@@ -219,33 +219,3 @@ def read_all(
     return rows
 
 
-def read_for_encounter(encounter_id: str) -> list[dict[str, Any]]:
-    """Read rows for a specific encounter, oldest first."""
-    rows = read_all()
-    return [r for r in rows if r.get("data_elements", {}).get("encounter_id") == encounter_id]
-
-
-def verify() -> list[dict[str, Any]]:
-    """Walk the chain and return rows that don't match their computed hash.
-
-    Returns an empty list when the chain is intact.
-    """
-    rows = read_all()
-    if not rows:
-        return []
-    expected_prev = _GENESIS_SIG
-    broken: list[dict[str, Any]] = []
-    for r in rows:
-        if r.get("previous_signature") != expected_prev:
-            broken.append({
-                "row": r,
-                "issue": f"previous_signature mismatch (expected {expected_prev[:16]}..., got {r.get('previous_signature', '')[:16]}...)",
-            })
-        computed = compute_signature(r.get("previous_signature", _GENESIS_SIG), r)
-        if computed != r.get("cryptographic_signature"):
-            broken.append({
-                "row": r,
-                "issue": f"signature mismatch (computed {computed[:16]}..., stored {r.get('cryptographic_signature', '')[:16]}...)",
-            })
-        expected_prev = r.get("cryptographic_signature", _GENESIS_SIG)
-    return broken
