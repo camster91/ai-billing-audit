@@ -10,7 +10,10 @@
 //   4. Human-in-the-Loop (HITL) shield under the Federal False Claims Act
 //   5. Flat-fee pricing model = AKS safe harbor (no %-of-revenue, no upcoding incentive)
 //   6. Immutable audit log with hash-chain cryptographic signature (refers to
-//      task t_165297e9; the SHA-256 signature spec lives in src/audit_log.py)
+//      task t_165297e9; the SHA-256 signature spec lives in
+//      src/ai_billing_audit/audit_actions.py — the live, wired
+//      implementation. The sibling src/audit_log.py is the orphan /
+//      test-only module and is not invoked at runtime; see MANIFEST.json.)
 //   7. PIPEDA + AIDA + applicable US state privacy law compliance matrix
 //
 // Server component. No client hooks, no fetch. Compliance table is a plain
@@ -253,12 +256,19 @@ export default function SecurityPage() {
               that row (or one before it) has been altered.
             </p>
             <p className={styles.muted}>
-              Implementation: <code>src/audit_log.py</code>, plus the unit
-              test in <code>tests/test_audit_log.py</code> and the
-              verification runbook in <code>docs/RUNBOOK.md</code>. The
-              marketer-facing wording here matches that implementation
+              Implementation: <code>src/ai_billing_audit/audit_actions.py</code>
+              {" "}(the live hash-chain entry point is
+              <code>audit_actions.append()</code>, wired into 8 API call
+              sites in <code>src/ai_billing_audit/api.py</code>), plus the
+              {" "}<code>verify_chain()</code> helper in the sibling
+              {" "}<code>src/audit_log.py</code> and its unit tests
+              in <code>tests/test_audit_log.py</code>, and the verification
+              runbook in <code>docs/RUNBOOK.md</code>. The
+              marketer-facing wording here matches the wired implementation
               exactly &mdash; we do not promise anything the audit log does
-              not actually do.
+              not actually do. See <code>prompts/MANIFEST.json</code> for
+              the note documenting that two parallel hash-chain
+              implementations exist.
             </p>
           </div>
         </section>
