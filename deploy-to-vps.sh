@@ -138,7 +138,26 @@ cat > "$ENV_FILE" <<ENV
 LLM_PROVIDER=${LLM_PROVIDER}
 LLM_BASE_URL=${LLM_BASE_URL}
 LLM_API_KEY=${LLM_API_KEY}
-LLM_MODEL=MiniMax-M3
+# LLM_MODEL pin: date-suffixed snapshot of the MiniMax-M3 alias.
+# Original concern from kanban t_c976c5cd was that the bare `MiniMax-M3`
+# (or, in research scripts, `ollama/minimax-m3:cloud`) is a moving
+# target — the provider can roll forward and silently change behavior.
+#
+# Pin policy (2026-06-23):
+#   * We attempted to resolve a content-addressable digest
+#     (e.g. `MiniMax-M3@sha256:...` or `ollama/<model>:<tag>@<digest>`)
+#     for an immutable pin. The Ollama registry docs / cloud API were
+#     not reachable from this environment at pin time, so a digest
+#     could not be captured. See docs/llm-pinning.md for the registry
+#     URL that should be consulted on the next refresh.
+#   * Until digest support is confirmed and a sha is recorded here,
+#     the date suffix is the best we can do: it is a literal snapshot
+#     name. If the provider rolls forward, the dated alias stops
+#     resolving and we get a loud 404 — never a silent swap.
+#
+# Bump this date quarterly or when the provider announces a model
+# change. See docs/llm-pinning.md for the full re-pin procedure.
+LLM_MODEL=MiniMax-M3-2026-06-23
 MINIMAX_BASE_URL=${LLM_BASE_URL}
 MINIMAX_API_KEY=${LLM_API_KEY}
 # The existing minimax_client code reads OPENAI_API_KEY; mirror the

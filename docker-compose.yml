@@ -39,6 +39,12 @@
 #     from /root/ai-billing-audit/.env on the host (written by deploy-to-vps.sh).
 #   - MINIMAX_API_KEY is a placeholder; the deploy script injects the real key
 #     from /root/coolify-secrets/... on the host.
+#
+# LLM_MODEL pin (kanban t_c976c5cd):
+#   LLM_MODEL is set in deploy-to-vps.sh → .env, NOT here. The value is
+#   a date-suffixed snapshot (e.g. `MiniMax-M3-2026-06-23`) so the
+#   unversioned `MiniMax-M3` alias can never silently roll forward.
+#   See docs/llm-pinning.md for the re-pin procedure.
 
 services:
   api:
