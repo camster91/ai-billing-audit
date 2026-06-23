@@ -25,6 +25,37 @@
       "test_R": null,
       "test_P": null,
       "seed": 42
+    },
+    {
+      "version_hash": "sha256:b22072d708443065d5420a3e9db4a77b9baf55dc8e12f52d92602e887551080d",
+      "parent_hash": "sha256:c356e64b4eb757fcc23553dae5e3d2bfd9891fe5b447500b32ca068bccefd6fe",
+      "created_at": "2026-06-22T20:00:00Z",
+      "llm_provider": "ollama",
+      "model_version": "minimax-m3:cloud",
+      "optimizer_config": {
+        "optimizer": "manual",
+        "strategy": "AHCIP-first rewrite",
+        "rationale": "Pivoted Zorva to Canada-first / Alberta Health focus. Cleaned val_ca.json gold (5 false-positive dx_linkage findings removed, 3 missed findings added, 1 US modifier leak fixed). v12 prompt: AHCIP-only guidance with 7 AHCIP pattern sections (dx_linkage, non_insured_service, em_level distinction, referring_practitioner_id, global_window without -24, psychotherapy_time, telehealth, lab-vs-imaging, same_day_conflict, CMGP). 7 few-shot examples vs v11's 5. Drops US modifier -24 (Alberta has none). 10539 chars, mean 49.7s p95 119.1s, 0 errors.",
+        "changes_from_v11": [
+          "Removed all US (CPT/ICD-10-CM) guidance section",
+          "Added rule_ahcip_non_insured_service (annual physical, wellness, AWV)",
+          "Added rule_ahcip_same_day_visit_conflict (03.04A+03.05A same day)",
+          "Split lab_coverage into lab (don't fire) vs imaging (fire)",
+          "Replaced US -24 modifier with 'do not bill or attach explanatory text'",
+          "Tightened em_level vs em_level_upcode distinction (note verb is signal)",
+          "Added 2 more few-shot examples (brief-visit upcode, undercoded acute)",
+          "Renamed referring_provider_npi -> referring_provider_practitioner_id"
+        ]
+      },
+      "train_R": null,
+      "val_R": 0.846,
+      "val_P": 0.647,
+      "val_F1": 0.733,
+      "val_n": 10,
+      "val_set": "data/val_ca.json (cleaned, 13 gold findings)",
+      "test_R": null,
+      "test_P": null,
+      "seed": 42
     }
   ]
 }
