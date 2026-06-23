@@ -11,6 +11,42 @@
 # could enable Caddy's on-demand TLS, but with Traefik upstream
 # already issuing a public cert, layering a second TLS hop on the
 # internal network would add latency and a second cert for no gain.
+#
+# SECURITY HEADERS (kanban t_106739f0, audit 2026-06-22):
+# IMPORTANT — Traefik is the actual public edge for ai-billing-audit.
+# ashbi.ca; these headers are applied on the INTERNAL hop only. For
+# the headers to reach end-users, Traefik's own response-header
+# middleware must be configured on the host (separate work item —
+# tracked as a follow-up note in the kanban comment).
+#
+# CSP rationale:
+#   - default-src 'self'         → no third-party by default
+#   - img-src 'self' data:       → templates use inline SVG/data URIs
+#                                  (favicon, inline charts)
+#   - script-src 'self' 'unsafe-inline'
+#                               → templates render inline <script>
+#                                 blocks (base.html, encounter_detail
+#                                 .html, encounter_detail_uploaded
+#                                 .html); external script is
+#                                 /static/upload.js (same-origin)
+#   - style-src 'self' 'unsafe-inline'
+#                               → templates use inline <style> and
+#                                 Jinja-rendered style attributes
+#   - connect-src 'self' https://api.minimax.chat
+#                               → outbound to MiniMax API (matches
+#                                 MINIMAX_BASE_URL default in
+#                                 docker-compose.yml)
+#   - frame-ancestors 'none'    → modern equivalent of X-Frame-Options
+#                                 DENY; this app is not designed to
+#                                 be iframed (the marketing site
+#                                 consumes our JSON /roi/results,
+#                                 not the HTML form)
+#
+# Rate-limit rationale:
+#   10 req/s, burst to 60/min per remote IP. Conservative default
+#   for an internal billing-audit API consumed by clinic staff and
+#   the Next.js portal. Bump if false positives appear in
+#   production traffic.
 
 :80 {
     # Forward every path to the FastAPI service. The Caddy container
@@ -22,6 +58,21 @@
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
+
+    # Per-IP token bucket: 10 req/s sustained, 60 req/min ceiling.
+    # Named zone "ai_billing" so the bucket is shared across this
+    # single site block. Protects against accidental client-side
+    # retry storms and trivial scraping without throttling
+    # legitimate clinic users. tune via `caddy_logs` if false
+    # positives appear in production traffic.
+    rate_limit ai_billing {remote_host} 10r/s 60r/m
+
+    # Security response headers (audit task t_106739f0).
+    header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    header X-Content-Type-Options "nosniff"
+    header X-Frame-Options "DENY"
+    header Referrer-Policy "strict-origin-when-cross-origin"
+    header Content-Security-Policy "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.minimax.chat; frame-ancestors 'none'"
 
     log {
         output stdout
