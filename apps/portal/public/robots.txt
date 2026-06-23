@@ -1,0 +1,5 @@
+# robots.txt for the AI Pre-Bill Audit marketing portal.
+# The site is a live demo (https://ai-billing-audit.ashbi.ca) and should
+# not be indexed by any search engine. Disallow everything.
+User-agent: *
+Disallow: /

@@ -21,6 +21,18 @@ export const metadata: Metadata = {
   description:
     "AI pre-bill audit catches what your billing team misses. Region-pinned " +
     "data, hash-chain audit log, AKS-safe-harbor flat-fee pricing.",
+  // Live demo is not indexable. Prevent search engines from accidentally
+  // indexing the marketing portal at https://ai-billing-audit.ashbi.ca.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      nocache: true,
+    },
+  },
 };
 
 // Marketing-site header. Public-only pages (/, /pricing, /how-it-works,
@@ -33,6 +45,7 @@ const NAV = [
   { href: "/pricing", label: "Pricing" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/security", label: "Security" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function RootLayout({
