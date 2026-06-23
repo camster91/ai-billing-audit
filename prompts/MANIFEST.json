@@ -65,11 +65,25 @@
         ]
       },
       "train_R": null,
-      "val_R": 0.846,
-      "val_P": 0.647,
-      "val_F1": 0.733,
+      "val_R": 0.769,
+      "val_P": 0.625,
+      "val_F1": 0.690,
       "val_n": 10,
       "val_set": "data/val_ca.json (cleaned, 13 gold findings)",
+      "val_per_bucket": {
+        "rule_ahcip_dx_linkage":         {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_global_window":      {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_referring_npi":      {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_same_day_conflict":  {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_telehealth":         {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_em_level":           {"P": 0.600, "R": 1.000, "F1": 0.750},
+        "rule_ahcip_psychotherapy_time": {"P": 1.000, "R": 0.500, "F1": 0.667},
+        "rule_ahcip_em_level_upcode":    {"P": 0.500, "R": 0.500, "F1": 0.500},
+        "rule_ahcip_lab_coverage":       {"P": 0.000, "R": 0.000, "F1": 0.000},
+        "rule_ahcip_cmgp":               {"P": 0.000, "R": 0.000, "F1": 0.000},
+        "rule_ahcip_non_insured_service":{"P": 0.000, "R": 0.000, "F1": 0.000}
+      },
+      "val_per_bucket_note": "Per-rule P/R/F1 from runs/recall/v12_ahcip_clean.json (2026-06-23 corrected run, post EXAMPLE-6/7 leak fix; see runs/recall/v12_summary.md). Micro F1=0.690 over 10 AHCIP encounters / 13 gold findings is a true held-out aggregate of these per-rule numbers (rules are not mutually exclusive within an encounter).",
       "test_R": null,
       "test_P": null,
       "seed": 42
