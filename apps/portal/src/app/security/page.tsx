@@ -24,7 +24,7 @@ import styles from "./security.module.css";
 export const metadata: Metadata = {
   title: "Security & compliance — AI billing audit",
   description:
-    "PHIPA, HIPAA, PIPEDA, AIDA, AKS. Region-pinned data, AES-256 at rest, " +
+    "HIA, PHIPA, HIPAA, PIPEDA, AIDA, AKS. Region-pinned data, AES-256 at rest, " +
     "TLS 1.3 in transit, hash-chain audit log, and a flat-fee pricing model " +
     "designed to be AKS safe harbor. Plain English for healthcare buyers.",
 };
@@ -111,9 +111,10 @@ export default function SecurityPage() {
             </h2>
             <p>
               For US customers we sign a Business Associate Agreement (BAA)
-              under HIPAA. For Ontario and Alberta customers we sign a
-              Health Information Custodian Agent (HIC-Agent) agreement under
-              PHIPA. In both cases the agreement is countersigned{" "}
+              under HIPAA. For Ontario customers we sign a Health Information
+              Custodian Agent (HIC-Agent) agreement under PHIPA. For Alberta
+              customers we sign an affiliate agreement under HIA. In every
+              case the agreement is countersigned{" "}
               <strong>before</strong> any customer data — including test
               claims — is uploaded or processed.
             </p>
@@ -123,6 +124,51 @@ export default function SecurityPage() {
                 legal@ai-billing-audit.ashbi.ca
               </a>{" "}
               and we will turn it around inside two business days.
+            </p>
+          </div>
+        </section>
+
+        {/* 3.5 Certifications + attestations (SOC 2, ISO, HITRUST) */}
+        <section className={styles.topic} aria-labelledby="t-certifications">
+          <div className={styles.topicBadge} aria-hidden="true">
+            3.5
+          </div>
+          <div className={styles.topicBody}>
+            <h2 id="t-certifications">
+              Certifications and attestations
+            </h2>
+            <p>
+              We inherit AWS&apos; regional controls (SOC 2 Type II, ISO 27001,
+              ISO 27017, ISO 27018, PCI DSS Level 1 for the underlying
+              regions) and we layer our own operational controls on top.
+              Our current attestation status:
+            </p>
+            <ul className={styles.bulletList}>
+              <li>
+                <strong>SOC 2 Type II</strong> — engagement scoped and
+                auditor selected; first report expected in the second half
+                of the pilot year. Customers under NDA can request the
+                readiness assessment now.
+              </li>
+              <li>
+                <strong>ISO 27001 Annex A</strong> — self-attested control
+                set published in the security one-pager. The full Statement
+                of Applicability is available under MNDA.
+              </li>
+              <li>
+                <strong>HITRUST CSF inheritance</strong> — our pipeline runs
+                on AWS HITRUST-certified regions for US healthcare pilots;
+                we are not pursuing HITRUST certification directly in v1.
+              </li>
+              <li>
+                <strong>HIA / PHIPA / HIPAA / PIPEDA / AIDA</strong> — covered
+                in the compliance matrix below.
+              </li>
+            </ul>
+            <p className={styles.muted}>
+              We will not ship a feature to a customer that depends on a
+              certification we do not hold. The roadmap is gated on the
+              audit, not the other way around.
             </p>
           </div>
         </section>
@@ -251,7 +297,7 @@ export default function SecurityPage() {
                   </td>
                   <td>
                     Affiliate agreement model mirrored from HIC-Agent; same
-                    encryption and residency controls as PHIPA.
+                    encryption and residency controls as PHIPA and HIA.
                   </td>
                 </tr>
                 <tr>

@@ -31,12 +31,16 @@ import { auth } from "@/auth";
 const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/billing",   // checkout + webhook + tiers + portal are public
+  "/api/leads",     // public contact-form endpoint (t_fa2149e1) — pre-account visitors only
   "/api/onboarding", // first-run wizard — Stripe success_url lands here, must work w/o auth
+  "/api/team/accept", // invite magic-link — works pre-session; the token IS the auth (t_23bfd49c)
   "/login",
+  "/",              // marketing landing page, public (t_fa2149e1)
   "/pricing",       // marketing page, public
   "/how-it-works",  // marketing page, public (3-step explainer + Loom + CTA)
-  "/security",      // marketing page, public (PHIPA/HIPAA/AKS explainer + compliance matrix)
+  "/security",      // marketing page, public (HIA/PHIPA/HIPAA/AKS explainer + compliance matrix)
   "/security.pdf",  // one-pager download, public (linked from /security CTA)
+  "/contact",       // marketing contact form, public (t_fa2149e1)
   "/portal/onboarding", // Stripe success_url lands here, must work w/o auth
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
