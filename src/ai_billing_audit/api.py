@@ -2073,42 +2073,60 @@ def create_app() -> FastAPI:
                 ),
             )
 
-        # ---- 3. recover the audit-ready claim from the cache ----
-        # ``job.result`` is the dict the synth runner produced
-        # and the LLM auditor filled in. It carries the
-        # synth encounter's id and (when the auditor ran
-        # successfully) the findings + summary from the prior
-        # run. We need the claim that was audited, which lives
-        # in the runner's local ``claim`` variable — but the
-        # runner does NOT serialise that into job.result.
-        # So the audit endpoint re-derives the audit-ready
-        # claim by calling run_audit directly with the same
-        # inputs the runner used (synth encounter + note). The
-        # Job is the proof the upload happened; the
-        # encounter_id is the key the dashboard knows.
+        # ---- 3. recover the audit-ready claim from the upload ----
+        # Re-audit must operate on the biller's originally uploaded
+        # data, NOT a fresh synth materialised from a hash of the
+        # encounter id. Per kanban task t_75202858, the upload
+        # portal's "real-data" branch in job_queue._default_runner
+        # is the source of truth for what the prior audit ran on.
+        #
+        # The clinical note is the piece of uploaded data that
+        # persists on disk: /encounters/upload/text-note writes
+        # ``<encounter_id>.<note_id>.txt`` under logs/uploaded_notes/
+        # and the upload portal's _load_uploaded_note() helper reads
+        # the most-recent one back. We mirror that glob/sort
+        # resolution here (computing the notes dir from this
+        # module's __file__ so the test suite's tmp_path redirect
+        # keeps working) so the resolution logic is single-sourced
+        # with the runner — no parallel implementation in two
+        # places.
+        #
+        # The claim payload (CPT codes, ICDs, NPI, date_of_service,
+        # patient_id) is built in the runner's local ``claim`` var
+        # but the JobQueue/Job does NOT serialise it into job.result
+        # today. The audit endpoint therefore cannot perfectly
+        # reconstruct the exact claim object the runner audited.
+        # See kanban follow-up card t_75202858_fu1: persist the
+        # encounter payload on the Job.
         result = job.result or {}
         synth_encounter_id = result.get("synth_encounter_id")
-        difficulty_tier = result.get("difficulty_tier")
-        variant = result.get("variant", "clean")
+        ran_via = result.get("ran_via", "upload_portal")
+        used_uploaded_note = bool(result.get("used_uploaded_note")) or (
+            ran_via == "upload_portal_with_user_note"
+        )
 
         # Resolve the clinical_note: request > uploaded on-disk
-        # text-note for this encounter > stub.
+        # text-note > stub.
         if clinical_note is None:
             try:
                 from pathlib import Path as _P
-                notes_dir = _P(__file__).resolve().parent.parent.parent / "logs" / "uploaded_notes"
-                safe = __import__("re").sub(
-                    r"[^A-Za-z0-9_.-]+", "_", encounter_id
-                ).strip("._")[:80]
-                if safe and notes_dir.is_dir():
-                    candidates = sorted(
-                        notes_dir.glob(f"{safe}.*.txt"),
-                        key=lambda p: p.stat().st_mtime,
-                        reverse=True,
-                    )
-                    if candidates:
-                        clinical_note = candidates[0].read_text(encoding="utf-8")
-                        note_source = "uploaded"
+                notes_dir = (
+                    _P(__file__).resolve().parent.parent.parent
+                    / "logs" / "uploaded_notes"
+                )
+                if notes_dir.is_dir():
+                    safe = __import__("re").sub(
+                        r"[^A-Za-z0-9_.-]+", "_", encounter_id
+                    ).strip("._")[:80]
+                    if safe:
+                        candidates = sorted(
+                            notes_dir.glob(f"{safe}.*.txt"),
+                            key=lambda p: p.stat().st_mtime,
+                            reverse=True,
+                        )
+                        if candidates:
+                            clinical_note = candidates[0].read_text(encoding="utf-8")
+                            note_source = "uploaded"
             except Exception:  # noqa: BLE001 (deliberately broad)
                 clinical_note = None
         if clinical_note is None:
@@ -2116,63 +2134,102 @@ def create_app() -> FastAPI:
             note_source = "stub"
 
         # ---- 4. rebuild the audit encounter and run the auditor ----
-        # The synth seed is deterministic on encounter_id, so the
-        # synth materialisation is reproducible: the same claim
-        # the cached job audited is what we'll re-audit.
+        # Read-from-uploaded-data branch: prefer the on-disk
+        # uploaded clinical note over a re-synthesised one. Two
+        # sub-branches:
+        # - ``used_uploaded_note`` was set by the runner: the prior
+        #   audit was the upload portal's "real data" path. Mirror
+        #   that branch's claim shape; the runner's encounter
+        #   payload (CPTs, NPI, etc.) is not in job.result so
+        #   line_items is empty. The dashboard should treat this
+        #   as "re-upload required for a full re-audit" rather
+        #   than silently zeroing.
+        # - Otherwise: legacy synth-only demo path. Re-run the
+        #   synth with the cached tier/variant/seed (read from
+        #   job.result) so the re-audit is deterministic.
         try:
-            from .synth_agent import generate, Template
             from .auditor import run_audit as _run_audit, AuditValidationError
+            from .zorva_context import build_context_for_encounter
 
-            seed = abs(hash(encounter_id)) % (2**31)
-            tier_norm = str(difficulty_tier or "EASY").upper()
-            if tier_norm not in ("EASY", "MEDIUM", "HARD"):
-                tier_norm = "EASY"
-            variant_norm = str(variant or "clean").lower()
-            if variant_norm not in ("clean", "flagged"):
-                variant_norm = "clean"
-            synth_out = generate(
-                Template(tier=tier_norm, variant=variant_norm, schema_version=1),
-                seed=seed,
-            )
-            provider_note = synth_out.get("provider_note", {}) or {}
-            synth_clinical_note = "\n\n".join(
-                v for v in [
-                    provider_note.get("hpi", ""),
-                    provider_note.get("exam", ""),
-                    provider_note.get("mdm", ""),
-                ] if v
-            )
-            cpts = synth_out.get("cpt_codes", []) or []
-            icds = synth_out.get("icd10_codes", []) or []
-            claim = {
-                "encounter_id": synth_out.get("encounter_id"),
-                "patient_id": "PT_AUDIT",
-                "rendering_provider_npi": "1992039481",
-                "billing_provider_tax_id": "XX-XXX1234",
-                "date_of_service": "2026-06-15",
-                "payer_id": "PAYER-AUDIT-001",
-                "payer_name": "Audit Payer",
-                "line_items": [
-                    {
-                        "line_id": i + 1,
-                        "cpt_code": c.get("code", ""),
-                        "modifiers": [],
-                        "dx_pointers": icds,
-                        "charge_amount": 150.00,
-                        "units": 1,
-                    }
-                    for i, c in enumerate(cpts)
-                ],
-                "diagnosis_codes": icds,
-            }
-            audit_encounter = {
-                "encounter_id": synth_out.get("encounter_id"),
-                "is_flagged": bool(synth_out.get("flagged", False)),
-                "clinical_note": clinical_note,
-                "claim": claim,
-                "rules": [],
-                "ground_truth": [],
-            }
+            if used_uploaded_note:
+                zorva_ctx = build_context_for_encounter(
+                    country_code=None,
+                    payer_id=None,
+                    province=None,
+                    health_number=None,
+                )
+                claim = {
+                    "encounter_id": encounter_id,
+                    "patient_id": "PT_REAUDIT",
+                    "rendering_provider_npi": "",
+                    "billing_provider_tax_id": "",
+                    "date_of_service": "",
+                    "payer_id": "",
+                    "payer_name": "",
+                    "line_items": [],
+                    "diagnosis_codes": [],
+                    "_reaudit_note": (
+                        "claim payload not persisted; re-audit ran "
+                        "against the uploaded note only. Re-upload "
+                        "the 837P for a full re-audit."
+                    ),
+                }
+                audit_encounter = {
+                    "encounter_id": encounter_id,
+                    "is_flagged": False,
+                    "clinical_note": clinical_note,
+                    "claim": claim,
+                    "rules": [],
+                    "ground_truth": [],
+                    "zorva_context": zorva_ctx,
+                }
+            else:
+                from .synth_agent import generate, Template
+
+                difficulty_tier = result.get("difficulty_tier")
+                variant = result.get("variant", "clean")
+                seed = int(result.get("seed") or (abs(hash(encounter_id)) % (2**31)))
+                tier_norm = str(difficulty_tier or "EASY").upper()
+                if tier_norm not in ("EASY", "MEDIUM", "HARD"):
+                    tier_norm = "EASY"
+                variant_norm = str(variant or "clean").lower()
+                if variant_norm not in ("clean", "flagged"):
+                    variant_norm = "clean"
+                synth_out = generate(
+                    Template(tier=tier_norm, variant=variant_norm, schema_version=1),
+                    seed=seed,
+                )
+                cpts = synth_out.get("cpt_codes", []) or []
+                icds = synth_out.get("icd10_codes", []) or []
+                claim = {
+                    "encounter_id": synth_out.get("encounter_id"),
+                    "patient_id": "PT_AUDIT",
+                    "rendering_provider_npi": "1992039481",
+                    "billing_provider_tax_id": "XX-XXX1234",
+                    "date_of_service": "2026-06-15",
+                    "payer_id": "PAYER-AUDIT-001",
+                    "payer_name": "Audit Payer",
+                    "line_items": [
+                        {
+                            "line_id": i + 1,
+                            "cpt_code": c.get("code", ""),
+                            "modifiers": [],
+                            "dx_pointers": icds,
+                            "charge_amount": 150.00,
+                            "units": 1,
+                        }
+                        for i, c in enumerate(cpts)
+                    ],
+                    "diagnosis_codes": icds,
+                }
+                audit_encounter = {
+                    "encounter_id": synth_out.get("encounter_id"),
+                    "is_flagged": bool(synth_out.get("flagged", False)),
+                    "clinical_note": clinical_note,
+                    "claim": claim,
+                    "rules": [],
+                    "ground_truth": [],
+                }
             audit = _run_audit(audit_encounter)
         except AuditValidationError as exc:
             raise HTTPException(

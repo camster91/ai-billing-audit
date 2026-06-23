@@ -1,0 +1,52 @@
+{
+  "size": 150,
+  "splits": {
+    "train": 100,
+    "val": 50
+  },
+  "is_flagged": {
+    "flagged": 130,
+    "clean": 20
+  },
+  "categories": {
+    "evaluation": 78,
+    "cardiology": 66,
+    "diagnosis": 148,
+    "modifier": 10,
+    "laboratory": 57,
+    "imaging": 39,
+    "procedure": 27,
+    "preventive": 18,
+    "missing-dx": 30,
+    "duplicate": 20
+  },
+  "rules": {
+    "rule_em_001": 39,
+    "rule_ecg_001": 46,
+    "rule_icd_001": 30,
+    "rule_modifier_25_001": 10,
+    "rule_lab_001": 29,
+    "rule_em_002": 20,
+    "rule_icd_002": 30,
+    "rule_ecg_002": 20,
+    "rule_imaging_002": 19,
+    "rule_em_003": 19,
+    "rule_icd_003": 29,
+    "rule_lab_002": 28,
+    "rule_icd_004": 59,
+    "rule_injection_001": 27,
+    "rule_preventive_001": 18,
+    "rule_missing_dx_001": 30,
+    "rule_overlap_001": 20,
+    "rule_imaging_001": 20
+  },
+  "missing_rules": [],
+  "severities": {
+    "info": 96,
+    "medium": 125,
+    "high": 79,
+    "low": 163,
+    "critical": 30
+  },
+  "total_findings": 493
+}

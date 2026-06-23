@@ -1,0 +1,353 @@
+[
+  {
+    "encounter_id": "ca_ahcip_001",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 65yo M, comprehensive assessment for diabetes follow-up. BP 152/94, HR 78. Reviewed labs: A1C 8.9, eGFR 58, ACR 32. Increased metformin to 1000mg BID. Added perindopril 4mg daily. Discussed dietary modification. Plan: 3-month follow-up.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "123456789",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-15"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "comprehensive assessment for diabetes follow-up"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_002",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient consultation, referred by Dr. Smith for hypertension management. BP 168/102, HR 84. No end-organ damage. Started amlodipine 5mg daily. Follow-up in 4 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "987654321",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-18"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca3",
+        "rule_id": "rule_ahcip_referring_npi",
+        "severity": "high",
+        "category": "consultation",
+        "suggested_code": "03.03A",
+        "clinical_evidence_quote": "referred by Dr. Smith"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_003",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient annual comprehensive assessment. Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees. Adjusted atorvastatin to 40mg. Referred for eye exam. Injections avoided given recent flare.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "03.05A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5",
+        "M17.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "111222333",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca5",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "annual comprehensive assessment"
+      },
+      {
+        "finding_id": "ca16",
+        "rule_id": "rule_ahcip_same_day_conflict",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A (drop 03.05A \u2014 same-day conflict per SOMB)",
+        "clinical_evidence_quote": "annual comprehensive assessment",
+        "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_004",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Office visit, brief assessment for upper respiratory symptoms. Patient reports cough x 5 days, no fever. Lungs clear. Supportive care advised.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "J06.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "444555666",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca7",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "high",
+        "category": "evaluation",
+        "suggested_code": "03.01A",
+        "clinical_evidence_quote": "Office visit, brief assessment"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_005",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Post-op follow-up, cholecystectomy 8 days ago. Incision well-healed, no signs of infection. Patient reports mild fatigue. Discharged from surgical care.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z48.815"
+      ],
+      "modifier": null,
+      "patient_health_number": "555666777",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-01"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca8",
+        "rule_id": "rule_ahcip_global_window",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "drop visit (within 90-day global period) or attach explanatory text",
+        "clinical_evidence_quote": "Post-op follow-up, cholecystectomy 8 days ago",
+        "note": "Alberta SOMB does not use US -24 modifier"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_006",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Telehealth follow-up for stable depression. PHQ-9 score 6, down from 12 last visit. Continuing sertraline 100mg. No side effects reported.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "F32.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "666777888",
+      "date_of_service": "2026-04-15",
+      "referring_provider_npi": null
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca9",
+        "rule_id": "rule_ahcip_telehealth",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "telehealth modifier",
+        "clinical_evidence_quote": "Telehealth follow-up"
+      },
+      {
+        "finding_id": "ca17",
+        "rule_id": "rule_ahcip_psychotherapy_time",
+        "severity": "high",
+        "category": "psychotherapy",
+        "suggested_code": "08.19A (45-min psychotherapy)",
+        "clinical_evidence_quote": "PHQ-9 score 6, down from 12 last visit",
+        "note": "If session is 45+ min and physician-delivered, 08.19A applies"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_007",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Mental health counselling, 45-minute session. Patient discussed coping strategies for generalized anxiety. Reviewed medication adherence.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "F41.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "777888999",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-20"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca11",
+        "rule_id": "rule_ahcip_psychotherapy_time",
+        "severity": "high",
+        "category": "evaluation",
+        "suggested_code": "08.19A",
+        "clinical_evidence_quote": "45-minute session"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_008",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Office visit, brief assessment for cough. Patient reports productive cough x 1 week, low-grade fever yesterday. Lungs show rhonchi bilaterally. Started amoxicillin 500mg TID.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "J18.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "888999000",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca18",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "high",
+        "category": "evaluation",
+        "suggested_code": "03.04A (comprehensive assessment)",
+        "clinical_evidence_quote": "rhonchi bilaterally",
+        "note": "Moderate-acuity pneumonia visit should bill 03.04A, not 03.01A (undercode)"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_009",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Annual health maintenance visit. Reviewed immunization status, ordered mammogram (last 2 years ago), updated Pap smear (last 3 years ago). Reviewed cardiovascular risk factors. Discussed dietary changes.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [],
+      "modifier": null,
+      "patient_health_number": "123123123",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-10"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca13",
+        "rule_id": "rule_ahcip_dx_linkage",
+        "severity": "critical",
+        "category": "diagnosis",
+        "suggested_code": "REVIEW",
+        "clinical_evidence_quote": "Annual health maintenance visit"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_010",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Office visit, complex assessment for new patient with multiple concerns: fatigue, weight loss, night sweats. Reviewed systems, ordered CBC, TSH, ferritin, chest X-ray. Follow-up in 2 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R53.83"
+      ],
+      "modifier": null,
+      "patient_health_number": "321321321",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-25"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca14",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "complex assessment for new patient"
+      },
+      {
+        "finding_id": "ca15",
+        "rule_id": "rule_ahcip_lab_coverage",
+        "severity": "high",
+        "category": "laboratory",
+        "suggested_code": "X-ray chest 2-view",
+        "clinical_evidence_quote": "ordered CBC, TSH, ferritin, chest X-ray"
+      }
+    ]
+  }
+]

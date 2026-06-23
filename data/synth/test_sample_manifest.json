@@ -1,0 +1,2423 @@
+{
+  "version": "1.0",
+  "split": "test_sample",
+  "size": 150,
+  "generator": "scripts.build_test_sample_manifest",
+  "source": "data/test_sample.jsonl + data/train.json + data/val.json",
+  "test_sample_jsonl_sha256": "sha256:8770c8e104497807eda4356e6be1334ac5c756c3e97fe5d3689644a1326df0c8",
+  "train_json_sha256": "sha256:c195b10d189888ad5061f0ba725291663d72078a57bec8a7a56437ae3b1eaf8c",
+  "val_json_sha256": "sha256:7a0de972fc383346ff8870d33afc392966e6bef1a627e4c24064f80ddd53a152",
+  "category_distribution": {
+    "diagnosis": 120,
+    "evaluation": 78,
+    "laboratory": 57,
+    "cardiology": 46,
+    "imaging": 39,
+    "missing-dx": 30,
+    "procedure": 27,
+    "duplicate": 20,
+    "preventive": 18,
+    "modifier": 10
+  },
+  "entries": [
+    {
+      "encounter_id": "enc_0000",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0001",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0002",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0003",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0004",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0005",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0006",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0007",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0008",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0009",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0010",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0011",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0012",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0013",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0014",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0015",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0016",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0017",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0018",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0019",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0020",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0021",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0022",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0023",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0024",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0025",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0026",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0027",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0028",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0029",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0030",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0031",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0032",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0033",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0034",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0035",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0036",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0037",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0038",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0039",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0040",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0041",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0042",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0043",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0044",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0045",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0046",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0047",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0048",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0049",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0050",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0051",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0052",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0053",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0054",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0055",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0056",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0057",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0058",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0059",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0060",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0061",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0062",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0063",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0064",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0065",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0066",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0067",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0068",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0069",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0070",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0071",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0072",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 1,
+      "gold_categories": [
+        "duplicate"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0073",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0074",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004"
+      ]
+    },
+    {
+      "encounter_id": "enc_0075",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0076",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0077",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0078",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0079",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0080",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0081",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0082",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0083",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0084",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0085",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0086",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0087",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0088",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0089",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0090",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0091",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0092",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0093",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0094",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0095",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0096",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_0097",
+      "is_flagged": true,
+      "split": "train",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_0098",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_0099",
+      "is_flagged": false,
+      "split": "train",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10000",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10001",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10002",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10003",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10004",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10005",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10006",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10007",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10008",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10009",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10010",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10011",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10012",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10013",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10014",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10015",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10016",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10017",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10018",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10019",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004"
+      ]
+    },
+    {
+      "encounter_id": "enc_10020",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10021",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10022",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10023",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10024",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10025",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10026",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10027",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10028",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10029",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10030",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10031",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10032",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 1,
+      "gold_categories": [
+        "duplicate"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10033",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10034",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004"
+      ]
+    },
+    {
+      "encounter_id": "enc_10035",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "modifier"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_lab_001",
+        "rule_modifier_25_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10036",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_imaging_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10037",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10038",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "missing-dx",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_missing_dx_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10039",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "duplicate",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_004",
+        "rule_lab_001",
+        "rule_overlap_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10040",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "imaging"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_ecg_002",
+        "rule_icd_002",
+        "rule_imaging_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10041",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10042",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "laboratory",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_icd_003",
+        "rule_icd_004",
+        "rule_injection_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10043",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10044",
+      "is_flagged": false,
+      "split": "val",
+      "n_gold_findings": 0,
+      "gold_categories": [],
+      "gold_rule_ids": []
+    },
+    {
+      "encounter_id": "enc_10045",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "cardiology",
+        "diagnosis",
+        "evaluation",
+        "missing-dx"
+      ],
+      "gold_rule_ids": [
+        "rule_ecg_001",
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_missing_dx_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10046",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 5,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_001",
+        "rule_icd_004",
+        "rule_imaging_002",
+        "rule_lab_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10047",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 2,
+      "gold_categories": [
+        "duplicate",
+        "preventive"
+      ],
+      "gold_rule_ids": [
+        "rule_overlap_001",
+        "rule_preventive_001"
+      ]
+    },
+    {
+      "encounter_id": "enc_10048",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 4,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "imaging",
+        "laboratory"
+      ],
+      "gold_rule_ids": [
+        "rule_em_003",
+        "rule_icd_003",
+        "rule_imaging_001",
+        "rule_lab_002"
+      ]
+    },
+    {
+      "encounter_id": "enc_10049",
+      "is_flagged": true,
+      "split": "val",
+      "n_gold_findings": 3,
+      "gold_categories": [
+        "diagnosis",
+        "evaluation",
+        "procedure"
+      ],
+      "gold_rule_ids": [
+        "rule_em_001",
+        "rule_icd_004",
+        "rule_injection_001"
+      ]
+    }
+  ],
+  "built_at": "2026-06-17T12:54:59Z"
+}
