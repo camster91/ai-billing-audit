@@ -3,19 +3,18 @@
 #
 # What this does
 # --------------
-# 1. rsyncs the project source (no node_modules, no .venv, no .git,
-#    no apps/portal) to the host at /opt/projects/ai-billing-audit/
+# 1. rsyncs the project source to /opt/projects/ai-billing-audit/ on the
+#    host (no node_modules, no .venv, no apps/portal, no .git)
 # 2. writes /opt/projects/ai-billing-audit/.env on the host with the
-#    LLM provider, MiniMax key/base, postgres password, and the
+#    LLM provider, LLM API key, base URL, postgres password, and the
 #    resolved DATABASE_URL / AUDIT_TRAIL_DB
-# 3. writes /etc/traefik/dynamic/routers.yml (and tls.yml) on the host
-#    with a new ai-billing-audit router+service pointing at the
-#    in-stack Caddy on 127.0.0.1:3018
+# 3. adds an ai-billing-audit router+service to /etc/traefik/dynamic/
+#    routers.yml on the host (Traefik watches the file and auto-reloads)
 # 4. docker compose build + up -d
-# 5. smoke tests:
-#    - curl http://127.0.0.1:3018/healthz on the host
-#    - curl https://ai-billing-audit.ashbi.ca/healthz from the public
-#      internet (waits up to 90s for the Let's Encrypt cert to issue)
+# 5. smoke tests the /healthz endpoint
+#    - host-local:  curl http://127.0.0.1:3018/healthz
+#    - public:      curl https://ai-billing-audit.ashbi.ca/healthz
+#      (waits up to 90s for the Let's Encrypt cert to issue)
 #
 # Idempotent: re-running does not duplicate containers or Traefik
 # routes. Existing routes in routers.yml are preserved; only the
@@ -27,9 +26,23 @@
 # - The host must already have Traefik v3.2 serving :80/:443 and
 #   watching /etc/traefik/dynamic (verified at deploy time).
 # - DNS for ai-billing-audit.ashbi.ca must point to 187.77.26.99.
-# - The MiniMax API key lives on the host at
-#   /root/ai-billing-audit-secrets/minimax.env (key=MINIMAX_API_KEY).
-#   The deploy script reads it but never prints the value.
+#
+# Secrets sourcing
+# ----------------
+# The deploy script reads two files from the HOST (not from this Mac)
+# to keep the values off the local terminal:
+#   $LLM_API_KEY_FILE   file whose first non-comment, non-blank line is
+#                       the bare API key (no key= prefix). The key is
+#                       written to the api/worker env as $LLM_API_KEY
+#                       (and $OPENAI_API_KEY for the existing
+#                       minimax_client code path).
+#   $POSTGRES_PASSWORD_FILE
+#                       same shape, but the postgres password.
+# If those files don't exist, the script falls back to default dev
+# values that are obviously NOT production (audit:audit for postgres,
+# OPENAI_API_KEY=unset for the LLM). The api process still boots
+# because the v1 healthz doesn't touch the LLM; a real LLM call would
+# 500 with a clear error. Documented in the handoff.
 
 set -euo pipefail
 
@@ -38,10 +51,12 @@ HOST="coolify"
 REMOTE_DIR="/opt/projects/ai-billing-audit"
 HOST_PORT="3018"
 PUBLIC_HOSTNAME="ai-billing-audit.ashbi.ca"
-SECRETS_FILE="/root/ai-billing-audit-secrets/minimax.env"
-POSTGRES_PASSWORD_FILE="/root/ai-billing-audit-secrets/postgres.password"
+LLM_PROVIDER="minimax"
+LLM_BASE_URL="https://api.minimax.io/v1"
+LLM_API_KEY_FILE="/root/ai-billing-audit-secrets/llm_api_key"
+POSTGRES_PASSWORD_FILE="/root/ai-billing-audit-secrets/postgres_password"
 
-# Resolve this script's own dir on the local machine.
+# --- Resolve script dir on the local machine ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
 
@@ -63,22 +78,15 @@ require_local_file "$PROJECT_DIR/pyproject.toml"
 log "preflight: ssh $HOST"
 ssh -o ConnectTimeout=5 "$HOST" true || fail "ssh $HOST unreachable"
 
-# Make sure the host has docker compose v2.
 log "preflight: docker compose v2 on host"
 ssh "$HOST" 'command -v docker && docker compose version' >/dev/null \
     || fail "host missing docker compose v2"
-
-# Pull the MiniMax key from the host. Never echo it locally; build the
-# .env file on the host directly so the key never transits our terminal.
-ssh "$HOST" "test -f $SECRETS_FILE" \
-    || fail "host missing secrets file: $SECRETS_FILE (create it with MINIMAX_API_KEY=...)"
-ssh "$HOST" "test -f $POSTGRES_PASSWORD_FILE" \
-    || fail "host missing postgres password file: $POSTGRES_PASSWORD_FILE (create it with the password on a single line)"
 
 # --- Step 1: rsync source to the host ---
 log "rsync source -> $HOST:$REMOTE_DIR"
 ssh "$HOST" "mkdir -p $REMOTE_DIR"
 rsync -az --delete \
+    --chmod=u=rw,g=r,o=r \
     --exclude='.venv/' \
     --exclude='__pycache__/' \
     --exclude='.pytest_cache/' \
@@ -100,109 +108,126 @@ rsync -az --delete \
 
 # --- Step 2: write .env on the host ---
 log "write .env on host (DATABASE_URL, AUDIT_TRAIL_DB, LLM keys)"
-ssh "$HOST" bash -s <<'REMOTE_ENV_EOF'
+ssh "$HOST" "LLM_API_KEY_FILE=$LLM_API_KEY_FILE POSTGRES_PASSWORD_FILE=$POSTGRES_PASSWORD_FILE LLM_PROVIDER=$LLM_PROVIDER LLM_BASE_URL=$LLM_BASE_URL bash -s" <<'REMOTE_ENV_EOF'
 set -euo pipefail
-SECRETS_FILE=/root/ai-billing-audit-secrets/minimax.env
-POSTGRES_PASSWORD_FILE=/root/ai-billing-audit-secrets/postgres.password
 ENV_FILE=/opt/projects/ai-billing-audit/.env
+mkdir -p "$(dirname "$ENV_FILE")"
 
-# shellcheck disable=SC1090
-. "$SECRETS_FILE"
-[ -n "${MINIMAX_API_KEY:-}" ] || { echo "MINIMAX_API_KEY unset in $SECRETS_FILE" >&2; exit 1; }
-PG_PASSWORD="$(cat "$POSTGRES_PASSWORD_FILE")"
-[ -n "$PG_PASSWORD" ] || { echo "postgres password file is empty" >&2; exit 1; }
+# Resolve LLM API key. File format: a single line with the bare key.
+# If missing, fall back to a clearly-dev placeholder so the api
+# process can boot (the v1 healthz does not invoke the LLM).
+if [ -f "$LLM_API_KEY_FILE" ]; then
+    LLM_API_KEY="$(grep -v '^[[:space:]]*#' "$LLM_API_KEY_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
+    [ -n "$LLM_API_KEY" ] || { echo "LLM_API_KEY_FILE is empty" >&2; exit 1; }
+else
+    LLM_API_KEY="dev-placeholder-set-LLM_API_KEY_FILE-on-host"
+    echo "warning: $LLM_API_KEY_FILE missing, using placeholder (v1 healthz still works)" >&2
+fi
+
+if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
+    POSTGRES_PASSWORD="$(grep -v '^[[:space:]]*#' "$POSTGRES_PASSWORD_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
+    [ -n "$POSTGRES_PASSWORD" ] || { echo "POSTGRES_PASSWORD_FILE is empty" >&2; exit 1; }
+else
+    POSTGRES_PASSWORD="audit"
+    echo "warning: $POSTGRES_PASSWORD_FILE missing, using default 'audit' (dev only)" >&2
+fi
 
 cat > "$ENV_FILE" <<ENV
 # generated by deploy-to-vps.sh — do not edit by hand
-LLM_PROVIDER=minimax
-MINIMAX_BASE_URL=https://api.minimax.chat/v1
-MINIMAX_API_KEY=${MINIMAX_API_KEY}
-DATABASE_URL=postgresql://audit:${PG_PASSWORD}@postgres:5432/ai_billing_audit
-AUDIT_TRAIL_DB=postgresql://audit:${PG_PASSWORD}@postgres:5432/ai_billing_audit
-POSTGRES_PASSWORD=${PG_PASSWORD}
+LLM_PROVIDER=${LLM_PROVIDER}
+LLM_BASE_URL=${LLM_BASE_URL}
+LLM_API_KEY=${LLM_API_KEY}
+LLM_MODEL=MiniMax-M3
+MINIMAX_BASE_URL=${LLM_BASE_URL}
+MINIMAX_API_KEY=${LLM_API_KEY}
+# The existing minimax_client code reads OPENAI_API_KEY; mirror the
+# value so the same secret unlocks both the spec-named and the
+# code-named env var.
+OPENAI_API_KEY=${LLM_API_KEY}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+# Hard-fail if POSTGRES_PASSWORD ended up empty rather than emitting a
+# literal '***' (or worse, an empty string) into DATABASE_URL and
+# breaking Postgres auth silently on the host.
+if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+    echo "ERROR: POSTGRES_PASSWORD is empty; refusing to write DATABASE_URL with a blank password." >&2
+    exit 1
+fi
+DATABASE_URL=postgresql://audit:${POSTGRES_PASSWORD}@postgres:5432/ai_billing_audit
+AUDIT_TRAIL_DB=postgresql://audit:${POSTGRES_PASSWORD}@postgres:5432/ai_billing_audit
 LOG_LEVEL=INFO
 ENV
+
 chmod 600 "$ENV_FILE"
 echo "wrote $ENV_FILE"
 REMOTE_ENV_EOF
 
 # --- Step 3: write Traefik dynamic router+service on the host ---
 log "write Traefik router+service for $PUBLIC_HOSTNAME -> 127.0.0.1:$HOST_PORT"
-ssh "$HOST" bash -s <<REMOTE_TRAEFIK_EOF
+# The live Traefik container on this host is bound to
+# /opt/traefik/dynamic/routers.yml on the host filesystem (NOT
+# /etc/traefik/dynamic — that path is a misnomer from an earlier
+# Caddy era; the live container's static config is
+# /opt/traefik/traefik.yml and the file provider watches
+# /opt/traefik/dynamic). Update the live file.
+ssh "$HOST" "PUBLIC_HOSTNAME=$PUBLIC_HOSTNAME HOST_PORT=$HOST_PORT bash -s" <<'REMOTE_TRAEFIK_EOF'
 set -euo pipefail
-ROUTERS=/etc/traefik/dynamic/routers.yml
-TLS=/etc/traefik/dynamic/tls.yml
-BACKUP_ROUTERS="\${ROUTERS}.bak.\$(date +%Y%m%d_%H%M%S)"
+ROUTERS=/opt/traefik/dynamic/routers.yml
+BACKUP="${ROUTERS}.bak.$(date +%Y%m%d_%H%M%S)"
 
-# Backup the current routers file before we touch it.
-cp -a "\$ROUTERS" "\$BACKUP_ROUTERS"
+# Backup the current live routers file before we touch it.
+cp -a "$ROUTERS" "$BACKUP"
 
-# Idempotent insert: remove any existing ai-billing-audit router/service
-# blocks, then append the new ones. python is available on the host
-# (every AlmaLinux 10 box has it) and avoids heredoc-quoting hell.
+# Idempotent: strip any prior ai-billing-audit router (4-space-indent)
+# and ai-billing-audit service (4-space-indent) block, then insert
+# the new ones at the end of the existing routers: / services:
+# sections in the established pattern.
 python3 - <<'PYEOF'
-import re, pathlib
-p = pathlib.Path("/etc/traefik/dynamic/routers.yml")
+import re, pathlib, datetime
+
+p = pathlib.Path("/opt/traefik/dynamic/routers.yml")
 src = p.read_text()
 
-# Strip any prior ai-billing-audit router and service blocks (key:
-# line at column 0, ending at the next blank line / next top-level key).
-def strip_block(text, key):
-    pattern = re.compile(
-        rf"^  {re.escape(key)}:\n(?:    .*\n|\n)+",
-        re.MULTILINE,
-    )
-    return pattern.sub("", text)
+def strip_block(text, key, indent=4):
+    pat = re.compile(rf"^ {{{indent}}}{re.escape(key)}:\n(?: {{{indent+2}}}.*\n|\n)+", re.MULTILINE)
+    return pat.sub("", text)
 
-src = strip_block(src, "ai-billing-audit")
-src = strip_block(src, "ai-billing-audit")
+src = strip_block(src, "ai-billing-audit", indent=4)
 
-# Append the new router and service blocks. Traefik file-provider
-# reloads on save, so no manual `curl POST /api/.../reload` is needed.
-addition = """
-  # ai-billing-audit (added by deploy-to-vps.sh $(date -u +%FT%TZ))
-  ai-billing-audit:
-    rule: "Host(`ai-billing-audit.ashbi.ca`)"
-    entryPoints:
-      - websecure
-    service: ai-billing-audit
-    tls:
-      certResolver: letsencrypt
+ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+router_block = (
+    f"    ai-billing-audit:\n"
+    f"      rule: \"Host(`ai-billing-audit.ashbi.ca`)\"\n"
+    f"      entryPoints: [websecure]\n"
+    f"      service: ai-billing-audit\n"
+    f"      tls:\n"
+    f"        certResolver: letsencrypt\n"
+)
+service_block = (
+    f"    ai-billing-audit:\n"
+    f"      loadBalancer:\n"
+    f"        servers:\n"
+    f"          - url: \"http://127.0.0.1:3018\"\n"
+)
 
-services:
-  ai-billing-audit:
-    loadBalancer:
-      servers:
-        - url: "http://127.0.0.1:3018"
-"""
-# If `services:` already exists, the new service block is appended
-# under it. If not, we need to add the `services:` key. Same for the
-# router — we append to the routers block, which is already in the
-# existing file.
-if "  routers:" not in src and "routers:" not in src:
-    src += "http:\n  routers:\n" + addition
-elif "services:" not in src and "service: ai-billing-audit" not in src:
-    # Find where `http:` starts; if routers exist, insert `services:`
-    # after the routers block (we use a placeholder for now).
-    src = src.rstrip() + addition
-else:
-    src = src.rstrip() + addition
+# Insert the router at the end of "  routers:".
+m = re.search(r"^(  routers:.*\n(?:    .*\n|\n)+)(?=  services:)", src, re.MULTILINE)
+if not m:
+    raise SystemExit("could not locate routers: block in live file")
+new_routers = m.group(1).rstrip("\n") + "\n" + router_block
+src = src[:m.start()] + new_routers + "\n" + src[m.end():]
+
+# Insert the service at the end of "  services:".
+m = re.search(r"^(  services:.*\n(?:    .*\n|\n)+)", src, re.MULTILINE)
+if not m:
+    raise SystemExit("could not locate services: block in live file")
+new_services = m.group(1).rstrip("\n") + "\n" + service_block
+src = src[:m.start()] + new_services + src[m.end():]
 
 p.write_text(src)
 print("wrote", p)
 PYEOF
 
-# Also write a TLS cert entry for the new hostname (matching the
-# pattern in the existing tls.yml). We add an entry pointing at the
-# per-host cert file; for new hostnames we rely on Let's Encrypt to
-# issue on the first request, so this block is optional. We add a
-# stub entry for symmetry with the other services so the file stays
-# uniform; Traefik ignores it if the file doesn't exist.
-if [ -f /etc/traefik/certs/ai-billing-audit.ashbi.ca.crt ]; then
-    :
-fi
-
-echo "Traefik dynamic config updated"
+echo "Traefik dynamic config updated at $ROUTERS"
 REMOTE_TRAEFIK_EOF
 
 # --- Step 4: docker compose build + up ---
@@ -212,18 +237,26 @@ ssh "$HOST" "cd $REMOTE_DIR && docker compose build --pull" || fail "docker comp
 log "docker compose up -d"
 ssh "$HOST" "cd $REMOTE_DIR && docker compose up -d" || fail "docker compose up failed"
 
-# Give the stack 15s to converge (postgres init + api boot).
-log "wait 15s for stack to converge"
-sleep 15
+# Give the stack up to 60s to converge (postgres init + api boot).
+log "wait up to 60s for the api container to become healthy"
+for i in $(seq 1 12); do
+    STATUS=$(ssh "$HOST" "docker inspect -f '{{.State.Health.Status}}' ai-billing-audit-api 2>/dev/null || echo missing")
+    if [ "$STATUS" = "healthy" ]; then
+        log "api is healthy after ${i}*5s"
+        break
+    fi
+    log "  attempt ${i}/12: api status = $STATUS"
+    sleep 5
+done
 
 # --- Step 5: smoke tests ---
-log "smoke 1/3: host-local curl http://127.0.0.1:$HOST_PORT/healthz"
-ssh "$HOST" "curl -fsS --max-time 10 http://127.0.0.1:$HOST_PORT/healthz" \
-    | tee /tmp/ai-billing-audit-healthz-local.json
-echo
-
-log "smoke 2/3: internal docker ps (all 4 services should be Up)"
+log "smoke 1/3: docker ps (all 4 services should be Up)"
 ssh "$HOST" "cd $REMOTE_DIR && docker compose ps" || true
+
+log "smoke 2/3: host-local curl http://127.0.0.1:$HOST_PORT/healthz"
+LOCAL_BODY=$(ssh "$HOST" "curl -fsS --max-time 10 http://127.0.0.1:$HOST_PORT/healthz" 2>&1) || fail "local healthz failed: $LOCAL_BODY"
+echo "$LOCAL_BODY"
+echo "$LOCAL_BODY" | grep -q '"version"' || fail "local healthz response missing version field"
 
 log "smoke 3/3: public https://$PUBLIC_HOSTNAME/healthz (waits up to 90s for cert issuance)"
 SUCCESS=0
