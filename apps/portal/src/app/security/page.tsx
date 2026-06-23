@@ -13,7 +13,10 @@
 //      task t_165297e9; the SHA-256 signature spec lives in
 //      src/ai_billing_audit/audit_actions.py — the live, wired
 //      implementation. The sibling src/audit_log.py is the orphan /
-//      test-only module and is not invoked at runtime; see MANIFEST.json.)
+//      test-only module and is not invoked at runtime; see MANIFEST.json.
+//      Pinned to the wired entry point audit_actions.append() and the
+//      verifier verify_chain() in the orphan module — see the muted
+//      implementation note on the audit-trail section below.)
 //   7. PIPEDA + AIDA + applicable US state privacy law compliance matrix
 //
 // Server component. No client hooks, no fetch. Compliance table is a plain
@@ -260,15 +263,17 @@ export default function SecurityPage() {
               {" "}(the live hash-chain entry point is
               <code>audit_actions.append()</code>, wired into 8 API call
               sites in <code>src/ai_billing_audit/api.py</code>), plus the
-              {" "}<code>verify_chain()</code> helper in the sibling
-              {" "}<code>src/audit_log.py</code> and its unit tests
-              in <code>tests/test_audit_log.py</code>, and the verification
-              runbook in <code>docs/RUNBOOK.md</code>. The
-              marketer-facing wording here matches the wired implementation
-              exactly &mdash; we do not promise anything the audit log does
-              not actually do. See <code>prompts/MANIFEST.json</code> for
-              the note documenting that two parallel hash-chain
-              implementations exist.
+              {" "}<code>verify_chain()</code> helper that currently lives
+              in the sibling <code>src/audit_log.py</code> together with
+              its unit tests in <code>tests/test_audit_log.py</code>, and
+              the verification runbook in <code>docs/RUNBOOK.md</code>.
+              The marketer-facing wording here matches the wired
+              implementation exactly &mdash; we do not promise anything
+              the audit log does not actually do. See{" "}
+              <code>prompts/MANIFEST.json</code> for the note documenting
+              that two parallel hash-chain implementations exist and that
+              the <code>src/audit_log.py</code> sibling is the orphan
+              test/QA module.
             </p>
           </div>
         </section>
