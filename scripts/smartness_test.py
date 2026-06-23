@@ -1,7 +1,7 @@
 """Smartness test for the Zorva auditor.
 
 Runs the live LLM auditor against the 50 hand-verified encounters
-in data/val.json, scores each prediction against the gold ground
+in data/synth/val.json, scores each prediction against the gold ground
 truth, and reports P/R/F1 overall + per-rule + per-severity.
 
 This is the "is the AI actually smart?" test. We use it to find
@@ -438,7 +438,7 @@ def main() -> int:
     parser.add_argument("--start", type=int, default=0,
                         help="Start index in val.json (default: 0)")
     parser.add_argument("--val", action="append", default=None,
-                        help="Path to val.json (repeatable; default: data/val.json)")
+                        help="Path to val.json (repeatable; default: data/synth/val.json)")
     parser.add_argument("--out", default=None,
                         help="Write JSON results to this path")
     parser.add_argument("--quiet", action="store_true",
@@ -453,8 +453,8 @@ def main() -> int:
         os.environ["LLM_MODEL"] = args.model
 
     val_paths = args.val or [
-        str(REPO_ROOT / "data" / "val.json"),
-        str(REPO_ROOT / "data" / "val_ca.json"),
+        str(REPO_ROOT / "data" / "synth" / "val.json"),
+        str(REPO_ROOT / "data" / "synth" / "val_ca.json"),
     ]
     for path in val_paths:
         if not Path(path).is_file():
@@ -518,6 +518,30 @@ def main() -> int:
                 indent=2,
             )
         print(f"\nWrote {out_path}")
+
+        # Append to the prompt-version history log so we can
+        # track regression over time. Reads the prompt version
+        # from the --prompt arg (basename without .txt extension),
+        # defaults to "default" when no --prompt was given.
+        try:
+            from scripts.prompt_history import append_history_row
+            if args.prompt:
+                prompt_version = Path(args.prompt).stem
+            else:
+                prompt_version = "default"
+            row = append_history_row(
+                prompt_version=prompt_version,
+                summary=summary,
+                error_count=summary["latency"].get("n_errors", 0),
+            )
+            print(
+                f"Appended prompt_history row: prompt={prompt_version} "
+                f"F1={row['micro_aggregate'].get('f1', 0):.3f}"
+            )
+        except Exception as e:
+            # Don't crash the run if history write fails.
+            print(f"Warning: failed to append prompt history: {e}")
+
     return 0
 
 

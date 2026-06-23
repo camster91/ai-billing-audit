@@ -167,7 +167,7 @@ def test_medium_entry_registered() -> None:
 
 def test_medium_record_loadable() -> None:
     """The wired encounter's underlying record (note / claim / rules /
-    ground-truth) must load from data/train.json so the detail page
+    ground-truth) must load from data/synth/train.json so the detail page
     can render the full audit panel."""
     rec = load_encounter_record(MEDIUM_ID)
     assert rec is not None
@@ -306,7 +306,7 @@ def test_hard_entry_registered() -> None:
 
 def test_hard_record_loadable() -> None:
     """The wired encounter's underlying record (note / claim / rules /
-    ground-truth) must load from data/train.json so the detail page
+    ground-truth) must load from data/synth/train.json so the detail page
     can render the full audit panel. Hard tier also implies multi-
     finding / multi-category / at least one high-severity finding."""
     rec = load_encounter_record(HARD_ID)

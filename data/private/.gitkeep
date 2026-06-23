@@ -1,0 +1,6 @@
+# Reserved for real PHI / production data. Must never be baked into
+# the Docker image. .dockerignore excludes this directory from the
+# build context. Add `.gitignore` entries here (or rely on the parent
+# repo's .gitignore patterns) before committing any actual file.
+#
+# Intentionally empty. Created by audit task t_0de00580.

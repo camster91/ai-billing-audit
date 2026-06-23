@@ -291,7 +291,7 @@ def test_render_markdown_matches_json(agg, tmp_path):
         "encounter_count": 50,
         "encounter_error_count": 0,
         "input": {
-            "val_path": "data/val.json",
+            "val_path": "data/synth/val.json",
             "prompt_path": "prompts/v0/auditor_prompt.txt",
             "llm_provider": "smoke",
             "llm_model": "stub",
