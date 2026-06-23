@@ -11,7 +11,8 @@
 # 3. adds an ai-billing-audit router+service to /etc/traefik/dynamic/
 #    routers.yml on the host (Traefik watches the file and auto-reloads)
 # 4. docker compose build + up -d
-# 5. smoke tests the /healthz endpoint
+# 5. installs /etc/logrotate.d/zorva-logs (rotation for /app/logs named volume)
+# 6. smoke tests the /healthz endpoint
 #    - host-local:  curl http://127.0.0.1:3018/healthz
 #    - public:      curl https://ai-billing-audit.ashbi.ca/healthz
 #      (waits up to 90s for the Let's Encrypt cert to issue)
@@ -236,6 +237,36 @@ ssh "$HOST" "cd $REMOTE_DIR && docker compose build --pull" || fail "docker comp
 
 log "docker compose up -d"
 ssh "$HOST" "cd $REMOTE_DIR && docker compose up -d" || fail "docker compose up failed"
+
+# --- Step 4b: install logrotate config for the /app/logs named volume ---
+# /app/logs is a Docker named volume that grows unbounded unless rotated.
+# The config file lives in the repo at deploy/logrotate/zorva-logs and is
+# copy-installed to /etc/logrotate.d/ on the host. Per-file retention is
+# documented in deploy/logrotate/README.md (PHIPA 7yr on audit_trail.jsonl,
+# 60d on doctor_emails.jsonl, 90d on the NPI cache, etc.).
+#
+# Only installs the file if logrotate is present on the host. logrotate is
+# standard on Debian/Ubuntu but not guaranteed on minimal VPS images; in
+# that case we log a warning rather than failing the deploy, because the
+# api container will still boot and serve /healthz without logrotate.
+log "install logrotate config to /etc/logrotate.d/zorva-logs"
+ssh "$HOST" "REMOTE_DIR=$REMOTE_DIR bash -s" <<'REMOTE_LOGROTATE_EOF' || log "warning: logrotate install skipped (see previous lines)"
+set -euo pipefail
+if ! command -v logrotate >/dev/null 2>&1; then
+    echo "warning: logrotate not installed on host; skipping /etc/logrotate.d/zorva-logs" >&2
+    echo "         install with: apt-get install -y logrotate" >&2
+    exit 0
+fi
+install -d -m 755 /etc/logrotate.d
+install -m 644 "$REMOTE_DIR/deploy/logrotate/zorva-logs" /etc/logrotate.d/zorva-logs
+echo "installed /etc/logrotate.d/zorva-logs"
+# Non-destructive dry-run so the operator can see what logrotate would do.
+if logrotate -d /etc/logrotate.d/zorva-logs >/dev/null; then
+    echo "logrotate -d /etc/logrotate.d/zorva-logs: OK (parse + would-rotate)"
+else
+    echo "warning: logrotate -d /etc/logrotate.d/zorva-logs reported an issue; investigate" >&2
+fi
+REMOTE_LOGROTATE_EOF
 
 # Give the stack up to 60s to converge (postgres init + api boot).
 log "wait up to 60s for the api container to become healthy"
