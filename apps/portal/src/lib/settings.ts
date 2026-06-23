@@ -37,7 +37,12 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 
 /** Mirrors src/lib/onboarding.ts. Kept in sync with the wizard's region
- * list so the two surfaces stay in lockstep. */
+ * list so the two surfaces stay in lockstep.
+ *
+ * NOTE (task t_96d9a4f9): these are the internal enum values persisted
+ * to the database. The customer-facing label was updated on the
+ * OnboardingWizard — the enum strings themselves stay for backwards
+ * compatibility with existing tenant rows. */
 export const RESIDENCY_REGIONS = ["ca-central-1", "us-east-1"] as const;
 export type ResidencyRegion = (typeof RESIDENCY_REGIONS)[number];
 

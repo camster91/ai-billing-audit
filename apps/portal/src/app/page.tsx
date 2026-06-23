@@ -53,11 +53,11 @@ export default function Home() {
           <article className={styles.pillar}>
             <h2>Region-pinned data</h2>
             <p>
-              ca-central-1 for Canadian clinics, us-east-1 for US. No
-              cross-region replication, no sale of customer data, no
-              analytics egress. HIA, PHIPA, HIPAA, and the Washington My
-              Health My Data Act are all addressed in the security
-              page.
+              Your data is stored in a Canadian data centre, region
+              confirmed in the BAA. No cross-region replication, no
+              sale of customer data, no analytics egress. HIA, PHIPA,
+              HIPAA, and the Washington My Health My Data Act are all
+              addressed in the security page.
             </p>
           </article>
           <article className={styles.pillar}>

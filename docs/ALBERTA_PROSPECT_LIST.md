@@ -113,8 +113,9 @@ network, and we've built a pre-submit claim auditor specifically for AHCIP that
 catches the under-coding and missing-modifier patterns Alberta billers tell us are
 driving most of their write-offs.
 
-Quick context on us: we're a small Toronto-based team; the auditor runs locally
-in Canada (ca-central-1), is PIPEDA-aligned, and we've AHCIP-tuned the rule
+Quick context on us: we're a small Toronto-based team; the auditor
+runs in a Canadian data centre (region confirmed in the BAA),
+is PIPEDA-aligned, and we've AHCIP-tuned the rule
 catalogue against the SOMB. Live product at https://ai-billing-audit.ashbi.ca if
 you want to poke at it.
 
@@ -163,9 +164,9 @@ Zorva — https://ai-billing-audit.ashbi.ca
 
 ```
 Hi [First name] — I'm working with a small Toronto team that's built a
-pre-submit AHCIP claim auditor (SOMB-tuned, ca-central-1, PIPEDA-aligned).
-We're looking for one Alberta PCN or multi-clinic group willing to run a free
-30-day pilot. Is this something [PCN name] would have interest in, or is there
+pre-submit AHCIP claim auditor (SOMB-tuned, Canadian data centre with
+region confirmed in the BAA, PIPEDA-aligned). We're looking for one
+Alberta PCN or multi-clinic group willing to run a free 30-day pilot. Is this something [PCN name] would have interest in, or is there
 someone on your team better placed to look at it? Happy to send a one-pager.
 ```
 
@@ -184,7 +185,7 @@ These should be in the FAQ Cameron or Eliud has ready before any call.
 ### 5.1 "Where does the data live?"
 **Objection:** Alberta-specific — physicians and clinic privacy officers often assume "cloud" = US-hosted (HIPAA) and want assurance the data is Canadian-resident.
 
-**Response:** ca-central-1 (Montreal) region. No cross-border transfer. PHIPA does not formally apply to Alberta (Alberta's health privacy law is the **Health Information Act (HIA)**, which is the provincial equivalent), but we treat Alberta data to PHIPA-equivalent controls as a baseline. PIPEDA-aligned for commercial activity. Tenant-scoped encryption keys. (Note: PHIPA is Ontario; the Alberta analogue is HIA. Update the pitch — Cam has historically called this "PHIPA vs PIPEDA confusion," which is the right *category* of objection but uses the wrong provincial statute name. The right framing is **HIA + PIPEDA**.)
+**Response:** Canadian data centre (region confirmed in the BAA). No cross-border transfer. PHIPA does not formally apply to Alberta (Alberta's health privacy law is the **Health Information Act (HIA)**, which is the provincial equivalent), but we treat Alberta data to PHIPA-equivalent controls as a baseline. PIPEDA-aligned for commercial activity. Tenant-scoped encryption keys. (Note: PHIPA is Ontario; the Alberta analogue is HIA. Update the pitch — Cam has historically called this "PHIPA vs PIPEDA confusion," which is the right *category* of objection but uses the wrong provincial statute name. The right framing is **HIA + PIPEDA**.)
 
 ### 5.2 "Will AI replace our billing staff?"
 **Objection:** Front-and-center for office managers, who are often the economic decision-maker at the clinic level.

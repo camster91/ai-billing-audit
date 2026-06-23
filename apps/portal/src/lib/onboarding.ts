@@ -48,7 +48,15 @@ import type StripeNS from "stripe";
 // ---------------------------------------------------------------------------
 
 /** Stripe-suggested residency regions. Mirrors what the /settings page
- * exposes (see task t_1bab62b6) so the two pages stay in lockstep. */
+ * exposes (see task t_1bab62b6) so the two pages stay in lockstep.
+ *
+ * NOTE (task t_96d9a4f9): these string values are the internal enum
+ * persisted to the database. The customer-facing label was changed from
+ * "Canada (ca-central-1)" / "United States (us-east-1)" to "Canada
+ * (Canadian data centre)" / "United States (US-hosted, HIPAA-aligned)".
+ * The enum values themselves stay as `ca-central-1` / `us-east-1` for
+ * backwards compatibility with existing tenant rows — changing them is
+ * a DB migration, out of scope for the marketing-copy fix. */
 export const RESIDENCY_REGIONS = ["ca-central-1", "us-east-1"] as const;
 export type ResidencyRegion = (typeof RESIDENCY_REGIONS)[number];
 

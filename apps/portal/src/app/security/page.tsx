@@ -4,7 +4,7 @@
 // pre-purchase due diligence. The page must answer, in plain English and
 // in this order, all seven required topics from the task body:
 //
-//   1. Data residency by region (AWS ca-central-1 for CA, us-east-1 for US)
+//   1. Data residency by region (Canadian data centre, region confirmed in BAA)
 //   2. AES-256 at rest + TLS 1.3 in transit
 //   3. BAA / HIC-Agent agreement is signed before any customer data is accepted
 //   4. Human-in-the-Loop (HITL) shield under the Federal False Claims Act
@@ -59,18 +59,23 @@ export default function SecurityPage() {
             1
           </div>
           <div className={styles.topicBody}>
-            <h2 id="t-residency">Your data stays in the region you choose</h2>
+            <h2 id="t-residency">Your data stays in a Canadian data centre, region confirmed in the BAA</h2>
             <p>
-              Canadian customer data lives in AWS{"\u00A0"}ca-central-1
-              (Montréal). US customer data lives in AWS{"\u00A0"}us-east-1
-              (N. Virginia). Pick the region at sign-up. We do not replicate
-              across regions, and we do not move data out of the region you
-              chose without written notice.
+              Canadian customer data lives in a Canadian data centre,
+              region confirmed in the BAA. US customer data lives in a
+              US-hosted, HIPAA-aligned region, with a BAA executed
+              before any customer data is accepted. Pick the region at
+              sign-up. We do not replicate across regions, and we do
+              not move data out of the region you chose without
+              written notice.
             </p>
             <p className={styles.muted}>
-              AWS publishes the controls and certifications for each region on
-              their compliance page. We inherit that posture and add our own
-              on top.
+              We inherit the underlying cloud provider&apos;s regional
+              controls and certifications (SOC 2 Type II, ISO 27001,
+              ISO 27017, ISO 27018 where the provider holds them) and
+              add our own operational controls on top. The exact
+              provider and data-centre region for a given tenant is
+              documented in the executed BAA.
             </p>
           </div>
         </section>
@@ -138,10 +143,11 @@ export default function SecurityPage() {
               Certifications and attestations
             </h2>
             <p>
-              We inherit AWS&apos; regional controls (SOC 2 Type II, ISO 27001,
-              ISO 27017, ISO 27018, PCI DSS Level 1 for the underlying
-              regions) and we layer our own operational controls on top.
-              Our current attestation status:
+              We inherit the underlying cloud provider&apos;s regional
+              controls (SOC 2 Type II, ISO 27001, ISO 27017, ISO 27018,
+              PCI DSS Level 1 for the underlying regions where the
+              provider holds them) and we layer our own operational
+              controls on top. Our current attestation status:
             </p>
             <ul className={styles.bulletList}>
               <li>
@@ -156,9 +162,10 @@ export default function SecurityPage() {
                 of Applicability is available under MNDA.
               </li>
               <li>
-                <strong>HITRUST CSF inheritance</strong> — our pipeline runs
-                on AWS HITRUST-certified regions for US healthcare pilots;
-                we are not pursuing HITRUST certification directly in v1.
+                <strong>HITRUST CSF inheritance</strong> &mdash; our
+                pipeline runs on a HITRUST-certified region for US
+                healthcare pilots; we are not pursuing HITRUST
+                certification directly in v1.
               </li>
               <li>
                 <strong>HIA / PHIPA / HIPAA / PIPEDA / AIDA</strong> — covered
@@ -284,9 +291,10 @@ export default function SecurityPage() {
                     written agreement, with appropriate safeguards.
                   </td>
                   <td>
-                    HIC-Agent agreement signed before any data is accepted;
-                    AES-256 + TLS 1.3; region-pinned storage in ca-central-1;
-                    hash-chain audit log.
+                    HIC-Agent agreement signed before any data is
+                    accepted; AES-256 + TLS 1.3; region-pinned storage
+                    in a Canadian data centre (region confirmed in the
+                    BAA); hash-chain audit log.
                   </td>
                 </tr>
                 <tr>
@@ -309,8 +317,9 @@ export default function SecurityPage() {
                   </td>
                   <td>
                     BAA signed before any data is accepted; AES-256 + TLS
-                    1.3; region-pinned storage in us-east-1; hash-chain
-                    audit log; HITL approval flow.
+                    1.3; region-pinned storage in a US-hosted,
+                    HIPAA-aligned region (region confirmed in the BAA);
+                    hash-chain audit log; HITL approval flow.
                   </td>
                 </tr>
                 <tr>
@@ -320,7 +329,8 @@ export default function SecurityPage() {
                     individual access.
                   </td>
                   <td>
-                    Data residency in ca-central-1; encryption; audit log;
+                    Data residency in a Canadian data centre (region
+                    confirmed in the BAA); encryption; audit log;
                     patient-identifying fields are hashed (salted SHA-256)
                     before storage, never stored in plaintext.
                   </td>
@@ -349,8 +359,9 @@ export default function SecurityPage() {
                   </td>
                   <td>
                     No sale or sharing of customer data; minimum-necessary
-                    access controls inside the app; data residency in
-                    us-east-1; deletion on contract end.
+                    access controls inside the app; data residency in a
+                    US-hosted, HIPAA-aligned region (region confirmed in
+                    the BAA); deletion on contract end.
                   </td>
                 </tr>
                 <tr>
