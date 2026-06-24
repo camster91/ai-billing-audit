@@ -1,5 +1,3 @@
-"use client";
-
 // /pilot — 30/60/90-day pilot program page.
 //
 // Audience: clinic administrators and billing leads evaluating Zorva
@@ -7,13 +5,20 @@
 // phase sections, what the clinic is expected to do and what Zorva is
 // expected to deliver during the pilot.
 //
-// Client component per the task spec. No hooks are needed today, but
-// future phases may add interactive elements (collapsible phase
-// details, dynamic progress indicator). The component is rendered
-// from a single page so a future editor only needs to update one file.
+// Server component. The page contains no client-side state today; if a
+// future phase needs interactivity (collapsible phase details, dynamic
+// progress indicator), split the interactive part into a small
+// `"use client"` subcomponent rather than converting the whole page.
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./pilot.module.css";
+
+export const metadata: Metadata = {
+  title: "Pilot program — 30/60/90 day rollout for Alberta clinics",
+  description:
+    "The Zorva 60-day no-cost pilot for Alberta clinics: import historical claims, baseline missed revenue, then roll into full coverage. Human-reviewed throughout, no revenue share.",
+};
 
 type Phase = {
   id: string;

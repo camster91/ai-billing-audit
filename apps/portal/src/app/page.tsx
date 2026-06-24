@@ -12,8 +12,15 @@
 // page was a natural side effect of adding the /contact form, so
 // the marketing surface has a CTA at every entry point.
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "Zorva — AI pre-bill audit for Alberta clinics",
+  description:
+    "Zorva reads every Alberta claim against AHCIP and the SOMB before submission, surfacing missed codes and underbilled modifiers that drain your monthly revenue. Human-reviewed.",
+};
 
 export default function Home() {
   return (

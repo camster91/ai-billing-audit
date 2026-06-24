@@ -20,6 +20,7 @@
 // middleware lets unauthenticated users reach this page. Anyone
 // already signed in is bounced to /dashboard.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { signIn, auth } from "@/auth";
 import styles from "../shell.module.css";
@@ -27,6 +28,12 @@ import styles from "../shell.module.css";
 interface PageProps {
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }
+
+export const metadata: Metadata = {
+  title: "Sign in — Zorva",
+  description:
+    "Sign in to Zorva with a magic link to your email. No passwords to remember.",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

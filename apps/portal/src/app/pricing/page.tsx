@@ -11,10 +11,17 @@
 // highlight to match the task spec. All CTAs route to /contact for the
 // free-pilot sign-up; Stripe checkout handoff is wired in CheckoutButton.
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./pricing.module.css";
 import { getPricingConfig } from "@/lib/pricing";
 import type { Tier } from "@/lib/pricing";
+
+export const metadata: Metadata = {
+  title: "Pricing — flat monthly fees, no revenue share",
+  description:
+    "Zorva pricing: three flat monthly tiers bracketed by claim volume for Alberta clinics. No per-claim fees, no revenue share — every recovered dollar stays with you.",
+};
 
 function formatCurrency(n: number, code: "CAD" | "USD"): string {
   try {
