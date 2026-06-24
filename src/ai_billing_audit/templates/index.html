@@ -93,6 +93,27 @@
 </section>
 {% endif %}
 
+{% if top_missed_revenue_rules is defined and top_missed_revenue_rules %}
+<section class="missed-revenue-chart" aria-label="Top missed-revenue patterns this month">
+  <h2>Top missed-revenue patterns{% if missed_revenue_month_label %} — {{ missed_revenue_month_label }}{% endif %}</h2>
+  <p class="muted small">Aggregate dollar impact across all encounters audited this month, ranked by revenue opportunity.</p>
+  <ul class="bar-chart">
+    {% set _max_dollar = (top_missed_revenue_rules | map(attribute='total_dollar') | max) or 1 %}
+    {% for r in top_missed_revenue_rules %}
+      {% set _pct = (r.total_dollar / _max_dollar * 100) if _max_dollar else 0 %}
+      <li class="bar-row">
+        <span class="bar-label" title="{{ r.rule_id }}">{{ r.rule_name }}</span>
+        <span class="bar-track">
+          <span class="bar-fill" style="width: {{ '%.1f' % _pct }}%"></span>
+        </span>
+        <span class="bar-value">${{ "{:,.0f}".format(r.total_dollar) }}</span>
+        <span class="bar-meta muted small">{{ r.encounter_count }} enc · {{ r.finding_count }} find</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <div class="filter-bar">
   <span class="filter-label">Filter</span>
   <a href="?status=all" class="filter-chip {% if filter == 'all' %}is-active{% endif %}">

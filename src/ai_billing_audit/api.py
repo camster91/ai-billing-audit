@@ -853,6 +853,20 @@ def create_app() -> FastAPI:
                     break
         except Exception:
             latest_real_audit = None
+        # Top missed-revenue patterns this month — feeds the
+        # "Revenue opportunity by rule" bar chart in the dashboard.
+        # Computed after cards so the aggregation can reuse the
+        # same encounter data without an extra registry walk.
+        try:
+            from .dashboard import (
+                aggregate_missed_revenue_by_rule,
+                month_label as _month_label,
+            )
+            top_missed_revenue_rules = aggregate_missed_revenue_by_rule(top_n=5)
+            missed_revenue_month_label = _month_label()
+        except Exception:
+            top_missed_revenue_rules = []
+            missed_revenue_month_label = ""
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -865,6 +879,8 @@ def create_app() -> FastAPI:
                 "metrics": metrics,
                 "n_registered": len(cards),
                 "latest_real_audit": latest_real_audit,
+                "top_missed_revenue_rules": top_missed_revenue_rules,
+                "missed_revenue_month_label": missed_revenue_month_label,
             },
         )
 
