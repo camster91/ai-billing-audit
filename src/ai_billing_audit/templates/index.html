@@ -104,6 +104,9 @@
   <a href="?status=clean" class="filter-chip {% if filter == 'clean' %}is-active{% endif %}">
     Clean <span class="count">({{ counts.clean }})</span>
   </a>
+  <a href="?status=opportunities" class="filter-chip filter-chip--opp {% if filter == 'opportunities' %}is-active{% endif %}">
+    $$ opportunities <span class="count">({{ counts.opportunities }})</span>
+  </a>
   <span class="grow"></span>
   {% if total_this_week is defined and total_this_week %}
   <span class="muted small">This week: <strong>{{ total_this_week }}</strong> encounter{{ "" if total_this_week == 1 else "s" }} audited</span>

@@ -436,6 +436,8 @@ main.page {
 }
 .filter-chip:hover { background: var(--color-surface-2); color: var(--color-fg); text-decoration: none; }
 .filter-chip.is-active { background: var(--color-brand-soft); color: var(--color-brand); border-color: var(--color-brand); }
+.filter-chip--opp { color: var(--color-warn); }
+.filter-chip--opp.is-active { background: var(--color-warn-soft); color: var(--color-warn); border-color: var(--color-warn); }
 .filter-chip .count { font-weight: 400; opacity: 0.7; }
 
 /* ─── Empty state ────────────────────────────────────────── */
@@ -721,6 +723,49 @@ main.page {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* ---------- Per-finding Accept / Dismiss / Modify row ----------
+   Renders under each finding card. ``.finding-actions__status`` is the
+   small inline label that shows the latest decision so the biller can
+   scan accepted/dismissed/modified state without reloading. */
+.finding-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+.finding-actions__btn {
+  /* Uses the same .btn .btn-primary / .btn-ghost tokens above, just
+     tightens the gap so the three buttons read as one affordance. */
+}
+.finding-actions__status {
+  margin-left: var(--space-2);
+  font-family: var(--color-fg-muted, inherit);
+}
+
+/* ---------- Per-finding modify form ----------
+   Sibling to .dismiss-form / .appeal-form; same visual language so
+   billers see it as part of the same inline-review pattern. */
+.modify-form {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.modify-form__row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.modify-form__row > .dismiss-form__label {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 .dismiss-form__label,
 .appeal-form .dismiss-form__label {

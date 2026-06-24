@@ -790,7 +790,26 @@ def create_app() -> FastAPI:
             "all": len(cards),
             "flagged": sum(1 for c in cards if c["is_flagged"]),
             "clean": sum(1 for c in cards if not c["is_flagged"]),
+            "opportunities": sum(
+                1 for c in cards if c["revenue_opportunity_total"] > 0
+            ),
         }
+        # Honour ?status= query param so the chip click actually
+        # filters the rendered card grid. Default and fallback is
+        # "all" so existing links keep working.
+        raw_filter = request.query_params.get("status", "all").lower()
+        allowed_filters = {"all", "flagged", "clean", "opportunities"}
+        active_filter = raw_filter if raw_filter in allowed_filters else "all"
+        if active_filter == "flagged":
+            visible_cards = [c for c in cards if c["is_flagged"]]
+        elif active_filter == "clean":
+            visible_cards = [c for c in cards if not c["is_flagged"]]
+        elif active_filter == "opportunities":
+            visible_cards = [
+                c for c in cards if c["revenue_opportunity_total"] > 0
+            ]
+        else:
+            visible_cards = list(cards)
         # No real-audit running totals on the demo dashboard; the
         # metrics dict is the "no data" shape so the template's
         # `{% if metrics and metrics.ready %}` skips the hero. Once
@@ -839,8 +858,8 @@ def create_app() -> FastAPI:
             "index.html",
             {
                 "cards": cards,
-                "audits": cards,
-                "filter": "all",
+                "audits": visible_cards,
+                "filter": active_filter,
                 "counts": counts,
                 "total_this_week": 0,
                 "metrics": metrics,
