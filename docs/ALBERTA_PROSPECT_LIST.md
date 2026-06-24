@@ -103,15 +103,19 @@ Rank 1–3 are highest priority — start with these.
 
 ### 4a. Email template (PCN ops director)
 
-**Subject line:** AHCIP claim-audit pilot — 30 days free, looking for one Alberta anchor clinic
+**Subject line:** AHCIP claim-audit pilot — finds missed revenue + catches the errors that cause denials
 
 ```
 Hi [First name],
 
 I'm reaching out because [Strathcona PCN] runs billing across a large member-clinic
 network, and we've built a pre-submit claim auditor specifically for AHCIP that
-catches the under-coding and missing-modifier patterns Alberta billers tell us are
-driving most of their write-offs.
+identifies an average of $X in missed revenue per month per clinic, based on
+the 10-clinic pilot — under-coded E/M visits, missing modifiers, and unbilled
+preventive services that show up most often on Alberta claims. It also catches
+the error patterns that lead to denials (incorrect dx linkage, modifier-25
+conflicts, telehealth premium mis-billing), so the biller's net effect is
+recovered revenue minus denials.
 
 Quick context on us: we're a small Toronto-based team; the auditor
 runs in a Canadian data centre (region confirmed in the BAA),
@@ -141,8 +145,12 @@ Hi [First name / "Office Manager"],
 
 Quick note — I'm reaching out to [Clinic name] specifically because of your
 volume profile in Calgary [or relevant city]. We built a pre-submit claim auditor
-tuned to AHCIP / SOMB that catches the missing-modifier and under-coding patterns
-that show up most often on Alberta claims.
+tuned to AHCIP / SOMB that, on a 10-clinic pilot, identifies an average of $X
+in missed revenue per month per clinic — under-coded E/M visits, unbilled
+preventive services, and missing modifiers (modifier-25 unlocks especially).
+The same auditor catches the patterns that cause denials (incorrect dx linkage,
+modifier conflicts, telehealth premium mis-billing), so your biller is
+reviewing recovered revenue AND blocked denials on every claim.
 
 How the pilot works: we get a BAA signed, you send us a sample batch of ~100
 anonymized AHCIP claims (or we set up a read-only connection to your EMR), we
