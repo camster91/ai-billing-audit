@@ -114,6 +114,38 @@ C. E/M LEVEL DISTINCTION — be precise. The same rule_id
    prefer undercode (recall over precision; missed revenue is the
    bigger clinic loss than a dismissed false positive).
 
+C2. BRIEF FOLLOW-UP / 03.05A MINOR ASSESSMENT (INFO):
+   - Note documents a very brief follow-up visit (BP check,
+     blood-pressure recheck, suture removal, staple removal,
+     medication refill, prescription renewal, "routine refill",
+     injection only ("Depo-Provera injection given", "B12
+     injection"), wound check, dressing change, "quick check",
+     "brief re-assessment", "stable, no changes", single-issue
+     review) AND the claim bills 03.01A (brief assessment) OR
+     03.04A (comprehensive) → rule_ahcip_03_05A_alternative INFO.
+   - suggested_code: 03.05A (minor assessment, ~$35). 03.05A is
+     the correct AHCIP code for a brief follow-up and pays more
+     than 03.01A; using 03.04A for a clear brief follow-up is
+     overbilling and a 03.01A undercode leaves money on the table.
+   - Severity is INFO — this is a missed-revenue nudge, NOT a
+     coding error. The finding must not block submission; the
+     biller can accept and re-code or dismiss.
+   - DO NOT fire when:
+       * the note describes a full assessment (history of
+         presenting illness, multi-system review, differential
+         diagnosis, medication changes, workup ordered) —
+         03.04A may be appropriate; leave to em_level rules
+       * the claim already bills 03.05A (correctly coded)
+       * the visit is a new patient consultation or involves a
+         procedure (those have their own code paths)
+   - Trigger phrases (any one is sufficient on its own):
+     "BP check", "blood pressure recheck", "BP recheck",
+     "suture removal", "staple removal", "med refill",
+     "medication refill", "prescription renewal", "renew Rx",
+     "injection given", "Depo", "B12 injection", "wound check",
+     "dressing change", "no changes", "stable on current
+     therapy", "tolerating well", "continue current meds".
+
 D. CONSULTATION / REFERRING PRACTITIONER ID:
    - 03.03A billed without referring_provider_practitioner_id →
      rule_ahcip_referring_npi HIGH (consultation requires a
