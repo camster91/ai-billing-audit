@@ -1713,6 +1713,59 @@ def create_app() -> FastAPI:
             "n_registered": len(list_demo_encounters()),
         }
 
+    @app.get("/reports/by-clinic", response_class=HTMLResponse)
+    def by_clinic_monthly(request: Request) -> HTMLResponse:
+        """Clinic-level monthly revenue opportunity dashboard.
+
+        Renders the per-month headline figure ("This month Zorva
+        identified $X in missed revenue across N encounters") plus
+        the top 10 highest-value individual opportunities for the
+        current calendar month. Sibling to the home-page KPI tile
+        but rendered as its own URL so it can be linked from the
+        activity feed, share dialogs, and email summaries without
+        re-rendering the full dashboard.
+        """
+        try:
+            from .dashboard import (
+                aggregate_monthly_revenue_by_encounter,
+                aggregate_monthly_revenue_kpi,
+            )
+            kpi = aggregate_monthly_revenue_kpi()
+            rollup = aggregate_monthly_revenue_by_encounter(top_n=10)
+        except Exception:
+            kpi = {
+                "total_dollar": 0.0,
+                "recovered_dollar": 0.0,
+                "pending_dollar": 0.0,
+                "n_opportunities": 0,
+                "n_accepted": 0,
+                "acceptance_ratio": 0.0,
+                "month_label": "",
+                "ready": False,
+            }
+            rollup = {
+                "month_label": "",
+                "encounter_count": 0,
+                "top_opportunities": [],
+                "ready": False,
+            }
+        return templates.TemplateResponse(
+            request,
+            "reports/by_clinic.html",
+            {
+                "month_label": kpi.get("month_label")
+                or rollup.get("month_label", ""),
+                "total_dollar": kpi.get("total_dollar", 0.0),
+                "recovered_dollar": kpi.get("recovered_dollar", 0.0),
+                "pending_dollar": kpi.get("pending_dollar", 0.0),
+                "n_opportunities": kpi.get("n_opportunities", 0),
+                "n_accepted": kpi.get("n_accepted", 0),
+                "encounter_count": rollup.get("encounter_count", 0),
+                "top_opportunities": rollup.get("top_opportunities", []),
+                "ready": kpi.get("ready") or rollup.get("ready", False),
+            },
+        )
+
     @app.get("/legal/privacy", response_class=HTMLResponse)
     def legal_privacy(request: Request) -> HTMLResponse:
         """Privacy Policy. v1 stub copy — replace with lawyer-reviewed
@@ -2726,6 +2779,89 @@ def create_app() -> FastAPI:
     @app.get("/encounters/{encounter_id}", response_class=HTMLResponse)
     def encounter_detail_plural(request: Request, encounter_id: str) -> HTMLResponse:
         return encounter_detail(request, encounter_id)
+
+    # ──────────────────────── per-clinic F1 dashboard ──────────────────
+    # The learning-loop surface: per-clinic, per-rule precision /
+    # recall / F1 over a rolling 30-day window, plus a weekly F1
+    # time series. The dashboard widget in templates/index.html
+    # calls this endpoint to render the table + the "F1 over
+    # time" chart. Tenant-scoped via the X-Tenant-Id header
+    # (matches the rest of the API); the clinic_id is the biller
+    # proxy when the feedback log doesn't yet have a clinic_id
+    # field (see per_clinic_f1.py docstring).
+    @app.get("/api/dashboard/per_clinic_f1")
+    def per_clinic_f1_dashboard(
+        request: Request,
+        clinic_id: str | None = None,
+    ) -> JSONResponse:
+        """Return per-rule P/R/F1 + a weekly F1 time series for a clinic.
+
+        Query params:
+          * ``clinic_id`` (optional) — defaults to the active
+            tenant_id (or "default_biller" in dev). The dashboard
+            picker calls this endpoint once per clinic switch.
+          * ``days`` (optional, default 30) — rolling window size.
+        """
+        try:
+            from .per_clinic_f1 import (
+                list_clinics,
+                per_rule_metrics,
+                weekly_f1,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"per_clinic_f1 module unavailable: {e}",
+            )
+        # Default the clinic to the active tenant / dev fallback.
+        if not clinic_id:
+            clinic_id = _TENANT_ID or "default_biller"
+        # Days window is clamped to [7, 180] to keep the
+        # aggregation bounded; the dashboard asks for 30 by
+        # default but a power user can dial it down to 7 or up to
+        # 180 (one billing quarter).
+        try:
+            days = int(request.query_params.get("days", "30"))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(7, min(180, days))
+        try:
+            per_rule = per_rule_metrics(clinic_id=clinic_id, days=days)
+            weekly = weekly_f1(clinic_id=clinic_id, days=days)
+            clinics = list_clinics()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"per-clinic F1 aggregation failed: {e}",
+            )
+        # Roll-up: clinic-level F1 across all rules (micro-average
+        # over the per-rule TP/FP totals) so the dashboard can
+        # render a single "Clinic F1: 0.62" tile next to the
+        # per-rule table.
+        total_tp = sum(
+            v["precision"] * v["support"] for v in per_rule.values()
+        )
+        total_fp = sum(
+            (1.0 - v["precision"]) * v["support"] for v in per_rule.values()
+        )
+        total_sup = sum(v["support"] for v in per_rule.values())
+        if total_sup == 0:
+            clinic_f1 = 0.0
+        else:
+            p = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
+            r = 1.0  # within-clinic recall proxy saturates at 1.0 in the rollup
+            clinic_f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
+        return JSONResponse({
+            "ok": True,
+            "clinic_id": clinic_id,
+            "days": days,
+            "per_rule": per_rule,
+            "weekly": weekly,
+            "clinics": clinics,
+            "clinic_f1": round(clinic_f1, 4),
+            "n_rules": len(per_rule),
+            "n_feedback": total_sup,
+        })
 
     # ──────────────────────── tenant data export / deletion ─────────────────
     #

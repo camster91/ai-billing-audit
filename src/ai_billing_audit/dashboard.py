@@ -270,3 +270,67 @@ def aggregate_monthly_revenue_kpi(
         "month_label": month_label(now),
         "ready": total_dollar > 0,
     }
+
+
+def aggregate_monthly_revenue_by_encounter(
+    *,
+    now: float | None = None,
+    top_n: int = 10,
+) -> dict[str, Any]:
+    """Clinic-level monthly rollup used by ``reports/by_clinic.html``.
+
+    Returns a dict with:
+        - ``month_label``         human label like ``"June 2026"``
+        - ``encounter_count``     distinct encounter count contributing
+                                 at least one opportunity in the window
+        - ``top_opportunities``   list of the top-N individual
+                                 opportunities (not rule buckets)
+                                 ordered by ``estimated_dollar``
+                                 descending. Each entry has
+                                 ``encounter_id``, ``rule_id``,
+                                 ``rule_name``, ``suggested_code``, and
+                                 ``estimated_dollar``.
+        - ``ready``               True iff at least one opportunity
+                                 exists for the month.
+
+    The aggregator walks the same demo / uploaded-encounter registry
+    the per-rule aggregator uses, but instead of rolling up *per rule*
+    it returns per-finding rows so the biller can click through to
+    the underlying encounter detail page. Same empty-state tolerance
+    as the sibling aggregators.
+    """
+    start_ts, end_ts = _month_window(now)
+    rows: list[dict[str, Any]] = []
+    encounters_touched: set[str] = set()
+    for entry in list_demo_encounters():
+        record = load_encounter_record(entry.encounter_id)
+        if record is None:
+            continue
+        audited_at = (record or {}).get("audited_at")
+        if isinstance(audited_at, (int, float)):
+            if audited_at < start_ts or audited_at >= end_ts:
+                continue
+        findings = _finding_dicts(record)
+        for opp in compute_revenue_opportunities(findings):
+            dol = float(opp.get("estimated_dollar") or 0.0)
+            if dol <= 0:
+                continue
+            encounters_touched.add(entry.encounter_id)
+            rows.append(
+                {
+                    "encounter_id": entry.encounter_id,
+                    "rule_id": opp.get("opportunity_rule_id") or "",
+                    "rule_name": opp.get("rule_name")
+                    or opp.get("opportunity_rule_id")
+                    or "",
+                    "suggested_code": opp.get("suggested_code") or "",
+                    "estimated_dollar": round(dol, 2),
+                }
+            )
+    rows.sort(key=lambda r: r["estimated_dollar"], reverse=True)
+    return {
+        "month_label": month_label(now),
+        "encounter_count": len(encounters_touched),
+        "top_opportunities": rows[:top_n],
+        "ready": len(rows) > 0,
+    }
