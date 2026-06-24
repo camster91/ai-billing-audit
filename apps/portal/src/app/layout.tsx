@@ -37,16 +37,16 @@ export const metadata: Metadata = {
   description:
     "AI pre-bill audit catches what your billing team misses. Region-pinned " +
     "data, hash-chain audit log, AKS-safe-harbor flat-fee pricing.",
-  // Live demo is not indexable. Prevent search engines from accidentally
-  // indexing the marketing portal at https://ai-billing-audit.ashbi.ca.
+  // Marketing pages are indexable so search engines can surface them.
+  // Authenticated portal routes (/encounters, /findings, /billing,
+  // /dashboard, /settings, /portal/*) each override this in their own
+  // page.tsx with `robots: { index: false, follow: false }`.
   robots: {
-    index: false,
-    follow: false,
-    nocache: true,
+    index: true,
+    follow: true,
     googleBot: {
-      index: false,
-      follow: false,
-      nocache: true,
+      index: true,
+      follow: true,
     },
   },
 };

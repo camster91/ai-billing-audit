@@ -10,6 +10,7 @@
 // (e.g. they just created an account). In that case we render an
 // empty state explaining that they need to be invited to a clinic.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -18,6 +19,12 @@ import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import { EmptyStateCTA, onboardingWizardHref } from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

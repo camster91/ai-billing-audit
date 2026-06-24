@@ -27,6 +27,7 @@
 // were cached in the browser it's only ever visible to the owning
 // tenant's members.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
@@ -42,6 +43,12 @@ import { isDemoMode } from "@/lib/stripe";
 import { PortalNav } from "../portal-nav";
 import styles from "../shell.module.css";
 import { BillingActions } from "./BillingActions";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

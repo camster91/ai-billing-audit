@@ -17,6 +17,7 @@
 // Both server-enforce the lock at the lib layer; the UI surfaces the
 // condition via a disabled select and a tooltip.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
@@ -26,6 +27,12 @@ import { RESIDENCY_REGIONS } from "@/lib/settings";
 import { PortalNav } from "../portal-nav";
 import styles from "../shell.module.css";
 import SettingsForms from "./SettingsForms";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

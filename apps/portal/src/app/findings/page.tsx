@@ -16,6 +16,7 @@
 // (highest impact first) per the task brief; the user can re-sort
 // in a follow-up. The export endpoint mirrors this default.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -33,6 +34,12 @@ import {
   onboardingWizardHref,
 } from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

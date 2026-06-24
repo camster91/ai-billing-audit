@@ -13,6 +13,7 @@
 // (count + findMany with `claim` + `findings` eager-loaded). No
 // N+1 — the seven columns come from a single row read.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth } from "@/auth";
@@ -28,6 +29,12 @@ import {
   onboardingWizardHref,
 } from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

@@ -9,10 +9,17 @@
 //
 // Server component — no client JS required for the happy path.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isDemoMode } from "@/lib/stripe";
 import styles from "../onboarding/onboarding.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
