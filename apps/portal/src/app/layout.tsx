@@ -80,8 +80,8 @@ export default function RootLayout({
         </a>
         <header className="site-header">
           <div className="site-header-inner">
-            <Link href="/" className="site-brand">
-              AI Pre-Bill Audit
+            <Link href="/" className="site-brand" aria-label="Zorva — home">
+              Zorva
             </Link>
             <nav aria-label="Primary" className="site-nav">
               {NAV.map((n) => (
