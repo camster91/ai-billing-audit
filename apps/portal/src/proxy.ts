@@ -56,6 +56,8 @@ const PUBLIC_PREFIXES = [
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
   "/favicon.ico",
+  "/robots.txt",       // dynamic robots from app/robots.ts
+  "/sitemap.xml",      // future sitemap route
 ];
 
 function isPublicPath(pathname: string): boolean {
