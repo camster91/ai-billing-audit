@@ -31,10 +31,12 @@
 
   <h2>4. How we store it</h2>
   <p>
-    Data is stored on AWS in {{ data_residency }}. All records are
-    tagged with a tenant ID at write time. The application enforces
-    tenant scoping on every read — a clinic cannot read another
-    clinic's audit trail, claim data, or appeal letters.
+    Data is stored in a Canadian data centre; the specific region
+    is confirmed in the executed BAA ({{ data_residency }}). All
+    records are tagged with a tenant ID at write time. The
+    application enforces tenant scoping on every read — a clinic
+    cannot read another clinic's audit trail, claim data, or
+    appeal letters.
   </p>
   <p>
     Audit-trail events are signed with a SHA-256 chain. The chain
@@ -78,7 +80,7 @@
 
   <h2>7. Sub-processors</h2>
   <ul>
-    <li><strong>Amazon Web Services (AWS)</strong>: cloud hosting. AWS SOC 2 Type II certified. ca-central-1 region (Canada Central).</li>
+    <li><strong>Cloud hosting provider</strong>: Canadian data centre operated by a third-party provider. The specific provider, region, and any third-party attestations currently held are written into the executed BAA.</li>
     <li><strong>Ollama Cloud</strong>: large-language-model inference. Patient-identifying fields are pseudonymized before transmission; only clinical notes and claim metadata reach Ollama.</li>
   </ul>
   <p>
@@ -99,7 +101,7 @@
   <h2>9. Security safeguards</h2>
   <ul>
     <li>TLS 1.3 for all transit.</li>
-    <li>AES-256 at rest (AWS RDS encryption).</li>
+    <li>AES-256 at rest (managed database encryption; cipher and key custody confirmed in the BAA).</li>
     <li>Bearer-token authentication on every write endpoint.</li>
     <li>Tenant-scoped reads on every JSONL log query.</li>
     <li>SHA-256 audit-trail chain; tamper-evident by construction.</li>
@@ -109,8 +111,9 @@
   <h2>10. International transfers</h2>
   <p>
     Zorva stores data in Canada by default. For US-based
-    tenants, Zorva stores data in the US-East region (AWS
-    us-east-1) under a Business Associate Agreement. We do not
+    tenants, Zorva stores data in a US-hosted, HIPAA-aligned
+    region under a Business Associate Agreement. The specific
+    region is confirmed in the executed BAA. We do not
     transfer data between regions.
   </p>
 

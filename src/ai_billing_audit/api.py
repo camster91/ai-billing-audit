@@ -1802,7 +1802,7 @@ def create_app() -> FastAPI:
             {
                 "tenant_name": _TENANT_NAME,
                 "tenant_id": _TENANT_ID,
-                "data_residency": "Canada (ca-central-1, AWS)",
+                "data_residency": "Canada (region confirmed in the BAA)",
                 "support_email": "privacy@zorva.ca",
             },
         )
