@@ -415,6 +415,58 @@ N. LAB ORDER WITHOUT DRAW / FOLLOW-UP (INFO) — workflow
        labs-review date). Clinic-ops to confirm draw
        completed; physician E/M unaffected.
 
+O. TELEHEALTH PREMIUM BILLING (MEDIUM) — TIGHTENED to
+   specifically catch missed AHCIP telehealth premium
+   indicator on a virtual visit. (See rule G for the
+   general "telehealth documented" check; this rule fires
+   the lost-revenue finding.)
+   - Trigger rule_ahcip_telehealth_premium MEDIUM (lost
+     ~$15 per virtual visit) when ALL of:
+     1. Note documents a virtual / telehealth contact —
+        "telehealth", "phone follow-up", "virtual visit",
+        "video visit", "phone consult", "by phone",
+        "telephone encounter", "Zoom visit", "OTN", or
+        any other modality that is NOT in-person.
+     2. Claim has a valid E/M SOMB code (03.03A / 03.04A
+        / 03.05A / 03.07A / 03.01A) — i.e. this is a
+        billable visit, not a non-insured phone call.
+     3. Claim does NOT carry the current AHCIP telehealth
+        premium indicator (the SOMB has changed the exact
+        code several times; do not hardcode, but verify the
+        claim's som_b_codes list contains SOMETHING tagged
+        as a telehealth premium — if absent, fire).
+   - Suggested fix: append the current AHCIP telehealth
+     premium code to the claim alongside the E/M. If
+     unsure of the current code, suggest the biller check
+     the albertadoctors.org Fee Navigator for the
+     "Telehealth Premium" entry.
+   - Do NOT fire when:
+     * the encounter is in-person (rule G already catches
+       that direction)
+     * the claim is purely a non-insured phone call (no
+       E/M billed)
+     * the E/M is itself a non-physician service (e.g.
+       nurse-only telephone advice) not on the SOMB
+     * a telehealth premium indicator is already present
+   - Distinguish from rule G: rule G flags the existence
+     of a virtual encounter with no premium. Rule O is
+     the revenue-recovery form of the same check — it
+     fires MEDIUM with the "premium missing" framing and
+     a dollar value. In practice they overlap; either can
+     carry the finding (rule O is preferred for the
+     missed-revenue dashboard).
+   - Few-shot:
+     clinical_note: "Phone follow-up for depression.
+       Patient reports improved mood on sertraline 50mg.
+       Sleep improved. Will continue current dose."
+     claim: som_b_codes [03.04A]; date_of_service:
+       2026-05-19; no telehealth premium indicator.
+     Findings:
+     - rule_ahcip_telehealth_premium (medium): phone
+       follow-up documented (virtual) + 03.04A billed +
+       no AHCIP telehealth premium indicator on the claim.
+       Append the current SOMB telehealth premium code.
+
 Few-shot examples (AHCIP-encounter set; the val set is held out):
 
 EXAMPLE 1. Established CKD patient follow-up.

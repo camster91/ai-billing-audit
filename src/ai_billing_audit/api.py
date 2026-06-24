@@ -218,6 +218,17 @@ REVENUE_OPPORTUNITY_RULES: dict[str, dict[str, Any]] = {
             "follow-up channel in addition to the audit feed."
         ),
     },
+    "rule_ahcip_telehealth_premium": {
+        "rule_name": "Telehealth premium missing on virtual visit",
+        "estimated_dollar": 15.0,
+        "suggested_action": (
+            "Append the current AHCIP telehealth premium "
+            "indicator to the claim alongside the E/M "
+            "(check albertadoctors.org Fee Navigator for "
+            "the current Telehealth Premium code — the SOMB "
+            "has changed it several times)."
+        ),
+    },
     "rule_ahcip_telehealth": {
         "rule_name": "Telehealth premium eligible",
         "estimated_dollar": 15.0,
