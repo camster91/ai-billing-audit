@@ -38,6 +38,15 @@ COPY src ./src
 # PHI, empty today) is excluded via .dockerignore so production
 # deployments never ship real patient data in the image layer.
 COPY data/synth ./data
+# Overwrite the bundled v0 prompt with the current production prompt
+# (v12 as of 2026-06-24, F1=0.690 on the cleaned AHCIP val set). The
+# `_DEFAULT_PROMPT_NAME = "auditor_prompt.txt"` resolution in
+# src/ai_billing_audit/auditor.py:60 picks this up at module import.
+# To bump the live prompt: copy the new file over auditor_prompt.txt
+# here (or via the deploy script's rsync), then rebuild the image.
+# The prompts/MANIFEST.json entry is the source of truth for which
+# version is in production.
+COPY prompts/v12/auditor_prompt.txt ./src/ai_billing_audit/auditor_prompt.txt
 RUN pip install --upgrade pip \
     && pip install -e . \
     && pip install "psycopg[binary]>=3.1" "uvicorn[standard]>=0.27"
