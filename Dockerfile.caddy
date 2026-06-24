@@ -1,0 +1,35 @@
+# ai-billing-audit — custom caddy build with rate-limit + docker-proxy modules
+#
+# The stock caddy:2-alpine image does not ship:
+#   - github.com/mholt/caddy-ratelimit  (required by the Caddyfile rate_limit directive)
+#   - github.com/lucaslorentz/caddy-docker-proxy/v2  (lets caddy read its
+#     config from docker labels at runtime; we don't use it today but it's
+#     cheap to include and avoids a future rebuild)
+#
+# This Dockerfile builds a caddy binary with both modules baked in, then
+# copies it into a fresh caddy:2-alpine image so the runtime layer stays
+# small (no go toolchain, no xcaddy).
+#
+# Pin: caddy:2.7.6-builder-alpine pins Go + caddy source for reproducible
+# builds. Bump in lockstep with the runtime caddy:2-alpine tag below.
+#
+# Kanban: t_0910e627 (2026-06-24, post-deploy board). Replaces the
+# stock caddy:2-alpine reference in docker-compose.yml.
+
+FROM caddy:2.7.6-builder-alpine AS builder
+
+# xcaddy is shipped in the builder image at /usr/bin/xcaddy.
+# Build a caddy binary with the additional modules compiled in.
+# `--with` adds a module; the order does not matter.
+RUN xcaddy build \
+    --with github.com/mholt/caddy-ratelimit \
+    --with github.com/lucaslorentz/caddy-docker-proxy/v2
+
+FROM caddy:2.7.6-alpine
+
+# Replace the stock caddy binary with our module-enriched one.
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+# Sanity check: list the compiled modules so a build failure surfaces
+# clearly in the build log (e.g. a typo in a module path).
+RUN caddy list-modules | grep -E '^(http\.handlers\.rate_limit|http\.handlers\.docker_proxy)$'

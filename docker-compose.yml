@@ -135,7 +135,17 @@ services:
       retries: 5
 
   caddy:
-    image: caddy:2-alpine
+    # Custom build (Dockerfile.caddy) so the caddy-ratelimit module
+    # is compiled into /usr/bin/caddy. The stock caddy:2-alpine
+    # image doesn't ship http.handlers.rate_limit, which is why the
+    # `rate_limit` line in Caddyfile is the line that drove this
+    # rebuild (kanban t_0910e627, 2026-06-24). The custom image is
+    # tiny: same caddy:2.7.6-alpine base, with a Go-built binary
+    # layer on top.
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    image: ai-billing-audit-caddy:0.1.0
     container_name: ai-billing-audit-caddy
     restart: unless-stopped
     ports:
