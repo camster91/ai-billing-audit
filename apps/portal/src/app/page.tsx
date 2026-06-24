@@ -20,21 +20,27 @@ export default function Home() {
     <div className={styles.page}>
       <main id="main" className={styles.main}>
         <header className={styles.hero}>
-          <span className={styles.eyebrow}>Pre-bill audit for clinic billing teams</span>
+          <span className={styles.eyebrow}>Pre-submit audit for Alberta clinic billing teams</span>
           <h1 className={styles.headline}>
-            Catch the wrong code before the claim goes out.
+            Find the revenue your billers are leaving on the table.
           </h1>
           <p className={styles.subhead}>
-            An AI auditor reads every claim against your clinical note
-            and the active payer rules. Your billing team reviews what
-            it finds. Nothing ships until a human signs off.
+            Zorva reads every Alberta claim against AHCIP and the SOMB
+            before it leaves your desk — catching the missed codes,
+            underbilled modifiers, and shadow-billed services that
+            quietly drain your monthly revenue. Your billing team
+            reviews what it finds. Nothing ships until a human signs
+            off.
           </p>
           <div className={styles.ctaRow}>
             <Link href="/contact" className={styles.primary}>
-              Talk to sales
+              Book a demo
             </Link>
             <Link href="/how-it-works" className={styles.secondary}>
-              See how it works →
+              Calculate your revenue opportunity →
+            </Link>
+            <Link href="/pricing" className={styles.secondary}>
+              See pricing
             </Link>
           </div>
         </header>
