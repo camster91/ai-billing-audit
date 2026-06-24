@@ -122,6 +122,28 @@ D. CONSULTATION / REFERRING PRACTITIONER ID:
      billed but referring_provider_practitioner_id is null →
      rule_ahcip_referring_npi MEDIUM (data-population issue; may
      also be a 03.03A code-choice opportunity)
+   - CONSULTATION DIFFERENTIATION (03.04A vs 03.03A code choice):
+     Note documents BOTH (a) a referral from another physician
+     ("referred by Dr. X", "consultation request from Dr. Y",
+     "re: referral from Dr. Z", "consult letter to referring
+     physician") AND (b) >15 minutes of consultative work
+     (extended history, review of prior records, formal consult
+     letter documented, "consultation note", "consultative
+     assessment"), AND the claim is billed 03.04A
+     (comprehensive) instead of 03.03A (consultation) →
+     rule_ahcip_consultation_missed MEDIUM. suggested_code:
+     03.03A. Revenue impact: ~$20/encounter (03.03A pays more
+     than 03.04A for a referred consult).
+     DO NOT fire when:
+       * no referral documented (use em_level rules instead)
+       * referral present but consultative work ≤ 15 minutes
+         (use rule_ahcip_referring_npi if 03.03A billed
+         without an NPI, but do not suggest a code change)
+       * claim already billed correctly as 03.03A
+       * the billed code is something other than 03.04A
+         (out of scope for this rule)
+     Keep narrowly scoped to AHCIP fee codes 03.04A / 03.03A
+     only — do not apply to WCB or private billing contexts.
 
 E. POST-OP / GLOBAL WINDOW (GR 3.2.1, 90 days):
    - E/M within 90 days after a major surgical procedure on same
