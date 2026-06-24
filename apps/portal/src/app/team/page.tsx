@@ -10,12 +10,17 @@
 //     form, role-change dropdown, and disable button.
 
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import styles from "../shell.module.css";
 import { TeamClient } from "./team-client";
+
+export const metadata: Metadata = {
+  title: "Team — Zorva",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
