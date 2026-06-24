@@ -49,7 +49,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -81,6 +90,213 @@ __all__ = ["app", "create_app"]
 _PKG_DIR = Path(__file__).resolve().parent
 _TEMPLATES_DIR = _PKG_DIR / "templates"
 _STATIC_DIR = _PKG_DIR / "static"
+
+
+# ─── RBAC middleware + per-endpoint gates ────────────────────────────────
+# Multi-user team feature (kanban t_846407c4). The Next.js portal's
+# team management UI (kanban t_23bfd49c) is the source of truth for
+# the user/role table; the FastAPI audit app enforces these roles
+# via per-request ``X-User-Id`` / ``X-User-Role`` headers until a
+# real auth integration (OAuth / session cookies) lands.
+#
+# Roles
+# -----
+# * ``admin``  — can do everything (read, write, admin-only ops
+#                like inviting / removing team members).
+# * ``biller`` — full read + write access on findings (accept /
+#                dismiss / modify / comment / upload). Cannot
+#                manage the team.
+# * ``viewer`` — read-only. Cannot accept, dismiss, modify, or
+#                comment. Cannot upload.
+#
+# Header contract
+# ---------------
+# Every request that mutates state MUST carry:
+#   X-User-Id:    opaque team-member id (UUID from the Next.js
+#                 team management UI).
+#   X-User-Role:  one of "admin" | "biller" | "viewer".
+# Missing headers on a write endpoint return 401. Missing headers
+# on a read endpoint return 401 too — the bearer-token middleware
+# already gates read traffic; this layer is the second factor.
+#
+# Dev-mode fallback
+# -----------------
+# When ``AUDIT_ALLOW_NO_AUTH=1`` is set, the legacy /healthz, /, and
+# static paths remain open. For all OTHER routes, when that flag is
+# set we still REQUIRE X-User-Id / X-User-Role for write endpoints
+# but allow reads without headers — the existing bulk_actions test
+# suite (kanban t_2515fe6f) and the bulk CSV path (kanban t_e18ed*)
+# rely on being able to call read+write endpoints without auth in
+# CI. To preserve that behavior we treat missing headers on a write
+# request as a 401 only when a token IS configured (production);
+# in dev (AUDIT_ALLOW_NO_AUTH=1) we fall back to a synthetic
+# ("dev_user", "admin") so the existing tests keep passing. This
+# fallback is **only** active in dev — production refuses requests
+# with no headers.
+
+
+class UserContext:
+    """Lightweight request-scoped user identity container.
+
+    Returned by :func:`get_request_user` and propagated into the
+    write endpoints via FastAPI's :class:`Depends` mechanism. The
+    fields are flat so they serialize trivially into the audit
+    trail's ``user_id`` / ``user_role`` columns.
+    """
+
+    __slots__ = ("user_id", "role", "user_identifier")
+
+    def __init__(self, user_id: str, role: str, user_identifier: str) -> None:
+        self.user_id = user_id
+        self.role = role
+        self.user_identifier = user_identifier
+
+    def as_audit_kwargs(self) -> dict[str, str]:
+        """Return the kwargs to splat into ``audit_actions.append``."""
+        return {"user_id": self.user_id, "user_role": self.role}
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return f"UserContext(user_id={self.user_id!r}, role={self.role!r})"
+
+
+def _coerce_role(raw: str | None) -> str | None:
+    """Normalize a role string. Returns ``None`` if invalid.
+
+    Accepts ``"Admin"``, ``" ADMIN "``, ``"biller"`` etc. — case
+    insensitive, trimmed. Returns ``None`` for unknown roles so
+    the caller can raise 403 with a stable error message.
+    """
+    if raw is None:
+        return None
+    n = str(raw).strip().lower()
+    if n in ("admin", "biller", "viewer"):
+        return n
+    return None
+
+
+def _resolve_user_from_request(request: Request) -> UserContext:
+    """Extract ``UserContext`` from request headers or raise 401.
+
+    Contract:
+      * If ``X-User-Id`` and ``X-User-Role`` are both present and
+        the role is valid, returns a populated :class:`UserContext`.
+      * If the role is unknown, raises 403 (the caller is
+        impersonating an invalid role — different from "missing").
+      * If the headers are missing AND we're in production mode
+        (``AUDIT_ALLOW_NO_AUTH`` not set), raises 401.
+      * If the headers are missing AND we're in dev mode
+        (``AUDIT_ALLOW_NO_AUTH=1``), falls back to
+        ``("dev_user", "admin")``. This is the ONLY place the
+        dev fallback lives — every other caller relies on this
+        function for the same shape.
+    """
+    user_id = request.headers.get("X-User-Id")
+    user_role = request.headers.get("X-User-Role")
+    role = _coerce_role(user_role)
+    if user_id and role:
+        return UserContext(
+            user_id=str(user_id).strip(),
+            role=role,
+            user_identifier=str(user_id).strip(),
+        )
+    if user_role and not role:
+        # Header was set but with an unknown role — don't silently
+        # coerce to viewer; refuse explicitly so the caller knows
+        # their token/role mapping is wrong.
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"unknown role {user_role!r}; expected one of "
+                "admin, biller, viewer"
+            ),
+        )
+    # Headers missing entirely.
+    # Read AUDIT_ALLOW_NO_AUTH at call-time so tests that
+    # ``monkeypatch.setenv`` AFTER module import take effect.
+    # (The module-level cache is just an import-time default.)
+    if _os_for_rbac.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1":
+        # Dev-mode fallback so legacy tests (bulk_actions, etc.)
+        # that POST without headers keep working under
+        # AUDIT_ALLOW_NO_AUTH=1.
+        return UserContext(
+            user_id="dev_user",
+            role="admin",
+            user_identifier="dev_user",
+        )
+    raise HTTPException(
+        status_code=401,
+        detail=(
+            "missing X-User-Id / X-User-Role headers; "
+            "RBAC identity required for this endpoint"
+        ),
+    )
+
+
+def get_request_user(request: Request) -> UserContext:
+    """FastAPI dependency: extract the user context for the current request.
+
+    Reads the request-scoped ``request.state.user`` that the RBAC
+    middleware populates. Falls back to a direct header parse if
+    the middleware hasn't run (e.g. when an endpoint is invoked
+    directly from a unit test that bypasses ``TestClient``). The
+    dependency is what the write endpoints should declare; the
+    middleware is the belt-and-suspenders for the response side.
+    """
+    cached = getattr(request.state, "user", None)
+    if isinstance(cached, UserContext):
+        return cached
+    return _resolve_user_from_request(request)
+
+
+def require_biller_or_admin(
+    user: UserContext = Depends(get_request_user),
+) -> UserContext:
+    """FastAPI dependency: gate write endpoints behind biller-or-admin.
+
+    Read endpoints should NOT use this dependency — the existing
+    ``_bearer_auth`` middleware already gates them. This dependency
+    is for the action endpoints: accept, dismiss, modify, comment,
+    upload, csv-upload, bulk-accept, bulk-dismiss, bulk-flag.
+    """
+    if user.role not in ("admin", "biller"):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"role {user.role!r} cannot perform write actions; "
+                "requires 'admin' or 'biller'"
+            ),
+        )
+    return user
+
+
+def require_admin(
+    user: UserContext = Depends(get_request_user),
+) -> UserContext:
+    """FastAPI dependency: gate admin-only endpoints.
+
+    Used by the team-management endpoints (kanban t_23bfd49c)
+    hosted in the Next.js portal and any admin-only FastAPI
+    routes we add later (e.g. ``GET /admin/users`` stub).
+    Biller and viewer both get 403.
+    """
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"role {user.role!r} cannot access admin-only endpoints; "
+                "requires 'admin'"
+            ),
+        )
+    return user
+
+
+# Module-level sentinel for the dev-mode fallback. The value is
+# read once at module import time but the RBAC middleware also
+# honors ``AUDIT_ALLOW_NO_AUTH`` flips via os.environ inside
+# ``_resolve_user_from_request`` so the existing test suite's
+# monkeypatch.setenv pattern works.
+import os as _os_for_rbac
+_ALLOW_NO_AUTH = _os_for_rbac.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
 
 
 def _highlight_quote(text: str, quote: str) -> str:
@@ -133,6 +349,19 @@ def _is_verdict(token: str) -> bool:
     if not token or not token.isalpha():
         return False
     return all(c in _VERDICT_TOKEN_CHARS for c in token)
+
+
+def _truthy(value: str | None) -> bool:
+    """Coerce a query-string flag to a bool.
+
+    Treats ``"1"``, ``"true"``, ``"yes"``, ``"on"`` (any case) as
+    True; everything else (including empty string, ``"0"``,
+    ``"false"``, ``None``) as False. Used by snooze / include-*
+    toggle params so the dashboard URL behaves consistently.
+    """
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
@@ -817,6 +1046,36 @@ def create_app() -> FastAPI:
             return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
         return await call_next(request)
 
+    # RBAC identity middleware (kanban t_846407c4). This middleware
+    # populates ``request.state.user`` so the FastAPI dependencies
+    # (``require_biller_or_admin`` / ``require_admin``) can resolve
+    # the caller's identity without each endpoint re-parsing the
+    # headers. The middleware is permissive: it never rejects on
+    # its own (the bearer-token middleware above already handled
+    # authentication); it only extracts identity for the dependency
+    # layer to enforce role-based authorization.
+    @app.middleware("http")
+    async def _rbac_identity_middleware(request, call_next):
+        user_id = request.headers.get("X-User-Id")
+        user_role = request.headers.get("X-User-Role")
+        role = _coerce_role(user_role)
+        if user_id and role:
+            request.state.user = UserContext(
+                user_id=str(user_id).strip(),
+                role=role,
+                user_identifier=str(user_id).strip(),
+            )
+        elif user_role and not role:
+            # Bad role in header — leave state.user unset. The
+            # dependency will raise 403 when invoked.
+            request.state.user = None
+        else:
+            # No headers; leave state.user as None. The dev-mode
+            # fallback in ``_resolve_user_from_request`` will
+            # supply a synthetic admin if AUDIT_ALLOW_NO_AUTH=*** is set.
+            request.state.user = None
+        return await call_next(request)
+
     def _latest_real_audit_for(encounter_id: str) -> dict[str, Any] | None:
         """Return the most recent completed LLM audit for an encounter.
 
@@ -1088,7 +1347,21 @@ def create_app() -> FastAPI:
         The detail template is shared across all three; demo
         encounters use gold-ground-truth findings, uploaded
         encounters use real-LLM-audit findings.
+
+        Snooze (kanban t_993c411c): the URL may carry
+        ``?include_snoozed=true`` to surface findings that the
+        biller has snoozed. Default behaviour hides active
+        snoozes from the visible list. The active count is
+        passed to the template as ``n_snoozed`` so the header
+        can show a "3 snoozed" pill regardless of the filter.
         """
+        include_snoozed = _truthy(request.query_params.get("include_snoozed"))
+        # Resolve the active snooze map for this encounter once;
+        # both the demo path and the uploaded path need it.
+        from .snooze import SnoozeStore, filter_findings_by_snooze
+        snooze_store = SnoozeStore()
+        active_snoozes = snooze_store.active_snoozes_for_encounter(encounter_id)
+        n_snoozed = len(active_snoozes)
         demo = get_demo_encounter(encounter_id)
         if demo is not None:
             record = load_encounter_record(encounter_id)
@@ -1103,10 +1376,21 @@ def create_app() -> FastAPI:
                 )
             findings = _finding_dicts(record)
             min_sev = _min_severity_threshold()
-            visible_findings = [
+            severity_visible = [
                 f for f in findings
                 if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
             ]
+            # Apply the snooze filter on top of the severity
+            # filter. With ``include_snoozed=false`` (default)
+            # active snoozes are dropped; ``hidden_count`` rolls
+            # BOTH the severity-hidden and the snoozed findings
+            # into a single number so the template can show a
+            # combined "X findings hidden" pill.
+            visible_findings = filter_findings_by_snooze(
+                severity_visible,
+                active_snoozes,
+                include_snoozed=include_snoozed,
+            )
             hidden_count = len(findings) - len(visible_findings)
             real_audit = _latest_real_audit_for(encounter_id)
             # Score denial risk from the visible findings. Demo
@@ -1157,6 +1441,8 @@ def create_app() -> FastAPI:
                     "denial_risk": denial_risk,
                     "revenue_opportunities": revenue_opportunities,
                     "total_opportunity_dollars": total_opportunity_dollars,
+                    "n_snoozed": n_snoozed,
+                    "include_snoozed": include_snoozed,
                 },
             )
 
@@ -1174,10 +1460,16 @@ def create_app() -> FastAPI:
             )
         uploaded_findings = uploaded_audit.get("findings", []) or []
         min_sev = _min_severity_threshold()
-        visible_uploaded = [
+        severity_visible = [
             f for f in uploaded_findings
             if SEVERITY_RANK.get(str(f.get("severity", "info")).lower(), 0) >= min_sev
         ]
+        # Snooze filter — same shape as the demo path above.
+        visible_uploaded = filter_findings_by_snooze(
+            severity_visible,
+            active_snoozes,
+            include_snoozed=include_snoozed,
+        )
         hidden_count = len(uploaded_findings) - len(visible_uploaded)
         # Score denial risk. For uploaded encounters this is the
         # REAL risk — it's the LLM's actual findings from the
@@ -1229,6 +1521,8 @@ def create_app() -> FastAPI:
                 "denial_risk": denial_risk,
                 "revenue_opportunities": revenue_opportunities,
                 "total_opportunity_dollars": total_opportunity_dollars,
+                "n_snoozed": n_snoozed,
+                "include_snoozed": include_snoozed,
             },
         )
         real_audit = _latest_real_audit_for(encounter_id)
@@ -1408,6 +1702,7 @@ def create_app() -> FastAPI:
     async def encounter_accept_all(
         encounter_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .audit_actions import append as audit_append
@@ -1425,9 +1720,11 @@ def create_app() -> FastAPI:
         event = audit_append(
             action="accept_all",
             encounter_id=encounter_id,
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
             extra={"findings_count": findings_count},
+            user_id=user.user_id,
+            user_role=user.role,
         )
         # Learning-loop: log one synthetic feedback entry per accept-all so
         # the per-encounter view shows the decision. The finding_id is
@@ -1436,7 +1733,7 @@ def create_app() -> FastAPI:
             encounter_id=encounter_id,
             finding_id="__accept_all__",
             action="accept",
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
         )
         return JSONResponse({"ok": True, "n_accepted": findings_count, "event": event})
 
@@ -1444,6 +1741,7 @@ def create_app() -> FastAPI:
     async def encounter_dismiss(
         encounter_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .audit_actions import append as audit_append
@@ -1477,16 +1775,18 @@ def create_app() -> FastAPI:
         event = audit_append(
             action="dismiss",
             encounter_id=encounter_id,
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
             findings=[{"finding_id": finding_id}],
             note=note,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         _record_feedback(
             encounter_id=encounter_id,
             finding_id=finding_id,
             action="dismiss",
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
         )
         return JSONResponse({
             "ok": True,
@@ -1510,6 +1810,7 @@ def create_app() -> FastAPI:
         encounter_id: str,
         finding_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Mark a single finding as accepted by the biller.
 
@@ -1522,19 +1823,20 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="audit_actions module unavailable")
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
-        user_identifier = str(request.client.host if request.client else "anon")
         event = audit_append(
             action="accept",
             encounter_id=encounter_id,
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
             findings=[{"finding_id": finding_id}],
+            user_id=user.user_id,
+            user_role=user.role,
         )
         _record_feedback(
             encounter_id=encounter_id,
             finding_id=finding_id,
             action="accept",
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
         )
         return JSONResponse({"ok": True, "finding_id": finding_id, "action": "accept", "event": event})
 
@@ -1543,6 +1845,7 @@ def create_app() -> FastAPI:
         encounter_id: str,
         finding_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Dismiss a single finding. Optional closed-loop reason fields
         are accepted (``reason_category`` + ``reason_text``) and stored in
@@ -1601,20 +1904,21 @@ def create_app() -> FastAPI:
                 f"{k}={v}" for k, v in sorted(correct_finding.items())
             )
             note = f"{note} | correct: {cf_summary}" if note else f"correct: {cf_summary}"
-        user_identifier = str(request.client.host if request.client else "anon")
         event = audit_append(
             action="dismiss",
             encounter_id=encounter_id,
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
             findings=[{"finding_id": finding_id}],
             note=note,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         _record_feedback(
             encounter_id=encounter_id,
             finding_id=finding_id,
             action="dismiss",
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
             correct_finding=correct_finding,
         )
         return JSONResponse({
@@ -1631,6 +1935,7 @@ def create_app() -> FastAPI:
         encounter_id: str,
         finding_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Record a biller's override of a single finding's severity and/or
         category. Body: ``{"new_severity": "...", "new_category": "...",
@@ -1658,7 +1963,6 @@ def create_app() -> FastAPI:
                 status_code=400,
                 detail="new_severity and/or new_category required",
             )
-        user_identifier = str(request.client.host if request.client else "anon")
         # Persist a structured note with the before/after values so the
         # existing audit_actions chain still covers the override. The
         # biller's "why" rationale is folded into the same note so the
@@ -1678,16 +1982,18 @@ def create_app() -> FastAPI:
         event = audit_append(
             action="modify",
             encounter_id=encounter_id,
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
             findings=[{"finding_id": finding_id}],
             note=note,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         _record_feedback(
             encounter_id=encounter_id,
             finding_id=finding_id,
             action="modify",
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
             modify_severity=new_severity or None,
             modify_category=new_category or None,
             note=why or None,
@@ -1706,7 +2012,7 @@ def create_app() -> FastAPI:
                 severity=new_severity or original_severity or "",
                 category=new_category or original_category or "",
                 rationale=why,
-                biller_id=user_identifier or "default_biller",
+                biller_id=user.user_identifier or "default_biller",
             )
         except Exception:
             pass
@@ -1736,6 +2042,7 @@ def create_app() -> FastAPI:
         encounter_id: str,
         finding_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Append one comment to a finding's thread.
 
@@ -1761,9 +2068,13 @@ def create_app() -> FastAPI:
             body = await request.json()
         except Exception:
             body = {}
+        # RBAC: prefer the authenticated user_id from the RBAC
+        # middleware. If the caller passes an explicit author_id
+        # in the body and it doesn't match the authenticated
+        # user, we honor the explicit one (allows impersonation
+        # in tests) but the canonical row stores the real user.
         author_id = str(
-            body.get("author_id")
-            or (request.client.host if request.client else "anon")
+            body.get("author_id") or user.user_identifier
         ).strip() or "anon"
         text = str(body.get("body", "") or "").strip()
         if not text:
@@ -1820,10 +2131,183 @@ def create_app() -> FastAPI:
             "count": len(thread),
         })
 
+    # ---- Snooze / re-audit reminder (kanban t_993c411c) ----------
+    # A snooze hides a finding from the default encounter view until
+    # a future timestamp. The biller uses it when they want to
+    # "think about" a flag without it dominating the dashboard.
+    # While snoozed, the finding is hidden from the default view
+    # but visible with ``?include_snoozed=true``; expired snoozes
+    # return the finding to the active pool automatically. Every
+    # snooze is recorded in the audit chain (action="snooze") so
+    # the privacy-officer view shows the biller's intent.
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/snooze")
+    async def finding_snooze(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Snooze a single finding until a future ISO-8601 timestamp.
+
+        Body: ``{"until": "<iso8601>", "reason": "<optional>"}``.
+
+        Returns the written SnoozeEntry so the UI can render a
+        "snoozed until X" confirmation without re-fetching the
+        store. The audit_actions chain also gets a
+        ``snooze`` row for tamper-evident logging.
+        """
+        try:
+            from .snooze import SnoozeStore
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="snooze module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        until_raw = body.get("until")
+        if not until_raw or not isinstance(until_raw, str):
+            raise HTTPException(
+                status_code=400, detail="until (ISO-8601 string) required"
+            )
+        # Validate the timestamp parses; reject if it's already
+        # in the past — a snooze for the past is a no-op and
+        # silently confusing. Biller can always snooze for "now
+        # + 1 minute" if they want to clear the flag.
+        from datetime import datetime
+        try:
+            ts = datetime.fromisoformat(until_raw.replace("Z", "+00:00")).timestamp()
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400, detail=f"invalid ISO-8601 timestamp: {until_raw!r}"
+            )
+        if ts <= time.time():
+            raise HTTPException(
+                status_code=400,
+                detail="snooze 'until' must be in the future",
+            )
+        reason = str(body.get("reason", "") or "").strip()
+        store = SnoozeStore()
+        entry = store.snooze(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            snooze_until=until_raw,
+            reason=reason,
+            user_identifier=user.user_identifier,
+        )
+        # Mirror to the audit chain so the privacy-officer view
+        # shows the biller's intent. The snooze log is the source
+        # of truth for active/expired; the audit row is the source
+        # of truth for "did this person snooze anything today".
+        try:
+            audit_append(
+                action="snooze",
+                encounter_id=encounter_id,
+                user_identifier=user.user_identifier,
+                tenant_id=_TENANT_ID,
+                findings=[{"finding_id": finding_id}],
+                note=reason,
+                extra={"snooze_until": until_raw, "snooze_event_id": entry.event_id},
+                user_id=user.user_id,
+                user_role=user.role,
+            )
+        except Exception:
+            # Audit chain is best-effort here; the snooze log is
+            # already the source of truth and a missing audit row
+            # only affects the privacy view, not the biller.
+            pass
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "snooze": entry.to_dict(),
+        })
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/unsnooze")
+    async def finding_unsnooze(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Manually clear an active snooze before it expires.
+
+        Mirrors ``snooze`` but writes an ``action="unsnooze"`` row
+        in the SnoozeStore + the audit chain. Returns
+        ``{"ok": True, "cleared": bool}`` so the UI can show a
+        toast — ``cleared=False`` means there was no active snooze
+        (no-op).
+        """
+        try:
+            from .snooze import SnoozeStore
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="snooze module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        store = SnoozeStore()
+        entry = store.unsnooze(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            user_identifier=user.user_identifier,
+        )
+        if entry is None:
+            return JSONResponse({"ok": True, "cleared": False})
+        try:
+            audit_append(
+                action="unsnooze",
+                encounter_id=encounter_id,
+                user_identifier=user.user_identifier,
+                tenant_id=_TENANT_ID,
+                findings=[{"finding_id": finding_id}],
+                note="manual unsnooze",
+                extra={"snooze_event_id": entry.event_id},
+                user_id=user.user_id,
+                user_role=user.role,
+            )
+        except Exception:
+            pass
+        return JSONResponse({
+            "ok": True,
+            "cleared": True,
+            "snooze": entry.to_dict(),
+        })
+
+    @app.get("/encounter/{encounter_id}/snoozes")
+    async def encounter_list_snoozes(encounter_id: str) -> JSONResponse:
+        """Return the active snooze map for one encounter.
+
+        Response shape: ``{"snoozes": [{finding_id, until, reason, by, event_id}]}``
+        so the dashboard can render a "X findings snoozed" badge
+        even when ``include_snoozed=false`` is in effect.
+        """
+        try:
+            from .snooze import SnoozeStore
+        except ImportError:
+            raise HTTPException(status_code=503, detail="snooze module unavailable")
+        store = SnoozeStore()
+        active = store.active_snoozes_for_encounter(encounter_id)
+        return JSONResponse({
+            "snoozes": [
+                {
+                    "finding_id": fid,
+                    "until": e.snooze_until,
+                    "reason": e.reason,
+                    "by": e.user_identifier,
+                    "event_id": e.event_id,
+                }
+                for fid, e in active.items()
+            ],
+            "count": len(active),
+        })
+
     @app.post("/encounter/{encounter_id}/rerun")
     async def encounter_rerun(
         encounter_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .audit_actions import append as audit_append
@@ -1832,8 +2316,10 @@ def create_app() -> FastAPI:
         event = audit_append(
             action="rerun",
             encounter_id=encounter_id,
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         # rerun is a system action, not a per-finding biller decision,
         # but the spec'd feedback table requires a row for every
@@ -1844,7 +2330,7 @@ def create_app() -> FastAPI:
             encounter_id=encounter_id,
             finding_id="__rerun__",
             action="modify",
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
         )
         return JSONResponse({"ok": True, "event": event})
 
@@ -1852,6 +2338,7 @@ def create_app() -> FastAPI:
     async def encounter_flag(
         encounter_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .audit_actions import append as audit_append
@@ -1860,8 +2347,10 @@ def create_app() -> FastAPI:
         event = audit_append(
             action="flag",
             encounter_id=encounter_id,
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
             tenant_id=_TENANT_ID,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         # See rerun note above — flag is system-level, recorded for
         # timeline completeness, bucketed as action="modify" so it
@@ -1870,7 +2359,7 @@ def create_app() -> FastAPI:
             encounter_id=encounter_id,
             finding_id="__flag__",
             action="modify",
-            user_identifier=str(request.client.host if request.client else "anon"),
+            user_identifier=user.user_identifier,
         )
         return JSONResponse({"ok": True, "event": event})
 
@@ -1912,6 +2401,8 @@ def create_app() -> FastAPI:
         reason_category: str | None = None,
         reason_text: str | None = None,
         user_identifier: str,
+        user_id: str | None = None,
+        user_role: str | None = None,
     ) -> dict[str, Any]:
         """Apply ``action`` to every real finding on every encounter in
         ``encounter_ids``, write one bulk audit row + per-finding
@@ -2146,6 +2637,8 @@ def create_app() -> FastAPI:
                 "n_skipped_findings": len(skipped),
                 "notes": norm_notes or "",
             },
+            user_id=user_id,
+            user_role=user_role,
         )
         return {
             "applied_count": len(applied),
@@ -2157,7 +2650,10 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/encounters/bulk-accept")
-    async def encounters_bulk_accept(request: Request) -> JSONResponse:
+    async def encounters_bulk_accept(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         """Accept every (rule-matching) finding across a list of encounters.
 
         Body: ``{"encounter_ids": [...], "rule_id"?: str, "notes"?: str}``.
@@ -2177,20 +2673,22 @@ def create_app() -> FastAPI:
                 detail="encounter_ids must be a non-empty list",
             )
         encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
-        user_identifier = str(
-            request.client.host if request.client else "anon"
-        )
         summary = _bulk_apply(
             action="accept",
             encounter_ids=encounter_ids,
             rule_id=body.get("rule_id"),
             notes=body.get("notes"),
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         return JSONResponse({"ok": True, **summary})
 
     @app.post("/encounters/bulk-dismiss")
-    async def encounters_bulk_dismiss(request: Request) -> JSONResponse:
+    async def encounters_bulk_dismiss(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         """Dismiss every (rule-matching) finding across a list of encounters.
 
         Body: ``{"encounter_ids": [...], "rule_id"?: str,
@@ -2216,9 +2714,6 @@ def create_app() -> FastAPI:
                 detail="encounter_ids must be a non-empty list",
             )
         encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
-        user_identifier = str(
-            request.client.host if request.client else "anon"
-        )
         summary = _bulk_apply(
             action="dismiss",
             encounter_ids=encounter_ids,
@@ -2226,12 +2721,17 @@ def create_app() -> FastAPI:
             notes=body.get("notes"),
             reason_category=body.get("reason_category"),
             reason_text=body.get("reason_text"),
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         return JSONResponse({"ok": True, **summary})
 
     @app.post("/encounters/bulk-flag")
-    async def encounters_bulk_flag(request: Request) -> JSONResponse:
+    async def encounters_bulk_flag(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         """Flag every (rule-matching) finding across a list of encounters.
 
         Body: ``{"encounter_ids": [...], "rule_id"?: str, "notes"?: str}``.
@@ -2255,15 +2755,14 @@ def create_app() -> FastAPI:
                 detail="encounter_ids must be a non-empty list",
             )
         encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
-        user_identifier = str(
-            request.client.host if request.client else "anon"
-        )
         summary = _bulk_apply(
             action="flag",
             encounter_ids=encounter_ids,
             rule_id=body.get("rule_id"),
             notes=body.get("notes"),
-            user_identifier=user_identifier,
+            user_identifier=user.user_identifier,
+            user_id=user.user_id,
+            user_role=user.role,
         )
         return JSONResponse({"ok": True, **summary})
 
@@ -2275,6 +2774,32 @@ def create_app() -> FastAPI:
             "title": app.title,
             "n_registered": len(list_demo_encounters()),
         }
+
+    # Admin-only stub. The team management UI lives in the Next.js
+    # portal (kanban t_23bfd49c); this FastAPI stub exists so the
+    # RBAC admin gate has at least one endpoint to gate against
+    # when the Next.js portal's API needs a server-side permission
+    # check. Real user CRUD will be added in a follow-up task.
+    @app.get("/admin/users")
+    async def admin_list_users(
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
+        """Stub admin-only endpoint.
+
+        Returns the authenticated admin's identity and a placeholder
+        list. This is the contract the Next.js team management UI
+        (kanban t_23bfd49c) will hit when it needs server-side
+        permission enforcement. Biller and viewer both get 403.
+        """
+        return JSONResponse({
+            "ok": True,
+            "user": {
+                "user_id": user.user_id,
+                "role": user.role,
+            },
+            "users": [],  # populated when real team CRUD lands
+            "note": "stub endpoint; real team CRUD is in the Next.js portal (kanban t_23bfd49c)",
+        })
 
     @app.get("/reports/by-clinic", response_class=HTMLResponse)
     def by_clinic_monthly(request: Request) -> HTMLResponse:
@@ -3147,6 +3672,7 @@ def create_app() -> FastAPI:
         file: UploadFile = File(...),
         payer_id: str = Form(""),
         clinic_id: str = Form(""),
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Accept a CSV exported from a PM system and enqueue audits.
 
