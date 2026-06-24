@@ -31,14 +31,88 @@ Hermetic smoke mode (no network, no key) is the default if `LLM_PROVIDER` is uns
 
 The VPS-deploy entry point is `deploy-to-vps.sh` (idempotent: rsync → `.env` → Traefik router → `docker compose up` → healthz). Backup/restore is `deploy/scripts/audit-backup.sh` (age-encrypted `pg_dump` → B2 via `rclone`, weekly cron, monthly restore-verify). See `deploy/README.md` for the full backup install recipe.
 
-## Deployment
+## Deploying
 
-The repo ships **two distinct applications** that deploy separately:
+The repo ships **two distinct applications** that deploy separately.
+They share a domain apex but live on different stacks.
 
-- **FastAPI / API** (`src/ai_billing_audit/`, `Dockerfile`, `docker-compose.yml`) — the auditor, denial-risk scorer, missed-revenue detector, hash-chained audit trail, demo dashboard. **Live** at `https://ai-billing-audit.ashbi.ca` via `deploy-to-vps.sh`.
-- **Next.js marketing portal** (`apps/portal/`) — the user-facing marketing site (hero, `/pricing`, `/what-zorva-finds`, `/security`, `/robots.txt`, etc.). **Built locally, not yet deployed.** The `deploy-to-vps.sh` rsync step excludes `apps/`.
+### Side 1 — FastAPI / API (live)
 
-Three approaches to close the gap (second docker-compose service, static export of marketing routes, separate repo) and the trade-offs are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+| | |
+| --- | --- |
+| **What** | the auditor (v12 AHCIP prompt), denial-risk scorer, missed-revenue detector, SOMB fee lookups, hash-chained audit trail, demo dashboard, `/healthz` smoke endpoint |
+| **Source** | `src/`, `prompts/`, `data/synth/`, `Dockerfile`, `docker-compose.yml` |
+| **Deployed to** | `https://ai-billing-audit.ashbi.ca` |
+| **Pipeline** | `deploy-to-vps.sh` → rsync to VPS → writes `/etc/traefik/dynamic/routers.yml` → `docker compose up -d` → Traefik → Caddy → FastAPI |
+| **Status** | **Live** as of 2026-06-24 |
+
+To re-ship the API:
+
+```bash
+./deploy-to-vps.sh                       # idempotent: rsync → .env → Traefik → compose up → /healthz
+```
+
+Backup/restore for the Postgres `audit_trail` table lives at
+`deploy/scripts/audit-backup.sh` (age-encrypted `pg_dump` → B2 via
+`rclone`, weekly cron, monthly restore-verify).
+
+### Side 2 — Next.js marketing portal (local dev only)
+
+| | |
+| --- | --- |
+| **What** | the user-facing marketing site — hero ("Find the revenue..."), `/pricing` (CAD $499 / $1,499 / $2,999 tiers), `/what-zorva-finds` (8 finding cards), `/security` controls matrix, `/robots.txt` split rules, plus `/contact`, `/pilot`, `/how-it-works` |
+| **Source** | `apps/portal/` (Next.js 15 + Tailwind + shadcn + Prisma/SQLite) |
+| **Deployed to** | **not deployed** — local dev only |
+| **Pipeline** | `pnpm install && pnpm dev` (port 3000) for local work |
+| **Status** | **Built and tested locally**; the `deploy-to-vps.sh` rsync step explicitly excludes `apps/` |
+
+To run the marketing portal locally:
+
+```bash
+cd apps/portal
+pnpm install
+pnpm dev                                 # http://localhost:3000
+```
+
+The portal is intentionally not on the VPS: the FastAPI Caddy image
+doesn't ship Node.js, the rsync excludes `apps/`, and there is no
+second service in `docker-compose.yml` for it. Anyone landing on
+`https://ai-billing-audit.ashbi.ca` today sees the FastAPI-rendered
+demo dashboard, **not** the polished Next.js marketing pages.
+
+### When you're ready to deploy `apps/portal`
+
+The recommended path is a **static export** of the Next.js app
+served from a dedicated host, with the apex domain pointed at it
+either via a separate Traefik router or a third-party static host:
+
+```bash
+cd apps/portal
+pnpm install
+pnpm build                               # produces apps/portal/.next/ and apps/portal/out/ if exporting
+# Option A: static export (requires next.config.ts `output: 'export'`)
+rsync -avz --delete apps/portal/out/ vps:/var/www/zorva-portal/
+# Option B: stand-alone Node service on the VPS (port 3020)
+rsync -avz --exclude node_modules apps/portal/ vps:/opt/projects/zorva-portal/
+ssh vps "cd /opt/projects/zorva-portal && pnpm install --prod && pm2 start pnpm -- start"
+```
+
+Then point `zorva.ca` (or the apex of choice) at the new origin via
+either:
+
+- A second Traefik router block in `/etc/traefik/dynamic/routers.yml`
+  routing `Host(`ashbi.ca`)` → `zorva-portal@docker`, or
+- A Cloudflare Pages / Netlify / Vercel project with the apex
+  domain CNAME'd at the registrar (zero VPS resource cost).
+
+Either choice keeps the FastAPI API on its own subdomain
+(`api.ashbi.ca` or `ai-billing-audit.ashbi.ca`) so the two stacks
+don't share a process tree.
+
+Full architecture diagram, trade-offs between the three approaches
+(add a second docker-compose service vs. static export vs. separate
+repo), and the current deploy status are in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Project layout
 
