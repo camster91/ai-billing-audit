@@ -545,103 +545,144 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
 
     encounter_id = encounter.get("encounter_id") or "enc_default"
     uploaded_note = _load_uploaded_note(encounter_id)
-
-    # If we have an uploaded note AND the queued claim has CPT codes
-    # (i.e. the staff user actually used the paste-form, not just
-    # clicked a demo link), audit the real claim against the real note.
-    queued_cpts = (
-        encounter.get("CPT_codes")
-        or encounter.get("cpt_codes")
-        or []
-    )
-    use_real_data = bool(uploaded_note) and bool(queued_cpts)
-
-    # Hoisted so the exception-handler return at the end has access.
+    # Hoisted so the exception-handler return at the end has
+    # access.
     seed = abs(hash(encounter_id)) % (2**31)
 
-    if use_real_data:
-        cpts = list(queued_cpts)
-        # Build the line_items list from the queued CPTs. The auditor
-        # only reads cpt_codes/icd10_codes so we keep the shape simple.
-        line_items = [
-            {
-                "line_id": i + 1,
-                "cpt_code": str(c),
-                "modifiers": [],
-                "dx_pointers": encounter.get("icd10_codes") or [],
-                "charge_amount": 150.00,
-                "units": 1,
-            }
-            for i, c in enumerate(cpts)
+    # Three branches, all assign ``claim`` / ``synth_out`` /
+    # ``clinical_note`` before the auditor call below:
+    #
+    # 1. 837I short-circuit (kanban t_ca101c1c). The institutional
+    #    upload route hands us a pre-built canonical claim object
+    #    (with provider_npis, value_codes, facility lines, etc.)
+    #    via the ``_claim_canonical`` key. We use it verbatim and
+    #    skip the synth entirely so the multi-provider /
+    #    inpatient shape survives end-to-end.
+    # 2. Real-data path: an uploaded note + a queued claim with
+    #    CPTs. Audit the user's actual claim against their actual
+    #    note. See kanban t_5c741803 / t_d16db103 for context.
+    # 3. Legacy demo path: synth everything (the marketing
+    #    screenshots depend on this).
+    canonical_claim = encounter.get("_claim_canonical")
+    if canonical_claim:
+        claim = dict(canonical_claim)
+        cpts = [
+            (li.get("cpt_code") or "").strip()
+            for li in (claim.get("line_items") or [])
+            if (li.get("cpt_code") or "").strip()
         ]
-        claim = {
-            "encounter_id": encounter_id,
-            "patient_id": encounter.get("patient_id") or "PT_REAL",
-            "rendering_provider_npi": encounter.get("NPI") or "",
-            "billing_provider_tax_id": "",
-            "date_of_service": encounter.get("date_of_service") or "",
-            "payer_id": "",
-            "payer_name": "",
-            "line_items": line_items,
-            "diagnosis_codes": encounter.get("icd10_codes") or [],
-        }
-        # Force variant=flagged so the auditor doesn't bias toward
-        # "this looks clean". The real-data path always audits a
-        # real claim where there could be real issues.
+        icds = claim.get("diagnosis_codes") or []
+        # An 837I upload is the highest-fidelity data we have —
+        # treat it as the hardest tier so the auditor doesn't
+        # down-weight findings.
+        tier = "HARD"
         variant = "flagged"
-        tier = "HARD"  # treat pilot data as the hardest tier
         synth_out = {
             "encounter_id": encounter_id,
-            "cpt_codes": [{"code": str(c)} for c in cpts],
-            "icd10_codes": encounter.get("icd10_codes") or [],
+            "cpt_codes": [{"code": c} for c in cpts],
+            "icd10_codes": icds,
             "flagged": True,
             "difficulty_tier": tier,
             "variant": variant,
-            "ran_via": "upload_portal_with_user_note",
-            "provider_note": {},  # not used; clinical_note is the uploaded one
+            "ran_via": "upload_portal_institutional_837i",
+            "provider_note": {},
         }
-        clinical_note = uploaded_note
+        clinical_note = uploaded_note or ""
     else:
-        # Legacy demo path: synth everything.
-        tier = str(encounter.get("difficulty_tier") or "EASY").upper()
-        if tier not in ("EASY", "MEDIUM", "HARD"):
-            tier = "EASY"
-        variant = str(encounter.get("variant") or "clean").lower()
-        if variant not in ("clean", "flagged"):
-            variant = "clean"
-        synth_out = generate(
-            Template(tier=tier, variant=variant, schema_version=1),
-            seed=seed,
+        # If we have an uploaded note AND the queued claim has CPT
+        # codes (i.e. the staff user actually used the paste-form,
+        # not just clicked a demo link), audit the real claim
+        # against the real note.
+        queued_cpts = (
+            encounter.get("CPT_codes")
+            or encounter.get("cpt_codes")
+            or []
         )
+        use_real_data = bool(uploaded_note) and bool(queued_cpts)
 
-        provider_note = synth_out.get("provider_note", {}) or {}
-        clinical_note = "\n\n".join(
-            v for v in [
-                provider_note.get("hpi", ""),
-                provider_note.get("exam", ""),
-                provider_note.get("mdm", ""),
-            ] if v
-        )
-        cpts = synth_out.get("cpt_codes", []) or []
-        icds = synth_out.get("icd10_codes", []) or []
-        claim = {
-            "encounter_id": synth_out.get("encounter_id"),
-            "patient_id": "PT_DEMO",
-            "rendering_provider_npi": "1992039481",
-            "billing_provider_tax_id": "XX-XXX1234",
-            "date_of_service": "2026-06-15",
-            "payer_id": "PAYER-DEMO-001",
-            "payer_name": "Demo Payer",
-            "line_items": [
-                {"line_id": i + 1, "cpt_code": c.get("code", ""), "modifiers": [],
-                 "dx_pointers": icds, "charge_amount": 150.00, "units": 1}
+        if use_real_data:
+            cpts = list(queued_cpts)
+            # Build the line_items list from the queued CPTs. The auditor
+            # only reads cpt_codes/icd10_codes so we keep the shape simple.
+            line_items = [
+                {
+                    "line_id": i + 1,
+                    "cpt_code": str(c),
+                    "modifiers": [],
+                    "dx_pointers": encounter.get("icd10_codes") or [],
+                    "charge_amount": 150.00,
+                    "units": 1,
+                }
                 for i, c in enumerate(cpts)
-            ],
-            "diagnosis_codes": icds,
-        }
-        if uploaded_note:
+            ]
+            claim = {
+                "encounter_id": encounter_id,
+                "patient_id": encounter.get("patient_id") or "PT_REAL",
+                "rendering_provider_npi": encounter.get("NPI") or "",
+                "billing_provider_tax_id": "",
+                "date_of_service": encounter.get("date_of_service") or "",
+                "payer_id": "",
+                "payer_name": "",
+                "line_items": line_items,
+                "diagnosis_codes": encounter.get("icd10_codes") or [],
+            }
+            # Force variant=flagged so the auditor doesn't bias toward
+            # "this looks clean". The real-data path always audits a
+            # real claim where there could be real issues.
+            variant = "flagged"
+            tier = "HARD"  # treat pilot data as the hardest tier
+            synth_out = {
+                "encounter_id": encounter_id,
+                "cpt_codes": [{"code": str(c)} for c in cpts],
+                "icd10_codes": encounter.get("icd10_codes") or [],
+                "flagged": True,
+                "difficulty_tier": tier,
+                "variant": variant,
+                "ran_via": "upload_portal_with_user_note",
+                "provider_note": {},  # not used; clinical_note is the uploaded one
+            }
             clinical_note = uploaded_note
-            synth_out["ran_via"] = "upload_portal_with_user_note"
+        else:
+            # Legacy demo path: synth everything.
+            tier = str(encounter.get("difficulty_tier") or "EASY").upper()
+            if tier not in ("EASY", "MEDIUM", "HARD"):
+                tier = "EASY"
+            variant = str(encounter.get("variant") or "clean").lower()
+            if variant not in ("clean", "flagged"):
+                variant = "clean"
+            synth_out = generate(
+                Template(tier=tier, variant=variant, schema_version=1),
+                seed=seed,
+            )
+
+            provider_note = synth_out.get("provider_note", {}) or {}
+            clinical_note = "\n\n".join(
+                v for v in [
+                    provider_note.get("hpi", ""),
+                    provider_note.get("exam", ""),
+                    provider_note.get("mdm", ""),
+                ] if v
+            )
+            cpts = synth_out.get("cpt_codes", []) or []
+            icds = synth_out.get("icd10_codes", []) or []
+            claim = {
+                "encounter_id": synth_out.get("encounter_id"),
+                "patient_id": "PT_DEMO",
+                "rendering_provider_npi": "1992039481",
+                "billing_provider_tax_id": "XX-XXX1234",
+                "date_of_service": "2026-06-15",
+                "payer_id": "PAYER-DEMO-001",
+                "payer_name": "Demo Payer",
+                "line_items": [
+                    {"line_id": i + 1, "cpt_code": c.get("code", ""), "modifiers": [],
+                     "dx_pointers": icds, "charge_amount": 150.00, "units": 1}
+                    for i, c in enumerate(cpts)
+                ],
+                "diagnosis_codes": icds,
+            }
+            if uploaded_note:
+                clinical_note = uploaded_note
+                synth_out["ran_via"] = "upload_portal_with_user_note"
     audit_encounter = {
         "encounter_id": synth_out.get("encounter_id"),
         "is_flagged": bool(synth_out.get("flagged", False)),

@@ -1,0 +1,27 @@
+{
+  "appId": "ca.ashbi.zorva.ai_billing_audit",
+  "appName": "Zorva Audit",
+  "webDir": "www",
+  "server": {
+    "url": "https://ai-billing-audit.ashbi.ca/",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "ios": {
+    "contentInset": "always"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b1d2a",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    }
+  }
+}

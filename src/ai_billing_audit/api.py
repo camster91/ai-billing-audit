@@ -76,6 +76,11 @@ from ai_billing_audit.x12_parser import (
     parse_837p,
     validate_required_fields,
 )
+from ai_billing_audit.institutional_837i import (
+    parse_837i as _parse_837i,
+    validate_837i as _validate_837i,
+    map_837i_to_enqueue_payload as _map_837i_to_enqueue,
+)
 
 # Importing the registrations side-effecting module wires up the
 # encounters that each difficulty's worker registered. Sibling workers
@@ -4015,6 +4020,144 @@ def create_app() -> FastAPI:
                 }
             )
         return JSONResponse({"jobs": accepted, "rejected": rejected})
+
+    @app.post("/upload/837i")
+    async def upload_837i(
+        payload: dict[str, Any] | list[Any],
+    ) -> JSONResponse:
+        """Accept an institutional 837I claim and enqueue an audit.
+
+        Kanban ``t_ca101c1c``: support 837I (institutional) claims
+        in addition to the 837P (professional) format the existing
+        portal handles. 837I differs structurally from 837P in
+        three ways the auditor cares about — multiple provider NPIs
+        per claim, inpatient admission / discharge date spans, and
+        per-line place-of-service (some lines are facility lines
+        billed by the hospital, others are professional lines
+        rendered by an attending / operating provider inside the
+        same facility).
+
+        v1: the route accepts a JSON object matching the
+        institutional shape (not an X12 envelope) — see
+        ``institutional_837i.parse_837i`` for the field contract.
+        A future iteration can swap in a real X12 walker.
+
+        Request body (JSON)::
+
+            {
+              "patient_id": "PT-001",
+              "facility_id": "FAC-MAIN",
+              "attending_provider_npi": "1234567890",
+              "operating_provider_npi": "1234567891",
+              "admission_date": "2026-01-15",
+              "discharge_date": "2026-01-17",
+              "value_codes": [
+                {"code": "40", "amount": 0.0}
+              ],
+              "service_lines": [
+                {"provider_npi": "1234567890",
+                 "cpt": "99221",
+                 "units": 1,
+                 "billed_amount": 250.00,
+                 "service_date": "2026-01-15"},
+                {"provider_npi": "1234567891",
+                 "cpt": "33533",
+                 "units": 1,
+                 "billed_amount": 4800.00,
+                 "service_date": "2026-01-16",
+                 "revenue_code": "0360"}
+              ]
+            }
+
+        Response (200)::
+
+            {
+              "job_id": "abc123...",
+              "encounter_id": "837I-...",
+              "source": "837i",
+              "claim": { ... canonical mapped claim ... }
+            }
+
+        Response (400) when validation fails::
+
+            {
+              "detail": "missing attending_provider_npi; ...",
+              "errors": ["...", ...]
+            }
+
+        Mapping (also documented in ``institutional_837i``):
+
+        * ``attending_provider_npi`` → ``rendering_provider_npi``
+        * ``admission_date`` → ``date_of_service``
+        * ``service_lines`` → ``line_items``
+        * All distinct NPIs (attending + operating + any per-line
+          provider_npi) → ``provider_npis`` list on the claim
+        * If no service line is a facility line, a UB-04 revenue
+          code 0100 (room & board) line is synthesized so the
+          claim carries at least one facility line.
+
+        The auditor (v12) runs on the mapped claim via the same
+        ``get_default_queue().enqueue`` path the 837P submit
+        endpoint uses, with ``AHCIP`` as the closest in-spirit
+        rule set.
+        """
+        try:
+            data = (
+                payload if isinstance(payload, dict) else {}
+            )
+        except Exception:  # noqa: BLE001
+            raise HTTPException(
+                status_code=400,
+                detail="request body must be a JSON object",
+            )
+        if not isinstance(payload, dict):
+            # Non-object payloads (lists, scalars, null) are
+            # rejected up-front so the validator's "missing
+            # patient_id" errors don't surface for a top-level
+            # array — that would be misleading.
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "request body must be a JSON object; got "
+                    f"{type(payload).__name__}"
+                ),
+            )
+        errs = _validate_837i(data)
+        if errs:
+            # 400 with the full error list (the same shape the
+            # other /upload/* validation paths use). The first
+            # error is also surfaced in the ``detail`` so generic
+            # clients see something useful.
+            return JSONResponse(
+                {"detail": errs[0], "errors": errs},
+                status_code=400,
+            )
+        try:
+            mapped = _parse_837i(data)
+        except ValueError as exc:
+            # Defensive: validate_837i already caught everything
+            # we know how to check, so reaching this branch means
+            # the data changed between validation and parse.
+            return JSONResponse(
+                {"detail": str(exc), "errors": [str(exc)]},
+                status_code=400,
+            )
+        enqueue_payload = _map_837i_to_enqueue(mapped)
+        queue = get_default_queue()
+        job = queue.enqueue(
+            encounter=enqueue_payload,
+            source="837i",
+            source_filename=None,
+            tenant_id=_TENANT_ID,
+        )
+        return JSONResponse(
+            {
+                "job_id": job.job_id,
+                "encounter_id": job.encounter_id,
+                "source": "837i",
+                "claim": mapped["claim"],
+            }
+        )
 
     @app.post("/upload/csv")
     async def upload_csv(

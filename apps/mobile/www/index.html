@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1d2a" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Zorva Audit</title>
+  <style>
+    /* Minimal splash so the user sees a branded background while
+       Capacitor hydrates the WebView. The real dashboard
+       (https://ai-billing-audit.ashbi.ca/) replaces this as soon
+       as the WKWebView / WebView loads. */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #0b1d2a;
+      color: #e6eef5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .splash {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      height: 100%;
+      gap: 12px;
+    }
+    .splash .mark {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .splash .tag {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <div class="mark">Zorva Audit</div>
+    <div class="tag">Loading dashboard&hellip;</div>
+  </div>
+  <!-- The Capacitor WebView is configured (capacitor.config.json
+       -> server.url) to load https://ai-billing-audit.ashbi.ca/
+       directly. This file ships with the bundle so the WebView
+       has a local fallback (e.g. when the device is offline and
+       the cached dashboard is being served). On first launch
+       Capacitor points the WebView at the remote URL; the local
+       www/ assets exist so `cap add ios` / `cap add android`
+       don't fail. -->
+  <script>
+    // Defer to the configured server URL on a short delay so
+    // the splash paints first. The remote URL is what the
+    // dashboard is hosted at; if Capacitor's server.url is
+    // honoured, this never runs because the WebView loads the
+    // remote URL directly.
+    (function () {
+      var target = "https://ai-billing-audit.ashbi.ca/";
+      setTimeout(function () { window.location.replace(target); }, 1500);
+    })();
+  </script>
+</body>
+</html>

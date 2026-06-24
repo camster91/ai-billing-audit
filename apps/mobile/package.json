@@ -1,0 +1,27 @@
+{
+  "name": "ai-billing-audit-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor wrap of the Zorva ai-billing-audit dashboard (kanban t_7004415a).",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "add:ios": "cap add ios",
+    "add:android": "cap add android",
+    "build:web": "echo 'Web assets live at https://ai-billing-audit.ashbi.ca/ — no local web build step is required for the Capacitor wrap.'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/ios": "^6.1.0",
+    "@capacitor/preferences": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
