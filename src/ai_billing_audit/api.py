@@ -3177,9 +3177,39 @@ def create_app() -> FastAPI:
             clinical_note = None
 
         # ---- 2. look up the cached job for this encounter ----
+        #
+        # Two-step lookup so we can distinguish "no job exists at all"
+        # (404 — the caller should upload first) from "a job exists but
+        # is still in flight" (409 — the dashboard should poll and
+        # retry). ``find_by_encounter`` defaults to status="done", so
+        # a queued/running job is invisible to the default call and we
+        # have to query again with status=None to surface it.
+        #
+        # The previous (single-step) lookup returned None for the
+        # in-flight case, which translated to a misleading 404 —
+        # callers re-trying an audit during a long synth run had no
+        # way to tell "you haven't uploaded yet" from "your upload is
+        # still running". The test
+        # ``test_audit_returns_409_when_job_still_running`` pins the
+        # correct behaviour.
         queue = get_default_queue()
         job = queue.find_by_encounter(encounter_id)
         if job is None:
+            # No done-job. Check whether any job exists at all so we
+            # can return 409 for the in-flight case instead of 404.
+            in_flight = queue.find_by_encounter(encounter_id, status=None)
+            if in_flight is not None and in_flight.status != "done":
+                # Job exists but hasn't finished. The synth runner is
+                # fast, but we should not double-fire; surface a 409
+                # so the dashboard can poll /jobs/{id} and retry.
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"encounter {encounter_id!r} is in job "
+                        f"{in_flight.job_id!r} (status={in_flight.status}); "
+                        f"wait for it to finish and retry."
+                    ),
+                )
             raise HTTPException(
                 status_code=404,
                 detail=(
@@ -3220,18 +3250,21 @@ def create_app() -> FastAPI:
         # places.
         #
         # The claim payload (CPT codes, ICDs, NPI, date_of_service,
-        # patient_id) is built in the runner's local ``claim`` var
-        # but the JobQueue/Job does NOT serialise it into job.result
-        # today. The audit endpoint therefore cannot perfectly
-        # reconstruct the exact claim object the runner audited.
-        # See kanban follow-up card t_75202858_fu1: persist the
-        # encounter payload on the Job.
+        # patient_id) is now persisted on job.result['claim'] by
+        # job_queue._default_runner (see kanban card t_10774785). The
+        # re-audit endpoint reads it back here so the audit operates
+        # on the exact claim object the original runner built, instead
+        # of the historical PT_REAUDIT placeholder with empty
+        # line_items. Pre-fix jobs (those that never persisted a
+        # claim) still surface the placeholder for backward
+        # compatibility — we do NOT fabricate a claim.
         result = job.result or {}
         synth_encounter_id = result.get("synth_encounter_id")
         ran_via = result.get("ran_via", "upload_portal")
         used_uploaded_note = bool(result.get("used_uploaded_note")) or (
             ran_via == "upload_portal_with_user_note"
         )
+        persisted_claim = result.get("claim")
 
         # Resolve the clinical_note: request > uploaded on-disk
         # text-note > stub.
@@ -3286,22 +3319,33 @@ def create_app() -> FastAPI:
                     province=None,
                     health_number=None,
                 )
-                claim = {
-                    "encounter_id": encounter_id,
-                    "patient_id": "PT_REAUDIT",
-                    "rendering_provider_npi": "",
-                    "billing_provider_tax_id": "",
-                    "date_of_service": "",
-                    "payer_id": "",
-                    "payer_name": "",
-                    "line_items": [],
-                    "diagnosis_codes": [],
-                    "_reaudit_note": (
-                        "claim payload not persisted; re-audit ran "
-                        "against the uploaded note only. Re-upload "
-                        "the 837P for a full re-audit."
-                    ),
-                }
+                # Prefer the claim the runner persisted on
+                # Job.result (t_10774785). Fall back to the legacy
+                # PT_REAUDIT placeholder ONLY for jobs that ran
+                # before the fix landed — those will not have
+                # result['claim'].
+                if (
+                    isinstance(persisted_claim, dict)
+                    and persisted_claim.get("line_items")
+                ):
+                    claim = dict(persisted_claim)
+                else:
+                    claim = {
+                        "encounter_id": encounter_id,
+                        "patient_id": "PT_REAUDIT",
+                        "rendering_provider_npi": "",
+                        "billing_provider_tax_id": "",
+                        "date_of_service": "",
+                        "payer_id": "",
+                        "payer_name": "",
+                        "line_items": [],
+                        "diagnosis_codes": [],
+                        "_reaudit_note": (
+                            "claim payload not persisted; re-audit "
+                            "ran against the uploaded note only. "
+                            "Re-upload the 837P for a full re-audit."
+                        ),
+                    }
                 audit_encounter = {
                     "encounter_id": encounter_id,
                     "is_flagged": False,

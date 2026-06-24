@@ -502,3 +502,138 @@ def test_audit_returns_409_when_job_still_running(
     assert "wait" in body["detail"].lower()
     # The slow runner should not have been invoked by the audit route.
     assert fake_audit_run == []
+
+
+# --- 7. t_10774785: persisted claim is reconstructed on re-audit --------
+
+
+def _enqueue_done_job_with_persisted_claim(
+    tmp_path: Path,
+    encounter_id: str,
+    *,
+    persisted_claim: dict[str, Any],
+    ran_via: str = "upload_portal_with_user_note",
+) -> JobQueue:
+    """Build a JobQueue with a finished job whose ``result['claim']``
+    is set to ``persisted_claim``.
+
+    Mirrors :func:`_enqueue_done_job` but exposes the post-fix
+    behaviour where the runner attaches the audit-ready claim to
+    ``Job.result['claim']`` (kanban card t_10774785).
+    """
+    log = tmp_path / "jobs.jsonl"
+
+    def _runner(enc: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "synth_encounter_id": "enc_synth_persisted",
+            "difficulty_tier": "EASY",
+            "variant": "flagged",
+            "seed": 7,
+            "ran_via": ran_via,
+            "used_uploaded_note": ran_via == "upload_portal_with_user_note",
+            "audit_status": "ok",
+            "has_findings": False,
+            "findings_count": 0,
+            "findings": [],
+            "summary": "(prior run summary placeholder)",
+            # t_10774785: the runner now persists the audit-ready
+            # claim onto Job.result so the re-audit endpoint can
+            # reconstruct it byte-for-byte.
+            "claim": persisted_claim,
+        }
+
+    q = JobQueue(log_path=log, worker_count=2, runner=_runner)
+    job = q.enqueue(
+        encounter={
+            "encounter_id": encounter_id,
+            "patient_id": "PT-001",
+            "NPI": "1234567890",
+            "date_of_service": "2024-06-01",
+            "CPT_codes": ["99213"],
+        },
+        source="837p",
+        source_filename="test.837",
+    )
+    _wait_for_done(q, job.job_id)
+    return q
+
+
+def test_reaudit_reconstructs_persisted_claim(
+    client: TestClient,
+    tmp_path: Path,
+    fake_audit_run: list[dict[str, Any]],
+) -> None:
+    """Re-audit must surface the claim the original runner built,
+    not the PT_REAUDIT placeholder. Covers t_10774785 acceptance
+    criteria 2 and 4: the audit endpoint reads ``job.result['claim']``
+    when present, and ``claim.patient_id`` carries a real value.
+    """
+    real_claim = {
+        "encounter_id": "enc_persist_001",
+        "patient_id": "PT_REAL",
+        "rendering_provider_npi": "1992039481",
+        "billing_provider_tax_id": "XX-XXX1234",
+        "date_of_service": "2026-06-15",
+        "payer_id": "PAYER-001",
+        "payer_name": "Real Payer",
+        "line_items": [
+            {
+                "line_id": 1,
+                "cpt_code": "99213",
+                "modifiers": [],
+                "dx_pointers": ["J20.9"],
+                "charge_amount": 150.00,
+                "units": 1,
+            }
+        ],
+        "diagnosis_codes": ["J20.9"],
+    }
+    queue = _enqueue_done_job_with_persisted_claim(
+        tmp_path,
+        "enc_persist_001",
+        persisted_claim=real_claim,
+    )
+    api.get_default_queue = lambda: queue  # type: ignore[assignment]
+
+    response = client.post(
+        "/encounters/enc_persist_001/audit", json={}
+    )
+    assert response.status_code == 200, response.text
+
+    # The auditor was called exactly once with the persisted
+    # claim — NOT the PT_REAUDIT placeholder.
+    assert len(fake_audit_run) == 1
+    audit_in = fake_audit_run[0]
+    assert audit_in["claim"]["patient_id"] == "PT_REAL"
+    assert audit_in["claim"]["patient_id"] != "PT_REAUDIT"
+    # The line items carry the originally-uploaded CPTs.
+    assert audit_in["claim"]["line_items"]
+    assert audit_in["claim"]["line_items"][0]["cpt_code"] == "99213"
+    # No "_reaudit_note" sentinel — the reconstruction succeeded.
+    assert "_reaudit_note" not in audit_in["claim"]
+
+
+def test_reaudit_placeholder_when_no_persisted_claim(
+    client: TestClient,
+    tmp_path: Path,
+    fake_audit_run: list[dict[str, Any]],
+) -> None:
+    """Backward compat: jobs that ran before t_10774785 (no
+    ``result['claim']``) still surface the legacy PT_REAUDIT
+    placeholder rather than fabricating data.
+    """
+    queue = _enqueue_done_job(
+        tmp_path,
+        "enc_old_001",
+        synth_encounter_id="enc_synth_old",
+    )
+    api.get_default_queue = lambda: queue  # type: ignore[assignment]
+
+    response = client.post("/encounters/enc_old_001/audit", json={})
+    assert response.status_code == 200, response.text
+    # No reaudit reconstruction happens for the legacy synth path;
+    # the audit route re-runs the synth and the patient_id is the
+    # synth default ("PT_AUDIT"), not the placeholder.
+    assert len(fake_audit_run) == 1
+    audit_in = fake_audit_run[0]
+    assert audit_in["claim"]["patient_id"] != "PT_REAUDIT"
