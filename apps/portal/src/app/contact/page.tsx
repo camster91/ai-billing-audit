@@ -73,8 +73,8 @@ export default function ContactPage() {
           <h2>Not ready to fill out a form?</h2>
           <p>
             Email{" "}
-            <a href="mailto:sales@example.com" className={styles.link}>
-              sales@example.com
+            <a href="mailto:sales@zorva.ca" className={styles.link}>
+              sales@zorva.ca
             </a>{" "}
             and we&apos;ll respond the same way. Or read the{" "}
             <Link href="/how-it-works" className={styles.link}>
