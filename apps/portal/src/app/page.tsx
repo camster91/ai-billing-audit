@@ -47,24 +47,31 @@ export default function Home() {
 
         <section
           className={styles.videoWrap}
-          aria-label="60-second product walkthrough"
+          aria-label="Product walkthrough — coming soon"
         >
           <div className={styles.videoFrame}>
-            <iframe
-              className={styles.video}
-              src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"
-              title="Zorva in 60 seconds — pre-submit audit walkthrough"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            <div
+              className={styles.videoPlaceholder}
+              role="img"
+              aria-label="Product walkthrough video coming soon"
+            >
+              <span className={styles.videoPlaceholderTitle}>
+                Product walkthrough coming soon
+              </span>
+              <span className={styles.videoPlaceholderSub}>
+                We&apos;re recording a fresh demo. In the meantime, the
+                <Link href="/how-it-works" className={styles.link}>
+                  {" "}how-it-works
+                </Link>{" "}
+                page walks through the same flow.
+              </span>
+            </div>
           </div>
           <p className={styles.videoCaption}>
-            Sixty seconds. Upload a sample AHCIP claim, watch the auditor
-            read the clinical note, pull the relevant SOMB rule, and surface
-            the missed code or modifier — with a citation to the exact rule
-            passage. No audio required; captions available.
+            Until the walkthrough is ready, the how-it-works page covers
+            the same flow in text — what the auditor reads, what rules it
+            pulls, and how the findings surface to your billing team for
+            review before anything is submitted.
           </p>
         </section>
 
