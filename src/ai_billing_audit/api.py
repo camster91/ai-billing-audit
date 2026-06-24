@@ -1766,6 +1766,399 @@ def create_app() -> FastAPI:
         )
         return JSONResponse({"ok": True, "event": event})
 
+    # ---- Bulk reviewer actions ----
+    # When a clinic uploads 500 claims and 100 share the same
+    # modifier-25 finding, the biller needs to dismiss all 100 with
+    # one click. The per-encounter /finding/{fid}/{accept,dismiss}
+    # endpoints above work for N=1 but break down for N=100. The
+    # bulk endpoints below accept a list of encounter_ids and a
+    # single action, and:
+    #
+    #   1. Verify every encounter_id exists (404 with the missing
+    #      list in the body if any are unknown — the dashboard uses
+    #      this to highlight bad cards).
+    #   2. Apply the per-encounter action to each in turn (single-
+    #      finding bulk accept is essentially "accept each real
+    #      finding on this encounter", and dismiss with rule_id
+    #      narrows to findings whose rule_id matches).
+    #   3. Write ONE audit_actions row with action_type='bulk' that
+    #      lists every affected encounter_id, the rule_id (if any),
+    #      and the action. Tamper-evident chain signature covers
+    #      the whole batch.
+    #   4. Write per-finding FeedbackEntry rows for each real
+    #      finding touched (one per finding, not one per encounter)
+    #      so the per_clinic_f1 dashboard keeps counting per-clinic
+    #      accept/dismiss ratios consistently with the per-finding
+    #      endpoints.
+    #
+    # Returns ``{applied_count, skipped_count, audit_id}`` so the
+    # UI can show a toast ("97 accepted, 3 already dismissed")
+    # and link the audit row for the privacy officer's view.
+
+    def _bulk_apply(
+        *,
+        action: str,
+        encounter_ids: list[str],
+        rule_id: str | None = None,
+        notes: str | None = None,
+        reason_category: str | None = None,
+        reason_text: str | None = None,
+        user_identifier: str,
+    ) -> dict[str, Any]:
+        """Apply ``action`` to every real finding on every encounter in
+        ``encounter_ids``, write one bulk audit row + per-finding
+        feedback rows, and return a summary dict.
+
+        Atomic at the encounter level: any unknown encounter_id
+        short-circuits with HTTPException(404) and NO writes happen.
+        Once past the existence check the per-finding writes are
+        best-effort — a single FeedbackStore failure logs but does
+        not abort the rest of the batch (mirrors the per-encounter
+        endpoint's tolerance for missing-module failures).
+
+        ``skipped_count`` counts findings already in the target
+        state (e.g. a bulk-dismiss that hits a finding the biller
+        already dismissed in a previous round). They are skipped
+        to keep the per_clinic_f1 view consistent — double-counting
+        a dismiss would inflate the per-rule FP rate.
+
+        ``applied_count`` counts findings actually transitioned.
+        """
+        if not encounter_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_ids must be a non-empty list",
+            )
+        # 1. Existence check: every encounter_id must resolve to a
+        # registered demo entry (real-encounter audits are not yet
+        # served by the dashboard, so load_encounter_record covers
+        # both the demo and the upload paths).
+        missing: list[str] = []
+        for eid in encounter_ids:
+            try:
+                rec = load_encounter_record(eid)
+            except Exception:
+                rec = None
+            if rec is None:
+                missing.append(eid)
+        if missing:
+            # 404 — the dashboard uses the missing list to highlight
+            # bad cards in the checkbox set.
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "message": "one or more encounter_ids not found",
+                    "missing": missing,
+                },
+            )
+
+        # Normalize optional inputs once.
+        norm_rule_id = (rule_id or "").strip() or None
+        norm_notes = (notes or "").strip() or None
+        norm_reason_category = (reason_category or "").strip() or None
+        if norm_reason_category and norm_reason_category not in _DISMISS_CATEGORIES:
+            norm_reason_category = None
+        norm_reason_text = (reason_text or "").strip()[:500] or None
+
+        # 2+3. Per-encounter application + audit row.
+        from .audit_actions import append as audit_append
+
+        applied: list[dict[str, str]] = []
+        skipped: list[dict[str, str]] = []
+        # Build the audit row's note once, with the rule_id +
+        # closed-loop reason fields, so the chain entry is
+        # self-contained for the privacy officer view.
+        note_parts: list[str] = []
+        if norm_rule_id:
+            note_parts.append(f"rule_id={norm_rule_id}")
+        if norm_reason_category:
+            note_parts.append(f"category={norm_reason_category}")
+        if norm_reason_text:
+            note_parts.append(norm_reason_text)
+        if norm_notes:
+            note_parts.append(norm_notes)
+        audit_note = " | ".join(note_parts) if note_parts else ""
+
+        # Bulk action = action applied per encounter. The audit
+        # row carries ``action="bulk"`` so the privacy officer can
+        # filter bulk rows vs per-encounter rows; the per-encounter
+        # sub-action is preserved in data_elements.action_subtype.
+        action_subtype = action  # "accept" | "dismiss" | "flag"
+
+        per_encounter_summary: list[dict[str, Any]] = []
+        try:
+            from .feedback import FeedbackStore, get_default_store
+        except ImportError:
+            FeedbackStore = None  # type: ignore[assignment,misc]
+            get_default_store = None  # type: ignore[assignment]
+
+        # Track which (encounter_id, finding_id) pairs have already
+        # received a non-bulk decision so we can skip them on
+        # subsequent bulk calls without double-counting.
+        already_decided: set[tuple[str, str]] = set()
+        if get_default_store is not None:
+            try:
+                store_for_history = get_default_store()
+                for entry in store_for_history.read_all():
+                    # Only accept/dismiss rows count as "decided";
+                    # modify rows are biller-override signals and
+                    # don't lock the underlying finding out of a
+                    # subsequent bulk action.
+                    if entry.action in ("accept", "dismiss"):
+                        already_decided.add(
+                            (entry.encounter_id, entry.finding_id)
+                        )
+            except Exception:
+                # History read failure is non-fatal; we just lose
+                # the dedup signal for this call.
+                pass
+
+        for eid in encounter_ids:
+            try:
+                record = load_encounter_record(eid)
+            except Exception:
+                record = None
+            if record is None:
+                # Defensive: existence check above already passed,
+                # but if the registry was reloaded mid-call we
+                # surface as a skip rather than a 500.
+                skipped.append({"encounter_id": eid, "reason": "not_found"})
+                continue
+            findings = record.get("ground_truth", []) or []
+            if not findings:
+                # Encounter with no findings is a no-op; record it
+                # so the dashboard can show "0 findings touched".
+                per_encounter_summary.append({
+                    "encounter_id": eid,
+                    "applied_finding_ids": [],
+                    "skipped_finding_ids": [],
+                })
+                continue
+
+            applied_finding_ids: list[str] = []
+            skipped_finding_ids: list[str] = []
+            for f in findings:
+                fid = str(
+                    f.get("finding_id") or f.get("id") or ""
+                ).strip()
+                if not fid:
+                    continue
+                fid_rule = str(f.get("rule_id") or "").strip()
+                # rule_id filter: when set, only touch findings
+                # whose rule_id matches. This is what makes
+                # "dismiss-all-with-rule" work — the biller picks
+                # the modifier-25 rule and only modifier-25
+                # findings across the batch are dismissed.
+                if norm_rule_id and fid_rule != norm_rule_id:
+                    continue
+                # Skip findings already decided (accept or dismiss)
+                # in a prior call. Keeps per_clinic_f1 ratios
+                # honest — double-counting a dismiss would inflate
+                # the per-rule FP rate. Flag is system-only, so it
+                # doesn't engage this dedup check (flagging a
+                # finding twice is operationally fine and doesn't
+                # skew any per-rule precision metric).
+                if (
+                    action_subtype in ("accept", "dismiss")
+                    and (eid, fid) in already_decided
+                ):
+                    skipped_finding_ids.append(fid)
+                    skipped.append({
+                        "encounter_id": eid,
+                        "finding_id": fid,
+                        "reason": "already_decided",
+                    })
+                    continue
+                # Write the per-finding feedback row using the same
+                # helper the per-encounter endpoints use, so the
+                # feedback log gets identical schema. This is the
+                # row that drives the per_clinic_f1 dashboard.
+                # Flag is bucketed as action="modify" with a
+                # synthetic "__bulk_flag__" finding_id so the
+                # per_clinic_f1 view (which filters accept/dismiss)
+                # ignores it — same convention the per-encounter
+                # /flag endpoint uses, just with a bulk tag instead
+                # of "__flag__" so the row is identifiable in
+                # timeline views.
+                if action_subtype == "flag":
+                    _record_feedback(
+                        encounter_id=eid,
+                        finding_id="__bulk_flag__",
+                        action="modify",
+                        user_identifier=user_identifier,
+                    )
+                else:
+                    _record_feedback(
+                        encounter_id=eid,
+                        finding_id=fid,
+                        action=action_subtype,
+                        user_identifier=user_identifier,
+                    )
+                applied_finding_ids.append(fid)
+                applied.append({
+                    "encounter_id": eid,
+                    "finding_id": fid,
+                    "rule_id": fid_rule,
+                })
+
+            per_encounter_summary.append({
+                "encounter_id": eid,
+                "applied_finding_ids": applied_finding_ids,
+                "skipped_finding_ids": skipped_finding_ids,
+            })
+
+        # 4. ONE bulk audit_actions row covering the whole batch.
+        # The chain signature still covers this row — the
+        # affected_encounter_ids list is hashed as part of
+        # data_elements so any tampering breaks the chain.
+        affected_encounter_ids = [
+            row["encounter_id"] for row in per_encounter_summary
+            if row.get("applied_finding_ids")
+        ]
+        event = audit_append(
+            action="bulk",
+            encounter_id=affected_encounter_ids[0] if affected_encounter_ids else (
+                encounter_ids[0] if encounter_ids else ""
+            ),
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[
+                {"finding_id": fid} for fid in [
+                    row["finding_id"] for row in applied
+                ]
+            ],
+            note=audit_note,
+            extra={
+                "action_subtype": action_subtype,
+                "rule_id": norm_rule_id or "",
+                "affected_encounter_ids": affected_encounter_ids,
+                "encounter_ids_requested": list(encounter_ids),
+                "per_encounter": per_encounter_summary,
+                "n_applied_findings": len(applied),
+                "n_skipped_findings": len(skipped),
+                "notes": norm_notes or "",
+            },
+        )
+        return {
+            "applied_count": len(applied),
+            "skipped_count": len(skipped),
+            "audit_id": event.get("event_id", ""),
+            "affected_encounter_ids": affected_encounter_ids,
+            "rule_id": norm_rule_id or "",
+            "event": event,
+        }
+
+    @app.post("/encounters/bulk-accept")
+    async def encounters_bulk_accept(request: Request) -> JSONResponse:
+        """Accept every (rule-matching) finding across a list of encounters.
+
+        Body: ``{"encounter_ids": [...], "rule_id"?: str, "notes"?: str}``.
+
+        Returns ``{applied_count, skipped_count, audit_id, ...}``.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be a JSON object")
+        raw_ids = body.get("encounter_ids")
+        if not isinstance(raw_ids, list) or not raw_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_ids must be a non-empty list",
+            )
+        encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
+        user_identifier = str(
+            request.client.host if request.client else "anon"
+        )
+        summary = _bulk_apply(
+            action="accept",
+            encounter_ids=encounter_ids,
+            rule_id=body.get("rule_id"),
+            notes=body.get("notes"),
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({"ok": True, **summary})
+
+    @app.post("/encounters/bulk-dismiss")
+    async def encounters_bulk_dismiss(request: Request) -> JSONResponse:
+        """Dismiss every (rule-matching) finding across a list of encounters.
+
+        Body: ``{"encounter_ids": [...], "rule_id"?: str,
+        "reason_category"?: str, "reason_text"?: str, "notes"?: str}``.
+
+        ``rule_id`` narrows the dismiss to findings whose rule_id
+        matches (the "dismiss-all-with-rule" affordance). The
+        closed-loop learning fields ``reason_category`` /
+        ``reason_text`` mirror the per-encounter dismiss endpoint
+        and are recorded on the single bulk audit row's ``note``
+        field.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be a JSON object")
+        raw_ids = body.get("encounter_ids")
+        if not isinstance(raw_ids, list) or not raw_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_ids must be a non-empty list",
+            )
+        encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
+        user_identifier = str(
+            request.client.host if request.client else "anon"
+        )
+        summary = _bulk_apply(
+            action="dismiss",
+            encounter_ids=encounter_ids,
+            rule_id=body.get("rule_id"),
+            notes=body.get("notes"),
+            reason_category=body.get("reason_category"),
+            reason_text=body.get("reason_text"),
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({"ok": True, **summary})
+
+    @app.post("/encounters/bulk-flag")
+    async def encounters_bulk_flag(request: Request) -> JSONResponse:
+        """Flag every (rule-matching) finding across a list of encounters.
+
+        Body: ``{"encounter_ids": [...], "rule_id"?: str, "notes"?: str}``.
+
+        Flag is a system-level signal. We write ONE bulk audit row
+        for the privacy officer and one ``__bulk_flag__`` feedback
+        row per affected finding (tagged action="modify" so the
+        per_clinic_f1 view ignores it, same convention as the
+        per-encounter /flag endpoint).
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="body must be a JSON object")
+        raw_ids = body.get("encounter_ids")
+        if not isinstance(raw_ids, list) or not raw_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_ids must be a non-empty list",
+            )
+        encounter_ids = [str(x) for x in raw_ids if str(x).strip()]
+        user_identifier = str(
+            request.client.host if request.client else "anon"
+        )
+        summary = _bulk_apply(
+            action="flag",
+            encounter_ids=encounter_ids,
+            rule_id=body.get("rule_id"),
+            notes=body.get("notes"),
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({"ok": True, **summary})
+
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         return {
