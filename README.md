@@ -31,6 +31,15 @@ Hermetic smoke mode (no network, no key) is the default if `LLM_PROVIDER` is uns
 
 The VPS-deploy entry point is `deploy-to-vps.sh` (idempotent: rsync → `.env` → Traefik router → `docker compose up` → healthz). Backup/restore is `deploy/scripts/audit-backup.sh` (age-encrypted `pg_dump` → B2 via `rclone`, weekly cron, monthly restore-verify). See `deploy/README.md` for the full backup install recipe.
 
+## Deployment
+
+The repo ships **two distinct applications** that deploy separately:
+
+- **FastAPI / API** (`src/ai_billing_audit/`, `Dockerfile`, `docker-compose.yml`) — the auditor, denial-risk scorer, missed-revenue detector, hash-chained audit trail, demo dashboard. **Live** at `https://ai-billing-audit.ashbi.ca` via `deploy-to-vps.sh`.
+- **Next.js marketing portal** (`apps/portal/`) — the user-facing marketing site (hero, `/pricing`, `/what-zorva-finds`, `/security`, `/robots.txt`, etc.). **Built locally, not yet deployed.** The `deploy-to-vps.sh` rsync step excludes `apps/`.
+
+Three approaches to close the gap (second docker-compose service, static export of marketing routes, separate repo) and the trade-offs are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ## Project layout
 
 ```
