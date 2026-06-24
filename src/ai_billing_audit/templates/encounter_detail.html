@@ -251,6 +251,22 @@
               />
             </label>
           </div>
+          {# "Why" rationale — captured as free text so the
+             learning-loop can distinguish a severity down-grade
+             from a category re-classification from a typo
+             correction. Persisted into the feedback / audit
+             trail alongside the override. #}
+          <label class="dismiss-form__label" for="modify-why-{{ f.finding_id }}">
+            Why are you changing this?
+            <textarea
+              id="modify-why-{{ f.finding_id }}"
+              name="why"
+              class="dismiss-form__input"
+              rows="2"
+              maxlength="500"
+              placeholder="e.g. Severity should be low because the documentation is borderline; not a high-confidence finding."
+            ></textarea>
+          </label>
           <div class="dismiss-form__actions">
             <button type="button" class="btn btn-ghost btn-sm" data-action="finding-modify-cancel" data-finding-id="{{ f.finding_id }}">
               Cancel
@@ -584,8 +600,10 @@
         var fd = new FormData(form);
         var newSeverity = fd.get('new_severity') || '';
         var newCategory = fd.get('new_category') || '';
+        var why = (fd.get('why') || '').toString().trim();
         // If the biller didn't actually change anything, treat it as
-        // a no-op rather than failing server-side.
+        // a no-op rather than failing server-side. The "why" field
+        // alone is not a meaningful override.
         var currentSeverity = form.dataset.currentSeverity || '';
         var currentCategory = form.dataset.currentCategory || '';
         if (!newSeverity) newSeverity = '';
@@ -596,7 +614,11 @@
           form.hidden = true;
           return;
         }
-        var body = {new_severity: newSeverity, new_category: newCategory};
+        var body = {
+          new_severity: newSeverity,
+          new_category: newCategory,
+          why: why,
+        };
         var submit = form.querySelector('button[type="submit"]');
         submit.disabled = true;
         post(endpoint, body).then(function (resp) {

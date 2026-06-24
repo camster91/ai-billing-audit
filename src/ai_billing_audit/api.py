@@ -1319,6 +1319,7 @@ def create_app() -> FastAPI:
         user_identifier: str,
         modify_severity: str | None = None,
         modify_category: str | None = None,
+        note: str | None = None,
     ) -> None:
         """Append one FeedbackEntry to the per-encounter learning-loop log."""
         try:
@@ -1335,7 +1336,15 @@ def create_app() -> FastAPI:
         else:
             ms, mc = None, None
         store = get_default_store()
-        store.append(FeedbackEntry(
+        # The FeedbackEntry dataclass has no explicit `note` field
+        # in the current schema (the rationale is conveyed via the
+        # modify_severity / modify_category diffs). To keep the
+        # ``_record_feedback`` signature forward-compatible with a
+        # future ``note`` column, we accept the kwarg here and stash
+        # it on the entry as an attribute if the dataclass supports
+        # it; otherwise it's silently dropped (no schema change
+        # forced on the existing feedback.py contract).
+        entry_kwargs: dict = dict(
             encounter_id=encounter_id,
             finding_id=finding_id,
             action=action,  # type: ignore[arg-type]
@@ -1345,7 +1354,16 @@ def create_app() -> FastAPI:
             biller_id=user_identifier or "default_biller",
             modify_severity=ms,
             modify_category=mc,
-        ))
+        )
+        # Best-effort: if FeedbackEntry is forward-compatible and
+        # already exposes a `note` field, attach it.
+        try:
+            from dataclasses import fields as _dc_fields
+            if any(f.name == "note" for f in _dc_fields(FeedbackEntry)) and note:
+                entry_kwargs["note"] = note
+        except Exception:
+            pass
+        store.append(FeedbackEntry(**entry_kwargs))
 
     @app.post("/encounter/{encounter_id}/accept-all")
     async def encounter_accept_all(
@@ -1545,8 +1563,11 @@ def create_app() -> FastAPI:
         request: Request,
     ) -> JSONResponse:
         """Record a biller's override of a single finding's severity and/or
-        category. Body: ``{"new_severity": "...", "new_category": "..."}``.
-        At least one of the two must be present.
+        category. Body: ``{"new_severity": "...", "new_category": "...",
+        "why": "..."}``. At least one of severity/category must be present.
+        The optional ``why`` is the biller's free-text rationale ("why
+        was the AI wrong?") and is persisted as the high-quality
+        training signal the biller-correction form exists to capture.
         """
         try:
             from .audit_actions import append as audit_append
@@ -1561,6 +1582,7 @@ def create_app() -> FastAPI:
             body = {}
         new_severity = str(body.get("new_severity", "") or "").strip()
         new_category = str(body.get("new_category", "") or "").strip()
+        why = str(body.get("why", "") or "").strip()
         if not new_severity and not new_category:
             raise HTTPException(
                 status_code=400,
@@ -1568,7 +1590,10 @@ def create_app() -> FastAPI:
             )
         user_identifier = str(request.client.host if request.client else "anon")
         # Persist a structured note with the before/after values so the
-        # existing audit_actions chain still covers the override.
+        # existing audit_actions chain still covers the override. The
+        # biller's "why" rationale is folded into the same note so the
+        # audit trail is self-contained — no schema change needed to
+        # audit_actions, but the rationale is preserved.
         original_severity, original_rule_id, original_category = _lookup_finding_meta(
             encounter_id, finding_id
         )
@@ -1578,6 +1603,8 @@ def create_app() -> FastAPI:
         if new_category:
             note_parts.append(f"category: {original_category} -> {new_category}")
         note = " | ".join(note_parts)
+        if why:
+            note = f"{note} | why: {why}" if note else f"why: {why}"
         event = audit_append(
             action="modify",
             encounter_id=encounter_id,
@@ -1593,13 +1620,33 @@ def create_app() -> FastAPI:
             user_identifier=user_identifier,
             modify_severity=new_severity or None,
             modify_category=new_category or None,
+            note=why or None,
         )
+        # Also write a structured BillerCorrection record to the
+        # dedicated biller_corrections.jsonl log. This is the
+        # high-quality training signal the spec'd biller-correction
+        # form exists to capture: (corrected) severity, category,
+        # rationale, biller_id, and a SHA-256 chain signature. Best
+        # effort; never raises.
+        try:
+            from .feedback import record_biller_correction
+            record_biller_correction(
+                encounter_id=encounter_id,
+                finding_id=finding_id,
+                severity=new_severity or original_severity or "",
+                category=new_category or original_category or "",
+                rationale=why,
+                biller_id=user_identifier or "default_biller",
+            )
+        except Exception:
+            pass
         return JSONResponse({
             "ok": True,
             "finding_id": finding_id,
             "action": "modify",
             "new_severity": new_severity,
             "new_category": new_category,
+            "why": why,
             "event": event,
         })
 

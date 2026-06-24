@@ -363,3 +363,181 @@ def get_default_store() -> FeedbackStore:
     if _default is None:
         _default = FeedbackStore()
     return _default
+
+
+# ---- Biller-correction (high-quality training signal) -----------------
+# A "biller correction" is the structured record a biller writes when
+# they MODIFY an AI finding (change the severity, change the category,
+# or both) and optionally add a free-text rationale. The feedback
+# log captures the same data as a FeedbackEntry, but the
+# BillerCorrection view layers on a `why` field (the free-text
+# rationale) and a `biller_id` so the learning-loop can group
+# "biller was right, model was wrong" examples per-biller for
+# calibration.
+#
+# Stored as a separate JSONL line per correction in
+# /app/logs/biller_corrections.jsonl. The feedback log keeps
+# continuing to receive a corresponding FeedbackEntry (with action
+# "modify") so the existing chain / aggregation layers don't break.
+# The two logs are joined on (encounter_id, finding_id) at training
+# time.
+
+import dataclasses  # noqa: E402  (import below the singleton on purpose)
+
+
+_BILLER_CORRECTIONS_LOG = Path(
+    os.environ.get("BILLER_CORRECTIONS_LOG", "/app/logs/biller_corrections.jsonl")
+)
+
+
+@dataclass
+class BillerCorrection:
+    """Structured record of a single biller-initiated correction.
+
+    The fields mirror the spec'd ``biller_corrections`` SQL table
+    (id, finding_id, severity, category, rationale, biller_id,
+    created_at). The rationale is the free-text "why" the biller
+    enters on the form; it is the highest-quality training signal
+    the learning loop gets because it explains *why* the AI was
+    wrong, not just *that* it was wrong.
+    """
+
+    finding_id: str
+    severity: str
+    category: str
+    rationale: str
+    biller_id: str
+    encounter_id: str
+    created_at: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    previous_signature: str = ""
+    cryptographic_signature: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _sign_correction(previous: str, row: dict[str, Any]) -> str:
+    """Hash-chained signature for the biller-corrections log.
+
+    Uses the same SHA-256 + previous_signature shape as the main
+    feedback log so a privacy officer can verify the two logs
+    together. ``previous`` is the previous row's
+    ``cryptographic_signature`` (or the genesis constant for the
+    first row). The hash includes the rationale so a tampered
+    "why" field is detectable.
+    """
+    payload = (
+        previous + "|" +
+        str(row.get("id", "")) + "|" +
+        str(row.get("encounter_id", "")) + "|" +
+        str(row.get("finding_id", "")) + "|" +
+        str(row.get("severity", "")) + "|" +
+        str(row.get("category", "")) + "|" +
+        str(row.get("rationale", "")) + "|" +
+        str(row.get("biller_id", "")) + "|" +
+        str(row.get("created_at", ""))
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _last_correction_signature(path: Path) -> str:
+    if not path.exists():
+        return _GENESIS_SIG
+    last_sig = _GENESIS_SIG
+    try:
+        with path.open() as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict) and row.get("cryptographic_signature"):
+                    last_sig = row["cryptographic_signature"]
+    except OSError:
+        return _GENESIS_SIG
+    return last_sig
+
+
+def record_biller_correction(
+    *,
+    encounter_id: str,
+    finding_id: str,
+    severity: str,
+    category: str,
+    rationale: str,
+    biller_id: str,
+) -> BillerCorrection:
+    """Persist a single BillerCorrection and return it.
+
+    Best-effort: a write failure does not raise. Mirrors the
+    best-effort pattern used elsewhere in feedback.py so a log
+    failure cannot crash the API.
+
+    Severity / category are the *corrected* (post-override) values;
+    the original values are still recoverable from the matching
+    FeedbackEntry (action="modify" with the original severity /
+    category fields).
+    """
+    correction = BillerCorrection(
+        finding_id=finding_id,
+        severity=severity,
+        category=category,
+        rationale=rationale,
+        biller_id=biller_id,
+        encounter_id=encounter_id,
+    )
+    try:
+        _BILLER_CORRECTIONS_LOG.parent.mkdir(parents=True, exist_ok=True)
+        correction.previous_signature = _last_correction_signature(_BILLER_CORRECTIONS_LOG)
+        row = correction.to_dict()
+        correction.cryptographic_signature = _sign_correction(
+            correction.previous_signature, row
+        )
+        row["cryptographic_signature"] = correction.cryptographic_signature
+        with _BILLER_CORRECTIONS_LOG.open("a") as fh:
+            fh.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
+    return correction
+
+
+def read_biller_corrections(
+    encounter_id: str | None = None,
+) -> list[BillerCorrection]:
+    """Read all logged biller-corrections, optionally filtered by encounter.
+
+    Returns a list of BillerCorrection in append order (oldest first).
+    Skips malformed lines silently. A privacy officer can iterate
+    this list and verify the chain with ``verify_correction_chain``.
+    """
+    if not _BILLER_CORRECTIONS_LOG.exists():
+        return []
+    out: list[BillerCorrection] = []
+    try:
+        with _BILLER_CORRECTIONS_LOG.open() as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(row, dict):
+                    continue
+                if encounter_id and row.get("encounter_id") != encounter_id:
+                    continue
+                try:
+                    out.append(BillerCorrection(**{
+                        k: v for k, v in row.items()
+                        if k in {f.name for f in dataclasses.fields(BillerCorrection)}
+                    }))
+                except Exception:
+                    continue
+    except OSError:
+        return []
+    return out
