@@ -1,0 +1,121 @@
+code,description,payer_types,common_resolutions
+M1,X-ray not taken within the past 12 months,Medicare,Obtain current x-ray and resubmit
+M2,Not paid separately when billed with another service,Medicare,Payment bundled; do not bill separately
+M3,Equipment is the same or similar to equipment already being used,Medicare,Verify medical necessity of duplicate equipment
+M4,Missing/incomplete/invalid prior authorization number,Commercial|Medicare,Obtain prior auth and resubmit with auth number
+M5,Missing/incomplete/invalid days or units of service,Commercial|Medicare,Resubmit with correct units
+M6,Missing/incomplete/invalid primary diagnosis code,Commercial|Medicare,Resubmit with valid ICD-10 code
+M7,Missing/incomplete/invalid POA indicator,Medicare,Add present-on-admission indicator and resubmit
+M8,Missing/incomplete/invalid HCPCS/rates,Commercial|Medicare,Resubmit with valid HCPCS code
+M9,Missing/incomplete/invalid tooth number/letter,Commercial,Resubmit with correct tooth identifier
+M10,Missing/incomplete/invalid tooth surface,Commercial,Resubmit with tooth surface codes
+M11,Missing/incomplete/invalid FDA approval number,Commercial,Resubmit with FDA number
+M12,Missing/incomplete/invalid provider taxonomy,Commercial|Medicare,Resubmit with correct taxonomy code
+M13,Missing/incomplete/invalid place of service,Commercial|Medicare,Resubmit with correct POS code
+M14,Missing/incomplete/invalid service facility name/address,Commercial,Resubmit with facility info
+M15,Missing/incomplete/invalid service facility NPI,Commercial|Medicare,Resubmit with facility NPI
+M16,Missing/incomplete/invalid referring provider info,Commercial|Medicare,Add referring provider NPI and resubmit
+M17,Missing/incomplete/invalid ordering provider info,Commercial|Medicare,Add ordering provider NPI and resubmit
+M18,Missing/incomplete/invalid claim note,Commercial|Medicare,Resubmit with required narrative
+M19,Missing/incomplete/invalid anesthesia time,Medicare,Resubmit with anesthesia start/end times
+M20,Missing/incomplete/invalid HICN,Medicare,Resubmit with correct Medicare ID
+M21,Missing/incomplete/invalid UPIN,Medicare,Resubmit with ordering provider NPI
+M22,Missing/incomplete/invalid number of submitted documents,Commercial,Resubmit with all required documentation
+M23,Missing/incomplete/invalid service date,Commercial|Medicare,Resubmit with correct date of service
+M24,Missing/incomplete/invalid place of service,Commercial|Medicare,Resubmit with correct POS
+M25,Missing/incomplete/invalid provider identifier,Commercial|Medicare,Resubmit with valid NPI
+M26,Missing/incomplete/invalid place of service,Commercial|Medicare,Resubmit with correct POS
+M27,Missing/incomplete/invalid national drug code,Commercial|Medicare,Resubmit with NDC
+M28,Missing/incomplete/invalid anesthesia modifier,Medicare,Resubmit with AA/QK/QY/QZ modifier
+M29,Missing/incomplete/invalid service line,Commercial|Medicare,Resubmit with corrected line item
+M30,Missing/incomplete/invalid provider address,Commercial|Medicare,Update provider file and resubmit
+M31,Missing/incomplete/invalid referring provider name,Commercial|Medicare,Add referring provider name and resubmit
+M32,Missing/incomplete/invalid ordering provider NPI,Commercial|Medicare,Add NPI and resubmit
+M33,Missing/incomplete/invalid referring provider NPI,Commercial|Medicare,Add referring NPI and resubmit
+M34,Missing/incomplete/invalid place of service,Commercial|Medicare,Resubmit with correct POS
+M35,Missing/incomplete/invalid service date,Commercial|Medicare,Resubmit with correct date
+M36,Missing/incomplete/invalid patient identifier,Commercial|Medicare,Resubmit with correct patient ID
+M37,Missing/incomplete/invalid tooth number,Commercial,Resubmit with tooth number
+M38,Missing/incomplete/invalid tooth surface,Commercial,Resubmit with tooth surface
+M39,Missing/incomplete/invalid number of units,Commercial|Medicare,Resubmit with correct units
+M40,Missing/incomplete/invalid claim,Commercial|Medicare,Resubmit with corrected claim
+M41,Missing/incomplete/invalid anesthesia time,Medicare,Resubmit with anesthesia times
+M42,Missing/incomplete/invalid place of service,Commercial|Medicare,Resubmit with correct POS
+M43,Missing/incomplete/invalid service date,Commercial|Medicare,Resubmit with correct date
+M44,Missing/incomplete/invalid service place,Commercial|Medicare,Resubmit with correct place
+M45,Missing/incomplete/invalid service units,Commercial|Medicare,Resubmit with correct units
+M46,Missing/incomplete/invalid service line,Commercial|Medicare,Resubmit with corrected line
+M47,Missing/incomplete/invalid service date,Commercial|Medicare,Resubmit with correct date
+M48,Missing/incomplete/invalid NDC,Commercial|Medicare,Resubmit with NDC
+M49,Missing/incomplete/invalid CLIA,Medicare,Add CLIA number and resubmit
+M50,Missing/incomplete/invalid referring provider,Commercial|Medicare,Add referring provider info
+M51,Missing/incomplete/invalid billing provider,Commercial|Medicare,Add billing provider info
+M52,Missing/incomplete/invalid service facility,Commercial|Medicare,Add service facility info
+M53,Missing/incomplete/invalid diagnosis code,Commercial|Medicare,Resubmit with valid ICD-10
+M54,Missing/incomplete/invalid modifier,Commercial|Medicare,Resubmit with correct modifier
+M55,Missing/incomplete/invalid tooth number/letter,Commercial,Resubmit with correct tooth ID
+M56,Missing/incomplete/invalid service date,Commercial|Medicare,Resubmit with correct date
+M57,Missing/incomplete/invalid procedure code,Commercial|Medicare,Resubmit with valid CPT/HCPCS
+M58,Missing/incomplete/invalid service line,Commercial|Medicare,Resubmit with corrected line
+M59,Missing/incomplete/invalid total charges,Commercial|Medicare,Resubmit with correct total
+N1,Alert: provider not approved for this procedure,Medicare,Verify provider credentials for procedure
+N2,Alert: this is the initial treatment,Commercial,Verify initial treatment indicator
+N3,Alert: please submit medical records,Commercial|Medicare,Attach medical records and resubmit
+N4,Alert: missing/incomplete LCD/NCD documentation,Medicare,Attach LCD/NCD documentation and resubmit
+N5,Alert: review medical records for medical necessity,Commercial|Medicare,Submit medical records for review
+N6,Alert: this is a re-admission,Commercial,Verify re-admission status
+N7,Alert: review provider records,Commercial|Medicare,Internal review; submit corrected claim
+N8,Alert: review prior authorization,Commercial|Medicare,Verify prior auth was obtained
+N9,Alert: review claim for accuracy,Commercial|Medicare,Verify accuracy of claim data
+N10,Alert: review medical records for procedure,Commercial|Medicare,Submit medical records
+N11,Alert: review for medical necessity,Commercial|Medicare,Submit medical necessity documentation
+N12,Alert: review for correct procedure,Commercial|Medicare,Verify correct CPT code
+N13,Alert: review for covered service,Commercial|Medicare,Verify service is covered
+N14,Alert: review for covered procedure,Commercial|Medicare,Verify procedure is covered
+N15,Alert: review for covered diagnosis,Commercial|Medicare,Verify diagnosis is covered
+N16,Alert: review for covered visit,Commercial|Medicare,Verify visit is covered
+N17,Alert: review for covered test,Commercial|Medicare,Verify test is covered
+N18,Alert: review for covered treatment,Commercial|Medicare,Verify treatment is covered
+N19,Alert: review for covered service,Commercial|Medicare,Verify service is covered
+N20,Alert: review for correct diagnosis,Commercial|Medicare,Verify correct ICD-10
+N21,Alert: review for correct procedure,Commercial|Medicare,Verify correct CPT
+N22,Alert: this service is not covered,Commercial|Medicare,Bill patient or write off
+N23,Alert: potential duplicate service,Commercial|Medicare,Verify not duplicate
+N24,Alert: review for medical necessity,Commercial|Medicare,Submit medical necessity documentation
+N25,Alert: review for correct modifier,Commercial|Medicare,Verify correct modifier
+N26,Alert: review for prior auth,Commercial|Medicare,Obtain prior auth
+N27,Alert: review for correct date,Commercial|Medicare,Verify correct date
+N28,Alert: review for correct provider,Commercial|Medicare,Verify correct provider
+N29,Alert: review for correct facility,Commercial|Medicare,Verify correct facility
+N30,Alert: review for correct units,Commercial|Medicare,Verify correct units
+N31,Alert: review for correct charges,Commercial|Medicare,Verify correct charges
+N32,Alert: review for correct place of service,Commercial|Medicare,Verify correct POS
+N33,Alert: review for correct frequency,Commercial|Medicare,Verify frequency limits
+N34,Alert: review for correct duration,Commercial|Medicare,Verify duration limits
+N35,Alert: review for medical records,Commercial|Medicare,Submit medical records
+N36,Alert: review for documentation,Commercial|Medicare,Submit documentation
+N37,Alert: review for correct code,Commercial|Medicare,Verify correct code
+N38,Alert: review for correct modifier,Commercial|Medicare,Verify correct modifier
+N39,Alert: review for correct diagnosis,Commercial|Medicare,Verify correct diagnosis
+N40,Alert: review for correct procedure,Commercial|Medicare,Verify correct procedure
+N41,Alert: review for correct date,Commercial|Medicare,Verify correct date
+N42,Alert: review for correct provider,Commercial|Medicare,Verify correct provider
+N43,Alert: review for correct facility,Commercial|Medicare,Verify correct facility
+N44,Alert: review for correct units,Commercial|Medicare,Verify correct units
+N45,Alert: review for correct charges,Commercial|Medicare,Verify correct charges
+N46,Alert: review for correct POS,Commercial|Medicare,Verify correct POS
+N47,Alert: review for correct frequency,Commercial|Medicare,Verify correct frequency
+N48,Alert: review for correct duration,Commercial|Medicare,Verify correct duration
+N49,Alert: review for documentation,Commercial|Medicare,Submit documentation
+N50,Alert: review for medical necessity,Commercial|Medicare,Submit medical necessity documentation
+N51,Alert: review for correct billing,Commercial|Medicare,Verify correct billing
+N52,Alert: review for correct coding,Commercial|Medicare,Verify correct coding
+N53,Alert: review for correct modifier,Commercial|Medicare,Verify correct modifier
+N54,Alert: review for correct diagnosis,Commercial|Medicare,Verify correct diagnosis
+N55,Alert: review for correct procedure,Commercial|Medicare,Verify correct procedure
+N56,Alert: review for correct date,Commercial|Medicare,Verify correct date
+N57,Alert: review for correct provider,Commercial|Medicare,Verify correct provider
+N58,Alert: review for correct facility,Commercial|Medicare,Verify correct facility
+N59,Alert: review for correct units,Commercial|Medicare,Verify correct units
+N60,Alert: review for correct charges,Commercial|Medicare,Verify correct charges
+N61,Alert: review for correct POS,Commercial|Medicare,Verify correct POS

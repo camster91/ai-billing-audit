@@ -2303,6 +2303,82 @@ def create_app() -> FastAPI:
             "count": len(active),
         })
 
+    # ---- CARC / RARC lookup (kanban t_7743e5d5) --------------------
+    # Two lookup endpoints serving the per-payer denial reason code
+    # tables (Claim Adjustment Reason Codes + Remittance Advice
+    # Remark Codes). Backed by data/tables/{carc,rarc}.csv; the
+    # module loads them once on first use. Unknown code → 404
+    # (NOT 200-with-null) so the UI can distinguish "we have no
+    # data for this" from "this code really does exist but isn't
+    # in our snapshot" — a 404 is the dashboard's prompt to
+    # surface "code not in current table; check payer website".
+    @app.get("/api/lookup/carc/{code}")
+    async def lookup_carc_code(code: str) -> JSONResponse:
+        """Return the description + common resolutions for a CARC code.
+
+        404 if the code is not in the on-disk table. Response
+        shape: ``{code, description, payer_types, common_resolutions}``
+        — no envelope, the bare row is the most useful form for
+        the dashboard's "What does this code mean?" popover.
+        """
+        try:
+            from .carc_rarc import lookup_carc
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="CARC/RARC lookup module unavailable",
+            )
+        entry = lookup_carc(code)
+        if entry is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"CARC code {code!r} not found in lookup table",
+            )
+        return JSONResponse(entry.to_dict())
+
+    @app.get("/api/lookup/rarc/{code}")
+    async def lookup_rarc_code(code: str) -> JSONResponse:
+        """Return the description + common resolutions for a RARC code.
+
+        Mirror of the CARC endpoint. Same 404 semantics. RARC
+        codes typically look like ``M1`` / ``N30`` (a letter
+        prefix + a number) but the table accepts whatever the
+        published WPC list contains.
+        """
+        try:
+            from .carc_rarc import lookup_rarc
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="CARC/RARC lookup module unavailable",
+            )
+        entry = lookup_rarc(code)
+        if entry is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RARC code {code!r} not found in lookup table",
+            )
+        return JSONResponse(entry.to_dict())
+
+    @app.get("/api/lookup/stats")
+    async def lookup_table_stats() -> JSONResponse:
+        """Return the count of codes loaded from each CSV.
+
+        Lightweight health check — the dashboard uses it for
+        the "X codes loaded" badge in the appeal-letter
+        editor, and ops can curl it to verify the table
+        loaded on startup.
+        """
+        try:
+            from .carc_rarc import table_stats
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="CARC/RARC lookup module unavailable",
+            )
+        stats = table_stats()
+        return JSONResponse(stats)
+
     @app.post("/encounter/{encounter_id}/rerun")
     async def encounter_rerun(
         encounter_id: str,

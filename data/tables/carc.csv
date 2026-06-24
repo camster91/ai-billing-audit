@@ -1,0 +1,51 @@
+code,description,payer_types,common_resolutions
+1,Deductible Amount,Commercial|Medicare|Medicaid,Collect deductible from patient per plan-year rules
+2,Coinsurance Amount,Commercial|Medicare|Medicaid,Collect coinsurance from patient per plan
+3,Co-payment Amount,Commercial|Medicare|Medicaid,Collect copay from patient per plan
+16,Claim/service lacks information needed for adjudication,Commercial|Medicare|Medicaid,Resubmit with missing info; see RARC for specifics
+18,Exact duplicate claim/service,Commercial|Medicare|Medicaid,Verify not a duplicate; if not call payer to reprocess
+22,This care may be covered by another payer per coordination of benefits,Commercial|Medicare|Coord-of-benefits; submit to primary first
+27,Expenses incurred after coverage terminated,Commercial|Medicare,Verify patient eligibility on date of service
+29,The time limit for filing has expired,Commercial|Medicare|Medicaid,Appeal with proof of timely filing; check payer limit
+45,Charge exceeds fee schedule/maximum allowable,Commercial|Medicare|Medicaid,Write off contractual adjustment; do not bill patient
+50,Non-covered services,Commercial|Medicare|Medicaid,Bill patient with ABN if Medicare; verify plan coverage
+54,Multiple physicians/assist at surgery; only one allowed,Medicare,Append modifier 80/82 or check if assistant covered
+96,Non-covered charge(s),Commercial|Medicare,Patient responsibility if signed ABN; otherwise write off
+97,Payment is included in another service/procedure,Medicare,Payment bundled into related procedure; do not bill separately
+109,Claim not covered by this payer/contractor,Commercial|Medicare,Submit to correct payer per eligibility check
+P1,Services not covered under dental plan,Commercial,Bill patient or medical insurance
+P2,Not covered due to cosmetic exclusion,Commercial,Bill patient if not medically necessary
+P3,Non-covered due to pre-existing condition,Commercial,Bill patient or appeal with medical necessity
+P4,Non-covered due to plan limitations,Commercial,Bill patient per plan limitations
+P5,Service not covered under medical plan,Commercial,Bill patient or dental plan
+P6,Patient not enrolled in plan on date of service,Commercial|Medicare,Verify eligibility; bill patient if not eligible
+P7,Procedure not on formulary,Commercial,Request formulary exception or bill patient
+P8,Service not on formulary,Commercial,Bill patient or appeal for medical necessity
+P9,Service not payable under plan,Commercial,Bill patient or write off
+P10,Patient has other insurance primary,Commercial,Submit to primary payer first then secondary
+P11,Pre-existing condition exclusion,Commercial,Bill patient or appeal
+P12,Service not in network,Commercial,Bill patient or appeal for in-network exception
+P13,Service not covered,Commercial,Bill patient with notice
+P14,Service not covered under plan,Commercial,Bill patient
+P15,Service requires prior authorization,Commercial|Medicare,Obtain authorization before resubmission
+P16,Service not payable under plan,Commercial,Bill patient
+P17,Procedure not payable,Commercial,Bill patient
+P18,Service not covered under plan benefits,Commercial,Bill patient
+P19,Service not covered,Commercial,Bill patient
+P20,Service not covered under plan,Commercial,Bill patient
+P21,Payment adjusted due to payer policy,Commercial,Adjust per payer policy; do not bill patient
+P22,Payment adjusted by payer policy,Commercial,Adjust per policy
+P23,Payment impacted by payer policy,Commercial,Adjust per policy
+P24,Payment reduced per payer policy,Commercial,Adjust per policy
+P25,Payment adjusted for policy,Commercial,Adjust per policy
+B7,Provider not certified/eligible to be paid,Medicare,Verify provider enrollment with Medicare; revalidate via PECOS
+B9,Patient is enrolled in a hospice,Medicare,Verify hospice election; submit with modifier GW
+B11,Claim lacks information for adjudication,Commercial|Medicare|Medicaid,Resubmit with requested information
+B12,Service not reasonable/necessary,Medicare,Append GA modifier if ABN signed; otherwise write off
+B13,Previously paid; payment included in another service,Medicare,No separate payment; do not rebill
+B14,Only one visit/consultation per provider per day,Medicare,Append modifier 25 if separately identifiable
+B15,Service not covered under dental benefits,Commercial,Bill medical insurance or patient
+B16,New patient qualifications not met,Medicare,Append modifier 25; verify new patient criteria
+B20,Procedure/service partially reduced/discounted,Medicare,Payment reflects multiple procedure reduction
+B22,This service is not covered,Commercial|Medicare,Bill patient or write off
+B23,Procedure billed is not authorized,Medicare,Obtain prior authorization before resubmission
