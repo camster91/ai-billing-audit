@@ -46,6 +46,16 @@ class FeedbackEntry:
     biller_id: str = "default_biller"
     modify_severity: str | None = None
     modify_category: str | None = None
+    # Optional "what should this have been" label supplied when a
+    # biller dismisses a finding (and labels what the right finding
+    # would have been). Mirrors the spec'd ``correct_finding`` field
+    # on the dismiss endpoint. Stored as a free-form dict so the
+    # biller can label a corrected severity, category, suggested
+    # code, or any combination. Persists to the FeedbackStore
+    # without breaking the hash chain (added to the row but NOT
+    # to the signed payload — see ``compute_signature``).
+    correct_finding: dict[str, Any] | None = None
+    note: str | None = None
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     previous_signature: str = ""
     cryptographic_signature: str = ""
@@ -177,6 +187,54 @@ class FeedbackStore:
             "category_changes": cat_changes,
             "encounters_affected": len(encs),
         }
+
+    def correct_finding_pairs(self) -> list[dict[str, Any]]:
+        """Return training pairs for dismissals that carry a ``correct_finding``.
+
+        Each row of the return is::
+
+            {
+              "encounter_id":    <str>,
+              "finding_id":      <str>,
+              "original":        {severity, rule_id, category, ...}  # from
+                                                                  # FeedbackEntry
+              "correct_finding": {severity?, category?, suggested_code?, ...}
+                              # what the biller says it should have been
+              "biller_id":       <str>,
+              "dismissed_at":    <iso timestamp>,
+            }
+
+        Skips dismissals without a ``correct_finding`` label (those are
+        the existing flow — unchanged). The result is the data the
+        training pipeline reads as the new "dismiss+correct" class
+        (a dismissed finding paired with the biller-supplied correct
+        label). Trainers can join ``original`` to the audit trail /
+        original prediction via ``(encounter_id, finding_id)``.
+
+        Order: most-recent first, deterministic on event_id tiebreak.
+        """
+        out: list[dict[str, Any]] = []
+        for e in self.read_all():
+            if e.action != "dismiss":
+                continue
+            if not e.correct_finding:
+                continue
+            out.append(
+                {
+                    "encounter_id": e.encounter_id,
+                    "finding_id": e.finding_id,
+                    "original": {
+                        "severity": e.severity,
+                        "rule_id": e.rule_id,
+                        "category": e.category,
+                    },
+                    "correct_finding": dict(e.correct_finding),
+                    "biller_id": e.biller_id,
+                    "dismissed_at": e.timestamp,
+                }
+            )
+        out.sort(key=lambda r: (r["dismissed_at"], r["encounter_id"] + ":" + r["finding_id"]), reverse=True)
+        return out
 
     def read_all(self) -> list[FeedbackEntry]:
         if not self._path.is_file():
@@ -348,6 +406,7 @@ def _row_to_entry(row: dict[str, Any]) -> FeedbackEntry:
         biller_id=row.get("biller_id", "default_biller"),
         modify_severity=row.get("modify_severity"),
         modify_category=row.get("modify_category"),
+        correct_finding=row.get("correct_finding"),
         event_id=row.get("event_id", uuid.uuid4().hex),
         previous_signature=row.get("previous_signature", ""),
         cryptographic_signature=row.get("cryptographic_signature", ""),

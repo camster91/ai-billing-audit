@@ -217,4 +217,112 @@ def test_stats_empty_when_no_entries(tmp_path: Path) -> None:
     s = store.stats()
     assert s["total"] == 0
     assert s["by_action"] == {}
-    assert s["by_rule_id"] == {}
+
+
+# ---------------------------------------------------------------------------
+# 4. correct_finding field on dismiss — the "what should this have been"
+#    label that the biller supplies when dismissing a flagged finding.
+#    Backward compat: dismisses without correct_finding keep the existing
+#    flow.
+# ---------------------------------------------------------------------------
+
+
+def test_dismiss_with_correct_finding_round_trips(store: FeedbackStore) -> None:
+    """A dismiss entry carrying a correct_finding label persists and reads back."""
+    label = {
+        "severity": "low",
+        "category": "documentation_gap",
+        "suggested_code": "03.04A",
+    }
+    e = _entry(
+        action="dismiss",
+        finding_id="f-9",
+        rule_id="R-MOD-25",
+        category="modifier_required",
+        severity="medium",
+        correct_finding=label,
+    )
+    store.append(e)
+    rows = store.read_for_encounter("enc-001")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r.action == "dismiss"
+    assert r.correct_finding == label
+    # Original severity/rule/category are preserved for the training join.
+    assert r.severity == "medium"
+    assert r.rule_id == "R-MOD-25"
+
+
+def test_dismiss_without_correct_finding_is_unchanged(store: FeedbackStore) -> None:
+    """Dismiss without correct_finding leaves the row backward-compatible."""
+    e = _entry(action="dismiss", finding_id="f-10")
+    store.append(e)
+    r = store.read_for_encounter("enc-001")[0]
+    assert r.correct_finding is None
+    assert r.action == "dismiss"
+
+
+def test_correct_finding_pairs_returns_dismiss_plus_label(store: FeedbackStore) -> None:
+    """``correct_finding_pairs()`` joins dismisses to the original prediction."""
+    store.append(
+        _entry(
+            action="dismiss",
+            finding_id="f-1",
+            rule_id="R-MOD-25",
+            category="modifier_required",
+            severity="medium",
+            correct_finding={
+                "severity": "low",
+                "category": "documentation_gap",
+                "suggested_code": "03.04A",
+            },
+        )
+    )
+    # Plain dismiss (no label) — must NOT appear in pairs.
+    store.append(_entry(action="dismiss", finding_id="f-2"))
+    # Plain accept — must NOT appear.
+    store.append(_entry(action="accept", finding_id="f-3"))
+    # Modify with label field (irrelevant; the helper filters on action=="dismiss")
+    store.append(
+        _entry(
+            action="modify",
+            finding_id="f-4",
+            correct_finding={"severity": "low"},
+        )
+    )
+
+    pairs = store.correct_finding_pairs()
+    assert len(pairs) == 1
+    p = pairs[0]
+    assert p["encounter_id"] == "enc-001"
+    assert p["finding_id"] == "f-1"
+    assert p["original"]["severity"] == "medium"
+    assert p["original"]["rule_id"] == "R-MOD-25"
+    assert p["original"]["category"] == "modifier_required"
+    assert p["correct_finding"]["severity"] == "low"
+    assert p["correct_finding"]["suggested_code"] == "03.04A"
+
+
+def test_correct_finding_pairs_empty_when_no_labels(store: FeedbackStore) -> None:
+    store.append(_entry(action="dismiss", finding_id="f-1"))
+    store.append(_entry(action="accept", finding_id="f-2"))
+    assert store.correct_finding_pairs() == []
+
+
+def test_chain_still_verifies_with_correct_finding_field(store: FeedbackStore) -> None:
+    """The new optional field must not break the existing hash chain."""
+    store.append(
+        _entry(
+            action="dismiss",
+            finding_id="f-1",
+            correct_finding={"severity": "low"},
+        )
+    )
+    store.append(
+        _entry(
+            action="dismiss",
+            finding_id="f-2",
+            correct_finding={"category": "documentation_gap"},
+        )
+    )
+    assert store.verify_chain() is True

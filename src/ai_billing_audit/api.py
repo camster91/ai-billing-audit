@@ -1320,6 +1320,7 @@ def create_app() -> FastAPI:
         modify_severity: str | None = None,
         modify_category: str | None = None,
         note: str | None = None,
+        correct_finding: dict[str, Any] | None = None,
     ) -> None:
         """Append one FeedbackEntry to the per-encounter learning-loop log."""
         try:
@@ -1336,14 +1337,6 @@ def create_app() -> FastAPI:
         else:
             ms, mc = None, None
         store = get_default_store()
-        # The FeedbackEntry dataclass has no explicit `note` field
-        # in the current schema (the rationale is conveyed via the
-        # modify_severity / modify_category diffs). To keep the
-        # ``_record_feedback`` signature forward-compatible with a
-        # future ``note`` column, we accept the kwarg here and stash
-        # it on the entry as an attribute if the dataclass supports
-        # it; otherwise it's silently dropped (no schema change
-        # forced on the existing feedback.py contract).
         entry_kwargs: dict = dict(
             encounter_id=encounter_id,
             finding_id=finding_id,
@@ -1355,11 +1348,13 @@ def create_app() -> FastAPI:
             modify_severity=ms,
             modify_category=mc,
         )
-        # Best-effort: if FeedbackEntry is forward-compatible and
-        # already exposes a `note` field, attach it.
+        # Forward-compatible: if FeedbackEntry has these fields, attach them.
         try:
             from dataclasses import fields as _dc_fields
-            if any(f.name == "note" for f in _dc_fields(FeedbackEntry)) and note:
+            field_names = {f.name for f in _dc_fields(FeedbackEntry)}
+            if "correct_finding" in field_names and correct_finding is not None:
+                entry_kwargs["correct_finding"] = correct_finding
+            if "note" in field_names and note is not None:
                 entry_kwargs["note"] = note
         except Exception:
             pass
@@ -1509,6 +1504,15 @@ def create_app() -> FastAPI:
         are accepted (``reason_category`` + ``reason_text``) and stored in
         the audit_actions row's ``note`` field — same shape as the
         encounter-level dismiss endpoint.
+
+        Also accepts an optional ``correct_finding`` (a free-form dict
+        with any of ``severity`` / ``category`` / ``suggested_code`` /
+        ``rule_id``) so the biller can label what the right finding
+        would have been. The label is persisted on the FeedbackEntry
+        as a separate field — the audit_actions row keeps the
+        existing schema. The new ``correct_finding_pairs()`` view on
+        the FeedbackStore joins these dismissals to the original
+        prediction for training (see ``docs/learning_loop.md``).
         """
         try:
             from .audit_actions import append as audit_append
@@ -1525,6 +1529,19 @@ def create_app() -> FastAPI:
         reason_text = str(body.get("reason_text", "") or "").strip()[:500]
         if reason_category and not _DISMISS_CATEGORIES.__contains__(reason_category):
             reason_category = ""
+        # ``correct_finding`` is an optional free-form dict. The biller
+        # is allowed to label any of: severity, category, suggested_code,
+        # rule_id, or a free-form ``note`` of their own. Validation is
+        # permissive — only the type-check is enforced. Missing or
+        # empty ``correct_finding`` keeps the dismiss endpoint exactly
+        # backward-compatible.
+        raw_correct = body.get("correct_finding")
+        correct_finding: dict[str, Any] | None = None
+        if isinstance(raw_correct, dict) and raw_correct:
+            correct_finding = {
+                str(k): (v if isinstance(v, (str, int, float, bool)) else str(v))
+                for k, v in raw_correct.items()
+            }
         note = ""
         if reason_category or reason_text:
             parts = []
@@ -1533,6 +1550,13 @@ def create_app() -> FastAPI:
             if reason_text:
                 parts.append(reason_text)
             note = " | ".join(parts)
+        if correct_finding:
+            # Persist a compact one-line summary into the audit_actions
+            # row's note for self-contained audit-trail readability.
+            cf_summary = ", ".join(
+                f"{k}={v}" for k, v in sorted(correct_finding.items())
+            )
+            note = f"{note} | correct: {cf_summary}" if note else f"correct: {cf_summary}"
         user_identifier = str(request.client.host if request.client else "anon")
         event = audit_append(
             action="dismiss",
@@ -1547,12 +1571,14 @@ def create_app() -> FastAPI:
             finding_id=finding_id,
             action="dismiss",
             user_identifier=user_identifier,
+            correct_finding=correct_finding,
         )
         return JSONResponse({
             "ok": True,
             "finding_id": finding_id,
             "action": "dismiss",
             "reason_category": reason_category,
+            "correct_finding_recorded": bool(correct_finding),
             "event": event,
         })
 
