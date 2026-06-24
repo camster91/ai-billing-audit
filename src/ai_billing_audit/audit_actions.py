@@ -133,6 +133,19 @@ def _read_last_signature() -> str:
     return last_sig
 
 
+# RBAC roles supported by the audit app. Multi-user team feature
+# (kanban t_846407c4): admin = office manager / clinic owner,
+# biller = full write access, viewer = read-only. The Next.js
+# portal's team management UI (kanban t_23bfd49c) is the source
+# of truth for the user/role table; the FastAPI audit app
+# enforces these roles via the per-request ``X-User-Id`` /
+# ``X-User-Role`` headers until a real auth integration lands.
+ROLE_ADMIN = "admin"
+ROLE_BILLER = "biller"
+ROLE_VIEWER = "viewer"
+VALID_ROLES = (ROLE_ADMIN, ROLE_BILLER, ROLE_VIEWER)
+
+
 def append(
     action: str,
     encounter_id: str,
@@ -142,6 +155,8 @@ def append(
     note: str | None = None,
     extra: dict[str, Any] | None = None,
     tenant_id: str | None = None,
+    user_id: str | None = None,
+    user_role: str | None = None,
 ) -> dict[str, Any]:
     """Append a new event to the audit trail and return the row.
 
@@ -157,6 +172,16 @@ def append(
             scope reads in /activity so one clinic can't see
             another's reviewer actions. None means the
             "default" tenant (which today is Acme Family Practice).
+        user_id: Multi-user team identifier (UUID from the Next.js
+            team management UI; kanban t_23bfd49c). Stored on the
+            row for cross-system audit joins; never null when the
+            request carries ``X-User-Id`` (the FastAPI middleware
+            enforces that for write actions). Additive — old rows
+            without ``user_id`` continue to verify cleanly because
+            the field is NOT in :data:`_CHAIN_FIELDS`.
+        user_role: One of "admin" / "biller" / "viewer". Stored
+            alongside ``user_id`` for forensics; also NOT in the
+            chain hash. Same backward-compat guarantee.
 
     Returns the appended row including cryptographic_signature.
     """
@@ -184,6 +209,17 @@ def append(
         "data_elements": data_elements,
         "model_run_id": "",
     }
+    # Multi-user team RBAC: ``user_id`` + ``user_role`` are ADDITIVE
+    # row fields. We deliberately keep them OUT of :data:`_CHAIN_FIELDS`
+    # so that old audit rows (written before the kanban t_846407c4
+    # feature) continue to verify cleanly — the chain hash shape is
+    # unchanged. The fields are JSON-serialized alongside the row so
+    # privacy-officer / forensic queries can join ``user_id`` back to
+    # the Next.js team management table.
+    if user_id:
+        row["user_id"] = str(user_id)
+    if user_role:
+        row["user_role"] = str(user_role)
     row = _normalize_row(row)
 
     # Append (line-by-line, JSONL)
