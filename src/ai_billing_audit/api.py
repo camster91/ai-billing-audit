@@ -33,6 +33,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import time
 import zipfile
 from html import escape
@@ -52,6 +53,7 @@ from ai_billing_audit.demo_registry import (
     load_encounter_record,
 )
 from ai_billing_audit.job_queue import get_default_queue
+from ai_billing_audit.zorva_context import lookup_somb_descriptor, lookup_somb_fee
 from ai_billing_audit.x12_parser import (
     X12ParseError,
     parse_837p,
@@ -238,6 +240,67 @@ def _finding_rule_ids(finding: dict[str, Any]) -> list[str]:
     return out
 
 
+def _codes_from_finding(finding: dict[str, Any]) -> list[str]:
+    """Extract SOMB-style codes from a finding's suggested_code field.
+
+    The auditor emits ``suggested_code`` strings like "03.04A" or
+    "08.19A (45-min psychotherapy)" or even phrases like
+    "telehealth modifier". This pulls out the SOMB-shaped tokens
+    (uppercase letter + digits + optional trailing letter, e.g.
+    "03.04A", "08.19A", "13.59B") so we can look them up against
+    the SOMB fee schedule. Returns a list (possibly empty) of
+    candidate codes in the order they appear.
+
+    Phrases with no SOMB-shaped token (e.g. "telehealth modifier",
+    "modifier 25") come back as an empty list — the caller then
+    falls back to the rule's hardcoded estimated_dollar.
+    """
+    suggested = str(finding.get("suggested_code") or "").strip()
+    if not suggested:
+        return []
+    # SOMB codes look like: 2-3 digits, a dot, 2 digits, an optional letter.
+    # Match the head token before any parenthetical or punctuation.
+    # We use a permissive regex to be robust to "03.04A (comprehensive …)".
+    head = suggested.split("(", 1)[0].strip()
+    if not head:
+        return []
+    pattern = re.compile(r"\b\d{2,3}\.\d{1,2}[A-Z]?\b")
+    matches = pattern.findall(head.upper())
+    # Also pull off bare modifier / premium keywords that have a
+    # sentinel entry in the schedule.
+    extras: list[str] = []
+    upper = head.upper()
+    if "TELEHEALTH" in upper:
+        extras.append("TELEHEALTH")
+    if "CMGP" in upper or "CHRONIC DISEASE MANAGEMENT" in upper:
+        extras.append("CMGP")
+    if "MODIFIER -25" in upper or "MODIFIER 25" in upper or "MOD-25" in upper:
+        extras.append("MOD25")
+    if "AFTER-HOURS" in upper or "AFTER HOURS" in upper:
+        extras.append("AFTER_HOURS")
+    out: list[str] = []
+    seen: set[str] = set()
+    for c in matches + extras:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def _best_somb_fee(codes: list[str]) -> tuple[float | None, str | None, str | None]:
+    """Look up the first SOMB fee / descriptor that matches any of ``codes``.
+
+    Returns ``(fee, code_used, descriptor)``. When no code in ``codes``
+    is in the schedule, all three are ``None``. The caller decides
+    whether to use the fee or fall back to the hardcoded estimate.
+    """
+    for c in codes:
+        fee = lookup_somb_fee(c)
+        if fee is not None:
+            return fee, c, lookup_somb_descriptor(c)
+    return None, None, None
+
+
 def compute_revenue_opportunities(
     findings: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -245,7 +308,15 @@ def compute_revenue_opportunities(
 
     Each returned dict carries the original finding fields plus:
         - ``rule_name``           human-readable rule label
-        - ``estimated_dollar``    rough SOMB uplift estimate (float)
+        - ``estimated_dollar``    SOMB-derived uplift estimate (float)
+        - ``somh_fee``            fee from SOMB_FEE_SCHEDULE, or None
+        - ``somh_code``           which SOMB code we priced, or None
+        - ``somh_descriptor``     short descriptor for the priced code, or None
+        - ``somh_confidence``     "high" / "medium" / "low" — confidence of
+                                  the priced value (always None when the
+                                  hardcoded fallback was used)
+        - ``estimated_source``    "somb_schedule" or "rule_default" — which
+                                  way the dollar figure was derived
         - ``suggested_action``    one-line biller instruction
         - ``opportunity_rule_id`` the rule_id that qualified it (canonical)
 
@@ -253,6 +324,13 @@ def compute_revenue_opportunities(
     biggest opportunities are listed first.
 
     Findings with no matching rule_id are dropped.
+
+    Dollar estimate precedence (per finding):
+        1. If ``suggested_code`` contains a SOMB-shaped token (or a
+           recognized sentinel like TELEHEALTH / CMGP / MOD25) that
+           exists in ``SOMB_FEE_SCHEDULE``, use that fee.
+        2. Otherwise fall back to the rule's hardcoded
+           ``estimated_dollar``. Unmapped codes never fabricate a fee.
     """
     opportunities: list[dict[str, Any]] = []
     for f in findings:
@@ -263,8 +341,32 @@ def compute_revenue_opportunities(
             enriched = dict(f)
             enriched["opportunity_rule_id"] = rid
             enriched["rule_name"] = meta["rule_name"]
-            enriched["estimated_dollar"] = float(meta["estimated_dollar"])
             enriched["suggested_action"] = meta["suggested_action"]
+
+            # Try SOMB schedule first, then fall back to the rule's
+            # hardcoded estimate.
+            codes = _codes_from_finding(f)
+            somb_fee, somb_code, somb_descriptor = _best_somb_fee(codes)
+            if somb_fee is not None and somb_fee > 0:
+                enriched["estimated_dollar"] = float(somb_fee)
+                enriched["somb_fee"] = float(somb_fee)
+                enriched["somb_code"] = somb_code
+                enriched["somb_descriptor"] = somb_descriptor
+                enriched["somb_confidence"] = None
+                enriched["estimated_source"] = "somb_schedule"
+            else:
+                # SOMB has no number for this code (modifier -25,
+                # unmapped telehealth add-on, etc.). Fall back to
+                # the rule's hardcoded estimate and annotate the
+                # confidence as None so the UI can flag it.
+                fallback = float(meta["estimated_dollar"])
+                enriched["estimated_dollar"] = fallback
+                enriched["somb_fee"] = None
+                enriched["somb_code"] = None
+                enriched["somb_descriptor"] = None
+                enriched["somb_confidence"] = None
+                enriched["estimated_source"] = "rule_default"
+
             opportunities.append(enriched)
             # One opportunity per finding — the first matching rule_id wins.
             break
@@ -617,6 +719,22 @@ def create_app() -> FastAPI:
                     "tier": "low",
                     "top_risk": None,
                 }
+            # Per-encounter revenue opportunity summary. Powers the
+            # "$$ opportunity" badge on the home page card so the
+            # biller can scan for highest-value encounters first.
+            # Tier thresholds: green < $50, yellow $50-200, red >= $200.
+            opp = compute_revenue_opportunities(visible_for_card)
+            opp_total = round(
+                sum(o.get("estimated_dollar", 0.0) for o in opp), 2
+            )
+            if opp_total >= 200:
+                opp_tier = "high"
+            elif opp_total >= 50:
+                opp_tier = "medium"
+            elif opp_total > 0:
+                opp_tier = "low"
+            else:
+                opp_tier = None
             cards.append(
                 {
                     "encounter_id": entry.encounter_id,
@@ -626,6 +744,9 @@ def create_app() -> FastAPI:
                     "n_findings": n_findings,
                     "available": record is not None,
                     "denial_risk": card_risk,
+                    "revenue_opportunity_total": opp_total,
+                    "revenue_opportunity_tier": opp_tier,
+                    "revenue_opportunity_count": len(opp),
                 }
             )
         # Filter chips (counts) and clean-rate hero (metrics). Both

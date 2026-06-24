@@ -1,0 +1,461 @@
+{
+  "01.01A": {
+    "category": "procedure",
+    "code": "01.01A",
+    "confidence": "low",
+    "descriptor": "Skin biopsy \u2014 punch / shave (single lesion)",
+    "fee": 35.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "01.02A": {
+    "category": "procedure",
+    "code": "01.02A",
+    "confidence": "low",
+    "descriptor": "Excisional biopsy \u2014 skin lesion (single)",
+    "fee": 67.8,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "01.14A": {
+    "category": "procedure",
+    "code": "01.14A",
+    "confidence": "low",
+    "descriptor": "Ear piercing \u2014 in-office (per ear)",
+    "fee": 11.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.01A": {
+    "category": "visit",
+    "code": "03.01A",
+    "confidence": "medium",
+    "descriptor": "Brief assessment \u2014 office visit (<10 min)",
+    "fee": 36.45,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.02A": {
+    "category": "visit",
+    "code": "03.02A",
+    "confidence": "medium",
+    "descriptor": "Limited assessment \u2014 office visit (~10\u201315 min)",
+    "fee": 52.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.03A": {
+    "category": "consult",
+    "code": "03.03A",
+    "confidence": "medium",
+    "descriptor": "Consultation \u2014 referred patient (specialist)",
+    "fee": 100.1,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.04A": {
+    "category": "visit",
+    "code": "03.04A",
+    "confidence": "medium",
+    "descriptor": "Comprehensive assessment \u2014 office visit (15+ min)",
+    "fee": 87.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.05A": {
+    "category": "visit",
+    "code": "03.05A",
+    "confidence": "medium",
+    "descriptor": "Minor assessment \u2014 focused problem visit",
+    "fee": 49.85,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.06A": {
+    "category": "visit",
+    "code": "03.06A",
+    "confidence": "low",
+    "descriptor": "Complete examination \u2014 periodic health assessment",
+    "fee": 110.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.07A": {
+    "category": "visit",
+    "code": "03.07A",
+    "confidence": "low",
+    "descriptor": "Comprehensive annual visit (adult preventive)",
+    "fee": 137.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "03.08A": {
+    "category": "visit",
+    "code": "03.08A",
+    "confidence": "low",
+    "descriptor": "After-hours / emergency visit premium (add-on)",
+    "fee": 32.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "04.01A": {
+    "category": "visit",
+    "code": "04.01A",
+    "confidence": "low",
+    "descriptor": "Prenatal visit \u2014 routine antenatal care",
+    "fee": 47.6,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "04.02A": {
+    "category": "visit",
+    "code": "04.02A",
+    "confidence": "low",
+    "descriptor": "Postnatal visit \u2014 routine postpartum check",
+    "fee": 47.6,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "07.38A": {
+    "category": "procedure",
+    "code": "07.38A",
+    "confidence": "medium",
+    "descriptor": "Pap smear \u2014 cervical cytology collection",
+    "fee": 11.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "07.39A": {
+    "category": "procedure",
+    "code": "07.39A",
+    "confidence": "low",
+    "descriptor": "Pelvic examination \u2014 bimanual, in-office",
+    "fee": 24.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "07.46A": {
+    "category": "procedure",
+    "code": "07.46A",
+    "confidence": "low",
+    "descriptor": "IUD insertion \u2014 intrauterine device",
+    "fee": 78.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "08.19A": {
+    "category": "psychotherapy",
+    "code": "08.19A",
+    "confidence": "medium",
+    "descriptor": "Psychotherapy \u2014 45 min (physician-delivered)",
+    "fee": 96.75,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "08.19B": {
+    "category": "psychotherapy",
+    "code": "08.19B",
+    "confidence": "medium",
+    "descriptor": "Psychotherapy \u2014 30 min (physician-delivered)",
+    "fee": 71.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "08.19C": {
+    "category": "psychotherapy",
+    "code": "08.19C",
+    "confidence": "medium",
+    "descriptor": "Psychotherapy \u2014 60 min (physician-delivered)",
+    "fee": 134.8,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "08.19D": {
+    "category": "psychotherapy",
+    "code": "08.19D",
+    "confidence": "low",
+    "descriptor": "Psychotherapy \u2014 75 min (physician-delivered)",
+    "fee": 168.4,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "08.19E": {
+    "category": "psychotherapy",
+    "code": "08.19E",
+    "confidence": "low",
+    "descriptor": "Group psychotherapy \u2014 per patient (per 90 min session)",
+    "fee": 32.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.01A": {
+    "category": "diagnostic",
+    "code": "09.01A",
+    "confidence": "medium",
+    "descriptor": "Electrocardiogram (ECG / EKG) \u2014 12-lead, interpretation",
+    "fee": 16.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.01B": {
+    "category": "diagnostic",
+    "code": "09.01B",
+    "confidence": "low",
+    "descriptor": "ECG \u2014 rhythm strip only (interpretation)",
+    "fee": 9.75,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.13A": {
+    "category": "diagnostic",
+    "code": "09.13A",
+    "confidence": "medium",
+    "descriptor": "Spirometry \u2014 full flow-volume loop + interpretation",
+    "fee": 24.3,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.13B": {
+    "category": "diagnostic",
+    "code": "09.13B",
+    "confidence": "low",
+    "descriptor": "Peak flow measurement (interpretation only)",
+    "fee": 6.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.14A": {
+    "category": "diagnostic",
+    "code": "09.14A",
+    "confidence": "low",
+    "descriptor": "Ambulatory blood pressure monitoring (24 hr, interpretation)",
+    "fee": 28.8,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.21A": {
+    "category": "diagnostic",
+    "code": "09.21A",
+    "confidence": "low",
+    "descriptor": "Urinalysis \u2014 dipstick, in-office (interpretation)",
+    "fee": 5.3,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "09.26A": {
+    "category": "diagnostic",
+    "code": "09.26A",
+    "confidence": "low",
+    "descriptor": "Hemoglobin A1c \u2014 point-of-care (interpretation)",
+    "fee": 8.85,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.42A": {
+    "category": "injection",
+    "code": "13.42A",
+    "confidence": "medium",
+    "descriptor": "Therapeutic injection \u2014 single IM/SC (excl immun)",
+    "fee": 14.95,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.42B": {
+    "category": "injection",
+    "code": "13.42B",
+    "confidence": "medium",
+    "descriptor": "Therapeutic injection \u2014 IV push (single drug)",
+    "fee": 22.4,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.43A": {
+    "category": "injection",
+    "code": "13.43A",
+    "confidence": "medium",
+    "descriptor": "Joint / bursa injection (in-office)",
+    "fee": 38.6,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.44A": {
+    "category": "injection",
+    "code": "13.44A",
+    "confidence": "low",
+    "descriptor": "Trigger-point injection (per muscle group)",
+    "fee": 24.1,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59A": {
+    "category": "immunization",
+    "code": "13.59A",
+    "confidence": "medium",
+    "descriptor": "Pneumococcal vaccination (adult, per dose)",
+    "fee": 12.1,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59B": {
+    "category": "immunization",
+    "code": "13.59B",
+    "confidence": "medium",
+    "descriptor": "Influenza vaccination (per dose)",
+    "fee": 9.8,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59C": {
+    "category": "immunization",
+    "code": "13.59C",
+    "confidence": "low",
+    "descriptor": "COVID-19 vaccination (per dose)",
+    "fee": 13.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59D": {
+    "category": "immunization",
+    "code": "13.59D",
+    "confidence": "low",
+    "descriptor": "Tetanus / dT / Tdap booster (adult)",
+    "fee": 11.4,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59E": {
+    "category": "immunization",
+    "code": "13.59E",
+    "confidence": "low",
+    "descriptor": "Hepatitis B vaccination series (per dose)",
+    "fee": 12.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59F": {
+    "category": "immunization",
+    "code": "13.59F",
+    "confidence": "low",
+    "descriptor": "HPV vaccination (per dose)",
+    "fee": 13.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59G": {
+    "category": "immunization",
+    "code": "13.59G",
+    "confidence": "low",
+    "descriptor": "MMR / varicella / MMRV vaccination (per dose)",
+    "fee": 11.8,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "13.59H": {
+    "category": "immunization",
+    "code": "13.59H",
+    "confidence": "low",
+    "descriptor": "Shingles (zoster) vaccination \u2014 adult 50+",
+    "fee": 13.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "98.01A": {
+    "category": "procedure",
+    "code": "98.01A",
+    "confidence": "low",
+    "descriptor": "Removal of cerumen \u2014 irrigation, unilateral",
+    "fee": 17.4,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "98.03A": {
+    "category": "procedure",
+    "code": "98.03A",
+    "confidence": "low",
+    "descriptor": "Removal of cerumen \u2014 instrumentation, unilateral",
+    "fee": 24.1,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "98.12A": {
+    "category": "procedure",
+    "code": "98.12A",
+    "confidence": "low",
+    "descriptor": "Simple laceration repair \u2014 face, \u22642.5 cm",
+    "fee": 78.5,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "98.22A": {
+    "category": "procedure",
+    "code": "98.22A",
+    "confidence": "medium",
+    "descriptor": "Incision & drainage \u2014 abscess / cyst, simple",
+    "fee": 52.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "98.40A": {
+    "category": "procedure",
+    "code": "98.40A",
+    "confidence": "low",
+    "descriptor": "Cryotherapy \u2014 benign skin lesion (per lesion, \u22645)",
+    "fee": 14.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "AFTER_HOURS": {
+    "category": "premium",
+    "code": "AFTER_HOURS",
+    "confidence": "low",
+    "descriptor": "After-hours premium (evenings / weekends)",
+    "fee": 24.4,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "CMGP": {
+    "category": "premium",
+    "code": "CMGP",
+    "confidence": "medium",
+    "descriptor": "Chronic Disease Management premium (per visit)",
+    "fee": 20.55,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "MOD25": {
+    "category": "modifier",
+    "code": "MOD25",
+    "confidence": "high",
+    "descriptor": "Modifier -25 unlock \u2014 E/M + same-day procedure (no $ on its own)",
+    "fee": 0.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "MOD26": {
+    "category": "modifier",
+    "code": "MOD26",
+    "confidence": "high",
+    "descriptor": "Modifier -26 \u2014 professional component (no $ on its own)",
+    "fee": 0.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "NOREFS": {
+    "category": "premium",
+    "code": "NOREFS",
+    "confidence": "low",
+    "descriptor": "Northern / rural isolation premium (variable)",
+    "fee": 0.0,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  },
+  "TELEHEALTH": {
+    "category": "premium",
+    "code": "TELEHEALTH",
+    "confidence": "medium",
+    "descriptor": "Telehealth premium \u2014 virtual visit add-on",
+    "fee": 15.2,
+    "last_updated": "2026-01-15",
+    "source": "training-data-2026-01"
+  }
+}
