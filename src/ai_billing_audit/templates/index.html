@@ -55,6 +55,45 @@
 </section>
 {% endif %}
 
+{# Per-clinic F1 widget — shows the "insufficient data" empty state
+   when the active clinic has fewer than 3 feedback events in the
+   rolling 30-day window (per INSUFFICIENT_DATA_THRESHOLD). The
+   ``per_clinic_f1_widget`` dict is pre-computed server-side by
+   api.py (see insufficient_data_state() in per_clinic_f1.py) so
+   we don't depend on a JS fetch for first paint. #}
+<section class="pcf1-widget" aria-label="Your clinic's model F1">
+  <div class="pcf1-widget__head">
+    <span class="pcf1-widget__eyebrow">Per-clinic F1</span>
+    <span class="pcf1-widget__clinic mono">{{ per_clinic_f1_widget.clinic_id }}</span>
+  </div>
+
+  {% if per_clinic_f1_widget.is_insufficient %}
+    <div class="pcf1-widget__empty">
+      <h3 class="pcf1-widget__empty-title">
+        {{ per_clinic_f1_widget.headline }}
+      </h3>
+      <p class="pcf1-widget__empty-message">
+        {{ per_clinic_f1_widget.message }}
+      </p>
+      <p class="pcf1-widget__empty-meta muted small">
+        <span class="mono">{{ per_clinic_f1_widget.total_support }}</span>
+        / {{ per_clinic_f1_widget.threshold }} feedback events in the
+        last {{ per_clinic_f1_widget.window_days }} days.
+      </p>
+      <p class="pcf1-widget__empty-cta">
+        {{ per_clinic_f1_widget.cta }}
+      </p>
+    </div>
+  {% else %}
+    <div class="pcf1-widget__ready">
+      <p class="muted small">
+        Per-clinic F1 widget is wired up. Detailed per-rule table lives at
+        <code>/api/dashboard/per_clinic_f1</code>.
+      </p>
+    </div>
+  {% endif %}
+</section>
+
 {% if metrics and metrics.ready %}
 <section class="clean-rate-hero" aria-label="This month at a glance">
   <div class="clean-rate-hero__main">

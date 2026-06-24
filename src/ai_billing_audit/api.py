@@ -1012,6 +1012,41 @@ def create_app() -> FastAPI:
                 "month_label": "",
                 "ready": False,
             }
+        # Per-clinic F1 widget — same data the
+        # ``/api/dashboard/per_clinic_f1`` JSON endpoint serves, but
+        # rendered server-side so the dashboard shows the
+        # "insufficient data" empty state on first paint without
+        # waiting for the JS fetch. The try/except fallback mirrors
+        # the rest of the dashboard: missing module / broken
+        # feedback log → empty state, not a 500.
+        try:
+            from .per_clinic_f1 import (
+                insufficient_data_state,
+                per_rule_metrics as _pcf1_per_rule,
+            )
+            _pcf1_clinic = _TENANT_ID or "default_biller"
+            _pcf1_per_rule = _pcf1_per_rule(clinic_id=_pcf1_clinic, days=30)
+            per_clinic_f1_widget = insufficient_data_state(
+                clinic_id=_pcf1_clinic,
+                per_rule=_pcf1_per_rule,
+                window_days=30,
+            )
+        except Exception:
+            per_clinic_f1_widget = {
+                "is_insufficient": True,
+                "total_support": 0,
+                "threshold": 3,
+                "window_days": 30,
+                "clinic_id": "default_biller",
+                "headline": "Insufficient data — need a few more reviews",
+                "message": (
+                    "The per-clinic F1 number isn't available yet. "
+                    "Once a biller has accepted or dismissed a few "
+                    "findings, this tile will start showing your "
+                    "model's accuracy for this clinic."
+                ),
+                "cta": "Review a few findings to start measuring.",
+            }
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -1027,6 +1062,7 @@ def create_app() -> FastAPI:
                 "top_missed_revenue_rules": top_missed_revenue_rules,
                 "missed_revenue_month_label": missed_revenue_month_label,
                 "monthly_revenue_kpi": monthly_revenue_kpi,
+                "per_clinic_f1_widget": per_clinic_f1_widget,
             },
         )
 
@@ -2830,6 +2866,7 @@ def create_app() -> FastAPI:
         """
         try:
             from .per_clinic_f1 import (
+                insufficient_data_state,
                 list_clinics,
                 per_rule_metrics,
                 weekly_f1,
@@ -2871,6 +2908,17 @@ def create_app() -> FastAPI:
             (1.0 - v["precision"]) * v["support"] for v in per_rule.values()
         )
         total_sup = sum(v["support"] for v in per_rule.values())
+        # Empty-state: if the clinic has fewer than the threshold
+        # feedback events in the window, surface the friendly
+        # "insufficient data" payload so the UI doesn't render a
+        # misleading 0% F1 tile. The actual clinic_f1 rollup is
+        # still computed below so the dashboard can transition
+        # smoothly when the threshold is crossed on the next render.
+        empty_state = insufficient_data_state(
+            clinic_id=clinic_id,
+            per_rule=per_rule,
+            window_days=days,
+        )
         if total_sup == 0:
             clinic_f1 = 0.0
         else:
@@ -2887,6 +2935,8 @@ def create_app() -> FastAPI:
             "clinic_f1": round(clinic_f1, 4),
             "n_rules": len(per_rule),
             "n_feedback": total_sup,
+            "insufficient_data": empty_state["is_insufficient"],
+            "empty_state": empty_state,
         })
 
     # ──────────────────────── tenant data export / deletion ─────────────────

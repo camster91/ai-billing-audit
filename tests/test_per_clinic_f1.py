@@ -35,6 +35,8 @@ from ai_billing_audit.feedback import (  # noqa: E402
     FeedbackStore,
 )
 from ai_billing_audit.per_clinic_f1 import (  # noqa: E402
+    INSUFFICIENT_DATA_THRESHOLD,
+    insufficient_data_state,
     per_rule_metrics,
     weekly_f1,
 )
@@ -247,3 +249,70 @@ def test_no_feedback_in_window_returns_empty_state(store: FeedbackStore) -> None
     # correctly does NOT offer "biller-Z" in the picker.
     # (This is enforced by list_clinics() in per_clinic_f1.py —
     # covered indirectly via the store-roundtrip above.)
+
+
+def test_insufficient_data_state_below_threshold() -> None:
+    """Empty-state helper flags a clinic with n<threshold feedback events.
+
+    Pure unit test: doesn't touch the store or the LLM. Verifies the
+    helper that backs both the per_clinic_f1 dashboard and the
+    monthly report returns the friendly "insufficient data" payload
+    when total support is below the threshold, and the "ok" payload
+    when it's at or above.
+    """
+    # 1. Empty per_rule -> insufficient (total_support=0 < threshold).
+    s0 = insufficient_data_state(
+        clinic_id="clinic-A", per_rule={}, window_days=30,
+    )
+    assert s0["is_insufficient"] is True
+    assert s0["total_support"] == 0
+    assert s0["threshold"] == INSUFFICIENT_DATA_THRESHOLD
+    assert s0["clinic_id"] == "clinic-A"
+    assert s0["window_days"] == 30
+    assert "Not enough feedback" in s0["message"]
+    assert "Insufficient data" in s0["headline"]
+    assert "Review a few findings" in s0["cta"]
+    assert "3 more" in s0["message"], (
+        f"expected '3 more' (threshold - 0) in message, got: {s0['message']!r}"
+    )
+
+    # 2. Below threshold (n=2 < 3) -> still insufficient, message
+    #    should report "1 more" needed.
+    per_rule_below = {
+        "rule_ahcip_em_level":     {"precision": 0.8, "recall": 0.5, "f1": 0.62, "support": 1},
+        "rule_ahcip_dx_linkage":   {"precision": 1.0, "recall": 0.5, "f1": 0.67, "support": 1},
+    }
+    s2 = insufficient_data_state(
+        clinic_id="clinic-B", per_rule=per_rule_below, window_days=30,
+    )
+    assert s2["is_insufficient"] is True
+    assert s2["total_support"] == 2
+    assert "1 more" in s2["message"], (
+        f"expected '1 more' in message, got: {s2['message']!r}"
+    )
+
+    # 3. At threshold (n=3) -> NOT insufficient, message is empty.
+    per_rule_at = {
+        "rule_a": {"precision": 1.0, "recall": 0.5, "f1": 0.67, "support": 3},
+    }
+    s3 = insufficient_data_state(
+        clinic_id="clinic-C", per_rule=per_rule_at, window_days=30,
+    )
+    assert s3["is_insufficient"] is False
+    assert s3["total_support"] == 3
+    assert s3["message"] == "", (
+        f"expected empty message when at-or-above threshold, got: {s3['message']!r}"
+    )
+
+    # 4. Above threshold -> NOT insufficient, even with low-precision
+    #    rules. The helper should NOT conflate "low data" with "low
+    #    precision" — that's the per-rule table's job to display.
+    per_rule_above = {
+        f"rule_{i}": {"precision": 0.5, "recall": 0.5, "f1": 0.5, "support": 2}
+        for i in range(5)
+    }
+    s4 = insufficient_data_state(
+        clinic_id="clinic-D", per_rule=per_rule_above, window_days=30,
+    )
+    assert s4["is_insufficient"] is False
+    assert s4["total_support"] == 10

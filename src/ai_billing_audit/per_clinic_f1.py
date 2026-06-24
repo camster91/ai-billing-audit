@@ -391,3 +391,83 @@ def list_clinics(
             "biller_count": len(billers[clinic_id]),
         })
     return out
+
+
+# Minimum feedback events before per-clinic metrics become meaningful.
+# Below this threshold the dashboard renders the "insufficient data"
+# empty state instead of a misleading 0% F1 number. The threshold is
+# intentionally small (3 events) so a clinic that has just started
+# reviewing findings isn't stuck on the empty state forever — once a
+# single biller has clicked accept/dismiss/modify three times we
+# have enough signal to show *some* number, even if it's noisy.
+INSUFFICIENT_DATA_THRESHOLD = 3
+
+
+def insufficient_data_state(
+    *,
+    clinic_id: str,
+    per_rule: Mapping[str, Mapping[str, float]],
+    window_days: int,
+) -> dict[str, Any]:
+    """Return the empty-state payload for the per-clinic F1 dashboard.
+
+    Used by both the per_clinic_f1 dashboard and the monthly report
+    so the same copy / threshold logic lives in one place.
+
+    The dashboard / report should call this on every render and
+    branch on ``is_insufficient`` — if True, render the friendly
+    empty state ("need 3+ feedback events for an F1 number")
+    instead of the per-rule table.
+
+    Returns
+    -------
+    dict with keys:
+
+    * ``is_insufficient`` (bool) — True iff the clinic has fewer than
+      :data:`INSUFFICIENT_DATA_THRESHOLD` feedback events in the
+      window.
+    * ``total_support`` (int) — total feedback events that fed into
+      the per-rule metrics (so the UI can show "n=2, need n>=3").
+    * ``threshold`` (int) — the threshold (echo of
+      :data:`INSUFFICIENT_DATA_THRESHOLD`) so the UI doesn't have
+      to hardcode the constant.
+    * ``headline`` (str) — short headline for the empty state.
+    * ``message`` (str) — one-paragraph explanation, suitable for
+      dropping into the dashboard's empty-state div.
+    * ``cta`` (str) — call-to-action for the empty state (currently
+      "Review a few findings to start measuring your model's
+      accuracy.").
+
+    The function is pure and side-effect-free; safe to call from
+    templates or the API layer.
+    """
+    total_support = sum(int(v.get("support", 0)) for v in per_rule.values())
+    is_insufficient = total_support < INSUFFICIENT_DATA_THRESHOLD
+    if is_insufficient:
+        needed = INSUFFICIENT_DATA_THRESHOLD - total_support
+        needed_msg = f"{needed} more"
+        message = (
+            f"Not enough feedback yet to calculate an F1 number for "
+            f"this clinic in the last {window_days} days. We need at "
+            f"least {INSUFFICIENT_DATA_THRESHOLD} feedback events "
+            f"(accept / dismiss / modify) before the per-clinic F1 "
+            f"metric is meaningful — below that threshold the number "
+            f"is dominated by noise. You've got {total_support}; "
+            f"that's {needed_msg} short."
+        )
+    else:
+        needed_msg = ""
+        message = ""
+    return {
+        "is_insufficient": is_insufficient,
+        "total_support": total_support,
+        "threshold": INSUFFICIENT_DATA_THRESHOLD,
+        "window_days": window_days,
+        "clinic_id": clinic_id,
+        "headline": "Insufficient data — need a few more reviews",
+        "message": message,
+        "cta": (
+            "Review a few findings to start measuring your model's "
+            "accuracy for this clinic."
+        ),
+    }
