@@ -118,19 +118,18 @@ const ENTRIES: ReadonlyArray<Entry> = [
     date: "2026-05-30",
     version: "2026.05.C",
     category: "compliance",
-    title: "Annual SOC 2 Type I report renewed (FY2026)",
+    title: "Certification roadmap update (FY2026)",
     summary:
-      "FY2026 SOC 2 Type I report is available under NDA via the Trust page.",
+      "SOC 2 Type II and ISO 27001 are on the certification roadmap; neither is held today. We are publishing this honestly while preparation is in progress.",
     body:
-      "The renewal covers the 12-month observation period ending 2026-03-31. " +
-      "No exceptions were noted. The Trust Center also picked up a refreshed " +
-      "HIA / PIPEDA crosswalk and an updated Washington My Health My Data " +
-      "Act addendum for US pilot clinics.",
+      "We have updated /security and /trust so the marketing site no longer claims SOC 2 Type II or ISO 27001 as held certifications. " +
+      "Both are on our certification roadmap with a target observation window in the next reporting cycle. The data centre provider's own attestations (where they exist) " +
+      "remain documented in the executed BAA / affiliate agreement. Until a third-party report is issued, we will not represent either framework as a current certification.",
     audience: "privacy",
     action:
-      "Privacy officers: re-request access to the SOC 2 report via the Trust page if your copy is older than 12 months.",
+      "Privacy officers: the security page now lists current posture separately from certifications on the roadmap. Ask your account contact for a copy of any third-party reports we do hold (e.g., the hosting provider's attestations).",
     severity: "n/a",
-    href: "/trust",
+    href: "/security",
   },
   {
     date: "2026-05-12",

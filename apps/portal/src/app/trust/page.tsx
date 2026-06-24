@@ -35,7 +35,7 @@ const SECTIONS: { id: string; title: string; body: string[]; cta?: string }[] = 
     title: "Where your data lives",
     body: [
       "Your claims, your clinical notes, and your audit results live in a single region that you choose at sign-up. Canadian clinics go to a Canadian data centre; US clinics go to a US region that meets HIPAA. We do not silently copy your data to a second region, and we do not move it after you sign up without writing to you first.",
-      "The data centre itself is a real, audited building — not a closet. The provider holds SOC 2 Type II and ISO 27001. The exact provider, region, and certifications are written into the contract your lawyer signs.",
+      "The data centre is a real, professionally operated building — not a closet. It provides physical security, redundant power and cooling, and network connectivity at scale. The exact provider, region, and any third-party attestations they currently hold are written into the contract your lawyer signs.",
       "Backups live in the same region as the live data. They are encrypted, and only a small number of named operators can read them — and only when there is a written reason on a ticket.",
     ],
   },
@@ -94,6 +94,35 @@ export default function TrustPage() {
             </div>
           </section>
         ))}
+
+        <section className={styles.card} aria-labelledby="t-posture">
+          <div className={styles.cardHead}>
+            <span className={styles.cardNumber}>4</span>
+            <h2 id="t-posture" className={styles.cardTitle}>
+              What is live today (and what is on the roadmap)
+            </h2>
+          </div>
+          <div className={styles.cardBody}>
+            <p>
+              <strong>Live today:</strong> TLS 1.3 in transit, AES-256 at
+              rest, append-only hash-chain audit trail with a built-in
+              verify_chain() walker, per-tenant role-scoped access
+              (admin / biller / viewer), two-person approval on exports
+              and re-audits, and salted SHA-256 hashing of patient
+              identifiers before they reach storage.
+            </p>
+            <p>
+              <strong>On our certification roadmap (not currently held):</strong>{" "}
+              SOC 2 Type II, ISO 27001, ISO 27017, and ISO 27018. We will
+              publish third-party reports on the{" "}
+              <Link href="/security" className={styles.inlineLink}>
+                security page
+              </Link>{" "}
+              as they are issued. Until then, we will not represent any of
+              these as a current certification.
+            </p>
+          </div>
+        </section>
 
         <section className={styles.ctaSection} aria-labelledby="t-cta">
           <h2 id="t-cta">Want the formal version?</h2>

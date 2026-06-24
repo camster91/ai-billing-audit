@@ -53,9 +53,10 @@ const ROWS: Row[] = [
       "chosen region without written notice.",
     status: {
       text:
-        "Active. Region locked per tenant at sign-up. Provider, region, " +
-        "and certifications (SOC 2 Type II, ISO 27001, 27017, 27018 where " +
-        "the provider holds them) are documented in the BAA.",
+        "Active. Region locked per tenant at sign-up. SOC 2 Type II and " +
+        "ISO 27001 are on our certification roadmap (not currently held); " +
+        "we publish the provider, region, and any third-party attestations " +
+        "actually held by the provider in the executed BAA.",
     },
     region: { text: "CA / US" },
   },
@@ -274,6 +275,25 @@ export default function SecurityPage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className={styles.matrix} aria-labelledby="t-posture">
+          <h2 id="t-posture">Current security posture</h2>
+          <p className={styles.matrixIntro}>
+            What is actually live today. Anything not listed here is on the
+            roadmap below, not a current capability.
+          </p>
+          <ul className={styles.matrixIntro} style={{ listStyle: "disc", paddingLeft: "1.25rem" }}>
+            <li><strong>TLS 1.3 in transit.</strong> Older protocol versions disabled at the load balancer; service-to-service calls use mTLS.</li>
+            <li><strong>AES-256 at rest.</strong> On every volume, snapshot, and backup.</li>
+            <li><strong>Hash-chain audit trail.</strong> Append-only audit_trail table, SHA-256 signatures, built-in verify_chain() walker.</li>
+            <li><strong>Role-scoped access.</strong> Per-tenant isolation with admin / biller / viewer roles and least-privilege defaults.</li>
+            <li><strong>Two-person approval</strong> on high-impact actions (export, bulk re-audit, billing changes); every privileged action is written to the audit trail.</li>
+            <li><strong>Salted SHA-256 patient hashing.</strong> Identifying fields (PHN, MRN, name, DOB) are hashed before they reach long-term storage; minimum-necessary pass-through to the model.</li>
+          </ul>
+          <p className={styles.matrixIntro} style={{ marginTop: "0.75rem" }}>
+            <strong>On the certification roadmap (not currently held):</strong> SOC 2 Type II, ISO 27001, ISO 27017, ISO 27018. We will publish third-party reports here as they are issued; until then, we will not represent any of these as held.
+          </p>
         </section>
 
         <section className={styles.ctaSection} aria-labelledby="t-cta">

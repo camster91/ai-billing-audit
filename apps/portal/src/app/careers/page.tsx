@@ -106,15 +106,16 @@ const FUTURE_ROLES: ReadonlyArray<Role> = [
   },
   {
     team: "Security",
-    title: "Security engineer — SOC 2 + health-data",
+    title: "Security engineer — SOC 2 preparation + health-data",
     blurb:
-      "Own the SOC 2 Type II observation window, sub-processor " +
+      "Drive the SOC 2 Type II preparation roadmap, sub-processor " +
       "review, and incident-response runbook. Work directly with the " +
-      "founders and pilot clinics' privacy officers.",
+      "founders and pilot clinics' privacy officers as we build toward " +
+      "our first observation window.",
     background:
-      "Production experience with at least one of SOC 2, HITRUST, or " +
-      "an equivalent health-data security framework. Hands-on with " +
-      "Postgres access controls and audit logging.",
+      "Hands-on experience preparing for SOC 2, HITRUST, or " +
+      "an equivalent health-data security framework (readiness, controls mapping, evidence collection). " +
+      "Comfortable with Postgres access controls and audit logging.",
   },
 ];
 
