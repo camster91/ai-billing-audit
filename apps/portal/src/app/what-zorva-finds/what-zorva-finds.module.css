@@ -1,0 +1,348 @@
+/* /what-zorva-finds — visual style sheet.
+   Marketing social-proof gallery: 8 anonymized finding cards
+   drawn from the v12 auditor rules, each with a dollar impact
+   and a one-sentence "why this matters". Mirrors the dark blue
+   gradient theme of /pricing, /how-it-works, and /security.
+   Single-column on mobile, two-column grid on desktop, color-
+   coded left border to distinguish revenue opportunity
+   (green), risk (red), and gap (amber). */
+
+.page {
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --panel-2: #1a2340;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #60a5fa;       /* link/secondary text on dark bg (7.2:1) */
+  --accent-bg: #2563eb;   /* button bg with white text (5.17:1) */
+  --accent-2: #2dd4bf;
+  --warn: #f59e0b;
+  --good: #22c55e;
+  --err: #fca5a5;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+  box-sizing: border-box;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 12px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0 0 12px;
+  font-size: 36px;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.subtitle {
+  margin: 0 auto;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+/* ------- Gallery grid ------- */
+
+.gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 32px 0 0;
+}
+
+@media (min-width: 720px) {
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+/* ------- Finding card ------- */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line); /* default; overridden by tone */
+  border-radius: 12px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+}
+
+.cardRevenue {
+  border-left-color: var(--good);
+}
+
+.cardRisk {
+  border-left-color: var(--err);
+}
+
+.cardGap {
+  border-left-color: var(--warn);
+}
+
+.cardBilling {
+  border-left-color: var(--accent-2);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.iconWrap svg {
+  width: 20px;
+  height: 20px;
+}
+
+.cardRevenue .iconWrap {
+  color: var(--good);
+}
+
+.cardRisk .iconWrap {
+  color: var(--err);
+}
+
+.cardGap .iconWrap {
+  color: var(--warn);
+}
+
+.cardBilling .iconWrap {
+  color: var(--accent-2);
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+.impact {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.impactPositive {
+  color: var(--good);
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.impactNegative {
+  color: var(--err);
+  border-color: rgba(252, 165, 165, 0.45);
+  background: rgba(252, 165, 165, 0.08);
+}
+
+.impactNeutral {
+  color: var(--warn);
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.why {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.badgeRevenue {
+  color: var(--good);
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.badgeRisk {
+  color: var(--err);
+  border-color: rgba(252, 165, 165, 0.45);
+  background: rgba(252, 165, 165, 0.06);
+}
+
+.badgeGap {
+  color: var(--warn);
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.badgeBilling {
+  color: var(--accent-2);
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(45, 212, 191, 0.06);
+}
+
+.frequency {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ------- Footer CTA ------- */
+
+.ctaSection {
+  margin: 56px auto 0;
+  text-align: center;
+  max-width: 720px;
+  padding: 32px 28px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 14px;
+}
+
+.ctaHeading {
+  margin: 0 0 8px;
+  font-size: 22px;
+  letter-spacing: -0.2px;
+}
+
+.ctaSub {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.ctaRow {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-block;
+  background: #1d4ed8;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  border: 1px solid #1d4ed8;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.ctaPrimary:hover {
+  background: #1e40af;
+}
+
+.ctaSecondary {
+  display: inline-block;
+  background: transparent;
+  color: var(--text);
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.ctaSecondary:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.disclaimer {
+  margin: 24px auto 0;
+  max-width: 720px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.footer {
+  text-align: center;
+  padding: 32px 24px 48px;
+  color: var(--muted);
+  font-size: 13px;
+}
