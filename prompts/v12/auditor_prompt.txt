@@ -67,9 +67,24 @@ B. NON-INSURED SERVICE (HIGH) — Alberta does not insure
 C. E/M LEVEL DISTINCTION — be precise. The same rule_id
    `rule_ahcip_em_level_upcode` is used in BOTH directions; what
    changes is the polarity of the suggested_code (down vs. up).
-   - Note documents "comprehensive" or "complex assessment" or
-     "detailed assessment" AND claim bills 03.04A → rule_ahcip_em_level
-     INFO (level matches documentation, no action needed)
+   ALWAYS determine direction FIRST from the (note complexity,
+   billed code) pair, then fire the appropriate branch. Do not
+   default to overcode when in doubt.
+
+   DIRECTIONAL TABLE (memorize this):
+     | Note complexity     | Billed code           | Direction   | Severity | suggested_code |
+     |---------------------|-----------------------|-------------|----------|----------------|
+     | brief / minor       | 03.04A or higher      | OVERCODE ↓  | HIGH     | 03.01A / 03.05A|
+     | comprehensive /     | 03.01A                | UNDERCODE ↑ | HIGH     | 03.04A         |
+     | complex / detailed  |                       |             |          |                |
+     | (matched level)     | 03.04A                | matched     | INFO     | (no change)    |
+
+   The UNDERCODE branch (↑) is the missed-revenue direction and is
+   the most-frequently under-fired pattern in v12 (F1=0.50 baseline;
+   targeting ≥0.67 after this fix). When note signals indicate
+   comprehensive work AND bill is 03.01A, FIRE THE UNDERCODE
+   finding — do not suppress it as "matched level". The clinic is
+   leaving $30–$50/claim on the table.
 
    - OVERCODE (down): Note says "brief" or "minor" or "limited" or
      "quick" AND claim bills 03.04A (or higher) → rule_ahcip_em_level_upcode
@@ -84,9 +99,7 @@ C. E/M LEVEL DISTINCTION — be precise. The same rule_id
      visit — even if the visit type is short — and the claim is
      billed 03.01A (brief) → rule_ahcip_em_level_upcode HIGH.
      suggested_code moves *up* to 03.04A (comprehensive). The clinic
-     is leaving $30–$50/claim on the table by under-billing. This is
-     the most-frequently-missed missed-revenue pattern in v12
-     (F1=0.50 baseline; targeting ≥0.67 after this fix).
+     is leaving $30–$50/claim on the table by under-billing.
      Undercode SIGNALS (any one of these is sufficient on its own;
      multiple together make the undercode fire nearly certain):
        * DECISION-MAKING COMPLEXITY: differential diagnosis,
@@ -107,6 +120,18 @@ C. E/M LEVEL DISTINCTION — be precise. The same rule_id
      em_level_upcode HIGH, suggest 03.04A.
      Example: "BP 168/102, no end-organ damage. Started amlodipine
      5mg" billed 03.01A → em_level_upcode HIGH, suggest 03.04A.
+
+     FEW-SHOT UNDERCODE EXAMPLE (note supports comprehensive, bills 03.01A):
+       Note: "45M new patient. CC: fatigue x 3 months. ROS: +weight
+       loss 5kg, +night sweats, no fever. Exam: BMI 24, pallor noted,
+       no lymphadenopathy. Ordered CBC, CMP, TSH, ferritin, B12.
+       Differential: anemia vs thyroid vs malignancy. Follow-up 2 weeks
+       with results."
+       Billed: 03.01A (brief assessment)
+       → em_level_upcode HIGH, suggest 03.04A (comprehensive).
+         Rationale: note documents comprehensive workup across multiple
+         body systems with explicit differential and a multi-test order
+         panel — clearly not a brief assessment.
 
    Fire only ONE of these per encounter. The note's content (verb
    + complexity signals) is the signal, not the visit type or the
