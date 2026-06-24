@@ -3332,6 +3332,189 @@ def create_app() -> FastAPI:
             "empty_state": empty_state,
         })
 
+    # ──────────────────── clinic dashboard (t_1ef7beb3) ─────────────
+    # The clinic owner / biller sees a one-screen summary: "this
+    # month you've had a 12% denial rate, the top flagged rules
+    # were modifier-25 / em_level / dx_linkage, billers took an
+    # average of 4.2 hours to act on flagged findings, and we've
+    # identified $X in missed revenue". This route returns those
+    # four metrics in a single payload so the front-end can render
+    # them as a row of metric tiles.
+    #
+    # Aggregation lives in ``per_clinic_f1.aggregate_clinic_dashboard``
+    # so the math is unit-testable in isolation. The route's only
+    # job is parameter parsing, validation, and the loader
+    # closure that pulls the clinic's findings from the demo
+    # registry + uploaded audits.
+    @app.get("/api/dashboard/clinic")
+    def clinic_dashboard_route(
+        request: Request,
+        clinic_id: str | None = None,
+        window: str | None = None,
+    ) -> JSONResponse:
+        """Return the 4 clinic-dashboard metrics in one payload.
+
+        Query params:
+          * ``clinic_id`` (optional) — defaults to the active
+            tenant_id (or "default_biller" in dev). The dashboard
+            picker calls this endpoint once per clinic switch.
+          * ``window`` (optional) — one of ``7d``, ``30d``, ``90d``.
+            Defaults to ``30d``. Anything else collapses to ``30d``
+            so a typo can't crash the aggregation.
+
+        Returns 200 with the metrics payload (even on the empty
+        state — the ``ready`` flag and per-metric ``None``/zero
+        values are the contract). Returns 404 if the clinic_id is
+        provided AND has no record in the system (i.e. unknown
+        clinic, vs. empty clinic).
+        """
+        try:
+            from .per_clinic_f1 import (
+                ALLOWED_DASHBOARD_WINDOWS,
+                DEFAULT_DASHBOARD_WINDOW_DAYS,
+                aggregate_clinic_dashboard,
+                _parse_window_param,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"per_clinic_f1 module unavailable: {e}",
+            )
+
+        # Window: clamp to the allowed set. ``window`` query param
+        # takes priority; default 30d.
+        days = _parse_window_param(window)
+        if days not in ALLOWED_DASHBOARD_WINDOWS:
+            days = DEFAULT_DASHBOARD_WINDOW_DAYS
+
+        # Default the clinic_id to the active tenant. The dashboard
+        # picker overrides this per-clinic.
+        if not clinic_id:
+            clinic_id = _TENANT_ID or "default_biller"
+
+        # Validate clinic_id exists: walk the registered clinics
+        # (demo + any that have written feedback). An unknown
+        # clinic_id returns 404 so the dashboard doesn't render
+        # garbage. The empty-state (clinic exists but no data) is
+        # signalled via ``ready=False`` in the payload.
+        try:
+            from .per_clinic_f1 import list_clinics
+            known = {c["clinic_id"] for c in list_clinics()}
+        except Exception:
+            known = set()
+        # Always allow the active tenant / dev fallback as known.
+        known.add(_TENANT_ID or "default_biller")
+        if clinic_id not in known:
+            raise HTTPException(
+                status_code=404,
+                detail=f"clinic_id {clinic_id!r} not found",
+            )
+
+        # Build a findings loader for the clinic. Pulls from the
+        # demo registry (which is keyed by encounter_id) and from
+        # the upload_jobs audit log. We project the encounter's
+        # findings to the shape ``compute_revenue_opportunities``
+        # consumes (rule_id, suggested_code, severity, …).
+        def _load_findings_for_clinic(
+            cid: str,
+            start_ts: float,
+            end_ts: float,
+        ) -> list[dict[str, Any]]:
+            out: list[dict[str, Any]] = []
+            try:
+                from .demo_registry import (
+                    list_demo_encounters,
+                    load_encounter_record,
+                )
+                for entry in list_demo_encounters():
+                    record = load_encounter_record(entry.encounter_id)
+                    if not record:
+                        continue
+                    # Per-tenant scoping for the demo registry uses
+                    # the env-set tenant_id; in single-tenant dev
+                    # every record is in scope.
+                    if record.get("tenant_id") and record.get("tenant_id") != _TENANT_ID:
+                        continue
+                    enc_id = str(record.get("encounter_id") or entry.encounter_id)
+                    for f in record.get("ground_truth", []) or []:
+                        out.append({
+                            "encounter_id": enc_id,
+                            "finding_id": str(f.get("finding_id") or f.get("id") or ""),
+                            "rule_id": str(f.get("rule_id") or ""),
+                            "rule_ids": f.get("rule_ids") or [f.get("rule_id")] if f.get("rule_id") else [],
+                            "severity": str(f.get("severity") or ""),
+                            "category": str(f.get("category") or ""),
+                            "suggested_code": str(f.get("suggested_code") or ""),
+                        })
+            except Exception:
+                pass
+            # Uploaded-audit findings (real LLM audits). Scoped by
+            # tenant_id so one clinic's data doesn't leak into
+            # another's dashboard. Only the most recent completed
+            # audit per encounter_id is read; the per-encounter view
+            # already does the same scoping in the detail handler.
+            try:
+                log_path = _os.environ.get(
+                    "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl",
+                )
+                p = Path(log_path)
+                if p.is_file():
+                    with p.open() as fh:
+                        lines = fh.readlines()
+                    # Map encounter_id -> latest done row for the tenant.
+                    latest: dict[str, dict[str, Any]] = {}
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if rec.get("status") != "done":
+                            continue
+                        if rec.get("tenant_id", "default") != _TENANT_ID:
+                            continue
+                        eid = str(rec.get("encounter_id") or "")
+                        if not eid:
+                            continue
+                        prev = latest.get(eid)
+                        if prev is None or str(rec.get("submitted_at", "")) >= str(
+                            prev.get("submitted_at", "")
+                        ):
+                            latest[eid] = rec
+                    for rec in latest.values():
+                        res = rec.get("result") or {}
+                        if res.get("audit_status") != "ok":
+                            continue
+                        eid = str(rec.get("encounter_id") or "")
+                        for f in res.get("findings", []) or []:
+                            out.append({
+                                "encounter_id": eid,
+                                "finding_id": str(f.get("finding_id") or ""),
+                                "rule_id": str(f.get("rule_id") or ""),
+                                "rule_ids": f.get("rule_ids") or [],
+                                "severity": str(f.get("severity") or ""),
+                                "category": str(f.get("category") or ""),
+                                "suggested_code": str(f.get("suggested_code") or ""),
+                            })
+            except Exception:
+                pass
+            return out
+
+        try:
+            payload = aggregate_clinic_dashboard(
+                clinic_id=clinic_id,
+                days=days,
+                load_findings_for_clinic=_load_findings_for_clinic,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"clinic dashboard aggregation failed: {e}",
+            )
+        return JSONResponse(payload)
+
     # ──────────────────────── monthly report (t_b15a1821) ──────────────
     # The deferred full report (calibration + recommended prompt
     # changes) lives in blocked task t_f98a799f, which is gated on
