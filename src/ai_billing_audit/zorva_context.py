@@ -839,3 +839,50 @@ def lookup_somb_descriptor(code: str) -> str | None:
     if entry is None:
         return None
     return str(entry.get("descriptor") or "") or None
+
+
+def lookup_somb_metadata(code: str) -> dict[str, Any] | None:
+    """Return the full metadata dict for ``code``, or ``None`` if unmapped.
+
+    Returns a copy of the entry with the fee, descriptor, ``confidence``,
+    ``source``, ``source_url`` (canonical Alberta Medical Association
+    Fee Navigator URL when available), ``notes`` (per-code corroboration
+    evidence), and ``last_updated`` fields. Use this when the caller
+    needs to surface provenance (e.g. rendering a UI badge that shows
+    "Confidence: medium — corroborated 2026-Q2") rather than just the
+    fee value or descriptor.
+
+    Same normalisation rules as :func:`lookup_somb_fee` and
+    :func:`lookup_somb_descriptor`.
+    """
+    if not code:
+        return None
+    raw = str(code).strip()
+    head = raw.split("(", 1)[0].strip().upper()
+    if not head:
+        return None
+    entry = SOMB_FEE_SCHEDULE.get(head)
+    if entry is None:
+        return None
+    # Return a shallow copy so callers cannot mutate the schedule.
+    return dict(entry)
+
+
+def lookup_somb_confidence(code: str) -> str:
+    """Return the confidence bucket for ``code``: ``high`` / ``medium`` / ``low``.
+
+    Defaults to ``low`` when the code is unmapped (the conservative
+    answer — callers should never assume a code is verified just
+    because they got a fee value back).
+    """
+    if not code:
+        return "low"
+    raw = str(code).strip()
+    head = raw.split("(", 1)[0].strip().upper()
+    if not head:
+        return "low"
+    entry = SOMB_FEE_SCHEDULE.get(head)
+    if entry is None:
+        return "low"
+    conf = str(entry.get("confidence") or "").strip().lower()
+    return conf if conf in {"high", "medium", "low"} else "low"

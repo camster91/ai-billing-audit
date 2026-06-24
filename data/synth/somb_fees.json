@@ -3,82 +3,100 @@
     "category": "procedure",
     "code": "01.01A",
     "confidence": "low",
-    "descriptor": "Skin biopsy \u2014 punch / shave (single lesion)",
+    "descriptor": "Skin biopsy — punch / shave (single lesion)",
     "fee": 35.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/01.01A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/01.01A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "01.02A": {
     "category": "procedure",
     "code": "01.02A",
     "confidence": "low",
-    "descriptor": "Excisional biopsy \u2014 skin lesion (single)",
+    "descriptor": "Excisional biopsy — skin lesion (single)",
     "fee": 67.8,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/01.02A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/01.02A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "01.14A": {
     "category": "procedure",
     "code": "01.14A",
     "confidence": "low",
-    "descriptor": "Ear piercing \u2014 in-office (per ear)",
+    "descriptor": "Ear piercing — in-office (per ear)",
     "fee": 11.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/01.14A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/01.14A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "03.01A": {
     "category": "visit",
     "code": "03.01A",
     "confidence": "medium",
-    "descriptor": "Brief assessment \u2014 office visit (<10 min)",
+    "descriptor": "Brief assessment — office visit (<10 min)",
     "fee": 36.45,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.01A",
+    "notes": "Fee Navigator URL pattern confirmed (canonical HSC page exists). Snippet evidence: 03.01PS (related code) described as 'Diagnostic interview and evaluation or consultation described as brief {Brief assessment of a patient's condition requiring a minimal history}'. Our descriptor (Brief assessment — office visit <10 min) is consistent. Live fee value NOT verified (Firecrawl disabled); confidence remains low pending a fetch."
   },
   "03.02A": {
     "category": "visit",
     "code": "03.02A",
     "confidence": "medium",
-    "descriptor": "Limited assessment \u2014 office visit (~10\u201315 min)",
+    "descriptor": "Limited assessment — office visit (~10–15 min)",
     "fee": 52.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.02A",
+    "notes": "Fee Navigator URL pattern confirmed. Limited assessment code descriptor aligns with the Fee Navigator family of 03.02A codes. Live fee value NOT verified."
   },
   "03.03A": {
     "category": "consult",
     "code": "03.03A",
-    "confidence": "medium",
-    "descriptor": "Consultation \u2014 referred patient (specialist)",
+    "confidence": "low",
+    "descriptor": "Consultation — referred patient (specialist)",
     "fee": 100.1,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.03A",
+    "notes": "POSSIBLE DESCRIPTOR MISMATCH: albertadoctors.org Fee Navigator titles 03.03A as 'Limited assessment of a patient's condition'. Our entry says 'Consultation — referred patient (specialist)'. Both descriptions are valid SOMB concepts but they may map to different HSC codes (the SOMB has multiple 03.03A variants). RECONCILE WITH DATA TEAM before relying on this descriptor in downstream auditor prompts. Fee NOT verified."
   },
   "03.04A": {
     "category": "visit",
     "code": "03.04A",
     "confidence": "medium",
-    "descriptor": "Comprehensive assessment \u2014 office visit (15+ min)",
+    "descriptor": "Comprehensive assessment — office visit (15+ min)",
     "fee": 87.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.04A",
+    "notes": "Fee Navigator URL pattern confirmed. Snippet: '03.04A Comprehensive assessment of a patient's condition requiring a complete history, Visit Base rate: $40.14'. The $40.14 is the 'Visit Base rate' component, NOT the total 03.04A fee; total fee value NOT verified. Descriptor matches our entry."
   },
   "03.05A": {
     "category": "visit",
     "code": "03.05A",
     "confidence": "medium",
-    "descriptor": "Minor assessment \u2014 focused problem visit",
+    "descriptor": "Minor assessment — focused problem visit",
     "fee": 49.85,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.05A",
+    "notes": "Fee Navigator URL pattern confirmed. Minor-assessment code descriptor aligns with the Fee Navigator family. Live fee value NOT verified."
   },
   "03.06A": {
     "category": "visit",
     "code": "03.06A",
     "confidence": "low",
-    "descriptor": "Complete examination \u2014 periodic health assessment",
+    "descriptor": "Complete examination — periodic health assessment",
     "fee": 110.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.06A",
+    "notes": "Fee Navigator URL pattern confirmed. Periodic health assessment (complete examination) code. Live fee NOT verified."
   },
   "03.07A": {
     "category": "visit",
@@ -87,7 +105,9 @@
     "descriptor": "Comprehensive annual visit (adult preventive)",
     "fee": 137.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.07A",
+    "notes": "Fee Navigator URL pattern confirmed. Repeat-consultation family. Live fee NOT verified."
   },
   "03.08A": {
     "category": "visit",
@@ -96,124 +116,152 @@
     "descriptor": "After-hours / emergency visit premium (add-on)",
     "fee": 32.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/03.08A",
+    "notes": "Fee Navigator URL pattern confirmed. Snippet from related HSC 03.08A page: 'Comprehensive consultation - in office. Visit Base rate: $80.00'. Our entry describes 03.08A as 'After-hours / emergency visit premium (add-on)' — POSSIBLE DESCRIPTOR MISMATCH; the 03.08A family on the Fee Navigator covers prolonged/comprehensive consultations, not a premium modifier. RECONCILE WITH DATA TEAM."
   },
   "04.01A": {
     "category": "visit",
     "code": "04.01A",
     "confidence": "low",
-    "descriptor": "Prenatal visit \u2014 routine antenatal care",
+    "descriptor": "Prenatal visit — routine antenatal care",
     "fee": 47.6,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/04.01A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/04.01A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "04.02A": {
     "category": "visit",
     "code": "04.02A",
     "confidence": "low",
-    "descriptor": "Postnatal visit \u2014 routine postpartum check",
+    "descriptor": "Postnatal visit — routine postpartum check",
     "fee": 47.6,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/04.02A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/04.02A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "07.38A": {
     "category": "procedure",
     "code": "07.38A",
     "confidence": "medium",
-    "descriptor": "Pap smear \u2014 cervical cytology collection",
+    "descriptor": "Pap smear — cervical cytology collection",
     "fee": 11.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/07.38A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/07.38A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "07.39A": {
     "category": "procedure",
     "code": "07.39A",
     "confidence": "low",
-    "descriptor": "Pelvic examination \u2014 bimanual, in-office",
+    "descriptor": "Pelvic examination — bimanual, in-office",
     "fee": 24.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/07.39A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/07.39A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "07.46A": {
     "category": "procedure",
     "code": "07.46A",
     "confidence": "low",
-    "descriptor": "IUD insertion \u2014 intrauterine device",
+    "descriptor": "IUD insertion — intrauterine device",
     "fee": 78.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/07.46A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/07.46A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "08.19A": {
     "category": "psychotherapy",
     "code": "08.19A",
     "confidence": "medium",
-    "descriptor": "Psychotherapy \u2014 45 min (physician-delivered)",
+    "descriptor": "Psychotherapy — 45 min (physician-delivered)",
     "fee": 96.75,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/08.19A",
+    "notes": "Fee Navigator URL pattern confirmed. Snippet: 'Direct contact with a complex patient for psychiatric treatment (including medical psychotherapy and medication prescription), Visit Base rate: $54.21'. Our descriptor (Psychotherapy — 45 min, physician-delivered) is broadly consistent. Fee value $54.21 in snippet is the Visit Base rate, NOT the 45-min total. Live fee NOT verified."
   },
   "08.19B": {
     "category": "psychotherapy",
     "code": "08.19B",
     "confidence": "medium",
-    "descriptor": "Psychotherapy \u2014 30 min (physician-delivered)",
+    "descriptor": "Psychotherapy — 30 min (physician-delivered)",
     "fee": 71.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/08.19B",
+    "notes": "Fee Navigator URL pattern confirmed. 30-min psychotherapy variant of the 08.19 family. Live fee NOT verified."
   },
   "08.19C": {
     "category": "psychotherapy",
     "code": "08.19C",
     "confidence": "medium",
-    "descriptor": "Psychotherapy \u2014 60 min (physician-delivered)",
+    "descriptor": "Psychotherapy — 60 min (physician-delivered)",
     "fee": 134.8,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/08.19C",
+    "notes": "Fee Navigator URL pattern confirmed. 60-min psychotherapy variant of the 08.19 family. Live fee NOT verified."
   },
   "08.19D": {
     "category": "psychotherapy",
     "code": "08.19D",
     "confidence": "low",
-    "descriptor": "Psychotherapy \u2014 75 min (physician-delivered)",
+    "descriptor": "Psychotherapy — 75 min (physician-delivered)",
     "fee": 168.4,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/08.19D",
+    "notes": "Fee Navigator URL pattern confirmed. 08.19 family variant. Live fee NOT verified."
   },
   "08.19E": {
     "category": "psychotherapy",
     "code": "08.19E",
     "confidence": "low",
-    "descriptor": "Group psychotherapy \u2014 per patient (per 90 min session)",
+    "descriptor": "Group psychotherapy — per patient (per 90 min session)",
     "fee": 32.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/08.19E",
+    "notes": "Fee Navigator URL pattern confirmed. 08.19 family variant. Live fee NOT verified."
   },
   "09.01A": {
     "category": "diagnostic",
     "code": "09.01A",
     "confidence": "medium",
-    "descriptor": "Electrocardiogram (ECG / EKG) \u2014 12-lead, interpretation",
+    "descriptor": "Electrocardiogram (ECG / EKG) — 12-lead, interpretation",
     "fee": 16.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.01A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.01A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.01B": {
     "category": "diagnostic",
     "code": "09.01B",
     "confidence": "low",
-    "descriptor": "ECG \u2014 rhythm strip only (interpretation)",
+    "descriptor": "ECG — rhythm strip only (interpretation)",
     "fee": 9.75,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.01B",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.01B). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.13A": {
     "category": "diagnostic",
     "code": "09.13A",
     "confidence": "medium",
-    "descriptor": "Spirometry \u2014 full flow-volume loop + interpretation",
+    "descriptor": "Spirometry — full flow-volume loop + interpretation",
     "fee": 24.3,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.13A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.13A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.13B": {
     "category": "diagnostic",
@@ -222,7 +270,9 @@
     "descriptor": "Peak flow measurement (interpretation only)",
     "fee": 6.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.13B",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.13B). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.14A": {
     "category": "diagnostic",
@@ -231,43 +281,53 @@
     "descriptor": "Ambulatory blood pressure monitoring (24 hr, interpretation)",
     "fee": 28.8,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.14A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.14A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.21A": {
     "category": "diagnostic",
     "code": "09.21A",
     "confidence": "low",
-    "descriptor": "Urinalysis \u2014 dipstick, in-office (interpretation)",
+    "descriptor": "Urinalysis — dipstick, in-office (interpretation)",
     "fee": 5.3,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.21A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.21A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "09.26A": {
     "category": "diagnostic",
     "code": "09.26A",
     "confidence": "low",
-    "descriptor": "Hemoglobin A1c \u2014 point-of-care (interpretation)",
+    "descriptor": "Hemoglobin A1c — point-of-care (interpretation)",
     "fee": 8.85,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/09.26A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/09.26A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.42A": {
     "category": "injection",
     "code": "13.42A",
     "confidence": "medium",
-    "descriptor": "Therapeutic injection \u2014 single IM/SC (excl immun)",
+    "descriptor": "Therapeutic injection — single IM/SC (excl immun)",
     "fee": 14.95,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.42A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.42A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.42B": {
     "category": "injection",
     "code": "13.42B",
     "confidence": "medium",
-    "descriptor": "Therapeutic injection \u2014 IV push (single drug)",
+    "descriptor": "Therapeutic injection — IV push (single drug)",
     "fee": 22.4,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.42B",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.42B). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.43A": {
     "category": "injection",
@@ -276,7 +336,9 @@
     "descriptor": "Joint / bursa injection (in-office)",
     "fee": 38.6,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.43A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.43A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.44A": {
     "category": "injection",
@@ -285,7 +347,9 @@
     "descriptor": "Trigger-point injection (per muscle group)",
     "fee": 24.1,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.44A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.44A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59A": {
     "category": "immunization",
@@ -294,7 +358,9 @@
     "descriptor": "Pneumococcal vaccination (adult, per dose)",
     "fee": 12.1,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59B": {
     "category": "immunization",
@@ -303,7 +369,9 @@
     "descriptor": "Influenza vaccination (per dose)",
     "fee": 9.8,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59B",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59B). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59C": {
     "category": "immunization",
@@ -312,7 +380,9 @@
     "descriptor": "COVID-19 vaccination (per dose)",
     "fee": 13.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59C",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59C). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59D": {
     "category": "immunization",
@@ -321,7 +391,9 @@
     "descriptor": "Tetanus / dT / Tdap booster (adult)",
     "fee": 11.4,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59D",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59D). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59E": {
     "category": "immunization",
@@ -330,7 +402,9 @@
     "descriptor": "Hepatitis B vaccination series (per dose)",
     "fee": 12.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59E",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59E). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59F": {
     "category": "immunization",
@@ -339,7 +413,9 @@
     "descriptor": "HPV vaccination (per dose)",
     "fee": 13.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59F",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59F). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59G": {
     "category": "immunization",
@@ -348,61 +424,75 @@
     "descriptor": "MMR / varicella / MMRV vaccination (per dose)",
     "fee": 11.8,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59G",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59G). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "13.59H": {
     "category": "immunization",
     "code": "13.59H",
     "confidence": "low",
-    "descriptor": "Shingles (zoster) vaccination \u2014 adult 50+",
+    "descriptor": "Shingles (zoster) vaccination — adult 50+",
     "fee": 13.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/13.59H",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/13.59H). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "98.01A": {
     "category": "procedure",
     "code": "98.01A",
     "confidence": "low",
-    "descriptor": "Removal of cerumen \u2014 irrigation, unilateral",
+    "descriptor": "Removal of cerumen — irrigation, unilateral",
     "fee": 17.4,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/98.01A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/98.01A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "98.03A": {
     "category": "procedure",
     "code": "98.03A",
     "confidence": "low",
-    "descriptor": "Removal of cerumen \u2014 instrumentation, unilateral",
+    "descriptor": "Removal of cerumen — instrumentation, unilateral",
     "fee": 24.1,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/98.03A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/98.03A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "98.12A": {
     "category": "procedure",
     "code": "98.12A",
     "confidence": "low",
-    "descriptor": "Simple laceration repair \u2014 face, \u22642.5 cm",
+    "descriptor": "Simple laceration repair — face, ≤2.5 cm",
     "fee": 78.5,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/98.12A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/98.12A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "98.22A": {
     "category": "procedure",
     "code": "98.22A",
     "confidence": "medium",
-    "descriptor": "Incision & drainage \u2014 abscess / cyst, simple",
+    "descriptor": "Incision & drainage — abscess / cyst, simple",
     "fee": 52.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/98.22A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/98.22A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "98.40A": {
     "category": "procedure",
     "code": "98.40A",
     "confidence": "low",
-    "descriptor": "Cryotherapy \u2014 benign skin lesion (per lesion, \u22645)",
+    "descriptor": "Cryotherapy — benign skin lesion (per lesion, ≤5)",
     "fee": 14.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/98.40A",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/98.40A). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "AFTER_HOURS": {
     "category": "premium",
@@ -411,7 +501,9 @@
     "descriptor": "After-hours premium (evenings / weekends)",
     "fee": 24.4,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/AFTER_HOURS",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/AFTER_HOURS). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "CMGP": {
     "category": "premium",
@@ -420,25 +512,31 @@
     "descriptor": "Chronic Disease Management premium (per visit)",
     "fee": 20.55,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/CMGP",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/CMGP). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "MOD25": {
     "category": "modifier",
     "code": "MOD25",
-    "confidence": "high",
-    "descriptor": "Modifier -25 unlock \u2014 E/M + same-day procedure (no $ on its own)",
+    "confidence": "medium",
+    "descriptor": "Modifier -25 unlock — E/M + same-day procedure (no $ on its own)",
     "fee": 0.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/MOD25",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/MOD25). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "MOD26": {
     "category": "modifier",
     "code": "MOD26",
-    "confidence": "high",
-    "descriptor": "Modifier -26 \u2014 professional component (no $ on its own)",
+    "confidence": "medium",
+    "descriptor": "Modifier -26 — professional component (no $ on its own)",
     "fee": 0.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/MOD26",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/MOD26). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "NOREFS": {
     "category": "premium",
@@ -447,15 +545,19 @@
     "descriptor": "Northern / rural isolation premium (variable)",
     "fee": 0.0,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/NOREFS",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/NOREFS). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   },
   "TELEHEALTH": {
     "category": "premium",
     "code": "TELEHEALTH",
     "confidence": "medium",
-    "descriptor": "Telehealth premium \u2014 virtual visit add-on",
+    "descriptor": "Telehealth premium — virtual visit add-on",
     "fee": 15.2,
     "last_updated": "2026-01-15",
-    "source": "training-data-2026-01"
+    "source": "training-data-2026-01",
+    "source_url": "https://apps.albertadoctors.org/fee-navigator/hsc/TELEHEALTH",
+    "notes": "Fee Navigator URL pattern confirmed via web_search (canonical page exists at https://apps.albertadoctors.org/fee-navigator/hsc/TELEHEALTH). Live fee value and descriptor NOT verified — Firecrawl backend disabled in this environment, only search snippets were available. Re-run this pass with FIRECRAWL_API_KEY configured to lift confidence."
   }
 }
