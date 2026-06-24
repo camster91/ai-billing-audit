@@ -375,6 +375,19 @@ main.page {
 .badge-sev-high     { background: var(--color-flag-soft);  color: var(--sev-high);     border-color: var(--sev-high); }
 .badge-sev-critical { background: var(--color-flag-soft);  color: var(--sev-critical); border-color: var(--sev-critical); }
 
+/* Revenue opportunity badge — surfaces the total estimated uplift
+   on the home page audit card so the biller can scan for
+   highest-value encounters. Tier thresholds:
+     low (green)    < $50
+     medium (amber) $50 - $200
+     high (red)     >= $200
+   Slightly bolder than the severity badges so it stands out as the
+   "actionable revenue" signal on the card. */
+.badge-revenue { font-weight: 600; }
+.badge-revenue--low    { background: var(--color-clean-soft); color: var(--color-clean); border-color: var(--color-clean); }
+.badge-revenue--medium { background: var(--color-warn-soft);  color: var(--color-warn);  border-color: var(--color-warn); }
+.badge-revenue--high   { background: var(--color-flag-soft);  color: var(--color-flag);  border-color: var(--color-flag); }
+
 /* ─── Cards ───────────────────────────────────────────────── */
 .card {
   background: var(--color-surface);

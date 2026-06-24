@@ -1,44 +1,131 @@
 {% extends "base.html" %}
-{% block title %}demo encounters — ai-billing-audit{% endblock %}
+{% block title %}Audits — ai-billing-audit{% endblock %}
 {% block content %}
-<section class="page-head">
-  <h1>Demo encounters</h1>
-  <p class="muted">
-    {{ n_registered }} encounter{{ "" if n_registered == 1 else "s" }} registered
-    for the demo dashboard. Each card links to a full audit panel with the
-    clinical note, the claim, the retrieved rules, and the ground-truth
-    findings (with the evidence quote highlighted in the note).
-  </p>
-</section>
 
-{% if cards|length == 0 %}
-  <p class="empty">No demo encounters registered yet.</p>
-{% else %}
-  <ul class="encounter-grid">
-    {% for card in cards %}
-    <li class="encounter-card encounter-card--{{ card.difficulty|lower }}">
-      <div class="encounter-card__head">
-        <span class="badge badge--{{ card.difficulty|lower }}">{{ card.difficulty }}</span>
-        {% if card.available %}
-          {% if card.is_flagged %}
-            <span class="badge badge--flag">flagged · {{ card.n_findings }} finding{{ "" if card.n_findings == 1 else "s" }}</span>
-          {% else %}
-            <span class="badge badge--clean">clean</span>
-          {% endif %}
+<div class="page-head">
+  <div>
+    <h1>Audits</h1>
+    <p class="sub">Claims audited before submission. Open a card to review the LLM findings and accept, dismiss, or flag them.</p>
+  </div>
+  <a class="btn btn-primary" href="/encounters/upload">Upload 837P</a>
+</div>
+
+{% if metrics and metrics.ready %}
+<section class="clean-rate-hero" aria-label="This month at a glance">
+  <div class="clean-rate-hero__main">
+    <div class="clean-rate-hero__big">
+      <span class="clean-rate-hero__pct">
+        {% if metrics.this_month_clean_rate is not none %}
+          {{ (metrics.this_month_clean_rate * 100) | round(1) }}%
         {% else %}
-          <span class="badge badge--missing">record missing</span>
+          —
+        {% endif %}
+      </span>
+      <span class="clean-rate-hero__label">of claims clean this month</span>
+    </div>
+    {% if metrics.clean_rate_delta is not none %}
+      <div class="clean-rate-hero__trend {% if metrics.clean_rate_delta >= 0 %}is-up{% else %}is-down{% endif %}">
+        {% if metrics.clean_rate_delta >= 0 %}▲{% else %}▼{% endif %}
+        {{ (metrics.clean_rate_delta * 100) | round(1) }} pts vs. last 30d
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="clean-rate-hero__stats">
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">$ Revenue confirmed clean</div>
+      <div class="clean-rate-hero__stat-value">
+        ${{ "{:,.0f}".format(metrics.this_month_revenue_confirmed) }}
+      </div>
+      <div class="clean-rate-hero__stat-sub muted">
+        {{ metrics.this_month_clean }} claims &times; ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }} avg
+      </div>
+    </div>
+
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">Estimated denials avoided</div>
+      <div class="clean-rate-hero__stat-value">
+        ${{ "{:,.0f}".format(metrics.this_month_avoided_denials_dollar) }}
+      </div>
+      <div class="clean-rate-hero__stat-sub muted">
+        {% if metrics.this_month_clean_rate is not none and metrics.this_month_count %}
+          ({{ (metrics.this_month_clean_rate * 100) | round(1) }}% &minus; 92.5%) &times; {{ metrics.this_month_count }} &times; ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }}
+        {% else %}
+          vs. industry 7.5% denial rate
         {% endif %}
       </div>
-      <h2 class="encounter-card__id">
-        <a href="/encounter/{{ card.encounter_id }}">{{ card.encounter_id }}</a>
-      </h2>
-      <p class="encounter-card__summary">{{ card.summary }}</p>
-      <div class="encounter-card__actions">
-        <a class="btn btn--primary" href="/encounter/{{ card.encounter_id }}">open audit panel</a>
-        <a class="btn btn--ghost" href="/encounter/{{ card.encounter_id }}/json">raw json</a>
+    </div>
+
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">Need review</div>
+      <div class="clean-rate-hero__stat-value">
+        {{ metrics.this_month_flagged }}
       </div>
-    </li>
-    {% endfor %}
-  </ul>
+      <div class="clean-rate-hero__stat-sub muted">
+        <a href="?status=flagged" class="link">View flagged →</a>
+      </div>
+    </div>
+  </div>
+
+  <details class="clean-rate-hero__explainer">
+    <summary>How we calculated this</summary>
+    <p>
+      <strong>Revenue confirmed clean</strong> is the number of claims the auditor
+      marked clean ({{ metrics.this_month_clean }}) multiplied by an industry-average
+      claim value of ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }}.
+      Production deployments will replace this with the clinic's actual
+      average per claim, computed from their own billing data.
+    </p>
+    <p>
+      <strong>Estimated denials avoided</strong> compares your clean rate to the
+      industry baseline of 92.5% (a 7.5% denial rate is the CMS-reported
+      average for commercial payers). The difference is the share of claims
+      your team is catching that would have been denied without the auditor,
+      multiplied by the average claim value.
+      {% if metrics.this_month_clean_rate is not none %}
+        Math: ({{ (metrics.this_month_clean_rate * 100) | round(1) }}% &minus; 92.5%)
+        &times; {{ metrics.this_month_count }} &times;
+        ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }} =
+        ${{ "{:,.0f}".format(metrics.this_month_avoided_denials_dollar) }}.
+      {% endif %}
+    </p>
+  </details>
+</section>
 {% endif %}
+
+<div class="filter-bar">
+  <span class="filter-label">Filter</span>
+  <a href="?status=all" class="filter-chip {% if filter == 'all' %}is-active{% endif %}">
+    All <span class="count">({{ counts.all }})</span>
+  </a>
+  <a href="?status=flagged" class="filter-chip {% if filter == 'flagged' %}is-active{% endif %}">
+    Flagged <span class="count">({{ counts.flagged }})</span>
+  </a>
+  <a href="?status=clean" class="filter-chip {% if filter == 'clean' %}is-active{% endif %}">
+    Clean <span class="count">({{ counts.clean }})</span>
+  </a>
+  <span class="grow"></span>
+  {% if total_this_week is defined and total_this_week %}
+  <span class="muted small">This week: <strong>{{ total_this_week }}</strong> encounter{{ "" if total_this_week == 1 else "s" }} audited</span>
+  {% endif %}
+</div>
+
+{% if audits %}
+  <div class="audit-grid">
+    {% for card in audits %}
+      {% include "_audit_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <h2>No audits yet</h2>
+    <p>Upload an 837P file from your EHR to run a pre-billing audit. The LLM (minimax-m3) checks each claim for missing modifiers, under-coded E/M levels, duplicate services, and other billing-compliance issues. Most audits complete in &lt; 10 seconds.</p>
+    <div class="actions">
+      <a class="btn btn-primary btn-lg" href="/encounters/upload">Upload an 837P file</a>
+      <a class="btn btn-ghost btn-lg" href="/encounters/upload">Paste from clipboard</a>
+    </div>
+    <p class="muted small mt-4">Supported: 837P files, ZIPs of 837Ps, paste-form with claim + clinical note.</p>
+  </div>
+{% endif %}
+
 {% endblock %}
