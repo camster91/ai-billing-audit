@@ -1,0 +1,4 @@
+billingcode,billing_amount,service_date,demographic_no,practitioner_no,appointment_no,modifier,dxcode
+99213,150.00,2024-05-15,1001,1234567890,APPT-001,,E11.9
+99214,225.50,2024-05-16,1002,1234567890,APPT-002,,I10
+81025,45.00,2024-05-17,1003,1234567890,APPT-003,25,N18.3

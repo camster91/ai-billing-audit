@@ -16,6 +16,14 @@ Four route groups ship in this module:
                                        the inline docs at the route
                                        definitions for the per-mode
                                        contract.
+* ``POST /upload/csv``                — bulk CSV ingest for clinics that
+                                       export from Kareo / OSCAR /
+                                       Office Ally. Auto-detects the
+                                       PM format from the header row,
+                                       maps each row to the canonical
+                                       schema, and enqueues one audit
+                                       per row via the same job-queue
+                                       path the 837P portal uses.
 
 Sibling cards (t_5c741803 medium, t_d16db103 hard) extend the dashboard
 by importing ``demo_registry`` and calling
@@ -3033,6 +3041,82 @@ def create_app() -> FastAPI:
                 }
             )
         return JSONResponse({"jobs": accepted, "rejected": rejected})
+
+    @app.post("/upload/csv")
+    async def upload_csv(
+        file: UploadFile = File(...),
+        payer_id: str = Form(""),
+        clinic_id: str = Form(""),
+    ) -> JSONResponse:
+        """Accept a CSV exported from a PM system and enqueue audits.
+
+        The endpoint is a sibling of ``/encounters/upload/submit`` but
+        targets clinics without an EHR integration: they export their
+        claims from a Practice Management system (Kareo, OSCAR,
+        Office Ally) as a CSV and upload it here. The endpoint:
+
+          1. Auto-detects the CSV format from the header row
+             (case-insensitive match against the per-PM dictionary).
+          2. Maps the PM's columns to Zorva's canonical schema
+             (procedure_code, billed_amount, date_of_service, ...).
+          3. Converts each row to an encounter + claim pair and
+             enqueues it on the audit job-queue (the same path
+             ``/encounters/upload/submit`` uses).
+          4. Returns ``{accepted_count, rejected_count, errors:
+             [{row, reason}], detected_format, enqueued:
+             [{job_id, encounter_id}, ...]}``.
+
+        Per-row errors do NOT abort the whole batch — the endpoint
+        reports partial success with the row-level error list so a
+        single malformed row doesn't cost the clinic the rest of
+        their upload.
+
+        Returns 400 when the format is unknown (no PM dictionary
+        matches the header row).
+        """
+        # Imported lazily so the module loads without csv_ingest on
+        # the dependency path (and so the in-process queue module
+        # doesn't drag in CSV when the CSV endpoint isn't hit).
+        from ai_billing_audit.csv_ingest import ingest_csv
+
+        raw = await file.read()
+        if len(raw) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"file is {len(raw)} bytes, max is {_MAX_UPLOAD_BYTES}",
+            )
+        if not raw:
+            raise HTTPException(
+                status_code=400,
+                detail="empty file: no bytes received",
+            )
+        # We peek at the header row to decide whether the format is
+        # recognised; if not, return 400 immediately rather than
+        # pretending the upload was partially successful.
+        from ai_billing_audit.csv_ingest import parse_csv, detect_format
+
+        rows = parse_csv(raw)
+        headers = list(rows[0].keys()) if rows else []
+        detected = detect_format(headers)
+        if detected == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "unrecognised CSV format: header row was "
+                    f"{headers!r}; expected one of kareo, oscar, "
+                    "office_ally. See /upload/csv docs for the "
+                    "exact column names per PM system."
+                ),
+            )
+
+        queue = get_default_queue()
+        result = ingest_csv(
+            file_bytes=raw,
+            payer_id=payer_id,
+            clinic_id=clinic_id,
+            enqueue=queue.enqueue,
+        )
+        return JSONResponse(result)
 
     @app.get("/encounters/upload/jobs/{job_id}")
     def encounters_upload_job_status(job_id: str) -> JSONResponse:
