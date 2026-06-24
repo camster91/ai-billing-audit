@@ -111,6 +111,68 @@ class FeedbackStore:
             "by_biller_id": dict(by_biller),
         }
 
+    def confidence_for_rule(self, rule_id: str) -> dict[str, Any]:
+        """How much real-world signal do we have for ``rule_id``?
+
+        Returns a small dict the encounter-detail template can render
+        directly as a "Model confidence" badge:
+
+            {
+              "bucket":   "high" | "medium" | "low" | "uncalibrated",
+              "label":    "HIGH" | "MEDIUM" | "LOW" | "Not yet calibrated at this clinic",
+              "validations": <int>,   # count of 'accept' decisions
+              "dismisses":  <int>,   # count of 'dismiss' decisions
+              "total":     <int>,   # accept + dismiss + modify
+            }
+
+        Bucket thresholds (per the learning-loop spec):
+
+          * HIGH     — more than 10 accept decisions for this rule
+          * MEDIUM   — 3 to 10 accept decisions
+          * LOW      — fewer than 3 accept decisions (some signal, not enough)
+          * uncalibrated — no accept decisions yet at this clinic
+
+        The "validations" axis is the accept count, not the total, because
+        a high dismiss rate is a different signal (the model is wrong,
+        not "uncertain") and the per-rule precision panel surfaces that
+        separately.  If we later want a "trust" KPI that mixes both,
+        compose it on top of this primitive.
+        """
+        accepts = 0
+        dismisses = 0
+        for e in self.read_all():
+            if (e.rule_id or "") != rule_id:
+                continue
+            if e.action == "accept":
+                accepts += 1
+            elif e.action == "dismiss":
+                dismisses += 1
+        total = accepts + dismisses
+        if accepts == 0 and total == 0:
+            return {
+                "bucket": "uncalibrated",
+                "label": "Not yet calibrated at this clinic",
+                "validations": 0,
+                "dismisses": 0,
+                "total": 0,
+            }
+        if accepts > 10:
+            bucket = "high"
+            label = "HIGH"
+        elif accepts >= 3:
+            bucket = "medium"
+            label = "MEDIUM"
+        else:
+            bucket = "low"
+            label = "LOW"
+        return {
+            "bucket": bucket,
+            "label": label,
+            "validations": accepts,
+            "dismisses": dismisses,
+            "total": total,
+        }
+
     def verify_chain(self) -> bool:
         """True iff every row's signature matches and links to the prior row."""
         if not self._path.is_file():

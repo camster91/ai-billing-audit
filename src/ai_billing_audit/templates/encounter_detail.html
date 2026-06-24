@@ -134,6 +134,15 @@
             {% if opp.suggested_code %}
               <span class="muted small">&rarr; {{ opp.suggested_code }}</span>
             {% endif %}
+            {# Same per-finding model-confidence badge as the findings
+               list. Bucket is keyed by ``opportunity_rule_id`` for
+               opportunities because they don't always carry a
+               ``rule_id`` field directly. #}
+            {% set omc = opp.model_confidence or {"bucket": "uncalibrated", "label": "Not yet calibrated at this clinic"} %}
+            <span class="badge badge-confidence badge-confidence--{{ omc.bucket }}"
+                  title="Calibrated from {{ omc.get('validations', 0) if omc is mapping else 0 }} accept decision(s) for this rule">
+              Model confidence: {{ omc.label }}
+            </span>
           </div>
         </div>
         {% if opp.quote %}
@@ -169,6 +178,19 @@
           {% if f.category %}<span class="badge badge-neutral">{{ f.category }}</span>{% endif %}
           {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
           {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
+          {# Per-finding model-confidence badge. Rendered as a small
+             color-coded pill ("HIGH" green, "MEDIUM" amber, "LOW" red,
+             "Not yet calibrated" muted) so the biller can see how
+             much real-world signal the model has for this rule.
+             The bucket is computed in the API from the per-rule
+             accept-count in the feedback log; when the log is empty
+             we surface the explicit "uncalibrated" placeholder
+             rather than a misleading HIGH. #}
+          {% set mc = f.model_confidence or {"bucket": "uncalibrated", "label": "Not yet calibrated at this clinic"} %}
+          <span class="badge badge-confidence badge-confidence--{{ mc.bucket }}"
+                title="Calibrated from {{ mc.get('validations', 0) if mc is mapping else 0 }} accept decision(s) for this rule">
+            Model confidence: {{ mc.label }}
+          </span>
           <span class="grow"></span>
           <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-toggle" data-finding-id="{{ f.finding_id }}">
             Appeal denial

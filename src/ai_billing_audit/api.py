@@ -160,6 +160,59 @@ def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
 SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
 
+def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Enrich each finding dict in-place with a ``model_confidence`` field.
+
+    The encounter-detail template renders ``f.model_confidence`` as a
+    small "Model confidence: HIGH / MEDIUM / LOW" badge under each
+    finding. The confidence bucket is derived from the per-rule
+    accept-count in the feedback log (see
+    :meth:`FeedbackStore.confidence_for_rule`).
+
+    If we have no feedback at all yet (the common case in dev / before
+    the pilot), every finding gets the "uncalibrated" bucket with the
+    "Not yet calibrated at this clinic" label. The template knows how
+    to render that placeholder distinctly from the calibrated buckets
+    so the biller never sees a misleading "HIGH" badge before we have
+    real signal.
+
+    Cost: one full read of the feedback JSONL per call. The store is
+    tiny in dev (a few rows) and the encounter-detail page is not
+    called in any hot loop, so the O(n_feedback) cost is fine. If
+    volume grows we can add a per-rule index.
+    """
+    try:
+        from .feedback import get_default_store
+        store = get_default_store()
+    except Exception:
+        store = None
+
+    for f in findings:
+        if not isinstance(f, dict):
+            continue
+        rule_id = str(f.get("rule_id", "") or "")
+        if store is not None and rule_id:
+            try:
+                f["model_confidence"] = store.confidence_for_rule(rule_id)
+            except Exception:
+                f["model_confidence"] = {
+                    "bucket": "uncalibrated",
+                    "label": "Not yet calibrated at this clinic",
+                    "validations": 0,
+                    "dismisses": 0,
+                    "total": 0,
+                }
+        else:
+            f["model_confidence"] = {
+                "bucket": "uncalibrated",
+                "label": "Not yet calibrated at this clinic",
+                "validations": 0,
+                "dismisses": 0,
+                "total": 0,
+            }
+    return findings
+
+
 # ─── Revenue opportunities ─────────────────────────────────────────────
 # A subset of AHCIP rules identify "missed revenue" — the note documents
 # a billable service that the claim did not capture. These findings are
@@ -860,6 +913,7 @@ def create_app() -> FastAPI:
         try:
             from .dashboard import (
                 aggregate_missed_revenue_by_rule,
+                aggregate_monthly_revenue_kpi,
                 month_label as _month_label,
             )
             top_missed_revenue_rules = aggregate_missed_revenue_by_rule(top_n=5)
@@ -867,6 +921,25 @@ def create_app() -> FastAPI:
         except Exception:
             top_missed_revenue_rules = []
             missed_revenue_month_label = ""
+        # Monthly "revenue recovered" KPI for the dashboard hero tile.
+        # Shows identified / recovered / pending dollars for the current
+        # calendar month so the biller can see whether the system is
+        # trustworthy at a glance. Same try/except fallback pattern as
+        # the rule aggregator above — empty state if anything fails.
+        try:
+            from .dashboard import aggregate_monthly_revenue_kpi as _amrk
+            monthly_revenue_kpi = _amrk()
+        except Exception:
+            monthly_revenue_kpi = {
+                "total_dollar": 0.0,
+                "recovered_dollar": 0.0,
+                "pending_dollar": 0.0,
+                "n_opportunities": 0,
+                "n_accepted": 0,
+                "acceptance_ratio": 0.0,
+                "month_label": "",
+                "ready": False,
+            }
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -881,6 +954,7 @@ def create_app() -> FastAPI:
                 "latest_real_audit": latest_real_audit,
                 "top_missed_revenue_rules": top_missed_revenue_rules,
                 "missed_revenue_month_label": missed_revenue_month_label,
+                "monthly_revenue_kpi": monthly_revenue_kpi,
             },
         )
 
@@ -935,6 +1009,12 @@ def create_app() -> FastAPI:
             total_opportunity_dollars = round(
                 sum(o["estimated_dollar"] for o in revenue_opportunities), 2
             )
+            # Attach per-finding "Model confidence" buckets derived from
+            # the feedback log so the encounter-detail template can
+            # render a color-coded badge per finding (HIGH/MEDIUM/LOW or
+            # "Not yet calibrated" placeholder).
+            _attach_model_confidence(visible_findings)
+            _attach_model_confidence(revenue_opportunities)
             return templates.TemplateResponse(
                 request,
                 "encounter_detail.html",
@@ -991,6 +1071,13 @@ def create_app() -> FastAPI:
         total_opportunity_dollars = round(
             sum(o["estimated_dollar"] for o in revenue_opportunities), 2
         )
+        # Same model-confidence pass as the demo path above — derive
+        # per-finding buckets from the feedback log so the template
+        # can render the "Model confidence: HIGH" badge on each
+        # finding. Idempotent on findings that already have the
+        # field set by an earlier handler.
+        _attach_model_confidence(visible_uploaded)
+        _attach_model_confidence(revenue_opportunities)
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",

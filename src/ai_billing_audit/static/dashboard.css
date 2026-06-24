@@ -475,6 +475,48 @@ main.page {
 .badge-sev-high     { background: var(--color-flag-soft);  color: var(--sev-high);     border-color: var(--sev-high); }
 .badge-sev-critical { background: var(--color-flag-soft);  color: var(--sev-critical); border-color: var(--sev-critical); }
 
+/* Model-confidence badges — render as a small color-coded pill next
+   to each finding on the encounter detail page.  Bucket thresholds
+   (from the learning-loop spec):
+     high         green     >10 accept decisions for this rule
+     medium       amber     3-10 accept decisions
+     low          red       <3 accept decisions (some signal, not enough)
+     uncalibrated muted     no feedback yet at this clinic
+   The "uncalibrated" bucket uses the same neutral treatment as
+   .badge-neutral so the biller doesn't see a misleading HIGH before
+   the pilot has generated real signal. */
+.badge-confidence {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  text-transform: none;
+  white-space: nowrap;
+}
+.badge-confidence--high {
+  background: var(--color-clean-soft, #dcfce7);
+  color: #166534;
+  border-color: #16a34a;
+}
+.badge-confidence--medium {
+  background: var(--color-warn-soft, #fef3c7);
+  color: #92400e;
+  border-color: #d97706;
+}
+.badge-confidence--low {
+  background: var(--color-flag-soft, #fee2e2);
+  color: #991b1b;
+  border-color: #dc2626;
+}
+.badge-confidence--uncalibrated {
+  background: var(--color-surface-2, #f1f5f9);
+  color: var(--color-fg-muted, #64748b);
+  border-color: var(--color-border, #cbd5e1);
+  font-style: italic;
+}
+
 /* Revenue opportunity badge — surfaces the total estimated uplift
    on the home page audit card so the biller can scan for
    highest-value encounters. Tier thresholds:
