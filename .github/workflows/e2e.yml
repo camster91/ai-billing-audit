@@ -1,0 +1,110 @@
+name: e2e
+
+on:
+  pull_request:
+    branches: [main, feat/**]
+  push:
+    branches: [feat/billing-page]
+
+# Cancel in-progress runs for the same PR — the suite is short
+# enough that re-running on a force-push is the desired behavior.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: smoke (chromium, 8 steps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The Next.js dev server listens on 3000 inside the runner.
+      PORT: 3000
+      # Auth runs in dev-stub mode (no real Resend key, magic link
+      # is logged to /tmp/portal-dev.log).
+      AUTH_RESEND_KEY: ""
+      AUTH_SECRET: e2e-test-secret-do-not-use-in-prod-please
+      DATABASE_URL: "file:./prisma/dev.db"
+      # Stable environment so the pricing env fallback in
+      # src/lib/pricing.ts returns the canonical Zorva defaults.
+      NODE_ENV: development
+      # The e2e seed + post-seed scripts and the magic-link helper
+      # all read this — must be a syntactically valid email address.
+      E2E_USER_EMAIL: e2e+e2e-clinic@ai-billing-audit.test
+      E2E_TENANT_SLUG: e2e-clinic
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm test:e2e:install
+
+      - name: Apply Prisma migrations (SQLite)
+        working-directory: apps/portal
+        run: pnpm exec prisma migrate deploy
+
+      - name: Type-check the suite
+        working-directory: apps/portal
+        run: pnpm exec tsc --noEmit -p tests/e2e/tsconfig.json
+
+      - name: Boot the dev server
+        working-directory: apps/portal
+        run: |
+          # Background the dev server; capture its output so the
+          # magic-link helper can find the [auth] line in /tmp/portal-dev.log.
+          nohup pnpm dev > /tmp/portal-dev.log 2>&1 &
+          # Wait for it to come up.
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then
+              echo "dev server up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          # Final probe.
+          curl -fsS http://127.0.0.1:3000 >/dev/null
+
+      - name: Run the smoke suite
+        working-directory: apps/portal
+        run: pnpm test:e2e
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/portal/tests/e2e/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: apps/portal/tests/e2e/screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/portal/tests/e2e/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

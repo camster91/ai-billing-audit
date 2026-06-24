@@ -1,0 +1,22 @@
+endpoint: POST /findings/undefined/dismiss (literal — endpoint does not exist) + POST /encounters/upload/paste (empty content) for closest mutation
+expected: 404 (literal endpoint missing); 422 (paste)
+actual:   findings=404 paste=422
+raw response:
+HTTP/2 404 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:21 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 22
+
+{"detail":"Not Found"}
+
+--- paste ---
+HTTP/2 422 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:22 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 92
+
+{"detail":[{"type":"missing","loc":["body","payload"],"msg":"Field required","input":null}]}

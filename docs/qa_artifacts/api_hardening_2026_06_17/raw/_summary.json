@@ -1,0 +1,54 @@
+{
+  "1": {
+    "endpoint": "POST /encounters/upload/preview (empty body, no form)",
+    "expected": "422",
+    "actual": "422"
+  },
+  "2": {
+    "endpoint": "GET /encounter/../../../etc/passwd (path traversal, percent-encoded + raw)",
+    "expected": "404 (or sanitized; 200 leaks sensitive data)",
+    "actual": "encoded=404 raw=404"
+  },
+  "3": {
+    "endpoint": "POST /encounters/upload/preview with 10 MiB file (and GET /encounter/AAA... 200 chars for path stress)",
+    "expected": "413 or 422 (not 500)",
+    "actual": "GET-status=404 POST-status=HTTP 200"
+  },
+  "4": {
+    "endpoint": "POST /encounters/upload/preview with content-type: text/html",
+    "expected": "415 (or 422)",
+    "actual": "422"
+  },
+  "5": {
+    "endpoint": "GET /encounter/nonexistent_id_xyz_does_not_exist",
+    "expected": "404",
+    "actual": "404"
+  },
+  "6": {
+    "endpoint": "POST /findings/undefined/dismiss (literal \u2014 endpoint does not exist) + POST /encounters/upload/paste (empty content) for closest mutation",
+    "expected": "404 (literal endpoint missing); 422 (paste)",
+    "actual": "findings=404 paste=422"
+  },
+  "7": {
+    "endpoint": "POST /encounters/upload/preview with valid JSON missing required 'file' field",
+    "expected": "422 with helpful error",
+    "actual": "422"
+  },
+  "8": {
+    "endpoint": "Every endpoint with NO Authorization header (no auth exists; documenting status codes)",
+    "expected": "401 (not honored \u2014 no auth on this API)",
+    "actual": "[('GET', '/', '200'), ('GET', '/healthz', '200'), ('GET', '/encounter/enc_0000', '404'), ('GET', '/encounter/enc_0000/json', '404'), ('GET', '/encounters/upload', '200'), ('GET', '/encounters/upload/jobs/nonexistent_job_xyz', '404'), ('POST', '/encounters/upload/preview', '000'), ('POST', '/encounters/upload/submit', '422'), ('POST', '/encounters/upload/paste', '422'), ('POST', '/encounters/upload/notes', '000')]"
+  },
+  "9": {
+    "endpoint": "Every endpoint with bad Authorization: Bearer obviously-not-a-real-token",
+    "expected": "401 (not honored \u2014 no auth on this API)",
+    "actual": "[('GET', '/', '200'), ('GET', '/healthz', '200'), ('GET', '/encounter/enc_0000', '404'), ('GET', '/encounter/enc_0000/json', '404'), ('GET', '/encounters/upload', '200'), ('GET', '/encounters/upload/jobs/nonexistent_job_xyz', '404'), ('POST', '/encounters/upload/preview', '000'), ('POST', '/encounters/upload/submit', '422'), ('POST', '/encounters/upload/paste', '422'), ('POST', '/encounters/upload/notes', '000')]"
+  },
+  "10": {
+    "endpoint": "100x concurrent POST /encounters/upload/preview (burst over 3.95s)",
+    "expected": "\u2265some 429s, zero 500s",
+    "actual": {
+      "200": 100
+    }
+  }
+}

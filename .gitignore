@@ -55,3 +55,25 @@ runs/acceptance/gemini-*/
 # Stray bearer-token scratch files and env backups (security)
 *.tmp_bearer.txt
 .env.bak
+
+# Local probe/debug scripts (one-off audit tooling, not source)
+apps/portal/a11y-*.mjs
+apps/portal/bg-debug*.mjs
+apps/portal/bg-probe*.mjs
+apps/portal/bg-walk*.mjs
+apps/portal/btn-probe*.mjs
+apps/portal/cookie-test*.mjs
+apps/portal/input-focus*.mjs
+apps/portal/insert-session.mjs
+apps/portal/test-results/
+
+# User-uploaded clinical notes (PHI — never commit)
+logs/uploaded_notes/
+
+# Acceptance-run result bundles (kept locally for analysis)
+runs/acceptance/ab-*/
+runs/acceptance/multi-*/
+runs/acceptance/live-parity/
+
+# Junk files from mis-quoted shell commands
+" if v else \"\"}\"\")\n"

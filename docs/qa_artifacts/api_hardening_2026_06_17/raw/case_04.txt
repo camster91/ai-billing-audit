@@ -1,0 +1,12 @@
+endpoint: POST /encounters/upload/preview with content-type: text/html
+expected: 415 (or 422)
+actual:   422
+raw response:
+HTTP/2 422 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:21 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 89
+
+{"detail":[{"type":"missing","loc":["body","file"],"msg":"Field required","input":null}]}
