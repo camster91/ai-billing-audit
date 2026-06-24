@@ -2674,6 +2674,8 @@ def create_app() -> FastAPI:
                     "encounter_id": eid,
                     "finding_id": fid,
                     "rule_id": fid_rule,
+                    "severity": str(f.get("severity") or "").strip().lower(),
+                    "quote": f.get("quote"),
                 })
 
             per_encounter_summary.append({
@@ -2716,6 +2718,51 @@ def create_app() -> FastAPI:
             user_id=user_id,
             user_role=user_role,
         )
+        # Slack ``high_finding`` event (kanban t_c9cf54f4): when a
+        # biller bulk-actions a high-severity finding (accept OR
+        # dismiss), post a short Slack notification to the
+        # registered channel. Best-effort: notify_slack swallows
+        # network errors so a Slack outage cannot fail the bulk
+        # action. Only severity="high" (not "critical") fires —
+        # the kanban task body explicitly says "high finding", and
+        # the user can promote criticals via a future rule if they
+        # want a louder notification. We loop over each affected
+        # finding so a multi-finding batch can produce multiple
+        # messages (Slack clients dedupe naturally by ts on
+        # delivery, and a single combined card would lose the
+        # per-finding rule attribution).
+        if action_subtype in ("accept", "dismiss"):
+            try:
+                from ai_billing_audit import slack_notify as _slack
+
+                for row in applied:
+                    if row.get("severity") != "high":
+                        continue
+                    _slack.notify_slack(
+                        _TENANT_ID,
+                        _slack.EVENT_HIGH_FINDING,
+                        {
+                            "encounter_id": row.get("encounter_id"),
+                            "finding_id": row.get("finding_id"),
+                            "rule_id": row.get("rule_id") or "",
+                            "severity": "high",
+                            "action": action_subtype,
+                            "tenant_id": _TENANT_ID,
+                            "audit_id": event.get("event_id", ""),
+                            "quote": row.get("quote"),
+                        },
+                    )
+            except Exception as exc:  # pragma: no cover - defensive
+                # Slack module missing or any failure is non-fatal:
+                # the bulk action already committed. Log so the
+                # operator notices, but never 500 the response.
+                import logging as _logging
+
+                _logging.getLogger(__name__).warning(
+                    "high_finding slack notify failed for bulk %s: %s",
+                    action_subtype,
+                    exc,
+                )
         return {
             "applied_count": len(applied),
             "skipped_count": len(skipped),
@@ -4978,6 +5025,59 @@ def create_app() -> FastAPI:
                 "ran_via": "audit_endpoint",
             }
         )
+
+    # ── Slack integration (kanban t_c9cf54f4) ────────────────────────
+    # Single endpoint that registers a Slack incoming-webhook +
+    # channel + event subscription. Persists to
+    # ``/app/logs/slack_integrations.jsonl`` (env-overridable for
+    # tests) and returns a stable ``slack_id`` so the caller can
+    # later unregister. The dashboard-side ``notify_slack`` helper
+    # runs synchronously off the audit_complete path and the
+    # bulk-accept / bulk-dismiss paths (high_finding event).
+    from ai_billing_audit import slack_notify as _slack
+
+    @app.post("/api/integrations/slack")
+    async def integrations_register_slack(request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="body must be a JSON object",
+            )
+        webhook_url = body.get("webhook_url")
+        channel = body.get("channel")
+        events = body.get("events")
+        if not isinstance(webhook_url, str) or not webhook_url.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="webhook_url is required",
+            )
+        if not isinstance(channel, str) or not channel.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="channel is required",
+            )
+        if not isinstance(events, list) or not all(
+            isinstance(e, str) for e in events
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="events must be a list of strings",
+            )
+        clinic_id = body.get("clinic_id") or _TENANT_ID
+        try:
+            record = _slack.register_slack(
+                webhook_url=webhook_url,
+                channel=channel,
+                events=events,
+                clinic_id=clinic_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return JSONResponse(record, status_code=201)
 
     # ── Public v1 API (kanban t_f4f1c149) ────────────────────────────
     # The v1 surface is a separately-authenticated, JSON-only
