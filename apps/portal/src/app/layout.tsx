@@ -1,7 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+// Zorva brand typefaces (see docs/BRANDING_TYPOGRAPHY.md).
+// Inter is the default body + heading face; JetBrains Mono handles code.
+// Geist is kept on --font-geist-sans / --font-geist-mono for any existing
+// component that already references it — no functional removal here.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,8 +70,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
+    >
+      <body className="body">
         <a className="skip-link" href="#main">
           Skip to content
         </a>
