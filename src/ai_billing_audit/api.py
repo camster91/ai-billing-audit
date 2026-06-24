@@ -207,6 +207,17 @@ REVENUE_OPPORTUNITY_RULES: dict[str, dict[str, Any]] = {
             "bundles the E/M into the procedure fee)."
         ),
     },
+    "rule_ahcip_lab_order_no_draw": {
+        "rule_name": "Lab ordered without draw or follow-up date",
+        "estimated_dollar": 0.0,
+        "suggested_action": (
+            "Workflow-only: clinic-ops to confirm the patient "
+            "completed the draw (AHCIP physicians do not bill "
+            "for labs; this is an operational gap, not a "
+            "billing denial). Candidate for doctor_email "
+            "follow-up channel in addition to the audit feed."
+        ),
+    },
     "rule_ahcip_telehealth": {
         "rule_name": "Telehealth premium eligible",
         "estimated_dollar": 15.0,

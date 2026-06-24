@@ -361,6 +361,60 @@ M. MODIFIER-25 UNLOCK (HIGH) — same-day E/M + procedure pair
        -25; the insomnia assessment is a separately evaluable
        problem. Suggest appending -25 to the 03.04A line.
 
+N. LAB ORDER WITHOUT DRAW / FOLLOW-UP (INFO) — workflow
+   signal (NOT a billing denial) when the note documents a
+   lab order (CBC, A1C, TSH, ferritin, lipid panel,
+   urinalysis, etc.) AND the encounter does NOT document
+   either (a) a follow-up visit date for review of results
+   OR (b) a draw date / specimen-collected date / "patient
+   will go to lab this week" plan note. Fire
+   rule_ahcip_lab_order_no_draw INFO.
+   - Trigger phrases for the order side: "CBC ordered",
+     "A1C ordered", "TSH ordered", "lipid panel ordered",
+     "ferritin ordered", "ordered labs", "lab requisition",
+     "labs to be drawn".
+   - Trigger phrases for the draw / follow-up side (any one
+     is sufficient to suppress): "specimen collected",
+     "drawn today", "blood drawn", "patient will go to
+     Dynacare / Alberta Precision Labs this week",
+     "follow-up in 2 weeks to review", "results pending,
+     will follow up", "f/u 1 week", "RTC [date]", "review
+     labs at next visit on [date]".
+   - Severity: INFO (clinic-workflow only). This rule does
+     NOT affect billing:
+     * Alberta physicians do not bill for lab tests; the
+       lab bills the patient / AHCIP directly (see rule H).
+     * The physician's E/M is paid when the visit is
+       completed regardless of whether the lab is drawn.
+     * The "missing draw" is an operational gap (the patient
+       never came in / never went to the lab), not a billing
+       error.
+   - Suggested action: clinic staff to phone the patient and
+     confirm the draw was completed; if not, re-issue the
+     requisition or convert to a clear "patient declined" /
+     "will follow up at next visit" note. Because this is
+     workflow-level, this rule is also a candidate for the
+     doctor_email follow-up channel rather than (or in
+     addition to) the audit-finding channel — flag for the
+     biller as INFO and route to clinic-ops.
+   - Do NOT fire when the lab is drawn in-office (point-of-
+     care glucose, urine dipstick, INR, HbA1c POC) — those
+     are documented as "performed" or "result: X" with no
+     follow-up needed.
+   - Do NOT fire when the only lab is a future-scheduled
+     screening (e.g. "ordered FIT for next visit") where
+     the follow-up date IS the encounter date itself.
+   - Few-shot:
+     clinical_note: "62yo F with T2DM, A1c last 8.9 three
+       months ago. Today A1c ordered, metformin continued
+       1000mg BID. RTC 3 months."
+     Findings:
+     - rule_ahcip_lab_order_no_draw (info): A1c ordered
+       today but no draw date and no specific f/u date
+       (RTC 3 months is a routine refill cadence, not a
+       labs-review date). Clinic-ops to confirm draw
+       completed; physician E/M unaffected.
+
 Few-shot examples (AHCIP-encounter set; the val set is held out):
 
 EXAMPLE 1. Established CKD patient follow-up.
