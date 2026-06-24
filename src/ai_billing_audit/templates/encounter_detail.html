@@ -173,10 +173,71 @@
           <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-toggle" data-finding-id="{{ f.finding_id }}">
             Appeal denial
           </button>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-toggle" data-finding-id="{{ f.finding_id }}">
+        </div>
+        {# Per-finding Accept / Dismiss / Modify button row.
+           Each button POSTs to its own per-finding endpoint which
+           writes one FeedbackEntry to the learning-loop log. The
+           Modify form is collapsed by default and revealed when the
+           Modify button is clicked. #}
+        <div class="finding-actions" data-finding-id="{{ f.finding_id }}">
+          <button type="button" class="btn btn-primary btn-sm finding-actions__btn"
+                  data-action="finding-accept" data-finding-id="{{ f.finding_id }}">
+            Accept
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm finding-actions__btn"
+                  data-action="finding-dismiss" data-finding-id="{{ f.finding_id }}">
             Dismiss
           </button>
+          <button type="button" class="btn btn-ghost btn-sm finding-actions__btn"
+                  data-action="finding-modify-toggle" data-finding-id="{{ f.finding_id }}">
+            Modify
+          </button>
+          <span class="finding-actions__status muted small" data-finding-id="{{ f.finding_id }}"></span>
         </div>
+        {# Inline modify form: collapsed by default, expands when the
+           Modify button above is clicked. Captures new severity and/or
+           category before sending. #}
+        <form
+          class="modify-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/finding/{{ f.finding_id }}/modify"
+          data-current-severity="{{ f.severity }}"
+          data-current-category="{{ f.category or '' }}"
+          hidden
+        >
+          <div class="modify-form__row">
+            <label class="dismiss-form__label">
+              New severity
+              <select name="new_severity" class="dismiss-form__select">
+                <option value="">— keep —</option>
+                <option value="info">info</option>
+                <option value="low">low</option>
+                <option value="medium"{% if f.severity == 'medium' %} selected{% endif %}>medium</option>
+                <option value="high"{% if f.severity == 'high' %} selected{% endif %}>high</option>
+                <option value="critical"{% if f.severity == 'critical' %} selected{% endif %}>critical</option>
+              </select>
+            </label>
+            <label class="dismiss-form__label">
+              New category
+              <input
+                type="text"
+                name="new_category"
+                class="dismiss-form__input"
+                maxlength="80"
+                value="{{ f.category or '' }}"
+                placeholder="e.g. documentation_gap"
+              />
+            </label>
+          </div>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="finding-modify-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Save override
+            </button>
+          </div>
+        </form>
         {% if f.quote %}
           <div class="finding-item__quote">&ldquo;{{ f.quote }}&rdquo;</div>
         {% endif %}
@@ -269,10 +330,6 @@
 {% endif %}
 
 <div class="action-bar">
-  <button class="btn btn-primary" data-action="accept-all" data-endpoint="/encounter/{{ encounter_id }}/accept-all"
-          {% if findings|length == 0 %}disabled{% endif %}>
-    Accept all {{ findings|length }} finding{{ "" if findings|length == 1 else "s" }}
-  </button>
   <button class="btn btn-ghost" data-action="rerun" data-endpoint="/encounter/{{ encounter_id }}/rerun">
     Re-run audit
   </button>
@@ -333,10 +390,45 @@
     }
     // Toggle buttons: dismiss-toggle / appeal-toggle expand the
     // inline form; dismiss-cancel / appeal-cancel collapse it.
+    // Per-finding Accept / Dismiss / Modify buttons also live in the
+    // same [data-action] sweep below.
     document.querySelectorAll('[data-action]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var action = btn.dataset.action;
         var findingId = btn.dataset.findingId;
+        // Per-finding inline-form toggles (Modify). Accept / Dismiss
+        // skip the form step and POST directly.
+        if (action === 'finding-modify-toggle') {
+          var form = document.querySelector('.modify-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
+        }
+        if (action === 'finding-modify-cancel') {
+          var form = document.querySelector('.modify-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        if (action === 'finding-accept' || action === 'finding-dismiss') {
+          var endpoint = '/encounter/' + encounterId() + '/finding/' + encodeURIComponent(findingId) + '/' + (action === 'finding-accept' ? 'accept' : 'dismiss');
+          btn.disabled = true;
+          post(endpoint, null).then(function (resp) {
+            btn.disabled = false;
+            if (resp && resp.ok) {
+              var statusEl = document.querySelector('.finding-actions__status[data-finding-id="' + findingId + '"]');
+              if (statusEl) statusEl.textContent = action === 'finding-accept' ? 'accepted' : 'dismissed';
+              if (window.showToast) window.showToast(
+                (action === 'finding-accept' ? 'Accepted ' : 'Dismissed ') + findingId + '.'
+              );
+              setTimeout(refreshTrail, 400);
+            } else {
+              if (window.showToast) window.showToast("Action failed: " + (resp.detail || JSON.stringify(resp)));
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            if (window.showToast) window.showToast("Network error: " + err);
+          });
+          return;
+        }
         if (action === 'dismiss-toggle') {
           var form = document.querySelector('.dismiss-form[data-finding-id="' + findingId + '"]');
           if (form) form.hidden = !form.hidden;
@@ -357,7 +449,7 @@
           if (form) form.hidden = true;
           return;
         }
-        // Action-bar buttons: accept-all, rerun, flag
+        // Action-bar buttons: rerun, flag
         var endpoint = btn.dataset.endpoint;
         var body = null;
         if (action === 'dismiss') body = {finding_id: findingId};
@@ -366,7 +458,6 @@
           btn.disabled = false;
           if (resp && resp.ok) {
             var msg = {
-              'accept-all': "Accepted " + resp.n_accepted + " finding" + (resp.n_accepted === 1 ? "" : "s") + ".",
               'rerun': "Re-run queued. Reload in a few seconds.",
               'flag': "Flagged for review.",
               'dismiss': "Dismissed finding " + resp.finding_id + "."
@@ -379,6 +470,65 @@
           }
         }).catch(function (err) {
           btn.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
+      });
+    });
+    // Helper to pull the current encounter id out of any data-finding-id
+    // URL we already built — we encode it into the endpoint template so
+    // we don't need to embed it in JS.
+    function encounterId() {
+      var anyBtn = document.querySelector('.finding-actions__btn');
+      if (!anyBtn) return '';
+      // Each .finding-actions form holds the endpoint, e.g.
+      // /encounter/{id}/finding/{fid}/modify
+      var form = document.querySelector('.modify-form');
+      if (!form) return '';
+      var m = form.dataset.endpoint.match(/\/encounter\/([^/]+)\/finding\//);
+      return m ? m[1] : '';
+    }
+    // Inline modify-form submit: POSTs new severity + category to
+    // /encounter/{id}/finding/{fid}/modify and updates the inline
+    // status label.
+    document.querySelectorAll('.modify-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var newSeverity = fd.get('new_severity') || '';
+        var newCategory = fd.get('new_category') || '';
+        // If the biller didn't actually change anything, treat it as
+        // a no-op rather than failing server-side.
+        var currentSeverity = form.dataset.currentSeverity || '';
+        var currentCategory = form.dataset.currentCategory || '';
+        if (!newSeverity) newSeverity = '';
+        if (newSeverity === currentSeverity) newSeverity = '';
+        if (newCategory === currentCategory) newCategory = '';
+        if (!newSeverity && !newCategory) {
+          if (window.showToast) window.showToast("No change to save.");
+          form.hidden = true;
+          return;
+        }
+        var body = {new_severity: newSeverity, new_category: newCategory};
+        var submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok) {
+            var statusEl = document.querySelector('.finding-actions__status[data-finding-id="' + findingId + '"]');
+            var parts = [];
+            if (resp.new_severity) parts.push('severity → ' + resp.new_severity);
+            if (resp.new_category) parts.push('category → ' + resp.new_category);
+            if (statusEl) statusEl.textContent = parts.length ? 'modified (' + parts.join(', ') + ')' : 'modified';
+            if (window.showToast) window.showToast("Override saved for " + findingId + ".");
+            form.hidden = true;
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Override failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        }).catch(function (err) {
+          submit.disabled = false;
           if (window.showToast) window.showToast("Network error: " + err);
         });
       });
