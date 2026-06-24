@@ -1,0 +1,223 @@
+/* /pilot — 30/60/90-day pilot plan page. Mirrors the dark blue gradient
+   theme used by /pricing, /how-it-works, and /security. Page is a
+   vertical stack of three phase cards plus a closing CTA. */
+
+.page {
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --panel-2: #1a2340;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #60a5fa;
+  --accent-bg: #2563eb;
+  --accent-2: #2dd4bf;
+  --good: #22c55e;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.header {
+  padding: 64px 24px 24px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 12px;
+  font-size: 40px;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.header p {
+  margin: 0 auto;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 12px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 24px 64px;
+}
+
+.phases {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.phase {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 32px;
+  position: relative;
+}
+
+.phaseHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.phaseNumber {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--accent-2);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.phase h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.2px;
+}
+
+.phaseLead {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 720px;
+}
+
+.phaseColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .phaseColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.column ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text);
+}
+
+.column li {
+  margin-bottom: 8px;
+}
+
+.ctaSection {
+  margin-top: 48px;
+  padding: 40px 24px;
+  text-align: center;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.ctaSection h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+.ctaSub {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.ctaRow {
+  display: inline-flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ctaButton {
+  display: inline-block;
+  padding: 12px 20px;
+  background: var(--accent-bg);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.ctaButton:hover {
+  background: #1d4ed8;
+}
+
+.ctaSecondary {
+  display: inline-block;
+  padding: 12px 20px;
+  background: transparent;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.ctaSecondary:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.footer {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.footerLinks {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.footerLinks a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.footerLinks a:hover {
+  text-decoration: underline;
+}
