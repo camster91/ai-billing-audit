@@ -1,5 +1,5 @@
 // /pricing — Zorva 3-tier CAD/USD pricing page with tier picker and
-// "Start 60-day free pilot" CTAs.
+// "60-day no-cost pilot. After that, $499/mo. Cancel any time." CTAs.
 //
 // Server component. Tier data is sourced from getPricingConfig() (env-driven)
 // so prices, claim caps, and Stripe price IDs can change without a code
@@ -9,7 +9,7 @@
 // Three tiers, $499 / $1,499 / $2,999 CAD; US clinics see static USD
 // equivalents (no live FX). The middle tier carries the "Most popular"
 // highlight to match the task spec. All CTAs route to /contact for the
-// free-pilot sign-up; Stripe checkout handoff is wired in CheckoutButton.
+// no-cost-pilot sign-up; Stripe checkout handoff is wired in CheckoutButton.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -110,9 +110,9 @@ export default function PricingPage() {
                 <Link
                   href="/contact"
                   className={`${styles.cta} ${recommended ? styles.ctaPrimary : styles.ctaSecondary}`}
-                  aria-label={`Start 60-day free pilot for the ${tier.name} tier`}
+                  aria-label={`Start the ${tier.name} tier — 60-day no-cost pilot. After that, $499/mo. Cancel any time.`}
                 >
-                  Start 60-day free pilot
+                  60-day no-cost pilot. After that, $499/mo. Cancel any time.
                 </Link>
               </article>
             );
