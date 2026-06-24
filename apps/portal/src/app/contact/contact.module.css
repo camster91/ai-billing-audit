@@ -300,6 +300,82 @@
   color: #6ba0ff;
 }
 
+/* ------- Booking CTA ------- */
+
+.bookingCta {
+  margin-top: 28px;
+  padding: 22px 24px;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.18) 0%,
+    rgba(45, 212, 191, 0.12) 100%
+  );
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookingHeadline {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bookingBody {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.bookingActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.bookingButton {
+  display: inline-block;
+  background: var(--accent-bg);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 22px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.bookingButton:hover {
+  background: #1d4ed8;
+}
+
+.bookingButton:active {
+  transform: translateY(1px);
+}
+
+.bookingSecondary {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.bookingSecondary:hover {
+  color: #6ba0ff;
+}
+
+.bookingFootnote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ------- Alt path ------- */
 
 .altPath {
