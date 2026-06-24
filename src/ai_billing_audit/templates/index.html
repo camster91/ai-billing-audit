@@ -152,4 +152,11 @@
   </div>
 {% endif %}
 
+{# Revenue opportunity detail modal — included on every page that
+   shows audit cards. The modal shell is hidden by default and
+   populated on-demand by openRevenueOpportunityModal() (defined
+   in base.html). Same partial can be re-included from other
+   templates that render _audit_card.html. #}
+{% include "_revenue_opportunity_modal.html" %}
+
 {% endblock %}

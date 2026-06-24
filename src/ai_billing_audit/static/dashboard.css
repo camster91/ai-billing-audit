@@ -388,6 +388,97 @@ main.page {
 .badge-revenue--medium { background: var(--color-warn-soft);  color: var(--color-warn);  border-color: var(--color-warn); }
 .badge-revenue--high   { background: var(--color-flag-soft);  color: var(--color-flag);  border-color: var(--color-flag); }
 
+/* The revenue badge is a <button> inside the card's outer <a>. Reset
+   native button chrome so it looks identical to the old <span> badge
+   while still being keyboard-focusable. */
+.audit-card__opportunity-btn {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  line-height: inherit;
+}
+.audit-card__opportunity-btn:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ─── Revenue opportunity modal ──────────────────────────── */
+/* Detail dialog opened by clicking the '$$ opportunity' badge on an
+   audit card. Centered overlay with a backdrop; consumes the same
+   color/space tokens as the rest of the dashboard. */
+.modal[hidden] { display: none; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+.modal__panel {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.18));
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100vh - var(--space-6));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+.modal__title { margin: 0; font-size: 1.1rem; }
+.modal__subtitle { margin: var(--space-1) 0 0; }
+.modal__body {
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+.opp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.opp-row:last-child { border-bottom: 0; }
+.opp-row__head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.opp-row__name { font-weight: 600; }
+.opp-row__meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--color-fg-muted); font-size: 0.85rem; }
+.opp-row__why { margin: var(--space-2) 0 0; color: var(--color-fg-muted); font-size: 0.9rem; }
+.opp-row__dollar {
+  align-self: start;
+  font-weight: 700;
+  color: var(--color-flag);
+  white-space: nowrap;
+}
+.opp-row__actions { grid-column: 1 / -1; display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.opp-row__status { font-size: 0.85rem; color: var(--color-fg-muted); }
+.opp-empty { padding: var(--space-4) 0; color: var(--color-fg-muted); text-align: center; }
+
 /* ─── Cards ───────────────────────────────────────────────── */
 .card {
   background: var(--color-surface);

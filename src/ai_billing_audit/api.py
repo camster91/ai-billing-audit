@@ -1043,6 +1043,84 @@ def create_app() -> FastAPI:
             }
         )
 
+    @app.get("/encounter/{encounter_id}/opportunities", response_class=JSONResponse)
+    def encounter_opportunities(encounter_id: str) -> JSONResponse:
+        """Return the list of revenue-opportunity findings for an encounter.
+
+        Powers the '$$ opportunity' detail modal that opens when a biller
+        clicks the revenue badge on an audit card on the dashboard. The
+        response shape is a thin projection of ``compute_revenue_opportunities``
+        — enough for the modal to render rule name, suggested SOMB code,
+        estimated dollar uplift, and the one-sentence 'why this matters'.
+
+        Each opportunity carries the original ``finding_id`` so the modal
+        can reuse the existing per-finding accept / dismiss endpoints.
+
+        Mirrors the encounter-detail handler's lookup paths:
+          1. Demo registry (gold ground-truth findings)
+          2. Uploaded encounter with a completed audit (real LLM findings)
+          3. 404 if neither
+        """
+        findings = _load_visible_findings_for_modal(encounter_id)
+        if findings is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"{encounter_id!r} not found or has no visible findings",
+            )
+        opportunities = compute_revenue_opportunities(findings)
+        # Project to the slim modal shape — drop heavy fields, keep
+        # only what the UI needs to render the per-finding row.
+        rows = [
+            {
+                "finding_id": o.get("finding_id") or "",
+                "rule_id": o.get("opportunity_rule_id") or o.get("rule_id") or "",
+                "rule_name": o.get("rule_name") or o.get("opportunity_rule_id") or "",
+                "suggested_code": o.get("suggested_code") or o.get("somb_code") or "",
+                "estimated_dollar": float(o.get("estimated_dollar") or 0.0),
+                "why": o.get("suggested_action") or "",
+                "severity": o.get("severity") or "info",
+            }
+            for o in opportunities
+        ]
+        total = round(sum(r["estimated_dollar"] for r in rows), 2)
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "opportunities": rows,
+                "total_dollar": total,
+                "n_opportunities": len(rows),
+            }
+        )
+
+    def _load_visible_findings_for_modal(encounter_id: str) -> list[dict] | None:
+        """Return severity-filtered findings for the modal API.
+
+        Same lookup paths as ``encounter_detail``: demo registry first,
+        then uploaded/real-audit log. Returns ``None`` if the encounter
+        is unknown OR has zero visible findings after the MIN_SEVERITY
+        threshold is applied.
+        """
+        min_sev = _min_severity_threshold()
+        demo = get_demo_encounter(encounter_id)
+        if demo is not None:
+            record = load_encounter_record(encounter_id)
+            if record is None:
+                return None
+            findings = _finding_dicts(record)
+            return [
+                f for f in findings
+                if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+            ]
+        # Path 2: uploaded encounter with a completed audit.
+        uploaded_audit = _latest_real_audit_for(encounter_id)
+        if uploaded_audit is None:
+            return None
+        uploaded_findings = uploaded_audit.get("findings", []) or []
+        return [
+            f for f in uploaded_findings
+            if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+        ]
+
     # ---- Reviewer actions: accept-all / dismiss / rerun / flag ----
     # Persisted via audit_actions.append(); each row is SHA-256-chained
     # so the trail is tamper-evident. The encounter detail page posts

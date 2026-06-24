@@ -57,15 +57,24 @@
          medium (amber) $50-$200
          high (red)     >= $200
        Lets the biller scan the home page for highest-value
-       opportunities without clicking into each encounter. #}
+       opportunities without clicking into each encounter.
+
+       The badge is rendered as a real <button> nested INSIDE the
+       card's outer <a>. We stopPropagation + preventDefault on
+       click so the badge opens the detail modal instead of
+       navigating to the encounter page. data-opportunity-encounter
+       is what the global handler reads to fetch the modal body. #}
     {% if card.revenue_opportunity_tier and card.revenue_opportunity_total %}
-      <span
-        class="badge badge-revenue badge-revenue--{{ card.revenue_opportunity_tier }}"
-        title="{{ card.revenue_opportunity_count }} missed-revenue finding{{ '' if card.revenue_opportunity_count == 1 else 's' }} — estimated total uplift"
+      <button
+        type="button"
+        class="badge badge-revenue badge-revenue--{{ card.revenue_opportunity_tier }} audit-card__opportunity-btn"
+        title="{{ card.revenue_opportunity_count }} missed-revenue finding{{ '' if card.revenue_opportunity_count == 1 else 's' }} — estimated total uplift. Click for details."
+        data-action="open-opportunity-modal"
+        data-opportunity-encounter="{{ card.encounter_id }}"
       >
         <span aria-hidden="true">$$</span>
         ${{ '%0.0f'|format(card.revenue_opportunity_total) }} opportunity
-      </span>
+      </button>
     {% endif %}
   </div>
 
