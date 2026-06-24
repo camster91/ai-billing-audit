@@ -704,32 +704,52 @@ _already_notified: set[str] = set()
 
 
 def _maybe_notify_audit_complete(audit_id: str, body: dict[str, Any]) -> None:
-    """Fire ``audit_complete`` webhook once per audit_id.
+    """Fire ``audit_complete`` webhook + Slack notification once per audit_id.
 
     Idempotent within the lifetime of the process; a server
-    restart re-fires the webhook on the next GET, which is the
-    documented behaviour for at-least-once delivery.
+    restart re-fires on the next GET, which is the documented
+    behaviour for at-least-once delivery.
+
+    Both the EHR webhook (:mod:`webhooks`) and the Slack
+    integration (:mod:`slack_notify`) get the same payload shape
+    so subscribers don't have to remap fields. Slack delivery is
+    best-effort and never raises — see :func:`slack_notify.notify_slack`.
     """
     with _notified_lock:
         if audit_id in _already_notified:
             return
         _already_notified.add(audit_id)
+    payload = {
+        "audit_id": audit_id,
+        "encounter_id": body.get("encounter_id"),
+        "has_discrepancy": body.get("has_discrepancy"),
+        "findings": body.get("findings") or [],
+        "findings_count": len(body.get("findings") or []),
+        "summary": body.get("summary"),
+    }
     try:
         dispatch_event(
             EVENT_AUDIT_COMPLETE,
-            {
-                "audit_id": audit_id,
-                "encounter_id": body.get("encounter_id"),
-                "has_discrepancy": body.get("has_discrepancy"),
-                "findings": body.get("findings") or [],
-                "summary": body.get("summary"),
-            },
+            payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
         # dispatch_event itself catches network errors; this
         # is a last-resort guard so a misbehaving webhook
         # subscriber can't 500 the GET response.
         _log.warning("audit_complete dispatch failed for %s: %s", audit_id, exc)
+    # Slack side runs in parallel with the EHR webhook. A Slack
+    # outage is logged at WARNING inside notify_slack and cannot
+    # bubble up here — the GET response is unaffected. We import
+    # inside the function so a Slack module failure (e.g. an old
+    # image that predates t_c9cf54f4) doesn't break audit
+    # completion for tenants that never opted in.
+    try:
+        from ai_billing_audit import slack_notify as _slack
+
+        tenant_id = body.get("tenant_id") or "default"
+        _slack.notify_slack(tenant_id, _slack.EVENT_AUDIT_COMPLETE, payload)
+    except Exception as exc:  # pragma: no cover - defensive
+        _log.warning("audit_complete slack notify failed for %s: %s", audit_id, exc)
 
 
 def emit_finding_acknowledged(
