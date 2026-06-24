@@ -45,6 +45,29 @@ export default function Home() {
           </div>
         </header>
 
+        <section
+          className={styles.videoWrap}
+          aria-label="60-second product walkthrough"
+        >
+          <div className={styles.videoFrame}>
+            <iframe
+              className={styles.video}
+              src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"
+              title="Zorva in 60 seconds — pre-submit audit walkthrough"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+          <p className={styles.videoCaption}>
+            Sixty seconds. Upload a sample AHCIP claim, watch the auditor
+            read the clinical note, pull the relevant SOMB rule, and surface
+            the missed code or modifier — with a citation to the exact rule
+            passage. No audio required; captions available.
+          </p>
+        </section>
+
         <section className={styles.pillars} aria-label="What the product does">
           <article className={styles.pillar}>
             <h2>Audit every claim, not just the flagged ones</h2>
