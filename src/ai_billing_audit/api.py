@@ -197,6 +197,16 @@ REVENUE_OPPORTUNITY_RULES: dict[str, dict[str, Any]] = {
             "identifiable procedure can be billed in addition."
         ),
     },
+    "rule_ahcip_modifier_25_unlock": {
+        "rule_name": "Modifier -25 unlock (same-day E/M + procedure)",
+        "estimated_dollar": 45.0,
+        "suggested_action": (
+            "Append modifier -25 to the E/M SOMB code so the "
+            "cognitive work is paid separately from the same-day "
+            "procedure (Alberta-specific; without -25 the payer "
+            "bundles the E/M into the procedure fee)."
+        ),
+    },
     "rule_ahcip_telehealth": {
         "rule_name": "Telehealth premium eligible",
         "estimated_dollar": 15.0,

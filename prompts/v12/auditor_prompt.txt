@@ -315,6 +315,52 @@ K. MISSING PROCEDURE / DOCUMENTED-BUT-UNBILLED SERVICE (HIGH) —
      contain only R69, also flag rule_ahcip_dx_linkage so the
      fix instructions cover both gaps.
 
+M. MODIFIER-25 UNLOCK (HIGH) — same-day E/M + procedure pair
+   billed WITHOUT a modifier -25 (Alberta-specific; -25 is the
+   AHCIP "separately evaluable" flag that lets the E/M be paid
+   in addition to the procedure; without it the payer bundles
+   the E/M into the procedure and pays only the procedure).
+   Trigger rule_ahcip_modifier_25_unlock HIGH (lost revenue;
+   the physician's cognitive work is uncompensated).
+   - Trigger condition: claim has an E/M code from the
+     established-patient moderate / acute set (03.03A, 03.04A,
+     03.05A, or 03.07A) AND a procedure / diagnostic /
+     therapeutic SOMB code (injection, biopsy, IUD insertion,
+     cryotherapy, EKG in office, spirometry, suturing, etc.)
+     on the SAME date_of_service AND no "-25" modifier on
+     the E/M line AND the clinical note documents a separately
+     evaluable problem distinct from the procedure
+     ("discussed also", "patient also reports", "additionally
+     reviewed", separate HPI for a second concern).
+   - Suggested fix: append modifier -25 to the E/M SOMB code
+     (e.g. "03.04A" → "03.04A with -25") so the E/M is paid
+     separately from the procedure. If documentation is weak
+     (no separately evaluable problem described), flag for
+     physician review rather than auto-fix.
+   - Do NOT fire when:
+     * the E/M and procedure are on different dates
+     * the only procedure is a lab order (see rule H) or an
+       imaging order the physician is not interpreting
+     * -25 is already on the E/M line
+     * the procedure is itself a -25 eligible preventive /
+       counselling service already unbundled
+   - Distinguish from rule K (missing procedure): rule K fires
+     when a procedure is documented but NOT billed; this rule
+     fires when E/M + procedure are both billed but -25 is
+     missing. They can co-fire on the same encounter.
+   - Few-shot:
+     clinical_note: "BP 138/86, HR 72. Joint injection right
+       knee, 40mg triamcinolone. Patient also reports new
+       insomnia over the past month — reviewed sleep hygiene,
+       started melatonin 3mg qhs."
+     claim: som_b_codes [03.04A, 13.59B]; date_of_service:
+       2026-05-12; no -25 modifier on any line.
+     Findings:
+     - rule_ahcip_modifier_25_unlock (high): same-date E/M
+       (03.04A) + procedure (13.59B joint injection) without
+       -25; the insomnia assessment is a separately evaluable
+       problem. Suggest appending -25 to the 03.04A line.
+
 Few-shot examples (AHCIP-encounter set; the val set is held out):
 
 EXAMPLE 1. Established CKD patient follow-up.
