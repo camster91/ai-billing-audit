@@ -1,0 +1,270 @@
+<!doctype html>
+<!--
+  Per-clinic F1 dashboard widget.
+  ───────────────────────────────
+  This is the lightweight, framework-free HTML widget that the
+  learning-loop dashboard renders. It calls
+  GET /api/dashboard/per_clinic_f1 and shows:
+
+    1. A clinic picker (populated from the endpoint's `clinics` list).
+    2. A single "Clinic F1" tile (the roll-up across all rules).
+    3. A per-rule precision / recall / F1 table (with n=support).
+    4. An F1-over-time chart (canvas, no external deps).
+
+  The widget is intentionally self-contained: a single file, no
+  build step, no framework, no remote CSS or fonts. Drop it into
+  any page (Next.js, plain HTML, Notion embed, etc.) and it works.
+  In the Next.js portal at apps/portal/src/app/dashboard/page.tsx
+  the same data shape is fetched server-side and rendered as the
+  "Learning-loop" widget card.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Per-clinic F1 — Learning-loop dashboard</title>
+    <style>
+      /* Inline-ish: a tiny <style> block for layout only. Email-safe
+         colour palette derived from the brand tokens used elsewhere
+         in the portal (deep navy + accent teal). */
+      .pcf1-root { font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #e6e9f5; background: #0f172a; padding: 16px;
+        border-radius: 8px; max-width: 760px; }
+      .pcf1-root h2 { margin: 0 0 8px; font-size: 16px; }
+      .pcf1-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      .pcf1-tile { background: #1e293b; padding: 12px 16px; border-radius: 6px;
+        min-width: 140px; }
+      .pcf1-tile .num { font-size: 28px; font-weight: 600; color: #5eead4; }
+      .pcf1-tile .lbl { font-size: 12px; color: #94a3b8; }
+      .pcf1-empty { padding: 16px; background: #1e293b; border-radius: 6px;
+        color: #94a3b8; font-style: italic; }
+      table.pcf1-table { width: 100%; border-collapse: collapse; margin-top: 12px;
+        font-size: 13px; }
+      table.pcf1-table th, table.pcf1-table td {
+        padding: 6px 8px; border-bottom: 1px solid #28324f; text-align: left; }
+      table.pcf1-table th { color: #94a3b8; font-weight: 500; }
+      table.pcf1-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+      canvas.pcf1-chart { margin-top: 12px; background: #1e293b;
+        border-radius: 6px; }
+      .pcf1-muted { color: #94a3b8; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="pcf1-root" id="per-clinic-f1-widget"
+         data-endpoint="/api/dashboard/per_clinic_f1">
+      <h2>Per-clinic F1 — last 30 days</h2>
+      <div class="pcf1-row">
+        <label for="pcf1-clinic" class="pcf1-muted">Clinic:</label>
+        <select id="pcf1-clinic" aria-label="Select clinic"></select>
+        <span id="pcf1-meta" class="pcf1-muted"></span>
+      </div>
+
+      <div id="pcf1-empty" class="pcf1-empty" hidden>
+        No feedback events in the last 30 days for this clinic.
+        Once a biller Accepts / Dismisses / Modifies findings,
+        the per-rule F1 numbers will appear here.
+      </div>
+
+      <div id="pcf1-content" hidden>
+        <div class="pcf1-row" style="margin-top: 12px">
+          <div class="pcf1-tile">
+            <div class="num" id="pcf1-clinic-f1">—</div>
+            <div class="lbl">Clinic F1 (micro-avg)</div>
+          </div>
+          <div class="pcf1-tile">
+            <div class="num" id="pcf1-n-rules">—</div>
+            <div class="lbl">Rules with feedback</div>
+          </div>
+          <div class="pcf1-tile">
+            <div class="num" id="pcf1-n-feedback">—</div>
+            <div class="lbl">Feedback events</div>
+          </div>
+        </div>
+
+        <table class="pcf1-table" aria-label="Per-rule precision, recall, F1">
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th class="num">Precision</th>
+              <th class="num">Recall</th>
+              <th class="num">F1</th>
+              <th class="num">n</th>
+            </tr>
+          </thead>
+          <tbody id="pcf1-rules-body"></tbody>
+        </table>
+
+        <canvas class="pcf1-chart" id="pcf1-weekly" width="728" height="180"
+                aria-label="F1 over time (weekly)"></canvas>
+        <div class="pcf1-muted" id="pcf1-chart-caption">Weekly F1 trend.</div>
+      </div>
+    </div>
+
+    <script>
+      // ── widget logic ─────────────────────────────────────────────
+      (function () {
+        var root = document.getElementById("per-clinic-f1-widget");
+        var endpoint = root.getAttribute("data-endpoint") ||
+          "/api/dashboard/per_clinic_f1";
+
+        var sel = document.getElementById("pcf1-clinic");
+        var meta = document.getElementById("pcf1-meta");
+        var empty = document.getElementById("pcf1-empty");
+        var content = document.getElementById("pcf1-content");
+        var clinicF1 = document.getElementById("pcf1-clinic-f1");
+        var nRules = document.getElementById("pcf1-n-rules");
+        var nFeedback = document.getElementById("pcf1-n-feedback");
+        var rulesBody = document.getElementById("pcf1-rules-body");
+        var canvas = document.getElementById("pcf1-weekly");
+        var caption = document.getElementById("pcf1-chart-caption");
+
+        function pct(x) { return (x * 100).toFixed(1) + "%"; }
+        function fmt(n, d) { return Number(n).toFixed(d); }
+
+        function renderEmpty(metaText) {
+          empty.hidden = false;
+          content.hidden = true;
+          meta.textContent = metaText || "";
+        }
+
+        function render(data) {
+          if (!data.per_rule || Object.keys(data.per_rule).length === 0) {
+            renderEmpty(data.n_feedback + " feedback events · window: " +
+              data.days + "d");
+            return;
+          }
+          empty.hidden = true;
+          content.hidden = false;
+          meta.textContent = "window: " + data.days + "d · clinic: " +
+            data.clinic_id;
+
+          clinicF1.textContent = pct(data.clinic_f1);
+          nRules.textContent = data.n_rules;
+          nFeedback.textContent = data.n_feedback;
+
+          // Per-rule table. Use createElement + textContent so the
+          // values from /api/dashboard/per_clinic_f1 are written
+          // as text nodes (no innerHTML, no XSS surface).
+          rulesBody.textContent = "";
+          Object.keys(data.per_rule).sort().forEach(function (ruleId) {
+            var m = data.per_rule[ruleId];
+            var tr = document.createElement("tr");
+            var cells = [
+              ruleId, pct(m.precision), pct(m.recall), pct(m.f1),
+              String(m.support),
+            ];
+            var classes = ["", "num", "num", "num", "num"];
+            cells.forEach(function (val, i) {
+              var td = document.createElement("td");
+              if (classes[i]) td.className = classes[i];
+              td.textContent = val;
+              tr.appendChild(td);
+            });
+            rulesBody.appendChild(tr);
+          });
+
+          // Weekly F1 chart (simple line on a canvas — no libs)
+          drawWeeklyChart(data.weekly || []);
+          caption.textContent = "Weekly F1 trend · " +
+            (data.weekly ? data.weekly.length : 0) + " buckets";
+        }
+
+        function drawWeeklyChart(weekly) {
+          var ctx = canvas.getContext("2d");
+          var w = canvas.width, h = canvas.height;
+          ctx.clearRect(0, 0, w, h);
+          // background grid
+          ctx.strokeStyle = "#28324f";
+          ctx.lineWidth = 1;
+          for (var i = 0; i <= 4; i++) {
+            var y = (h - 20) * (i / 4) + 10;
+            ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(w - 10, y); ctx.stroke();
+          }
+          if (!weekly.length) return;
+          var padL = 40, padB = 20, padT = 10, padR = 10;
+          var innerW = w - padL - padR;
+          var innerH = h - padT - padB;
+          var step = innerW / Math.max(1, weekly.length - 1);
+          // y-axis labels
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
+          ctx.fillText("1.0", 4, padT + 4);
+          ctx.fillText("0.5", 4, padT + innerH / 2);
+          ctx.fillText("0.0", 4, padT + innerH);
+
+          // data line
+          ctx.strokeStyle = "#5eead4";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          weekly.forEach(function (b, i) {
+            var x = padL + i * step;
+            var y = padT + innerH * (1 - b.f1);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          // dots
+          ctx.fillStyle = "#5eead4";
+          weekly.forEach(function (b, i) {
+            var x = padL + i * step;
+            var y = padT + innerH * (1 - b.f1);
+            ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+          });
+
+          // x-axis: first / last week label only (avoid crowding)
+          ctx.fillStyle = "#94a3b8";
+          if (weekly.length) {
+            ctx.fillText(weekly[0].week_start.slice(5), padL, h - 4);
+            var last = weekly[weekly.length - 1].week_start.slice(5);
+            var lastW = ctx.measureText(last).width;
+            ctx.fillText(last, w - padR - lastW, h - 4);
+          }
+        }
+
+        function populateClinics(clinics, activeId) {
+          sel.innerHTML = "";
+          if (!clinics || !clinics.length) {
+            // No clinics yet — leave only an empty-state option.
+            var opt = document.createElement("option");
+            opt.textContent = "— no clinics yet —";
+            opt.value = "";
+            sel.appendChild(opt);
+            return;
+          }
+          clinics.forEach(function (c) {
+            var opt = document.createElement("option");
+            opt.value = c.clinic_id;
+            opt.textContent = c.clinic_id +
+              " (" + c.feedback_count + " events · " +
+              c.biller_count + " billers)";
+            if (c.clinic_id === activeId) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        }
+
+        function load(clinicId) {
+          var url = endpoint + "?days=30";
+          if (clinicId) url += "&clinic_id=" + encodeURIComponent(clinicId);
+          fetch(url, { credentials: "same-origin" })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok) {
+                renderEmpty("endpoint error");
+                return;
+              }
+              populateClinics(data.clinics, data.clinic_id);
+              render(data);
+            })
+            .catch(function () { renderEmpty("network error"); });
+        }
+
+        sel.addEventListener("change", function () {
+          load(sel.value);
+        });
+
+        // First paint
+        load(null);
+      })();
+    </script>
+  </body>
+</html>
