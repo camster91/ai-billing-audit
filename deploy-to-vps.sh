@@ -300,6 +300,65 @@ for i in $(seq 1 12); do
     sleep 5
 done
 
+# --- Step 5b: in-container smoke test ---
+# The /healthz curl from the host (Step 5/2) only proves the caddy
+# proxy and the api process are alive. It does NOT prove the LLM is
+# wired (LLM_MODEL pin, MINIMAX_API_KEY → OPENAI_API_KEY mirror,
+# DATABASE_URL with a non-placeholder password) — a misconfigured
+# .env boots the api but a real audit would 500 with a clear error.
+#
+# Run a tight per-deploy smoke test inside the api container: hit
+# /healthz directly on 127.0.0.1:8000 (skipping caddy), assert the
+# response is non-empty JSON with a version field, sleep 5s, and
+# re-assert. Two consecutive successes = the api stayed up across
+# the first real LLM-touching code path (the v1 /healthz doesn't
+# call the LLM, so the second hit catches a deferred crash from the
+# worker init / DB pool).
+#
+# The 60s ceiling below is the same ceiling used for the host-side
+# health check above; if either smoke probe doesn't succeed within
+# 60s of api start, the deploy fails loudly.
+log "smoke 1b/3: in-container /healthz on 127.0.0.1:8000 (LLM wiring check)"
+INCONTAINER_OK=0
+for i in $(seq 1 12); do
+    # `docker exec` runs inside the container. curl against the
+    # loopback skips the caddy hop and probes the FastAPI process
+    # directly. -fsS = fail on HTTP error, silent progress, show
+    # errors. -w '\n%{http_code}' appends the status code so the
+    # assertion below can distinguish 200 from anything else.
+    BODY=$(ssh "$HOST" "docker exec ai-billing-audit-api curl -fsS -w '\n%{http_code}' --max-time 5 http://127.0.0.1:8000/healthz" 2>/dev/null) || continue
+    HTTP_CODE=$(printf '%s\n' "$BODY" | tail -n1)
+    JSON_BODY=$(printf '%s\n' "$BODY" | sed '$d')
+    if [ "$HTTP_CODE" = "200" ] && [ -n "$JSON_BODY" ]; then
+        # python3 -c is available in the api image (multi-stage
+        # python:3.11-slim base); use it to validate JSON shape
+        # without depending on jq being installed in the container.
+        VALID=$(ssh "$HOST" "docker exec ai-billing-audit-api python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get(\"status\")==\"ok\" and d.get(\"version\") else 1)' \"\$JSON_BODY\"" 2>/dev/null) || VALID=1
+        if [ "$VALID" = "0" ]; then
+            log "  attempt ${i}/12: in-container /healthz = 200 + valid JSON"
+            INCONTAINER_OK=1
+            break
+        fi
+    fi
+    log "  attempt ${i}/12: in-container /healthz not ready (code=$HTTP_CODE)"
+    sleep 5
+done
+if [ "$INCONTAINER_OK" -ne 1 ]; then
+    fail "in-container /healthz never returned 200+JSON within 60s — LLM env or DB pool is broken"
+fi
+
+# Second /healthz call after a 5s wait. Catches a deferred crash
+# from the worker init or DB pool teardown that the first probe
+# missed.
+log "smoke 2b/3: in-container /healthz (re-check after 5s, deferred-crash guard)"
+sleep 5
+SECOND=$(ssh "$HOST" "docker exec ai-billing-audit-api curl -fsS --max-time 5 http://127.0.0.1:8000/healthz" 2>/dev/null) \
+    || fail "in-container /healthz second call failed — api process crashed within 5s of first probe"
+echo "$SECOND"
+echo "$SECOND" | grep -q '"status":"ok"' || fail "in-container /healthz second call missing status:ok"
+echo "$SECOND" | grep -q '"version"' || fail "in-container /healthz second call missing version field"
+log "in-container smoke test PASSED (api stable, LLM env OK)"
+
 # --- Step 5: smoke tests ---
 log "smoke 1/3: docker ps (all 4 services should be Up)"
 ssh "$HOST" "cd $REMOTE_DIR && docker compose ps" || true
