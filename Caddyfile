@@ -60,12 +60,14 @@
     }
 
     # Per-IP token bucket: 10 req/s sustained, 60 req/min ceiling.
-    # Named zone "ai_billing" so the bucket is shared across this
-    # single site block. Protects against accidental client-side
-    # retry storms and trivial scraping without throttling
-    # legitimate clinic users. tune via `caddy_logs` if false
-    # positives appear in production traffic.
-    rate_limit ai_billing {remote_host} 10r/s 60r/m
+    # NOTE (deploy 2026-06-24): the caddy:2-alpine image does not ship
+    # the http.ratelimit module, so this directive fails config
+    # validation on the host. Commented out at deploy time; the
+    # canonical fix is either (a) rebuild caddy with the
+    # github.com/mholt/caddy-ratelimit module, or (b) move the
+    # rate-limit to Traefik on the host (where middleware is already
+    # in place for other ashbi services). Tracked as follow-up.
+    # rate_limit ai_billing {remote_host} 10r/s 60r/m
 
     # Security response headers (audit task t_106739f0).
     header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"

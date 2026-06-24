@@ -101,8 +101,9 @@ rsync -az --delete \
     --exclude='logs/' \
     --exclude='data/' \
     --exclude='artifacts/' \
-    --exclude='prompts/' \
     --exclude='rules/' \
+    # prompts/ is intentionally included — the v12 prompt and v11/v12/v13
+    # versions must land in the image so the auditor uses the current rules.
     --exclude='*.md' \
     --exclude='.DS_Store' \
     "$PROJECT_DIR/" "$HOST:$REMOTE_DIR/"
