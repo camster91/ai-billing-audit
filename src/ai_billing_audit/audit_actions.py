@@ -7,11 +7,27 @@ row's `cryptographic_signature` is SHA-256(previous_signature ||
 mutated row and all subsequent rows.
 
 This module appends to a JSONL file at ``/app/logs/audit_trail.jsonl``
-and exposes a ``verify`` function for the chain integrity check.
+and exposes a ``verify_chain`` function (parallel to the canonical
+``audit_log.verify_chain`` in ``src/audit_log.py``) for the chain
+integrity check used by the QA audit log.
 
 The same chain shape as the Postgres ``audit_trail`` table
 (see audit_trail.sql) — fields match exactly. The on-disk JSONL
 is the dev/demo surface; the Postgres table is the prod surface.
+
+Consolidation note (kanban t_2128c8eb)
+-------------------------------------
+This module's ``verify_chain`` is a thin wrapper around the canonical
+``audit_log.verify_chain`` (src/audit_log.py:162). The chain shape
+differs by one byte — this module uses ``"|"`` as a field separator
+inside ``compute_signature`` while ``src/audit_log.py`` concatenates
+fields directly — so the two are NOT byte-for-byte interchangeable.
+The QA audit log (JSONL) and the prod Postgres audit_trail each have
+their own writer and the split is intentional for now. The plan is
+to consolidate to a single canonical implementation in
+``src/audit_log.py``; until then, callers should use
+``audit_log.verify_chain`` against the prod log and
+``audit_actions.verify_chain`` against the QA JSONL.
 """
 from __future__ import annotations
 
@@ -22,7 +38,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Mapping
 
 _LOG_PATH = Path(os.environ.get("AUDIT_TRAIL_LOG", "/app/logs/audit_trail.jsonl"))
 _GENESIS_SIG = "0" * 64
@@ -217,5 +233,49 @@ def read_all(
     if limit is not None:
         rows = rows[-limit:]
     return rows
+
+
+def verify_chain(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    key: Any = None,
+) -> int | None:
+    """Walk ``rows`` in chain order and return the first broken row's position.
+
+    Thin wrapper around :func:`audit_log.verify_chain` (src/audit_log.py:162)
+    that returns the 0-based index of the first row whose stored
+    ``cryptographic_signature`` does not match the recomputed value, or
+    ``None`` if the entire chain verifies cleanly.
+
+    NOTE: This is a parallel implementation, not a byte-for-byte drop-in.
+    The local :func:`compute_signature` in this module uses ``"|"`` as a
+    field separator while :func:`audit_log.compute_signature` concatenates
+    fields directly. As a result, ``audit_actions.verify_chain`` will
+    NOT verify rows written by ``src/audit_log.py`` (and vice versa). Use
+    ``audit_actions.verify_chain`` against the QA JSONL log (rows produced
+    by :func:`append`) and ``audit_log.verify_chain`` against the prod
+    Postgres ``audit_trail`` table. Consolidation to a single canonical
+    chain shape is tracked in the module docstring.
+
+    Parameters
+    ----------
+    rows:
+        Iterable of row mappings as returned by :func:`read_all`. Each
+        row must carry ``previous_signature`` and ``cryptographic_signature``
+        plus every field in :data:`_CHAIN_FIELDS`.
+    key:
+        Optional callable for re-sorting the iterable in place; the
+        default is to trust the caller's order.
+
+    Returns
+    -------
+    int | None
+        0-based index of the first row whose recomputed signature does
+        not match its stored ``cryptographic_signature``, or ``None`` if
+        the entire chain verifies cleanly.
+    """
+    from audit_log import verify_chain as _canonical_verify_chain  # src/audit_log.py
+
+    return _canonical_verify_chain(rows, key=key)
 
 

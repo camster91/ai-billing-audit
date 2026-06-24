@@ -102,8 +102,9 @@ const ROWS: Row[] = [
     status: {
       text:
         "Active. SHA-256 hash chain, append-only. verify_chain() returns " +
-        "None when the chain is intact, or the offending row id when it " +
-        "is not. Implementation: src/ai_billing_audit/audit_actions.py.",
+        "the index of the first broken row (or None when intact). " +
+        "Implementations: src/audit_log.py (canonical) and " +
+        "src/ai_billing_audit/audit_actions.py (parallel — see QA audit log).",
     },
     region: { text: "All regions" },
   },
