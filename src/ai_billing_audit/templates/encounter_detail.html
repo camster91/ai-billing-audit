@@ -338,6 +338,70 @@
             hidden
           ></div>
         </form>
+        {# Per-finding appeal-outcome form. Revealed via a "Log appeal
+           outcome" link after an appeal letter has been generated. The
+           appeal_id defaults to the finding_id (the biller can use
+           their own UUID; we just need a stable reference). Posts to
+           the existing /encounter/{id}/appeal/{appeal_id}/outcome
+           endpoint. Status dropdown covers the 5 options the task
+           specifies (Won / Lost / Withdrawn / Pending / Did not file);
+           "did_not_file" is sent as status="did_not_file" and the
+           server validates the 5-value set. #}
+        <form
+          class="appeal-outcome-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/appeal/{{ f.finding_id }}/outcome"
+          data-current-status="{{ (f.appeal_outcome.status if f.appeal_outcome else '') }}"
+          data-current-notes="{{ (f.appeal_outcome.notes if f.appeal_outcome else '') }}"
+          {% if not f.appeal_letter_generated %}hidden{% endif %}
+        >
+          <div class="appeal-outcome-form__head">
+            {% if f.appeal_outcome %}
+              <span class="muted small">
+                Last outcome: <strong>{{ f.appeal_outcome.status|replace('_', ' ')|title }}</strong>
+                {% if f.appeal_outcome.notes %} &middot; <span class="mono">{{ f.appeal_outcome.notes[:80] }}</span>{% endif %}
+              </span>
+            {% else %}
+              <span class="muted small">What happened with this appeal?</span>
+            {% endif %}
+          </div>
+          <div class="modify-form__row">
+            <label class="dismiss-form__label" for="appeal-outcome-status-{{ f.finding_id }}">
+              Outcome
+              <select
+                id="appeal-outcome-status-{{ f.finding_id }}"
+                name="status"
+                class="dismiss-form__select"
+                required
+              >
+                <option value="">— choose —</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+                <option value="withdrawn">Withdrawn</option>
+                <option value="pending">Pending</option>
+                <option value="did_not_file">Did not file</option>
+              </select>
+            </label>
+            <label class="dismiss-form__label" for="appeal-outcome-notes-{{ f.finding_id }}">
+              Notes
+              <input
+                id="appeal-outcome-notes-{{ f.finding_id }}"
+                type="text"
+                name="notes"
+                class="dismiss-form__input"
+                maxlength="500"
+                placeholder="e.g. Payer reprocessed at 100% on resubmission"
+              />
+            </label>
+          </div>
+          <div class="dismiss-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+              {% if f.appeal_outcome %}Update outcome{% else %}Log outcome{% endif %}
+            </button>
+            <span class="appeal-outcome-form__status muted small"
+                  data-finding-id="{{ f.finding_id }}"></span>
+          </div>
+        </form>
       </li>
     {% endfor %}
   </ul>
@@ -548,6 +612,42 @@
             setTimeout(refreshTrail, 400);
           } else {
             if (window.showToast) window.showToast("Override failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        }).catch(function (err) {
+          submit.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
+      });
+    });
+    // Inline appeal-outcome-form submit: POSTs outcome status + notes
+    // to /encounter/{id}/appeal/{appeal_id}/outcome and updates the
+    // inline status label + the last-outcome text.
+    document.querySelectorAll('.appeal-outcome-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var status = fd.get('status') || '';
+        var notes = fd.get('notes') || '';
+        if (!status) {
+          if (window.showToast) window.showToast("Choose an outcome first.");
+          return;
+        }
+        var body = {status: status, notes: notes};
+        var submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok) {
+            var statusEl = form.querySelector('.appeal-outcome-form__status');
+            if (statusEl) statusEl.textContent = 'logged: ' + status;
+            // Refresh the head line so the last-outcome is visible
+            // even after a hard reload.
+            if (window.showToast) window.showToast("Appeal outcome saved for " + findingId + ".");
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Outcome failed: " + (resp.detail || JSON.stringify(resp)));
           }
         }).catch(function (err) {
           submit.disabled = false;

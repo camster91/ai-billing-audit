@@ -213,6 +213,78 @@ def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, A
     return findings
 
 
+def _attach_appeal_context(
+    findings: list[dict[str, Any]],
+    encounter_id: str,
+) -> list[dict[str, Any]]:
+    """Enrich each finding dict in-place with appeal-side context.
+
+    The encounter-detail template renders an appeal-outcome form per
+    finding (gated on whether an appeal letter has been generated
+    for that finding) and shows the most recent outcome (if any).
+    This helper attaches:
+
+    * ``appeal_letter_generated``: bool — True iff an appeal letter
+      has been logged for (encounter_id, finding_id) in
+      ``appeal_letters.jsonl``. The form is only meaningful after a
+      letter exists, so the template uses this as the show/hide gate.
+    * ``appeal_outcome``: dict | None — the latest AppealOutcome for
+      this finding (latest by timestamp), rendered as "Last outcome"
+      above the form so the biller sees their prior decision.
+
+    Both fields are best-effort: a missing log or a corrupted row
+    is treated as "no appeal yet" and "no outcome yet" rather than
+    a 500. The encounter-detail page is not a hot loop, so the
+    O(n_letters + n_outcomes) cost is fine for the volumes we have.
+    """
+    try:
+        from .appeal_letter import read_appeal_letters, read_appeal_outcomes
+    except Exception:
+        return findings
+
+    try:
+        letters = read_appeal_letters(encounter_id=encounter_id)
+    except Exception:
+        letters = []
+    try:
+        outcomes = read_appeal_outcomes(encounter_id=encounter_id)
+    except Exception:
+        outcomes = []
+
+    # Map: finding_id -> True if any letter has been logged for it.
+    letter_finding_ids: set[str] = set()
+    for row in letters or []:
+        fid = (
+            row.get("finding_id")
+            or row.get("appeal_id")  # legacy: biller may have used fid as appeal_id
+        )
+        if fid:
+            letter_finding_ids.add(str(fid))
+
+    # Map: finding_id -> latest outcome (latest by timestamp). We
+    # treat appeal_id == finding_id as the same record (the API
+    # default), but also fall back to scanning all outcomes for one
+    # whose appeal_id matches.
+    latest_outcome: dict[str, Any] = {}
+    for o in outcomes or []:
+        aid = str(o.get("appeal_id") or "")
+        if not aid:
+            continue
+        prev = latest_outcome.get(aid)
+        if prev is None or str(o.get("timestamp", "")) > str(
+            prev.get("timestamp", "")
+        ):
+            latest_outcome[aid] = o
+
+    for f in findings:
+        if not isinstance(f, dict):
+            continue
+        fid = str(f.get("finding_id") or "")
+        f["appeal_letter_generated"] = fid in letter_finding_ids
+        f["appeal_outcome"] = latest_outcome.get(fid)
+    return findings
+
+
 # ─── Revenue opportunities ─────────────────────────────────────────────
 # A subset of AHCIP rules identify "missed revenue" — the note documents
 # a billable service that the claim did not capture. These findings are
@@ -1015,6 +1087,11 @@ def create_app() -> FastAPI:
             # "Not yet calibrated" placeholder).
             _attach_model_confidence(visible_findings)
             _attach_model_confidence(revenue_opportunities)
+            # Attach per-finding appeal context: which findings have a
+            # generated appeal letter (gates the outcome form) and the
+            # most recent outcome (rendered as "Last outcome" above the
+            # form). Best-effort; never raises.
+            _attach_appeal_context(visible_findings, encounter_id)
             return templates.TemplateResponse(
                 request,
                 "encounter_detail.html",
@@ -1078,6 +1155,10 @@ def create_app() -> FastAPI:
         # field set by an earlier handler.
         _attach_model_confidence(visible_uploaded)
         _attach_model_confidence(revenue_opportunities)
+        # Same appeal-context pass for uploaded encounters so the
+        # per-finding "Log appeal outcome" form appears once an
+        # appeal letter has been generated for the encounter.
+        _attach_appeal_context(visible_uploaded, encounter_id)
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
@@ -1983,7 +2064,18 @@ def create_app() -> FastAPI:
                 detail="appeal-letter generation returned no result",
             )
         # Log metadata only (body already PHI-scrubbed by the generator).
-        log_appeal_letter(letter, encounter_id, tenant_id=_TENANT_ID)
+        # Pass the resolved finding_id so the encounter-detail page
+        # can gate the "appeal outcome" form on "letter generated for
+        # this finding" (see _attach_appeal_context).
+        resolved_finding_id = (
+            (target_finding or {}).get("finding_id") if target_finding else finding_id
+        ) or None
+        log_appeal_letter(
+            letter,
+            encounter_id,
+            tenant_id=_TENANT_ID,
+            finding_id=resolved_finding_id,
+        )
         return JSONResponse({
             "ok": True,
             "encounter_id": encounter_id,
@@ -2043,7 +2135,11 @@ def create_app() -> FastAPI:
             body = {}
 
         status = str(body.get("status", "")).strip().lower()
-        allowed_statuses = {"won", "lost", "withdrawn", "pending"}
+        # Five values per the learning-loop spec: won / lost /
+        # withdrawn / pending / did_not_file. Anything else is a 400.
+        allowed_statuses = {
+            "won", "lost", "withdrawn", "pending", "did_not_file",
+        }
         if status not in allowed_statuses:
             raise HTTPException(
                 status_code=400,

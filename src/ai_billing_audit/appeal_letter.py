@@ -487,27 +487,44 @@ def generate_appeal_letter(
 def log_appeal_letter(
     letter: dict[str, Any],
     encounter_id: str | None,
-    *,
+    *args: Any,
     tenant_id: str | None = None,
+    finding_id: str | None = None,
+    **kwargs: Any,
 ) -> None:
     """Append a generated letter to the appeal_letters.jsonl log.
 
     The body is already PHI-scrubbed by generate_appeal_letter().
-    We log the metadata (encounter_id, tenant_id, market,
-    compliance_law, basis, cited rules) but NOT the full letter
-    body. The biller gets the full letter through the API
+    We log the metadata (encounter_id, tenant_id, finding_id,
+    market, compliance_law, basis, cited rules) but NOT the full
+    letter body. The biller gets the full letter through the API
     response; the log only records the audit trail.
 
     Multi-tenant hardening: tenant_id is recorded on every row
     so a privacy officer can filter by tenant and so the
     cross-tenant audit view can include appeal letters alongside
     audit_trail and upload_jobs rows.
+
+    The ``finding_id`` is recorded so the encounter-detail page
+    can show an "appeal outcome" form per finding (the appeal
+    outcome form is only meaningful after a letter has been
+    generated for that finding). The args/kwargs signatures
+    keep the call site backward-compatible with the prior
+    ``log_appeal_letter(letter, encounter_id, tenant_id=...)``
+    shape.
     """
+    # Backward-compat: if a positional tenant_id slipped in via *args,
+    # fold it into the keyword. (This shouldn't happen in practice —
+    # the API now calls with kwargs — but it costs nothing to handle.)
+    if args and tenant_id is None:
+        tenant_id = args[0]
     try:
         _LOGS_DIR.mkdir(parents=True, exist_ok=True)
         record = {
             "encounter_id": encounter_id,
             "tenant_id": tenant_id or "default",
+            "finding_id": finding_id,
+            "appeal_id": finding_id,  # alias so the outcome-side join is symmetric
             "market": letter.get("market"),
             "compliance_law": letter.get("compliance_law"),
             "appeal_basis": letter.get("appeal_basis"),
@@ -523,6 +540,46 @@ def log_appeal_letter(
         pass
 
 
+def read_appeal_letters(
+    encounter_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Read logged appeal-letter metadata, optionally filtered by encounter.
+
+    Mirrors ``read_appeal_outcomes`` but reads the *letter* log
+    (appeal_letters.jsonl). Returns a list of dicts; one entry per
+    letter generated. Skips malformed lines silently so a corrupted
+    log row does not break the dashboard.
+
+    Each row is the audit-trail metadata (encounter_id, tenant_id,
+    market, compliance_law, basis, cited_rule_ids) — NOT the letter
+    body, which is PHI-scrubbed and only sent through the API
+    response. The encounter-detail page only needs to know
+    "has a letter been generated for this finding?" so the
+    presence of a row is enough signal.
+    """
+    if not _APPEAL_LOG.exists():
+        return []
+    out: list[dict[str, Any]] = []
+    try:
+        with _APPEAL_LOG.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(row, dict):
+                    continue
+                if encounter_id and row.get("encounter_id") != encounter_id:
+                    continue
+                out.append(row)
+    except OSError:
+        return []
+    return out
+
+
 # --- Appeal outcome tracking ---------------------------------------------
 # Once a biller sends an appeal letter to the payer, the result
 # (won, lost, withdrawn, or still pending) feeds back into the
@@ -536,7 +593,9 @@ def log_appeal_letter(
 # means the biller pulled the appeal; 'pending' means the payer
 # hasn't responded yet (re-issued when the biller follows up).
 
-AppealOutcomeStatus = Literal["filed", "won", "lost", "withdrawn", "pending"]
+AppealOutcomeStatus = Literal[
+    "filed", "won", "lost", "withdrawn", "pending", "did_not_file",
+]
 
 
 @dataclass
