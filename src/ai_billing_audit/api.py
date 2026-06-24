@@ -2939,6 +2939,130 @@ def create_app() -> FastAPI:
             "empty_state": empty_state,
         })
 
+    # ──────────────────────── monthly report (t_b15a1821) ──────────────
+    # The deferred full report (calibration + recommended prompt
+    # changes) lives in blocked task t_f98a799f, which is gated on
+    # 3+ months of feedback data. Until that data exists, this route
+    # surfaces a clean insufficient_data stub so the monthly-report
+    # UI is not a 404. When the 3-month threshold is crossed, the
+    # route forwards to ``monthly_report.monthly_summary`` — see
+    # the inline branching below.
+    @app.get("/api/reports/monthly")
+    def monthly_report_route(
+        request: Request,
+        clinic: str | None = None,
+        month: str | None = None,
+    ) -> JSONResponse:
+        """Return the monthly report payload for a clinic.
+
+        Query params:
+          * ``clinic`` (optional) — clinic_id; defaults to the active
+            tenant_id (or ``"default_biller"`` in dev).
+          * ``month`` (optional) — reporting month in ``YYYY-MM``
+            format. Echoed back in the response so the caller can
+            pin a render to a specific month. Invalid format
+            returns 400.
+
+        Response shape when the clinic has fewer than 3 months of
+        feedback (the common dev / pilot case):
+
+            {
+              "status": "insufficient_data",
+              "message": "Need 3+ months of feedback to generate a monthly report.",
+              "required_months": 3,
+              "current_months": <int>,
+              "clinic_id": "<id>",
+              "month": "<YYYY-MM>"
+            }
+
+        When the clinic has 3+ distinct months of feedback, the
+        route forwards to ``monthly_report.monthly_summary`` and
+        returns its dict merged with the query metadata. The
+        full-report branch exists so swapping the stub for the
+        real report is a one-line change once t_f98a799f unblocks.
+        """
+        # 1. month format gate.
+        if not month:
+            raise HTTPException(
+                status_code=400,
+                detail="month query param is required (YYYY-MM)",
+            )
+        if not re.fullmatch(r"\d{4}-\d{2}", month):
+            raise HTTPException(
+                status_code=400,
+                detail=f"month must be in YYYY-MM format, got {month!r}",
+            )
+
+        # 2. Default the clinic to the active tenant / dev fallback.
+        if not clinic:
+            clinic = _TENANT_ID or "default_biller"
+
+        # 3. Compute "current_months" — distinct (year, month) tuples
+        #    in the feedback log for this clinic. This is the gate
+        #    the spec calls out ("3+ months of feedback"); we count
+        #    it from the same store the rest of the API reads so the
+        #    threshold check matches the data the report would
+        #    summarise.
+        try:
+            from .feedback import get_default_store
+            _store = get_default_store()
+            _entries = _store.read_all() or []
+        except Exception:
+            _entries = []
+
+        months_seen: set[tuple[int, int]] = set()
+        for e in _entries:
+            if e.biller_id != clinic:
+                continue
+            # Skip synthetic "accept_all" / "rerun" pseudo-entries
+            # the same way per_clinic_f1 does — they don't count
+            # toward the threshold.
+            if e.finding_id.startswith("__") and e.finding_id.endswith("__"):
+                continue
+            try:
+                ts = e.timestamp.strip()
+                if ts.endswith("Z"):
+                    ts = ts[:-1] + "+00:00"
+                dt = datetime.fromisoformat(ts)
+            except Exception:
+                continue
+            months_seen.add((dt.year, dt.month))
+        current_months = len(months_seen)
+
+        # 4. Gate: < 3 months → insufficient_data stub.
+        if current_months < 3:
+            return JSONResponse({
+                "status": "insufficient_data",
+                "message": "Need 3+ months of feedback to generate a monthly report.",
+                "required_months": 3,
+                "current_months": current_months,
+                "clinic_id": clinic,
+                "month": month,
+            })
+
+        # 5. Full report branch: call monthly_summary with a window
+        #    large enough to cover all the feedback months the gate
+        #    just counted, so the per-rule + weekly series actually
+        #    picks up the data instead of an empty 30-day slice.
+        try:
+            from .monthly_report import monthly_summary
+            days = max(30, current_months * 31)
+            payload = monthly_summary(clinic_id=clinic, days=days)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"monthly_report.monthly_summary failed: {e}",
+            )
+        # Merge the query metadata into the payload so the caller
+        # can pin a render to a specific month without re-parsing
+        # the URL. The summary's own ``clinic_id`` / ``days`` keys
+        # are preserved.
+        payload = dict(payload)
+        payload["status"] = "ok"
+        payload["month"] = month
+        payload.setdefault("clinic_id", clinic)
+        return JSONResponse(payload)
+
     # ──────────────────────── tenant data export / deletion ─────────────────
     #
     # PHIPA s.53 / PIPEDA: a patient (or the clinic on their behalf) has the
