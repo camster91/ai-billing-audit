@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+# Pre-imports that prevent the typing_extensions/litellm import-order bug
+# on Python 3.11 + litellm 1.x + typing_extensions 4.15. Without these,
+# the first transitive import of litellm raises:
+#   AttributeError: module 'inspect' has no attribute 'signature'
+# at typing_extensions.py:1060. Importing these first ensures `inspect.signature`
+# is fully bound in sys.modules before litellm's chain reaches it.
+import inspect as _inspect  # noqa: F401
+import typing as _typing  # noqa: F401
+import typing_extensions as _typing_extensions  # noqa: F401
+
 from ai_billing_audit.grader import (
     Grader,
     GraderConfigError,

@@ -1,0 +1,171 @@
+[
+  {
+    "encounter_id": "ca_fewshot_001",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up for established patient with chronic kidney disease stage 3. BP 138/86, HR 72. Creatinine 185, eGFR 38, ACR 18. Continued losartan 50mg daily. Reviewed dietary sodium restriction.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "N18.3"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "222333444",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-01"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "fs1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "Follow-up for established patient with chronic kidney disease stage 3"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_fewshot_002",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Office visit, comprehensive assessment for new patient presenting with fatigue and unintentional weight loss. CBC, CMP, TSH ordered. Physical exam unremarkable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R53.83",
+        "R63.4"
+      ],
+      "modifier": null,
+      "patient_health_number": "333444555",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-30"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "fs2",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "comprehensive assessment for new patient"
+      },
+      {
+        "finding_id": "fs3",
+        "rule_id": "rule_ahcip_lab_coverage",
+        "severity": "high",
+        "category": "laboratory",
+        "suggested_code": "lab codes",
+        "clinical_evidence_quote": "CBC, CMP, TSH ordered"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_fewshot_003",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Consultation request from Dr. Patel for management of new-onset atrial fibrillation. HR 112 irregular. EKG confirmed a-fib. Started metoprolol 25mg BID and warfarin 5mg daily.",
+    "claim": {
+      "som_b_codes": [
+        "03.03A"
+      ],
+      "diagnosis_codes": [
+        "I48.0"
+      ],
+      "modifier": null,
+      "patient_health_number": "444555666",
+      "referring_provider_npi": "1000000001",
+      "date_of_service": "2026-04-15"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "fs4",
+        "rule_id": "rule_ahcip_referring_npi",
+        "severity": "high",
+        "category": "consultation",
+        "suggested_code": "03.03A",
+        "clinical_evidence_quote": "Consultation request from Dr. Patel"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_fewshot_004",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Post-op follow-up, total knee replacement 30 days ago. ROM improving. Pain well-controlled. No signs of infection. Patient mobilizing well with PT.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z48.815"
+      ],
+      "modifier": null,
+      "patient_health_number": "555666777",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-15"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "fs5",
+        "rule_id": "rule_ahcip_global_window",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "modifier -24",
+        "clinical_evidence_quote": "Post-op follow-up, total knee replacement 30 days ago"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_fewshot_005",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Phone follow-up for depression. Patient reports mood is stable on current sertraline 100mg. No suicidal ideation. Continuing same dose.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "F32.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "666777888",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-20"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "fs6",
+        "rule_id": "rule_ahcip_telehealth",
+        "severity": "medium",
+        "category": "telehealth",
+        "suggested_code": "telehealth modifier",
+        "clinical_evidence_quote": "Phone follow-up"
+      }
+    ]
+  }
+]

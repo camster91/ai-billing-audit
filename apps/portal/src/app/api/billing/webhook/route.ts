@@ -301,7 +301,7 @@ function extractInvoiceSubscriptionId(
 async function handleInvoicePaymentSucceeded(
   invoice: StripeNS.Invoice,
   eventId: string,
-): Promise<{ tenantId: string | null; invoiceId: string }> {
+): Promise<{ tenantId: string | null; invoiceId: string; quotaReset: string }> {
   const customerId =
     typeof invoice.customer === "string"
       ? invoice.customer
@@ -309,7 +309,11 @@ async function handleInvoicePaymentSucceeded(
         ? invoice.customer.id
         : null;
   if (!customerId) {
-    return { tenantId: null, invoiceId: invoice.id ?? "unknown" };
+    return {
+      tenantId: null,
+      invoiceId: invoice.id ?? "unknown",
+      quotaReset: "skipped_no_tenant",
+    };
   }
   const tenant = await prisma.tenant.findUnique({
     where: { stripeCustomerId: customerId },
@@ -318,7 +322,11 @@ async function handleInvoicePaymentSucceeded(
     console.warn(
       `[/api/billing/webhook] invoice.payment_succeeded for unknown customer ${customerId}; skipping`,
     );
-    return { tenantId: null, invoiceId: invoice.id ?? "unknown" };
+    return {
+      tenantId: null,
+      invoiceId: invoice.id ?? "unknown",
+      quotaReset: "skipped_no_tenant",
+    };
   }
   // The Subscription id on an Invoice is at parent.subscription_details.subscription
   // in API version 2026-05-27 (dahlia). The top-level `subscription` field
@@ -374,7 +382,15 @@ async function handleInvoicePaymentSucceeded(
         : {}),
     },
   });
-  return { tenantId: tenant.id, invoiceId: invoice.id ?? "unknown" };
+  // Reset the audit quota for the start of the new paid period.
+  // The reset is gated on "is this invoice for a new period?" — a
+  // second invoice.payment_succeeded in the same period (e.g. a
+  // mid-period retry that finally succeeded) is a no-op. The lib
+  // writes `lastQuotaResetPeriodStart` so the next same-period
+  // event short-circuits.
+  const { resetAuditQuota } = await import("@/lib/audit-quota");
+  const reset = await resetAuditQuota({ stripeCustomerId: customerId });
+  return { tenantId: tenant.id, invoiceId: invoice.id ?? "unknown", quotaReset: reset.kind };
 }
 
 async function handleInvoicePaymentFailed(
@@ -623,7 +639,7 @@ export async function POST(request: Request) {
         const result = await handleInvoicePaymentSucceeded(invoice, event.id);
         if (result.tenantId) {
           console.log(
-            `[/api/billing/webhook] invoice.payment_succeeded ${result.invoiceId} → tenant ${result.tenantId}`,
+            `[/api/billing/webhook] invoice.payment_succeeded ${result.invoiceId} → tenant ${result.tenantId} quotaReset=${result.quotaReset}`,
           );
         }
         break;

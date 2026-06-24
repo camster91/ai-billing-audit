@@ -15,6 +15,22 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
+  // 25 MiB matches the QA-confirmed client-side limit documented in
+  // the upload-UI task. The server enforces a stricter 10 MiB cap
+  // (see api._MAX_UPLOAD_BYTES); the client check is the friendly
+  // pre-flight that surfaces the error before any bytes leave the
+  // browser. Anything between 10 MiB and 25 MiB will still be
+  // rejected by the server with a 413 — the error message there is
+  // intentionally the same string.
+  const MAX_CLIENT_UPLOAD_BYTES = 25 * 1024 * 1024;
+  const MAX_SERVER_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+  function formatBytes(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KiB";
+    return (n / (1024 * 1024)).toFixed(2) + " MiB";
+  }
+
   const tabs = $$(".upload-tab");
   const panels = {
     "tab-837p": $("#tab-837p"),
@@ -38,6 +54,30 @@
   const noteStatus = $("#note-status");
   const rowTpl = $("#row-template");
   const jobTpl = $("#job-template");
+
+  // Per-dropzone error region. We create it lazily so the template
+  // stays clean and we don't ship a placeholder div for every
+  // dropzone. The error is a small <p> with class
+  // ``dropzone__error`` that the CSS can style red and italic.
+  function getOrCreateErrorRegion(dz) {
+    let err = dz.querySelector(".dropzone__error");
+    if (!err) {
+      err = document.createElement("p");
+      err.className = "dropzone__error muted small";
+      err.setAttribute("role", "alert");
+      // Insert after the dropzone label, before the next sibling.
+      dz.parentNode.insertBefore(err, dz.nextSibling);
+    }
+    return err;
+  }
+  function clearError(dz) {
+    const err = dz.querySelector(".dropzone__error");
+    if (err) err.remove();
+  }
+  function setError(dz, msg) {
+    const err = getOrCreateErrorRegion(dz);
+    err.textContent = msg;
+  }
 
   // ---- state -----------------------------------------------------------
 
@@ -211,7 +251,28 @@
       if (body.jobs && body.jobs.length) {
         jobsPanel.hidden = false;
         body.jobs.forEach(addJobRow);
-        body.jobs.forEach((j) => startPolling(j.job_id));
+        // Poll each job and, on completion, redirect to the
+        // encounter detail page. The first job's encounter_id
+        // wins — for a single-file upload the redirect happens
+        // once; for a bulk ZIP the user lands on the first
+        // encounter and the rest stay visible in the
+        // recent-uploads list with their own "View encounter"
+        // links.
+        let redirected = false;
+        body.jobs.forEach((j) => {
+          startPolling(j.job_id, function (finalJob) {
+            if (redirected) return;
+            if (finalJob.status === "done" && finalJob.encounter_id) {
+              redirected = true;
+              submitSummary.textContent =
+                "Audit complete — opening " + finalJob.encounter_id + "…";
+              setTimeout(function () {
+                location.href =
+                  "/encounters/" + encodeURIComponent(finalJob.encounter_id);
+              }, 400);
+            }
+          });
+        });
       }
     } catch (err) {
       submitSummary.textContent = "Submit failed: " + err.message;
@@ -222,10 +283,30 @@
   function addJobRow(job) {
     const li = jobTpl.content.firstElementChild.cloneNode(true);
     li.dataset.jobId = job.job_id;
+    li.dataset.encounterId = job.encounter_id || "";
     li.querySelector(".job-row__id").textContent = job.job_id;
-    li.querySelector(".job-row__enc").textContent = job.encounter_id || "";
+    // The "View encounter" link is hidden until the job is done
+    // AND the encounter_id is a non-empty string. The link uses
+    // the spec URL /encounters/{id} (plural), which the live
+    // dashboard serves via the encounter_detail_plural handler
+    // added alongside /encounter/{id}.
+    const enc = job.encounter_id || "";
+    const encLink = li.querySelector(".job-row__view");
+    if (encLink) {
+      encLink.href = "/encounters/" + encodeURIComponent(enc);
+      encLink.hidden = true;
+    }
+    li.querySelector(".job-row__enc").textContent = enc;
     const statusEl = li.querySelector(".job-row__status");
     statusEl.textContent = "queued";
+    // Initialise the progress bar at 0% so the bar exists in the
+    // DOM from the first render. updateJobRow() updates the width
+    // and aria-valuenow on every poll tick.
+    const bar = li.querySelector(".job-row__bar");
+    if (bar) {
+      bar.style.width = "0%";
+      bar.setAttribute("aria-valuenow", "0");
+    }
     jobList.appendChild(li);
   }
 
@@ -237,6 +318,36 @@
     statusEl.classList.remove("badge--clean", "badge--flag");
     if (job.status === "done") statusEl.classList.add("badge--clean");
     if (job.status === "failed") statusEl.classList.add("badge--flag");
+    // Drive the progress bar from the poll response. The server
+    // sends both ``stage`` (text) and ``progress`` (0-100 number);
+    // the bar prefers the number and falls back to the status
+    // string when the number is missing.
+    const bar = li.querySelector(".job-row__bar");
+    if (bar) {
+      const pct = Number.isFinite(job.progress) ? job.progress : null;
+      const width =
+        pct !== null
+          ? Math.max(0, Math.min(100, pct))
+          : job.status === "done"
+            ? 100
+            : job.status === "failed"
+              ? 0
+              : job.status === "running"
+                ? 15
+                : 0;
+      bar.style.width = width + "%";
+      bar.setAttribute("aria-valuenow", String(width));
+    }
+    // The "View encounter" link becomes visible once the job is
+    // done and we have an encounter_id to link to.
+    if (job.status === "done") {
+      const encLink = li.querySelector(".job-row__view");
+      const eid = job.encounter_id || li.dataset.encounterId;
+      if (encLink && eid) {
+        encLink.href = "/encounters/" + encodeURIComponent(eid);
+        encLink.hidden = false;
+      }
+    }
     if (job.error) {
       const err = document.createElement("div");
       err.className = "cell-error";
@@ -245,7 +356,7 @@
     }
   }
 
-  function startPolling(jobId) {
+  function startPolling(jobId, onDone) {
     if (pollers[jobId]) return;
     pollers[jobId] = setInterval(async () => {
       try {
@@ -260,6 +371,7 @@
         if (body.status === "done" || body.status === "failed") {
           clearInterval(pollers[jobId]);
           delete pollers[jobId];
+          if (typeof onDone === "function") onDone(body);
         }
       } catch (e) {
         // Network blip; keep polling.
@@ -304,12 +416,7 @@
       dz.classList.remove("dropzone--over");
       const f = e.dataTransfer.files && e.dataTransfer.files[0];
       if (!f) return;
-      fileLabel.textContent = f.name;
-      if (kind === "note") {
-        uploadNote(f);
-      } else {
-        previewFile(f);
-      }
+      handleSelectedFile(dz, kind, input, fileLabel, f);
     });
     dz.addEventListener("click", (e) => {
       // Forward click on the label to the hidden input.
@@ -319,15 +426,45 @@
       input.addEventListener("change", () => {
         const f = input.files && input.files[0];
         if (!f) return;
-        fileLabel.textContent = f.name;
-        if (kind === "note") {
-          uploadNote(f);
-        } else {
-          previewFile(f);
-        }
+        handleSelectedFile(dz, kind, input, fileLabel, f);
       });
     }
   });
+
+  // Centralised handler for "user picked/dropped a file" so the
+  // drag/drop and the click-to-pick paths stay in lock-step.
+  // Enforces the 25 MiB client limit on the 837P/ZIP/note paths,
+  // shows the file name + size under the dropzone, and dispatches
+  // to the right upload handler.
+  function handleSelectedFile(dz, kind, input, fileLabel, f) {
+    clearError(dz);
+    // 25 MiB cap, expressed as the QA-confirmed string. Anything
+    // over this is rejected before any bytes are sent.
+    if (f.size > MAX_CLIENT_UPLOAD_BYTES) {
+      fileLabel.textContent = "";
+      // Clear the input so the user can re-pick without unselecting
+      // first; otherwise the browser keeps the file in the picker
+      // and the change event won't refire on re-selection of the
+      // same file.
+      if (input) input.value = "";
+      setError(
+        dz,
+        f.name + " is " + formatBytes(f.size) +
+          ", which is over the 25 MiB limit. Pick a smaller file."
+      );
+      return;
+    }
+    // File name + size under the dropzone. The size is the user's
+    // first visual confirmation that the file they just picked is
+    // actually the one they meant to pick — particularly useful
+    // when the upload takes a few seconds to start.
+    fileLabel.textContent = f.name + " (" + formatBytes(f.size) + ")";
+    if (kind === "note") {
+      uploadNote(f);
+    } else {
+      previewFile(f);
+    }
+  }
 
   if (btnPastePreview) {
     btnPastePreview.addEventListener("click", () => pastePreview(pasteForm));

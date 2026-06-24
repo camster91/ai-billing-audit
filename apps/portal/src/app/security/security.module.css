@@ -9,7 +9,8 @@
   --line: #28324f;
   --text: #e7ecf6;
   --muted: #9aa3bd;
-  --accent: #4f8cff;
+  --accent: #60a5fa;       /* link/secondary text on dark bg (7.2:1) */
+  --accent-bg: #2563eb;   /* button bg with white text (5.17:1) */
   --accent-2: #2dd4bf;
   --warn: #f59e0b;
   --good: #22c55e;
@@ -56,8 +57,8 @@
   display: inline-block;
   margin-bottom: 16px;
   padding: 4px 12px;
-  background: rgba(79, 140, 255, 0.12);
-  border: 1px solid rgba(79, 140, 255, 0.35);
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
   color: var(--accent);
   border-radius: 999px;
   font-size: 12px;
@@ -98,7 +99,7 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   border-radius: 999px;
   font-weight: 700;
@@ -221,12 +222,12 @@
 }
 
 .matrixTable thead th {
-  background: rgba(79, 140, 255, 0.08);
+  background: rgba(37, 99, 235, 0.08);
   color: var(--text);
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.2px;
-  border-bottom: 1px solid rgba(79, 140, 255, 0.35);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.35);
 }
 
 .matrixTable tbody th {
@@ -273,21 +274,21 @@
 
 .ctaButton {
   display: inline-block;
-  background: var(--accent);
+  background: #1d4ed8; /* blue-700, 6.0:1 contrast against white — passes WCAG AA */
   color: white;
   padding: 16px 36px;
   border-radius: 10px;
   font-weight: 700;
   font-size: 16px;
   text-decoration: none;
-  border: 1px solid var(--accent);
+  border: 1px solid #1d4ed8;
   transition: background 0.15s;
   font-family: inherit;
   cursor: pointer;
 }
 
 .ctaButton:hover {
-  background: #3d75e6;
+  background: #1e40af; /* blue-800 */
 }
 
 .ctaButton:focus-visible {

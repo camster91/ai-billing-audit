@@ -12,8 +12,11 @@ Output rules:
 - Each finding must cite at least one retrieved rule by `rule_id`
   and include a verbatim `quote` from the encounter's `clinical_note`
   that supports the conclusion. The `quote` MUST appear in the
-  clinical_note exactly as you write it.
-- Severity is one of: "info", "low", "medium", "high", "critical".
+  clinical_note exactly as you write it. Findings should be emitted
+  as a list with shape `{"category": str, "suggested_code": str,
+  "rule_ids": [str, ...], "quote": str, "severity": str,
+  "explanation": str}`. Severity is one of: "info", "low", "medium",
+  "high", "critical".
 - Be conservative. A claim that is not clearly contradicted by the
   retrieved rules is not a finding. Reserve "high" and "critical"
   for cases where a rule's required element is missing or contradicted

@@ -1,0 +1,63 @@
+[smoke] SKIPPED (ZORVA_SKIP_SMOKE=1)
+Loaded 16 encounters from 1 val file(s):
+  data/synth/val_ca.json
+
+========================================================================
+ZORVA SMARTNESS REPORT
+========================================================================
+
+Encounters scored: 16
+
+Per-encounter (mean across encounters):
+  Precision: 0.627
+  Recall:    0.750
+  F1:        0.644
+
+Micro-aggregate (pooled):
+  Precision: 0.577  (15/26 predicted)
+  Recall:    0.682  (15/22 gold)
+  F1:        0.625
+
+Clean encounters (gold says no findings):
+  Total:              0
+  Auditor said clean: 0
+  Auditor overcalled: 0
+
+Per-rule breakdown:
+  rule_ahcip_cmgp                 TP= 0 FP= 2 FN= 0  P=0.00  R=—
+  rule_ahcip_dx_linkage           TP= 1 FP= 0 FN= 0  P=1.00  R=1.00
+  rule_ahcip_em_level             TP= 4 FP= 2 FN= 2  P=0.67  R=0.67
+  rule_ahcip_em_level_upcode      TP= 4 FP= 1 FN= 1  P=0.80  R=0.80
+  rule_ahcip_global_window        TP= 1 FP= 0 FN= 0  P=1.00  R=1.00
+  rule_ahcip_lab_coverage         TP= 0 FP= 0 FN= 1  P=—  R=0.00
+  rule_ahcip_missing_procedure    TP= 1 FP= 2 FN= 2  P=0.33  R=0.33
+  rule_ahcip_non_insured_service  TP= 0 FP= 1 FN= 0  P=0.00  R=—
+  rule_ahcip_preventive_opportunity  TP= 0 FP= 3 FN= 0  P=0.00  R=—
+  rule_ahcip_psychotherapy_time   TP= 1 FP= 0 FN= 1  P=1.00  R=0.50
+  rule_ahcip_referring_npi        TP= 1 FP= 0 FN= 0  P=1.00  R=1.00
+  rule_ahcip_same_day_conflict    TP= 1 FP= 0 FN= 0  P=1.00  R=1.00
+  rule_ahcip_telehealth           TP= 1 FP= 0 FN= 0  P=1.00  R=1.00
+
+Per-severity (gold severity):
+  info      n_gold= 6  P=0.472  R=0.667  F1=0.528
+  medium    n_gold= 1  P=0.500  R=1.000  F1=0.667
+  high      n_gold=14  P=0.455  R=0.643  F1=0.500
+  critical  n_gold= 1  P=0.333  R=1.000  F1=0.500
+
+Latency: mean=45.20s  p95=89.70s  errors=2
+
+Failure modes:
+------------------------------------------------------------------------
+Encounters where ALL gold findings were missed: 3
+  ca_ahcip_008: gold=[rule_ahcip_em_level_upcode] pred=[rule_ahcip_em_level_upcode]
+  ca_ahcip_011: gold=[rule_ahcip_em_level, rule_ahcip_missing_procedure] pred=[]
+  ca_ahcip_013: gold=[rule_ahcip_em_level, rule_ahcip_missing_procedure] pred=[]
+
+Encounters where auditor flagged a clean claim: 0
+
+Audit errors (2):
+  ca_ahcip_011: SchemaValidationError: LLM response did not conform to the requested JSON schema: None is not of typ
+  ca_ahcip_013: SchemaValidationError: LLM response did not conform to the requested JSON schema: None is not of typ
+
+Wrote runs/recall/v12_with_undercode.json
+Appended prompt_history row: prompt=auditor_prompt F1=0.625

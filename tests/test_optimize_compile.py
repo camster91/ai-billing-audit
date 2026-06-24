@@ -366,9 +366,9 @@ class TestMiproMode:
         """End-to-end against the project's actual val.json (50
         encounters). Catches schema-mismatch regressions where the
         compiled program chokes on a real encounter shape."""
-        val_path = PROJECT_ROOT / "data" / "val.json"
+        val_path = PROJECT_ROOT / "data" / "synth" / "val.json"
         if not val_path.exists():
-            pytest.skip("data/val.json not present")
+            pytest.skip("data/synth/val.json not present")
         with val_path.open("r", encoding="utf-8") as fh:
             val = json.load(fh)
         out = oc.compile_and_evaluate(1, val, seed=1729, mode="mipro")

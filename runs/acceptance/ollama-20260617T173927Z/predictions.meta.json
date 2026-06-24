@@ -1,0 +1,16 @@
+{
+  "provider": "ollama",
+  "model": "ollama/minimax-m3:cloud",
+  "n_encounters": 50,
+  "n_ok": 49,
+  "n_errors": 1,
+  "wall_clock_seconds_total": 776.194482088089,
+  "wall_clock_seconds_avg": 15.52388964176178,
+  "token_usage_total": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0
+  },
+  "prompt_sha256": "sha256:285eab0898cd769c29efe1d9f3841970e4f8f010f8173fdbebe4925871051dcc",
+  "ran_at": "2026-06-17T17:52:24.503040+00:00"
+}

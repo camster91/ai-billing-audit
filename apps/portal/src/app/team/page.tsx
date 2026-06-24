@@ -1,20 +1,26 @@
-// /team — membership list route shell.
+// /team — team management page.
 //
-// Reads the active tenant's Membership rows (user + role). Per
-// spec, the team-invitation/role-management UI is out of scope —
-// this is a read-only list of who already has access.
+// Renders the tenant's Membership list, an invite form (owner
+// only), and per-row actions (change role, disable) gated by
+// the viewer's own role.
 //
-// The session callback (src/auth.ts) already returns
-// `session.user.tenants` with each entry's role. For the active
-// tenant specifically, we re-query to get the full user list
-// (everyone who has access, not just the current user).
+// Composition:
+//   - page.tsx (this file): server component, fetches data.
+//   - team-client.tsx: client component, handles the invite
+//     form, role-change dropdown, and disable button.
 
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import styles from "../shell.module.css";
+import { TeamClient } from "./team-client";
+
+export const metadata: Metadata = {
+  title: "Team — Zorva",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,13 +45,31 @@ export default async function TeamPage() {
     );
   }
 
+  // Read the viewer's own role for the active tenant. We need
+  // it to decide whether to render the invite form / per-row
+  // actions. The team-client component re-checks via /api/team
+  // but we also need it server-side for the first paint.
+  const viewerMembership = await prisma.membership.findFirst({
+    where: { userId: session.user.id, tenantId: tenant.id },
+    select: { role: true, status: true },
+  });
+
+  // The page itself never lists inactive members by default;
+  // the team-client can opt in via a "show disabled" toggle
+  // (currently not exposed in the UI; the GET /api/team
+  // endpoint accepts ?status=inactive when needed).
   const memberships = await prisma.membership.findMany({
     where: { tenantId: tenant.id },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     include: {
       user: { select: { id: true, email: true, name: true } },
     },
   });
+
+  const canManage = viewerMembership
+    ? viewerMembership.status === "active" &&
+      (viewerMembership.role === "owner" || viewerMembership.role === "admin")
+    : false;
 
   return (
     <main className={styles.shell}>
@@ -53,37 +77,31 @@ export default async function TeamPage() {
 
       <h1 className={styles.heading}>Team</h1>
       <p className={styles.subheading}>
-        {memberships.length} member{memberships.length === 1 ? "" : "s"} of {tenant.name}.
-        Invitation/role-management UI is out of scope for this milestone.
+        {memberships.length} member{memberships.length === 1 ? "" : "s"} of{" "}
+        {tenant.name}.
+        {!canManage
+          ? " Your role is read-only on this page."
+          : " Invite teammates and manage their roles below."}
       </p>
 
-      {memberships.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>No members yet</h2>
-          <p>This clinic has no users yet. The invite flow ships next milestone.</p>
-        </section>
-      ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {memberships.map((m) => (
-              <tr key={m.id}>
-                <td>{m.user.name ?? "—"}</td>
-                <td>{m.user.email}</td>
-                <td>{m.role}</td>
-                <td>{m.createdAt.toISOString().slice(0, 10)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <TeamClient
+        viewerUserId={session.user.id}
+        viewerRole={viewerMembership?.role ?? "viewer"}
+        viewerStatus={(viewerMembership?.status as "active" | "pending" | "inactive" | undefined) ?? "inactive"}
+        tenantName={tenant.name}
+        initialMemberships={memberships.map((m) => ({
+          id: m.id,
+          email: m.email,
+          role: m.role,
+          status: m.status as "active" | "pending" | "inactive",
+          invitedAt: m.invitedAt.toISOString(),
+          activatedAt: m.activatedAt ? m.activatedAt.toISOString() : null,
+          createdAt: m.createdAt.toISOString(),
+          user: m.user
+            ? { id: m.user.id, email: m.user.email, name: m.user.name }
+            : null,
+        }))}
+      />
     </main>
   );
 }

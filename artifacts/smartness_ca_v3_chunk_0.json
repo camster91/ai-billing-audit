@@ -1,0 +1,387 @@
+{
+  "summary": {
+    "n_encounters": 5,
+    "mean_per_encounter": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "micro_aggregate": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "true_positives": 0,
+      "total_predicted": 8,
+      "total_gold": 8
+    },
+    "clean_encounters": {
+      "n_gold_clean": 0,
+      "n_pred_clean": 0,
+      "n_overcalled_clean": 0
+    },
+    "per_rule": {
+      "AHCP-MOD-25": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "AHCP-VISIT-001": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "DX-INTRAOP-AFTERCARE": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "GLOBAL-SURG-90": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "REFERRING_PROVIDER_NPI_REQUIRED": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "icd10-cm-e11-diabetes-with-complications": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "icd10-cm-e11-hyperglycemia": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "icd10-cm-renal-hypertensive-disease": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_ahcip_dx_linkage": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 3,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_em_level": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_em_level_upcode": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_global_window": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_referring_npi": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      }
+    },
+    "per_severity": {
+      "info": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "medium": {
+        "n_encounters": 1,
+        "n_gold_findings": 1,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "high": {
+        "n_encounters": 3,
+        "n_gold_findings": 3,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      },
+      "critical": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.0,
+        "mean_r": 0.0,
+        "mean_f1": 0.0
+      }
+    },
+    "latency": {
+      "mean_s": 40.527267122268675,
+      "p95_s": 94.24629187583923,
+      "n_errors": 0
+    }
+  },
+  "results": [
+    {
+      "encounter_id": "ca_ahcip_001",
+      "n_gold": 2,
+      "n_pred": 3,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 27.740570068359375,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "icd10-cm-e11-diabetes-with-complications",
+          "rule_ids": [
+            "icd10-cm-e11-diabetes-with-complications"
+          ],
+          "quote": "eGFR 58, ACR 32",
+          "explanation": "Documentation supports diabetic chronic kidney disease (eGFR 58 = CKD stage 3a; ACR 32 mg/g = moderately increased albuminuria/microalbuminuria in a diabetic patient). E11.9 (Type 2 DM without complications) is inappropriate and should be replaced or augmented with E11.22 (Type 2 diabetes mellitus with diabetic chronic kidney disease)."
+        },
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "icd10-cm-e11-hyperglycemia",
+          "rule_ids": [
+            "icd10-cm-e11-hyperglycemia"
+          ],
+          "quote": "A1C 8.9",
+          "explanation": "A1C of 8.9 indicates diabetes that is not at goal, corroborated by the documented medication intensification ('Increased metformin to 1000mg BID'). E11.65 (Type 2 DM with hyperglycemia) is supported and should be considered in addition to the complication code."
+        },
+        {
+          "finding_id": "",
+          "category": "missing-dx",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "icd10-cm-renal-hypertensive-disease",
+          "rule_ids": [
+            "icd10-cm-renal-hypertensive-disease"
+          ],
+          "quote": "BP 152/94, HR 78",
+          "explanation": "While I10 (essential hypertension) is appropriate for the documented BP of 152/94, given the concurrent diabetic nephropathy (eGFR 58, ACR 32) and initiation of an ACE inhibitor (perindopril), the encounter may also support an additional code for hypertensive chronic kidney disease (I12.9 or I12.9 with E11.22 linkage) if the clinician intends to capture the cardiorenal relationship."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca1",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "comprehensive assessment for diabetes follow-up"
+        },
+        {
+          "finding_id": "ca2",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10",
+          "clinical_evidence_quote": "labs: A1C 8.9"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_002",
+      "n_gold": 2,
+      "n_pred": 1,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 94.24629187583923,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "REFERRING_PROVIDER_NPI_REQUIRED",
+          "rule_ids": [
+            "REFERRING_PROVIDER_NPI_REQUIRED"
+          ],
+          "quote": "referred by Dr. Smith for hypertension management",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca3",
+          "rule_id": "rule_ahcip_referring_npi",
+          "severity": "high",
+          "category": "consultation",
+          "suggested_code": "03.03A",
+          "clinical_evidence_quote": "referred by Dr. Smith"
+        },
+        {
+          "finding_id": "ca4",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "medium",
+          "category": "diagnosis",
+          "suggested_code": "I10",
+          "clinical_evidence_quote": "BP 168/102"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_003",
+      "n_gold": 2,
+      "n_pred": 2,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 41.02224588394165,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "duplicate",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "AHCP-VISIT-001",
+          "rule_ids": [
+            "AHCP-VISIT-001"
+          ],
+          "quote": "Established patient annual comprehensive assessment.",
+          "explanation": "Two visit/assessment codes (03.04A and 03.05A) are billed for the same patient on the same date of service (2026-04-22). AHCIP rules permit only one visit assessment code per patient per day. The clinical note documents a single 'Established patient annual comprehensive assessment' with review of chronic conditions and medication adjustment, which does not support billing two separate assessment codes for the same encounter."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "AHCP-MOD-25",
+          "rule_ids": [
+            "AHCP-MOD-25"
+          ],
+          "quote": "Referred for eye exam. Injections avoided given recent flare.",
+          "explanation": "The note documents a decision-making process regarding injection therapy that was considered but not performed in the context of an active flare. While no procedure was ultimately rendered, documentation should confirm whether any separately billable intervention or significant separately identifiable service was provided. If a procedural service was performed or a separately identifiable E/M element exists beyond the routine assessment, an applicable modifier may be required; current claim shows modifier: null, which should be verified."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca5",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "annual comprehensive assessment"
+        },
+        {
+          "finding_id": "ca6",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "E11.9,I10,E78.5,M17.9",
+          "clinical_evidence_quote": "T2DM, HTN, dyslipidemia, osteoarthritis knees"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_004",
+      "n_gold": 1,
+      "n_pred": 0,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 20.248010873794556,
+      "error": null,
+      "pred_findings": [],
+      "gold_findings": [
+        {
+          "finding_id": "ca7",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "03.01A",
+          "clinical_evidence_quote": "Office visit, brief assessment"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_005",
+      "n_gold": 1,
+      "n_pred": 2,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 19.37921690940857,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "GLOBAL-SURG-90",
+          "rule_ids": [
+            "GLOBAL-SURG-90"
+          ],
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago.",
+          "explanation": "Cholecystectomy is a major surgical procedure subject to a 90-day global surgical package. A routine post-operative follow-up visit occurring 8 days post-op falls within the global period and is NOT separately reimbursable. The post-op E/M is included in the surgeon's global surgical fee and should not be billed as a discrete encounter with SOM-B 03.04A. Submitting this claim risks duplicate payment for services already bundled into the original surgical reimbursement."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "DX-INTRAOP-AFTERCARE",
+          "rule_ids": [
+            "DX-INTRAOP-AFTERCARE"
+          ],
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago. Incision well-healed, no signs of infection. Patient reports mild fatigue. Discharged from surgical care.",
+          "explanation": "Diagnosis Z48.815 (Encounter for surgical aftercare following surgery on the digestive system) is correctly coded for the post-cholecystectomy follow-up. However, because this service falls within the global surgical period, the diagnosis code does not support separate billing of the visit itself. No actionable defect in code selection; flagged for awareness."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca8",
+          "rule_id": "rule_ahcip_global_window",
+          "severity": "high",
+          "category": "modifier",
+          "suggested_code": "modifier -24",
+          "clinical_evidence_quote": "Post-op follow-up, cholecystectomy 8 days ago"
+        }
+      ]
+    }
+  ]
+}

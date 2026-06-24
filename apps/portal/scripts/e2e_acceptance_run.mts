@@ -81,7 +81,7 @@ async function readTenantBySession(sessionId: string): Promise<{
     return {
       tenantId,
       encounterId: encounter.id,
-      findingIds: findings.map((f) => f.id),
+      findingIds: findings.map((f: { id: string }) => f.id),
     };
   } finally {
     await prisma.$disconnect();

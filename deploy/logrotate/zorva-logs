@@ -1,0 +1,54 @@
+# audit_trail.jsonl — hash-chained, 7-year retention
+/app/logs/audit_trail.jsonl {
+    daily
+    rotate 2555
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+}
+
+# upload_jobs.jsonl — job history, 1-year retention
+/app/logs/upload_jobs.jsonl {
+    daily
+    rotate 365
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# doctor_emails.jsonl — fallback mailbox, 60-day retention
+/app/logs/doctor_emails.jsonl {
+    daily
+    rotate 60
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# doctor_optouts.json — 1-year retention
+/app/logs/doctor_optouts.json {
+    daily
+    rotate 365
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# npi_email_cache.json — 90-day soft cache
+/app/logs/npi_email_cache.json {
+    weekly
+    rotate 12
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

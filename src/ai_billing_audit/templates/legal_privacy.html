@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy — {{ tenant_name }}{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 760px;">
+  <h1>Privacy Policy</h1>
+  <p class="muted">Effective: 2026-06-21. v1 stub — replace with lawyer-reviewed copy before the first paying pilot signs.</p>
+
+  <h2>1. What this product is</h2>
+  <p>
+    Zorva is an AI-powered billing-audit tool for medical practices.
+    It reviews clinical documentation against billing-rule catalogs
+    and surfaces errors, missing codes, and denial-risk signals
+    before a claim is submitted.
+  </p>
+
+  <h2>2. What we collect</h2>
+  <ul>
+    <li><strong>Clinical notes</strong> you upload or paste.</li>
+    <li><strong>Claim metadata</strong>: CPT, ICD-10, SOMB, or other billing codes, encounter IDs, dates of service.</li>
+    <li><strong>Reviewer actions</strong>: which findings were accepted, dismissed, appealed, and the reason code for each dismissal.</li>
+    <li><strong>Tenant metadata</strong>: clinic name, billing authority, province or state.</li>
+    <li><strong>Audit-trail events</strong>: every action on every encounter, signed with SHA-256.</li>
+  </ul>
+
+  <h2>3. What we do NOT collect</h2>
+  <ul>
+    <li>Patient names, addresses, phone numbers, email addresses, or other directly identifying information. Patient identifiers in your billing data are pseudonymized at the application boundary using SHA-256 with a tenant-scoped salt.</li>
+    <li>Payment data. We do not process payments; billing is handled by your existing payment processor.</li>
+    <li>Anything you do not specifically upload to Zorva.</li>
+  </ul>
+
+  <h2>4. How we store it</h2>
+  <p>
+    Data is stored in a Canadian data centre; the specific region
+    is confirmed in the executed BAA ({{ data_residency }}). All
+    records are tagged with a tenant ID at write time. The
+    application enforces tenant scoping on every read — a clinic
+    cannot read another clinic's audit trail, claim data, or
+    appeal letters.
+  </p>
+  <p>
+    Audit-trail events are signed with a SHA-256 chain. The chain
+    signature includes the previous row's signature, the action
+    type, the user identifier, the encounter ID, and a SHA-256
+    hash of the encounter ID (PHIPA pseudonymization). A privacy
+    officer can verify the chain has not been tampered with by
+    walking the JSONL log and recomputing the signatures.
+  </p>
+
+  <h2>5. Retention</h2>
+  <p>
+    Audit-trail events and appeal-letter records are retained for the
+    duration of the customer's subscription plus 7 years (the
+    standard retention period for billing records under
+    PIPEDA / HIPAA / PHIPA). Upload-job records are retained for
+    90 days for debugging, then aged out.
+  </p>
+  <p>
+    On subscription termination or written deletion request, all
+    tenant data is purged within 30 days. The deletion event
+    itself is recorded in the audit trail before the actual file
+    purge runs.
+  </p>
+
+  <h2>6. Patient rights (PHIPA s.53 / PIPEDA)</h2>
+  <p>
+    Patients have the right to access their own PHI. To exercise
+    this right, the clinic submits an export request to Zorva;
+    Zorva returns the patient's claim data, audit-trail entries,
+    and appeal-letter records as JSONL with a SHA-256 manifest.
+    Endpoint:
+    <code>GET /api/tenants/{tenant_id}/export.jsonl</code>.
+  </p>
+  <p>
+    Patients also have the right to deletion. The clinic submits
+    a deletion request; Zorva records a deletion event in the
+    audit trail and queues the file purge. Endpoint:
+    <code>DELETE /api/tenants/{tenant_id}?confirmation=delete-all-my-data</code>.
+  </p>
+
+  <h2>7. Sub-processors</h2>
+  <ul>
+    <li><strong>Cloud hosting provider</strong>: Canadian data centre operated by a third-party provider. The specific provider, region, and any third-party attestations currently held are written into the executed BAA.</li>
+    <li><strong>Ollama Cloud</strong>: large-language-model inference. Patient-identifying fields are pseudonymized before transmission; only clinical notes and claim metadata reach Ollama.</li>
+  </ul>
+  <p>
+    We do not share tenant data with any other party. We do not
+    train models on tenant data. We do not sell or rent tenant
+    data.
+  </p>
+
+  <h2>8. Breach notification</h2>
+  <p>
+    On confirmed PHI breach, Zorva notifies affected tenants
+    within 60 days, in writing (per HIPAA §164.410). Notification
+    includes the date range, the categories of PHI involved, the
+    number of individuals affected, and the steps taken to
+    mitigate.
+  </p>
+
+  <h2>9. Security safeguards</h2>
+  <ul>
+    <li>TLS 1.3 for all transit.</li>
+    <li>AES-256 at rest (managed database encryption; cipher and key custody confirmed in the BAA).</li>
+    <li>Bearer-token authentication on every write endpoint.</li>
+    <li>Tenant-scoped reads on every JSONL log query.</li>
+    <li>SHA-256 audit-trail chain; tamper-evident by construction.</li>
+    <li>Annual third-party penetration test.</li>
+  </ul>
+
+  <h2>10. International transfers</h2>
+  <p>
+    Zorva stores data in Canada by default. For US-based
+    tenants, Zorva stores data in a US-hosted, HIPAA-aligned
+    region under a Business Associate Agreement. The specific
+    region is confirmed in the executed BAA. We do not
+    transfer data between regions.
+  </p>
+
+  <h2>11. Marketing communications</h2>
+  <p>
+    We do not send marketing email. We may send product-update
+    email to active tenants; tenants can opt out by emailing
+    <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+  </p>
+
+  <h2>12. Children's privacy</h2>
+  <p>
+    Zorva is a billing-audit tool for medical practices. We do
+    not knowingly collect information from children under 16.
+    If a tenant uploads encounter data involving a minor, the
+    data is processed under the same safeguards as adult data
+    but the parent or guardian has the same PHIPA s.53 access
+    rights.
+  </p>
+
+  <h2>13. Changes to this policy</h2>
+  <p>
+    We notify active tenants at least 30 days before material
+    changes take effect. The current version is always at this
+    URL.
+  </p>
+
+  <h2>14. Contact</h2>
+  <p>
+    Privacy questions: <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    We respond within 5 business days.
+  </p>
+
+  <h2>15. Compliance framework</h2>
+  <ul>
+    <li>Canada: PIPEDA, PHIPA (Ontario), HIA (Alberta), PHIA (Manitoba), HPA (Saskatchewan), PIPEDA + Quebec Law 25.</li>
+    <li>United States: HIPAA, HITECH, 42 CFR Part 2 (substance-use-disorder treatment records).</li>
+    <li>Mexico: NOM-024, SAT CFDI 4.0 (electronic invoicing).</li>
+    <li>Colombia: Ley 1581 de 2012 (data protection), DIAN (electronic invoicing).</li>
+  </ul>
+
+  <p class="muted small">
+    v1 stub copy — replace with lawyer-reviewed text before the
+    first paying pilot signs. Last reviewed: 2026-06-21.
+  </p>
+</main>
+{% endblock %}

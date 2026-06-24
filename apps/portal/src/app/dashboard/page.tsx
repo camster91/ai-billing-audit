@@ -10,13 +10,21 @@
 // (e.g. they just created an account). In that case we render an
 // empty state explaining that they need to be invited to a clinic.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
+import { EmptyStateCTA, onboardingWizardHref } from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,6 +48,13 @@ export default async function DashboardPage() {
   let onboardingCompletedAt: Date | null = null;
   let firstEncounterUploadMode: string | null = null;
   let firstEncounterFileName: string | null = null;
+  // Zero-data empty-state. The dashboard hides the "Your clinics"
+  // summary and shows an onboarding CTA when the tenant has no
+  // encounters AND no findings (i.e. truly fresh signup). Without
+  // this the brand-new user lands on a populated-looking page with
+  // no obvious next step.
+  let encounterCount = 0;
+  let findingCount = 0;
   if (tenant) {
     const row = await prisma.tenant.findUnique({
       where: { id: tenant.id },
@@ -56,7 +71,16 @@ export default async function DashboardPage() {
     onboardingCompletedAt = row?.onboardingCompletedAt ?? null;
     firstEncounterUploadMode = row?.firstEncounterUploadMode ?? null;
     firstEncounterFileName = row?.firstEncounterFileName ?? null;
+    // Single round-trip — Prisma can run two count()s in parallel.
+    const [eCount, fCount] = await Promise.all([
+      prisma.encounter.count({ where: { tenantId: tenant.id } }),
+      prisma.finding.count({ where: { encounter: { tenantId: tenant.id } } }),
+    ]);
+    encounterCount = eCount;
+    findingCount = fCount;
   }
+  const isFreshTenant =
+    tenant !== null && encounterCount === 0 && findingCount === 0;
 
   return (
     <main className={styles.shell}>
@@ -117,6 +141,25 @@ export default async function DashboardPage() {
                 findings here as soon as the auditor finishes.
               </p>
             </section>
+          ) : null}
+
+          {isFreshTenant ? (
+            <EmptyStateCTA
+              testId="dashboard-fresh-tenant-cta"
+              variant="block"
+              title="No encounters yet"
+              description="Upload a clinical note and we'll run the pre-bill audit. Findings appear in your inbox as soon as the auditor finishes."
+              primaryAction={{
+                label: "Upload your first encounter",
+                href: onboardingWizardHref(),
+                testId: "dashboard-upload-first-encounter",
+              }}
+              secondaryAction={{
+                label: "How it works",
+                href: "/how-it-works",
+                testId: "dashboard-how-it-works",
+              }}
+            />
           ) : null}
 
           <section className={styles.card}>

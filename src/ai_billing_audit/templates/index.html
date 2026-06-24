@@ -1,44 +1,246 @@
 {% extends "base.html" %}
-{% block title %}demo encounters — ai-billing-audit{% endblock %}
+{% block title %}Audits — ai-billing-audit{% endblock %}
 {% block content %}
-<section class="page-head">
-  <h1>Demo encounters</h1>
-  <p class="muted">
-    {{ n_registered }} encounter{{ "" if n_registered == 1 else "s" }} registered
-    for the demo dashboard. Each card links to a full audit panel with the
-    clinical note, the claim, the retrieved rules, and the ground-truth
-    findings (with the evidence quote highlighted in the note).
-  </p>
+
+<div class="page-head">
+  <div>
+    <h1>Audits</h1>
+    <p class="sub">Claims audited before submission. Open a card to review the LLM findings and accept, dismiss, or flag them.</p>
+  </div>
+  <a class="btn btn-primary" href="/encounters/upload">Upload 837P</a>
+</div>
+
+{# Monthly revenue recovered KPI tile — sits at the top of the
+   dashboard so the biller sees at a glance how much missed-revenue
+   opportunity has surfaced this month, how much has been actioned,
+   and how much is still pending review. The ratio between recovered
+   and pending is the trust signal. #}
+{% if monthly_revenue_kpi and monthly_revenue_kpi.ready %}
+<section class="revenue-kpi" aria-label="This month: revenue opportunities">
+  <div class="revenue-kpi__main">
+    <div class="revenue-kpi__label">{{ monthly_revenue_kpi.month_label }} &middot; identified</div>
+    <div class="revenue-kpi__big mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.total_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub">
+      in revenue opportunities
+      {% if monthly_revenue_kpi.n_opportunities %}
+        &middot; {{ monthly_revenue_kpi.n_opportunities }} finding{{ "" if monthly_revenue_kpi.n_opportunities == 1 else "s" }}
+      {% endif %}
+    </div>
+    {% set r = monthly_revenue_kpi.acceptance_ratio %}
+    <span class="revenue-kpi__ratio {% if r >= 0.66 %}is-high{% elif r >= 0.33 %}is-medium{% else %}is-low{% endif %}">
+      {{ (r * 100) | round(0) | int }}% actioned
+    </span>
+  </div>
+  <div class="revenue-kpi__sub-tile">
+    <div class="revenue-kpi__sub-label">Recovered</div>
+    <div class="revenue-kpi__sub-value is-recovered mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.recovered_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub-meta">
+      biller actioned
+      {% if monthly_revenue_kpi.n_accepted %}
+        ({{ monthly_revenue_kpi.n_accepted }} accept{{ "" if monthly_revenue_kpi.n_accepted == 1 else "s" }})
+      {% endif %}
+    </div>
+  </div>
+  <div class="revenue-kpi__sub-tile">
+    <div class="revenue-kpi__sub-label">Pending</div>
+    <div class="revenue-kpi__sub-value is-pending mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.pending_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub-meta">awaiting review</div>
+  </div>
+</section>
+{% endif %}
+
+{# Per-clinic F1 widget — shows the "insufficient data" empty state
+   when the active clinic has fewer than 3 feedback events in the
+   rolling 30-day window (per INSUFFICIENT_DATA_THRESHOLD). The
+   ``per_clinic_f1_widget`` dict is pre-computed server-side by
+   api.py (see insufficient_data_state() in per_clinic_f1.py) so
+   we don't depend on a JS fetch for first paint. #}
+<section class="pcf1-widget" aria-label="Your clinic's model F1">
+  <div class="pcf1-widget__head">
+    <span class="pcf1-widget__eyebrow">Per-clinic F1</span>
+    <span class="pcf1-widget__clinic mono">{{ per_clinic_f1_widget.clinic_id }}</span>
+  </div>
+
+  {% if per_clinic_f1_widget.is_insufficient %}
+    <div class="pcf1-widget__empty">
+      <h3 class="pcf1-widget__empty-title">
+        {{ per_clinic_f1_widget.headline }}
+      </h3>
+      <p class="pcf1-widget__empty-message">
+        {{ per_clinic_f1_widget.message }}
+      </p>
+      <p class="pcf1-widget__empty-meta muted small">
+        <span class="mono">{{ per_clinic_f1_widget.total_support }}</span>
+        / {{ per_clinic_f1_widget.threshold }} feedback events in the
+        last {{ per_clinic_f1_widget.window_days }} days.
+      </p>
+      <p class="pcf1-widget__empty-cta">
+        {{ per_clinic_f1_widget.cta }}
+      </p>
+    </div>
+  {% else %}
+    <div class="pcf1-widget__ready">
+      <p class="muted small">
+        Per-clinic F1 widget is wired up. Detailed per-rule table lives at
+        <code>/api/dashboard/per_clinic_f1</code>.
+      </p>
+    </div>
+  {% endif %}
 </section>
 
-{% if cards|length == 0 %}
-  <p class="empty">No demo encounters registered yet.</p>
-{% else %}
-  <ul class="encounter-grid">
-    {% for card in cards %}
-    <li class="encounter-card encounter-card--{{ card.difficulty|lower }}">
-      <div class="encounter-card__head">
-        <span class="badge badge--{{ card.difficulty|lower }}">{{ card.difficulty }}</span>
-        {% if card.available %}
-          {% if card.is_flagged %}
-            <span class="badge badge--flag">flagged · {{ card.n_findings }} finding{{ "" if card.n_findings == 1 else "s" }}</span>
-          {% else %}
-            <span class="badge badge--clean">clean</span>
-          {% endif %}
+{% if metrics and metrics.ready %}
+<section class="clean-rate-hero" aria-label="This month at a glance">
+  <div class="clean-rate-hero__main">
+    <div class="clean-rate-hero__big">
+      <span class="clean-rate-hero__pct">
+        {% if metrics.this_month_clean_rate is not none %}
+          {{ (metrics.this_month_clean_rate * 100) | round(1) }}%
         {% else %}
-          <span class="badge badge--missing">record missing</span>
+          —
+        {% endif %}
+      </span>
+      <span class="clean-rate-hero__label">of claims clean this month</span>
+    </div>
+    {% if metrics.clean_rate_delta is not none %}
+      <div class="clean-rate-hero__trend {% if metrics.clean_rate_delta >= 0 %}is-up{% else %}is-down{% endif %}">
+        {% if metrics.clean_rate_delta >= 0 %}▲{% else %}▼{% endif %}
+        {{ (metrics.clean_rate_delta * 100) | round(1) }} pts vs. last 30d
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="clean-rate-hero__stats">
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">$ Revenue confirmed clean</div>
+      <div class="clean-rate-hero__stat-value">
+        ${{ "{:,.0f}".format(metrics.this_month_revenue_confirmed) }}
+      </div>
+      <div class="clean-rate-hero__stat-sub muted">
+        {{ metrics.this_month_clean }} claims &times; ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }} avg
+      </div>
+    </div>
+
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">Estimated denials avoided</div>
+      <div class="clean-rate-hero__stat-value">
+        ${{ "{:,.0f}".format(metrics.this_month_avoided_denials_dollar) }}
+      </div>
+      <div class="clean-rate-hero__stat-sub muted">
+        {% if metrics.this_month_clean_rate is not none and metrics.this_month_count %}
+          ({{ (metrics.this_month_clean_rate * 100) | round(1) }}% &minus; 92.5%) &times; {{ metrics.this_month_count }} &times; ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }}
+        {% else %}
+          vs. industry 7.5% denial rate
         {% endif %}
       </div>
-      <h2 class="encounter-card__id">
-        <a href="/encounter/{{ card.encounter_id }}">{{ card.encounter_id }}</a>
-      </h2>
-      <p class="encounter-card__summary">{{ card.summary }}</p>
-      <div class="encounter-card__actions">
-        <a class="btn btn--primary" href="/encounter/{{ card.encounter_id }}">open audit panel</a>
-        <a class="btn btn--ghost" href="/encounter/{{ card.encounter_id }}/json">raw json</a>
+    </div>
+
+    <div class="clean-rate-hero__stat">
+      <div class="clean-rate-hero__stat-label">Need review</div>
+      <div class="clean-rate-hero__stat-value">
+        {{ metrics.this_month_flagged }}
       </div>
-    </li>
+      <div class="clean-rate-hero__stat-sub muted">
+        <a href="?status=flagged" class="link">View flagged →</a>
+      </div>
+    </div>
+  </div>
+
+  <details class="clean-rate-hero__explainer">
+    <summary>How we calculated this</summary>
+    <p>
+      <strong>Revenue confirmed clean</strong> is the number of claims the auditor
+      marked clean ({{ metrics.this_month_clean }}) multiplied by an industry-average
+      claim value of ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }}.
+      Production deployments will replace this with the clinic's actual
+      average per claim, computed from their own billing data.
+    </p>
+    <p>
+      <strong>Estimated denials avoided</strong> compares your clean rate to the
+      industry baseline of 92.5% (a 7.5% denial rate is the CMS-reported
+      average for commercial payers). The difference is the share of claims
+      your team is catching that would have been denied without the auditor,
+      multiplied by the average claim value.
+      {% if metrics.this_month_clean_rate is not none %}
+        Math: ({{ (metrics.this_month_clean_rate * 100) | round(1) }}% &minus; 92.5%)
+        &times; {{ metrics.this_month_count }} &times;
+        ${{ "{:,.0f}".format(metrics.avg_claim_value_usd) }} =
+        ${{ "{:,.0f}".format(metrics.this_month_avoided_denials_dollar) }}.
+      {% endif %}
+    </p>
+  </details>
+</section>
+{% endif %}
+
+{% if top_missed_revenue_rules is defined and top_missed_revenue_rules %}
+<section class="missed-revenue-chart" aria-label="Top missed-revenue patterns this month">
+  <h2>Top missed-revenue patterns{% if missed_revenue_month_label %} — {{ missed_revenue_month_label }}{% endif %}</h2>
+  <p class="muted small">Aggregate dollar impact across all encounters audited this month, ranked by revenue opportunity.</p>
+  <ul class="bar-chart">
+    {% set _max_dollar = (top_missed_revenue_rules | map(attribute='total_dollar') | max) or 1 %}
+    {% for r in top_missed_revenue_rules %}
+      {% set _pct = (r.total_dollar / _max_dollar * 100) if _max_dollar else 0 %}
+      <li class="bar-row">
+        <span class="bar-label" title="{{ r.rule_id }}">{{ r.rule_name }}</span>
+        <span class="bar-track">
+          <span class="bar-fill" style="width: {{ '%.1f' % _pct }}%"></span>
+        </span>
+        <span class="bar-value">${{ "{:,.0f}".format(r.total_dollar) }}</span>
+        <span class="bar-meta muted small">{{ r.encounter_count }} enc · {{ r.finding_count }} find</span>
+      </li>
     {% endfor %}
   </ul>
+</section>
 {% endif %}
+
+<div class="filter-bar">
+  <span class="filter-label">Filter</span>
+  <a href="?status=all" class="filter-chip {% if filter == 'all' %}is-active{% endif %}">
+    All <span class="count">({{ counts.all }})</span>
+  </a>
+  <a href="?status=flagged" class="filter-chip {% if filter == 'flagged' %}is-active{% endif %}">
+    Flagged <span class="count">({{ counts.flagged }})</span>
+  </a>
+  <a href="?status=clean" class="filter-chip {% if filter == 'clean' %}is-active{% endif %}">
+    Clean <span class="count">({{ counts.clean }})</span>
+  </a>
+  <a href="?status=opportunities" class="filter-chip filter-chip--opp {% if filter == 'opportunities' %}is-active{% endif %}">
+    $$ opportunities <span class="count">({{ counts.opportunities }})</span>
+  </a>
+  <span class="grow"></span>
+  {% if total_this_week is defined and total_this_week %}
+  <span class="muted small">This week: <strong>{{ total_this_week }}</strong> encounter{{ "" if total_this_week == 1 else "s" }} audited</span>
+  {% endif %}
+</div>
+
+{% if audits %}
+  <div class="audit-grid">
+    {% for card in audits %}
+      {% include "_audit_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <h2>No audits yet</h2>
+    <p>Upload an 837P file from your EHR to run a pre-billing audit. The LLM (minimax-m3) checks each claim for missing modifiers, under-coded E/M levels, duplicate services, and other billing-compliance issues. Most audits complete in &lt; 10 seconds.</p>
+    <div class="actions">
+      <a class="btn btn-primary btn-lg" href="/encounters/upload">Upload an 837P file</a>
+      <a class="btn btn-ghost btn-lg" href="/encounters/upload">Paste from clipboard</a>
+    </div>
+    <p class="muted small mt-4">Supported: 837P files, ZIPs of 837Ps, paste-form with claim + clinical note.</p>
+  </div>
+{% endif %}
+
+{# Revenue opportunity detail modal — included on every page that
+   shows audit cards. The modal shell is hidden by default and
+   populated on-demand by openRevenueOpportunityModal() (defined
+   in base.html). Same partial can be re-included from other
+   templates that render _audit_card.html. #}
+{% include "_revenue_opportunity_modal.html" %}
+
 {% endblock %}

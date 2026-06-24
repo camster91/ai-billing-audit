@@ -23,20 +23,23 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+# Pinned to dated versions — see docs/SEC_REVIEW_deps.md (kanban t_c7d352a7)
+# Audit run: 2026-06-17 (CVE-2025-69872 diskcache open, no fix available)
 dependencies = [
-    "dspy>=2.5",
-    "litellm>=1.40",
-    "fastapi>=0.110",
-    "jinja2>=3.1",
-    "optuna>=3.6",  # required by dspy.MIPROv2 at runtime
-    "python-multipart>=0.0.9",  # required by FastAPI File() / Form() parsing
+    "dspy==3.2.1",
+    "litellm==1.89.1",
+    "fastapi==0.137.1",
+    "jinja2==3.1.6",
+    "optuna==4.9.0",  # required by dspy.MIPROv2 at runtime
+    "python-multipart==0.0.32",  # required by FastAPI File() / Form() parsing
+    "requests==2.32.3",  # Mailgun REST API for doctor-summary emails + monthly WIN email
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=4.1",
-    "dspy[optuna]>=2.5",  # the compile-mode tests exercise MIPROv2 end-to-end
+    "pytest==9.1.0",
+    "pytest-cov==7.1.0",
+    "dspy[optuna]==3.2.1",  # the compile-mode tests exercise MIPROv2 end-to-end
 ]
 
 [project.urls]

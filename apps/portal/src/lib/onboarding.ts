@@ -48,7 +48,15 @@ import type StripeNS from "stripe";
 // ---------------------------------------------------------------------------
 
 /** Stripe-suggested residency regions. Mirrors what the /settings page
- * exposes (see task t_1bab62b6) so the two pages stay in lockstep. */
+ * exposes (see task t_1bab62b6) so the two pages stay in lockstep.
+ *
+ * NOTE (task t_96d9a4f9): these string values are the internal enum
+ * persisted to the database. The customer-facing label was changed from
+ * "Canada (ca-central-1)" / "United States (us-east-1)" to "Canada
+ * (Canadian data centre)" / "United States (US-hosted, HIPAA-aligned)".
+ * The enum values themselves stay as `ca-central-1` / `us-east-1` for
+ * backwards compatibility with existing tenant rows — changing them is
+ * a DB migration, out of scope for the marketing-copy fix. */
 export const RESIDENCY_REGIONS = ["ca-central-1", "us-east-1"] as const;
 export type ResidencyRegion = (typeof RESIDENCY_REGIONS)[number];
 
@@ -390,10 +398,36 @@ export async function redeemCheckoutSession(params: {
   }
 
   // Attach the user as owner. Idempotent via the (userId, tenantId)
-  // unique key — second call from the same user is a no-op.
+  // unique key — second call from the same user is a no-op. The
+  // `email` column is required on Membership (added in t_23bfd49c
+  // for the team-management feature), so we read it from the
+  // user row here. The lookup is best-effort — a missing email
+  // falls back to a placeholder so the upsert still succeeds and
+  // Attach the user as owner. Idempotent via the (userId, tenantId)
+  // unique key — second call from the same user is a no-op. The
+  // `email` column is required on Membership (added in t_23bfd49c
+  // for the team-management feature), so we read it from the
+  // user row here.
+  const attachingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!attachingUser) {
+    throw new OnboardingError(
+      "not_found",
+      "Signed-in user no longer exists.",
+    );
+  }
   await prisma.membership.upsert({
     where: { userId_tenantId: { userId, tenantId: tenant.id } },
-    create: { userId, tenantId: tenant.id, role: "owner" },
+    create: {
+      user: { connect: { id: userId } },
+      tenant: { connect: { id: tenant.id } },
+      role: "owner",
+      status: "active",
+      email: attachingUser.email,
+      activatedAt: new Date(),
+    },
     update: { role: "owner" },
   });
 

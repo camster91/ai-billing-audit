@@ -7,19 +7,41 @@
 // Keeping this separate from the POST endpoint lets the page use a
 // straight <a href> link — the user gets a clean redirect with no
 // client-side fetch + window.location dance.
+//
+// Role gate (t_23bfd49c): same as /api/billing/portal — owner
+// / admin only.
 
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, isDemoMode } from "@/lib/stripe";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
   const url = new URL(request.url);
   const tenantId = url.searchParams.get("tenantId");
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId required" }, { status: 400 });
+  }
+
+  // Role gate (t_23bfd49c): owner/admin only.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenantId,
+    "billing",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Only owners can access the billing portal." },
+      { status: 403 },
+    );
   }
 
   const tenant = await prisma.tenant.findUnique({

@@ -325,7 +325,7 @@ export function FindingsInbox({
         </a>
       </form>
 
-      {error ? <div className={styles.flash}>{error}</div> : null}
+      {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
 
       {someSelected ? (
         <div className={styles.bulkBar} role="region" aria-label="Bulk actions">
@@ -507,7 +507,7 @@ function AcceptModal({
         </p>
         <p style={{ marginBottom: 4 }}>Total estimated impact</p>
         <p className={impactClassName}>{formatImpact(totalImpactCents)}</p>
-        {error ? <div className={styles.flash}>{error}</div> : null}
+        {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
         <div className={styles.modalActions}>
           <button
             type="button"
@@ -601,7 +601,7 @@ function DismissModal({
             />
           </>
         ) : null}
-        {error ? <div className={styles.flash}>{error}</div> : null}
+        {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
         <div className={styles.modalActions}>
           <button
             type="button"

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ cs.title }} — Zorva case study{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 760px;">
+  <a href="/case-studies" class="back-link muted">← All case studies</a>
+
+  <header class="case-study-head">
+    <div class="case-study-head__chips">
+      <span class="badge case-study-card__difficulty--{{ cs.difficulty }}">
+        {{ cs.difficulty|upper }}
+      </span>
+      <span class="badge badge-neutral">{{ cs.specialty|replace('_', ' ')|title }}</span>
+      <span class="muted small">encounter: <code>{{ cs.encounter_id }}</code></span>
+    </div>
+    <h1>{{ cs.title }}</h1>
+  </header>
+
+  <section class="case-study-section">
+    <h2>Clinical scenario</h2>
+    <p>{{ cs.clinical_scenario }}</p>
+  </section>
+
+  <section class="case-study-section">
+    <h2>The claim as submitted</h2>
+    <p>{{ cs.claim_summary }}</p>
+  </section>
+
+  <section class="case-study-section">
+    <h2>What Zorva found</h2>
+    <p class="muted small">
+      {{ cs.findings|length }} finding{{ "" if cs.findings|length == 1 else "s" }},
+      sorted by severity (high → low).
+    </p>
+    <ul class="case-study-findings">
+      {% for f in cs.findings %}
+      <li class="case-study-finding case-study-finding--{{ f.severity }}">
+        <div class="case-study-finding__head">
+          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity|upper }}</span>
+          <code class="mono">{{ f.rule_id }}</code>
+          {% if f.suggested_code %}
+          <span class="muted small">→ {{ f.suggested_code }}</span>
+          {% endif %}
+        </div>
+        <blockquote class="case-study-finding__quote">
+          &ldquo;{{ f.quote }}&rdquo;
+        </blockquote>
+        <p class="case-study-finding__rationale">{{ f.rationale }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="case-study-section">
+    <h2>What the biller would have done without Zorva</h2>
+    <p>{{ cs.what_biller_would_have_done }}</p>
+  </section>
+
+  <section class="case-study-section case-study-section--impact">
+    <h2>Dollar impact</h2>
+    <p>{{ cs.dollar_impact }}</p>
+  </section>
+
+  <section class="case-study-section">
+    <h2>See it live</h2>
+    <p>
+      <a class="btn btn-primary" href="{{ cs.encounter_link }}">
+        Open the {{ cs.encounter_id }} encounter detail ↗
+      </a>
+    </p>
+    <p class="muted small">
+      The encounter detail page renders the same findings as this
+      case study, with verbatim quotes highlighted in the clinical
+      note and per-finding Accept / Dismiss / Re-run buttons.
+    </p>
+  </section>
+
+  <section class="case-study-section case-study-section--cta">
+    <h2>Want to see Zorva on your own claims?</h2>
+    <p>
+      Book a 15-minute walkthrough. We'll run Zorva on a sample
+      of your claims (anonymized) and show you the findings, the
+      catch rate, and what the recovered revenue would look like
+      on the live ROI calculator.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="/roi">Try the ROI calculator →</a>
+      <a class="btn btn-ghost" href="/legal/privacy">Privacy policy</a>
+    </p>
+  </section>
+</main>
+{% endblock %}

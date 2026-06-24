@@ -4,7 +4,7 @@
 //
 // Steps:
 //   0. Clinic profile (name, NPI, timezone)
-//   1. Data residency region (ca-central-1 | us-east-1)
+//   1. Data residency region (Canadian data centre | US-hosted, HIPAA-aligned region)
 //   2. EHR connection (SFTP credentials or "manual" skip)
 //   3. First encounter (drop an 837P file or "skipped")
 //   4. Complete (lock region, dispatch welcome email, redirect to /dashboard)
@@ -400,8 +400,8 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
                 checked={region === "ca-central-1"}
                 onChange={() => setRegion("ca-central-1")}
               />
-              <strong>Canada (ca-central-1)</strong>
-              <span>Montréal region. PIPEDA-aligned.</span>
+              <strong>Canada (Canadian data centre)</strong>
+              <span>Region confirmed in the BAA. PIPEDA-aligned.</span>
             </label>
             <label
               className={`${styles.regionOption} ${
@@ -415,8 +415,8 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
                 checked={region === "us-east-1"}
                 onChange={() => setRegion("us-east-1")}
               />
-              <strong>United States (us-east-1)</strong>
-              <span>Virginia region. HIPAA-aligned.</span>
+              <strong>United States (US-hosted, HIPAA-aligned)</strong>
+              <span>Region confirmed in the BAA. HIPAA-aligned.</span>
             </label>
           </div>
 

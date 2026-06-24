@@ -1,12 +1,64 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* legacy aliases kept for any component that still references them */
+  --background: var(--surface-light);
+  --foreground: var(--color-neutral-700);
+
+  /* surfaces (Zorva palette — see docs/BRANDING_COLORS.md) */
+  --surface-light:   #F8FAFC;
+  --surface-white:   #FFFFFF;
+  --surface-dark:    #0F172A;
+  --surface-dark-2:  #1E293B;
+
+  /* primary — teal */
+  --color-primary:        #0D9488;
+  --color-primary-dark:   #0F766E;
+  --color-primary-soft:   #99F6E4;
+
+  /* secondary — amber (review / action CTAs) */
+  --color-secondary:        #D97706;
+  --color-secondary-dark:   #B45309;
+  --color-secondary-soft:   #FEF3C7;
+
+  /* semantic accents */
+  --color-success:        #059669;
+  --color-success-dark:   #047857;
+  --color-warning:        #B45309;
+  --color-warning-soft:   #FEF3C7;
+  --color-error:          #DC2626;
+  --color-error-dark:     #B91C1C;
+  --color-info:           #2563EB;
+  --color-info-dark:      #1D4ED8;
+
+  /* neutrals — 8-step ramp */
+  --color-neutral-50:  #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-500: #64748B;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1E293B;
+  --color-neutral-900: #0F172A;
+
+  /* semantic aliases — light mode defaults */
+  --color-text:         var(--color-neutral-700);
+  --color-text-muted:   var(--color-neutral-500);
+  --color-text-inverse: var(--color-neutral-50);
+  --color-border:       var(--color-neutral-200);
+  --color-link:         var(--color-primary-dark);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: var(--surface-dark);
+    --foreground: var(--color-neutral-200);
+
+    --color-text:         var(--color-neutral-200);
+    --color-text-muted:   var(--color-neutral-400);
+    --color-text-inverse: var(--color-neutral-900);
+    --color-border:       var(--color-neutral-700);
+    --color-link:         var(--color-primary);
   }
 }
 
@@ -102,7 +154,7 @@ a {
 }
 
 .site-nav-link:focus-visible {
-  outline: 2px solid #4f8cff;
+  outline: 2px solid #2563eb;
   outline-offset: 4px;
 }
 
@@ -111,7 +163,7 @@ a {
   position: absolute;
   left: -9999px;
   top: 0;
-  background: #4f8cff;
+  background: #2563eb;
   color: white;
   padding: 10px 16px;
   z-index: 100;

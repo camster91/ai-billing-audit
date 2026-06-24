@@ -17,6 +17,7 @@
 // hands the wizard everything it needs: the verified tenantId, the
 // current step, the captured fields, and the user identity.
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,12 @@ import {
 } from "@/lib/onboarding";
 import OnboardingWizard from "./OnboardingWizard";
 import styles from "./onboarding.module.css";
+
+export const metadata: Metadata = {
+  // Authenticated portal page — must stay out of search engine indexes.
+  // Overrides the root layout's `robots: { index: true, follow: true }`.
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

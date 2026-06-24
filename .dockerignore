@@ -29,18 +29,21 @@ htmlcov/
 # either live in /data / /artifacts mounts or in the API's in-process
 # JSONL log under /app/logs.
 tests/
-data/
 artifacts/
 docs/
 logs/
 scripts/
-prompts/
 rules/
 audit_trail.sql
 README.md
 CHANGELOG.md
 *.md
 .benchmarks/
+
+# Real PHI / private data — must never be baked into the image.
+# Synthetic data lives in data/synth/ and is intentionally copied
+# in via the Dockerfile.
+data/private/
 
 # apps/portal is a separate Next.js stack and not part of the api/worker image.
 apps/

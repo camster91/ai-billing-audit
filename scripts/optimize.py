@@ -347,6 +347,140 @@ VAL_SPLIT: list[tuple[dict[str, Any], list[dict[str, Any]]]] = SYNTHETIC[5:]
 
 
 # ---------------------------------------------------------------------------
+# Optional ``val_ca`` split loader (AHCIP / Alberta)
+# ---------------------------------------------------------------------------
+#
+# Adds the on-disk ``data/synth/val_ca.json`` split (the 19 AHCIP
+# encounters MANIFEST v12 reports an F1 against) to the optimizer's
+# dispatch table without disturbing the existing in-script
+# ``SYNTHETIC`` splits. The loader is a pure function — the
+# ``VAL_SPLIT`` module-level constant above is preserved verbatim so
+# every prior caller (``python scripts/optimize.py`` with no args)
+# keeps the original behaviour.
+#
+# Why a separate loader instead of inlining val_ca into SYNTHETIC
+# -----------------------------------------------------------------
+# * The SYNTHETIC encounters use US CPT/ICD-10-CM and the
+#   ``rule_ecg_*`` / ``rule_mod_25`` rule family. The AHCIP encounters
+#   use SOMB codes (03.04A, 08.19A, etc.) and a wholly different rule
+#   set (``rule_ahcip_em_level``, ``rule_ahcip_referring_npi``, ...).
+#   Mixing them into one train/val pair risks contaminating the
+#   bootstrapped demos — the optimizer would see US-style "modifier
+#   25" findings next to Alberta-style "CMGP" findings and learn an
+#   incoherent policy.
+# * The v12 prompt is AHCIP-only. Reusing the same DSPy signature for
+#   both splits is fine (the auditor is generic over rule ids and
+#   code systems), but the ground-truth envelope and the canned
+#   DummyLM responses are split-specific.
+#
+# What this enables
+# -----------------
+# ``python scripts/optimize.py --split val_ca`` selects the AHCIP
+# split; the optimizer otherwise runs the same MIPROv2 pass against
+# the AHCIP examples. Note: the canned DummyLM responses in
+# ``main()`` are still US-shaped, so ``--split val_ca`` in smoke
+# mode will yield poor F1 — this is expected and documented; the
+# real use is with ``$LLM_PROVIDER`` set and the v12 prompt loaded.
+
+
+VAL_CA_PATH = PROJECT_ROOT / "data" / "synth" / "val_ca.json"
+
+
+def _load_val_ca_split(
+    path: Path = VAL_CA_PATH,
+) -> list[tuple[dict[str, Any], list[dict[str, Any]]]]:
+    """Load ``data/synth/val_ca.json`` into the optimizer's split format.
+
+    Returns a list of ``(encounter, ground_truth_findings)`` tuples
+    matching the shape of :data:`VAL_SPLIT`. The encounter dict is
+    the full val_ca entry (clinical_note + claim + rules +
+    encounter_id) so :func:`_render_encounter` works unchanged. The
+    ground-truth findings are the ``ground_truth`` array entries
+    coerced into the ``{category, suggested_code,
+    clinical_evidence_quote, severity, rule_ids}`` shape the
+    :func:`grader_metric` and :func:`match_findings` expect — the
+    val_ca schema's ``rule_id`` (singular) is mapped to the
+    ``rule_ids`` (list) shape the synthetic splits use.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` does not exist.
+    ValueError
+        If any entry is missing a required key.
+    """
+    if not path.exists():
+        raise FileNotFoundError(
+            f"val_ca split file not found at {path}. "
+            f"Expected the 19 AHCIP encounters."
+        )
+    with path.open() as f:
+        raw = json.load(f)
+    if not isinstance(raw, list):
+        raise ValueError(
+            f"val_ca.json root must be a list, got {type(raw).__name__}"
+        )
+
+    split: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
+    for i, enc in enumerate(raw):
+        if "encounter_id" not in enc:
+            raise ValueError(f"val_ca entry [{i}] missing 'encounter_id'")
+        if "clinical_note" not in enc:
+            raise ValueError(f"val_ca entry [{i}] missing 'clinical_note'")
+        if "ground_truth" not in enc:
+            raise ValueError(f"val_ca entry [{i}] missing 'ground_truth'")
+        # The synthetic splits emit empty rules=[] by default; val_ca
+        # is the same shape.
+        if "rules" not in enc:
+            enc = {**enc, "rules": []}
+        if "claim" not in enc:
+            raise ValueError(f"val_ca entry [{i}] missing 'claim'")
+
+        gt: list[dict[str, Any]] = []
+        for g in enc["ground_truth"]:
+            if "rule_id" not in g:
+                raise ValueError(
+                    f"val_ca entry [{i}] ground_truth finding missing 'rule_id'"
+                )
+            gt.append(
+                {
+                    "category": g.get("category", ""),
+                    "suggested_code": g.get("suggested_code", ""),
+                    "clinical_evidence_quote": g.get(
+                        "clinical_evidence_quote", ""
+                    ),
+                    "severity": g.get("severity", "info"),
+                    # SYNTHETIC split uses rule_ids (list); val_ca uses
+                    # rule_id (singular). Map once here so downstream
+                    # grader / DummyLM path stays generic.
+                    "rule_ids": [g["rule_id"]],
+                }
+            )
+        split.append((enc, gt))
+    return split
+
+
+def _select_split(name: str) -> tuple[
+    list[tuple[dict[str, Any], list[dict[str, Any]]]],
+    str,
+]:
+    """Resolve a split name to ``(split, label)``.
+
+    ``synth`` (default) preserves the historical in-script SYNTHETIC
+    train/val split. ``val_ca`` loads the on-disk AHCIP split. The
+    returned label is short enough to embed in artifact filenames and
+    log lines so it is obvious which split a given run targeted.
+    """
+    if name == "synth":
+        return VAL_SPLIT, "synth"
+    if name == "val_ca":
+        return _load_val_ca_split(), "val_ca"
+    raise ValueError(
+        f"unknown split: {name!r}. Supported: 'synth' (default), 'val_ca'."
+    )
+
+
+# ---------------------------------------------------------------------------
 # DSPy signature + module
 # ---------------------------------------------------------------------------
 #
@@ -831,7 +965,35 @@ def _build_dev_loop_lm() -> tuple[Any, str]:
     return real_lm, chosen
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse as _argparse  # local import keeps module-load cheap
+
+    parser = _argparse.ArgumentParser(
+        prog="optimize.py",
+        description=(
+            "DSPy MIPROv2 prompt optimization for the ai-billing-audit auditor. "
+            "Default ``--split synth`` preserves the original in-script "
+            "US-shaped synthetic split; ``--split val_ca`` points the "
+            "optimizer at the on-disk AHCIP split (data/synth/val_ca.json, "
+            "19 encounters) so the v12 prompt's reported F1 is reproducible."
+        ),
+    )
+    parser.add_argument(
+        "--split",
+        choices=("synth", "val_ca"),
+        default="synth",
+        help=(
+            "Which val split to evaluate against. 'synth' (default) is the "
+            "in-script US-shaped split; 'val_ca' is the on-disk AHCIP split "
+            "from data/synth/val_ca.json."
+        ),
+    )
+    args = parser.parse_args(argv)
+    selected_val_split, split_label = _select_split(args.split)
+    print(
+        f"[optimize] split={split_label} val_size={len(selected_val_split)}"
+    )
+
     start = time.time()
     random.seed(0)
     # Make the trial-log deterministic across runs.
@@ -1082,7 +1244,7 @@ def main() -> int:
         eval_lm_baseline, _ = _build_dev_loop_lm()
     with dspy.context(lm=eval_lm_baseline):
         baseline_program = AuditorProgram()
-        baseline_scores, baseline_mean_f1 = evaluate_program(baseline_program, VAL_SPLIT)
+        baseline_scores, baseline_mean_f1 = evaluate_program(baseline_program, selected_val_split)
 
     # 3. MIPROv2 teleprompter — instantiated exactly as the spec says.
     teleprompter = dspy.MIPROv2(
@@ -1138,7 +1300,7 @@ def main() -> int:
     #        actually save the artifact under.
     trial_scores: list[float] = []
     post_compile_scores = _trial_log.scores[pre_compile_count:]
-    chunk = len(VAL_SPLIT)
+    chunk = len(selected_val_split)
     if chunk > 0 and len(post_compile_scores) >= chunk:
         for i in range(0, len(post_compile_scores) - chunk + 1):
             window = post_compile_scores[i : i + chunk]
@@ -1154,7 +1316,7 @@ def main() -> int:
     else:
         eval_lm, _ = _build_dev_loop_lm()
     with dspy.context(lm=eval_lm):
-        final_scores, final_mean_f1 = evaluate_program(optimized_program, VAL_SPLIT)
+        final_scores, final_mean_f1 = evaluate_program(optimized_program, selected_val_split)
 
     # 9. Choose the saved artifact: the program MIPROv2 returned IS the
     #    best-by-train-F1 program (per MIPROv2's internal Optuna
@@ -1242,7 +1404,7 @@ def main() -> int:
         # We trust our own artifacts/miprov2_best_val_f1_*/ because we
         # wrote it ourselves a few lines above.
         reloaded = dspy.load(str(prog_dir), allow_pickle=True)
-        reloaded_scores, reloaded_mean_f1 = evaluate_program(reloaded, VAL_SPLIT)
+        reloaded_scores, reloaded_mean_f1 = evaluate_program(reloaded, selected_val_split)
     assert abs(reloaded_mean_f1 - best_f1) <= 1e-6, (
         f"Reloaded program mean F1 {reloaded_mean_f1} does not match "
         f"reported best F1 {best_f1} (delta > 1e-6)"
@@ -1256,8 +1418,9 @@ def main() -> int:
 
     elapsed = time.time() - start
     summary = {
+        "split": split_label,
         "train_size": len(TRAIN_SPLIT),
-        "val_size": len(VAL_SPLIT),
+        "val_size": len(selected_val_split),
         "best_val_f1": best_f1,
         "final_val_f1": final_mean_f1,
         "reloaded_val_f1": reloaded_mean_f1,

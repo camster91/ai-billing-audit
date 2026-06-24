@@ -32,12 +32,16 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import re
+import time
 import zipfile
 from html import escape
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -49,6 +53,7 @@ from ai_billing_audit.demo_registry import (
     load_encounter_record,
 )
 from ai_billing_audit.job_queue import get_default_queue
+from ai_billing_audit.zorva_context import lookup_somb_descriptor, lookup_somb_fee
 from ai_billing_audit.x12_parser import (
     X12ParseError,
     parse_837p,
@@ -150,6 +155,596 @@ def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+# Severity ranking for the "min severity to show" threshold.
+# Lower rank = lower severity. info < low < medium < high < critical.
+SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
+def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Enrich each finding dict in-place with a ``model_confidence`` field.
+
+    The encounter-detail template renders ``f.model_confidence`` as a
+    small "Model confidence: HIGH / MEDIUM / LOW" badge under each
+    finding. The confidence bucket is derived from the per-rule
+    accept-count in the feedback log (see
+    :meth:`FeedbackStore.confidence_for_rule`).
+
+    If we have no feedback at all yet (the common case in dev / before
+    the pilot), every finding gets the "uncalibrated" bucket with the
+    "Not yet calibrated at this clinic" label. The template knows how
+    to render that placeholder distinctly from the calibrated buckets
+    so the biller never sees a misleading "HIGH" badge before we have
+    real signal.
+
+    Cost: one full read of the feedback JSONL per call. The store is
+    tiny in dev (a few rows) and the encounter-detail page is not
+    called in any hot loop, so the O(n_feedback) cost is fine. If
+    volume grows we can add a per-rule index.
+    """
+    try:
+        from .feedback import get_default_store
+        store = get_default_store()
+    except Exception:
+        store = None
+
+    for f in findings:
+        if not isinstance(f, dict):
+            continue
+        rule_id = str(f.get("rule_id", "") or "")
+        if store is not None and rule_id:
+            try:
+                f["model_confidence"] = store.confidence_for_rule(rule_id)
+            except Exception:
+                f["model_confidence"] = {
+                    "bucket": "uncalibrated",
+                    "label": "Not yet calibrated at this clinic",
+                    "validations": 0,
+                    "dismisses": 0,
+                    "total": 0,
+                }
+        else:
+            f["model_confidence"] = {
+                "bucket": "uncalibrated",
+                "label": "Not yet calibrated at this clinic",
+                "validations": 0,
+                "dismisses": 0,
+                "total": 0,
+            }
+    return findings
+
+
+def _attach_appeal_context(
+    findings: list[dict[str, Any]],
+    encounter_id: str,
+) -> list[dict[str, Any]]:
+    """Enrich each finding dict in-place with appeal-side context.
+
+    The encounter-detail template renders an appeal-outcome form per
+    finding (gated on whether an appeal letter has been generated
+    for that finding) and shows the most recent outcome (if any).
+    This helper attaches:
+
+    * ``appeal_letter_generated``: bool — True iff an appeal letter
+      has been logged for (encounter_id, finding_id) in
+      ``appeal_letters.jsonl``. The form is only meaningful after a
+      letter exists, so the template uses this as the show/hide gate.
+    * ``appeal_outcome``: dict | None — the latest AppealOutcome for
+      this finding (latest by timestamp), rendered as "Last outcome"
+      above the form so the biller sees their prior decision.
+
+    Both fields are best-effort: a missing log or a corrupted row
+    is treated as "no appeal yet" and "no outcome yet" rather than
+    a 500. The encounter-detail page is not a hot loop, so the
+    O(n_letters + n_outcomes) cost is fine for the volumes we have.
+    """
+    try:
+        from .appeal_letter import read_appeal_letters, read_appeal_outcomes
+    except Exception:
+        return findings
+
+    try:
+        letters = read_appeal_letters(encounter_id=encounter_id)
+    except Exception:
+        letters = []
+    try:
+        outcomes = read_appeal_outcomes(encounter_id=encounter_id)
+    except Exception:
+        outcomes = []
+
+    # Map: finding_id -> True if any letter has been logged for it.
+    letter_finding_ids: set[str] = set()
+    for row in letters or []:
+        fid = (
+            row.get("finding_id")
+            or row.get("appeal_id")  # legacy: biller may have used fid as appeal_id
+        )
+        if fid:
+            letter_finding_ids.add(str(fid))
+
+    # Map: finding_id -> latest outcome (latest by timestamp). We
+    # treat appeal_id == finding_id as the same record (the API
+    # default), but also fall back to scanning all outcomes for one
+    # whose appeal_id matches.
+    latest_outcome: dict[str, Any] = {}
+    for o in outcomes or []:
+        aid = str(o.get("appeal_id") or "")
+        if not aid:
+            continue
+        prev = latest_outcome.get(aid)
+        if prev is None or str(o.get("timestamp", "")) > str(
+            prev.get("timestamp", "")
+        ):
+            latest_outcome[aid] = o
+
+    for f in findings:
+        if not isinstance(f, dict):
+            continue
+        fid = str(f.get("finding_id") or "")
+        f["appeal_letter_generated"] = fid in letter_finding_ids
+        f["appeal_outcome"] = latest_outcome.get(fid)
+    return findings
+
+
+# ─── Revenue opportunities ─────────────────────────────────────────────
+# A subset of AHCIP rules identify "missed revenue" — the note documents
+# a billable service that the claim did not capture. These findings are
+# surfaced separately from the denial-risk findings list, with an
+# estimated dollar uplift per rule (rough SOMB estimates — to be refined
+# against zorva_context.SOMB_FEE_SCHEDULE in a follow-up).
+#
+# Rule selection is keyed by `rule_id` because the auditor's current
+# category enum (evaluation / diagnosis / modifier / laboratory / ...)
+# is a clinical-bucket taxonomy, not a revenue-vs-denial one. We
+# filter on rule_id directly until the auditor's output schema
+# includes a dedicated `opportunity_type` field.
+REVENUE_OPPORTUNITY_RULES: dict[str, dict[str, Any]] = {
+    "rule_ahcip_missing_procedure": {
+        "rule_name": "Missing billable procedure",
+        "estimated_dollar": 50.0,
+        "suggested_action": (
+            "Add the documented procedure to the claim — the note describes "
+            "a service that was not submitted for reimbursement."
+        ),
+    },
+    "rule_ahcip_em_level_upcode": {
+        "rule_name": "E/M visit undercoded",
+        "estimated_dollar": 40.0,
+        "suggested_action": (
+            "Upcode the E/M level to match the documentation complexity "
+            "(e.g. 03.04A instead of 03.01A)."
+        ),
+    },
+    "rule_ahcip_modifier_25_001": {
+        "rule_name": "Modifier -25 unlock",
+        "estimated_dollar": 45.0,
+        "suggested_action": (
+            "Append modifier -25 to the E/M code so a separately "
+            "identifiable procedure can be billed in addition."
+        ),
+    },
+    "rule_ahcip_modifier_25_unlock": {
+        "rule_name": "Modifier -25 unlock (same-day E/M + procedure)",
+        "estimated_dollar": 45.0,
+        "suggested_action": (
+            "Append modifier -25 to the E/M SOMB code so the "
+            "cognitive work is paid separately from the same-day "
+            "procedure (Alberta-specific; without -25 the payer "
+            "bundles the E/M into the procedure fee)."
+        ),
+    },
+    "rule_ahcip_lab_order_no_draw": {
+        "rule_name": "Lab ordered without draw or follow-up date",
+        "estimated_dollar": 0.0,
+        "suggested_action": (
+            "Workflow-only: clinic-ops to confirm the patient "
+            "completed the draw (AHCIP physicians do not bill "
+            "for labs; this is an operational gap, not a "
+            "billing denial). Candidate for doctor_email "
+            "follow-up channel in addition to the audit feed."
+        ),
+    },
+    "rule_ahcip_telehealth_premium": {
+        "rule_name": "Telehealth premium missing on virtual visit",
+        "estimated_dollar": 15.0,
+        "suggested_action": (
+            "Append the current AHCIP telehealth premium "
+            "indicator to the claim alongside the E/M "
+            "(check albertadoctors.org Fee Navigator for "
+            "the current Telehealth Premium code — the SOMB "
+            "has changed it several times)."
+        ),
+    },
+    "rule_ahcip_telehealth": {
+        "rule_name": "Telehealth premium eligible",
+        "estimated_dollar": 15.0,
+        "suggested_action": (
+            "Append the telehealth premium code — the visit was virtual "
+            "but the claim was billed as in-person."
+        ),
+    },
+    "rule_ahcip_cmgp": {
+        "rule_name": "CMGP / chronic care premium",
+        "estimated_dollar": 20.0,
+        "suggested_action": (
+            "Add the CMGP (Chronic Disease Management / General "
+            "Practitioner) premium — patient meets eligibility."
+        ),
+    },
+}
+
+
+def _finding_rule_ids(finding: dict[str, Any]) -> list[str]:
+    """Return all rule_ids attached to a finding (deduped, order-preserved).
+
+    The auditor output schema permits both ``rule_id`` (singular, the
+    common shape from the v12 prompt) and ``rule_ids`` (plural, the
+    dataclass default). Findings shaped by ``_finding_dicts`` carry the
+    singular form; raw LLM payloads may carry either.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    singular = str(finding.get("rule_id") or "").strip()
+    if singular:
+        seen.add(singular)
+        out.append(singular)
+    plural = finding.get("rule_ids") or []
+    if isinstance(plural, (list, tuple)):
+        for rid in plural:
+            s = str(rid or "").strip()
+            if s and s not in seen:
+                seen.add(s)
+                out.append(s)
+    return out
+
+
+def _codes_from_finding(finding: dict[str, Any]) -> list[str]:
+    """Extract SOMB-style codes from a finding's suggested_code field.
+
+    The auditor emits ``suggested_code`` strings like "03.04A" or
+    "08.19A (45-min psychotherapy)" or even phrases like
+    "telehealth modifier". This pulls out the SOMB-shaped tokens
+    (uppercase letter + digits + optional trailing letter, e.g.
+    "03.04A", "08.19A", "13.59B") so we can look them up against
+    the SOMB fee schedule. Returns a list (possibly empty) of
+    candidate codes in the order they appear.
+
+    Phrases with no SOMB-shaped token (e.g. "telehealth modifier",
+    "modifier 25") come back as an empty list — the caller then
+    falls back to the rule's hardcoded estimated_dollar.
+    """
+    suggested = str(finding.get("suggested_code") or "").strip()
+    if not suggested:
+        return []
+    # SOMB codes look like: 2-3 digits, a dot, 2 digits, an optional letter.
+    # Match the head token before any parenthetical or punctuation.
+    # We use a permissive regex to be robust to "03.04A (comprehensive …)".
+    head = suggested.split("(", 1)[0].strip()
+    if not head:
+        return []
+    pattern = re.compile(r"\b\d{2,3}\.\d{1,2}[A-Z]?\b")
+    matches = pattern.findall(head.upper())
+    # Also pull off bare modifier / premium keywords that have a
+    # sentinel entry in the schedule.
+    extras: list[str] = []
+    upper = head.upper()
+    if "TELEHEALTH" in upper:
+        extras.append("TELEHEALTH")
+    if "CMGP" in upper or "CHRONIC DISEASE MANAGEMENT" in upper:
+        extras.append("CMGP")
+    if "MODIFIER -25" in upper or "MODIFIER 25" in upper or "MOD-25" in upper:
+        extras.append("MOD25")
+    if "AFTER-HOURS" in upper or "AFTER HOURS" in upper:
+        extras.append("AFTER_HOURS")
+    out: list[str] = []
+    seen: set[str] = set()
+    for c in matches + extras:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def _best_somb_fee(codes: list[str]) -> tuple[float | None, str | None, str | None]:
+    """Look up the first SOMB fee / descriptor that matches any of ``codes``.
+
+    Returns ``(fee, code_used, descriptor)``. When no code in ``codes``
+    is in the schedule, all three are ``None``. The caller decides
+    whether to use the fee or fall back to the hardcoded estimate.
+    """
+    for c in codes:
+        fee = lookup_somb_fee(c)
+        if fee is not None:
+            return fee, c, lookup_somb_descriptor(c)
+    return None, None, None
+
+
+def compute_revenue_opportunities(
+    findings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Filter ``findings`` to revenue-opportunity ones and enrich them.
+
+    Each returned dict carries the original finding fields plus:
+        - ``rule_name``           human-readable rule label
+        - ``estimated_dollar``    SOMB-derived uplift estimate (float)
+        - ``somh_fee``            fee from SOMB_FEE_SCHEDULE, or None
+        - ``somh_code``           which SOMB code we priced, or None
+        - ``somh_descriptor``     short descriptor for the priced code, or None
+        - ``somh_confidence``     "high" / "medium" / "low" — confidence of
+                                  the priced value (always None when the
+                                  hardcoded fallback was used)
+        - ``estimated_source``    "somb_schedule" or "rule_default" — which
+                                  way the dollar figure was derived
+        - ``suggested_action``    one-line biller instruction
+        - ``opportunity_rule_id`` the rule_id that qualified it (canonical)
+
+    The list is sorted by descending ``estimated_dollar`` so the
+    biggest opportunities are listed first.
+
+    Findings with no matching rule_id are dropped.
+
+    Dollar estimate precedence (per finding):
+        1. If ``suggested_code`` contains a SOMB-shaped token (or a
+           recognized sentinel like TELEHEALTH / CMGP / MOD25) that
+           exists in ``SOMB_FEE_SCHEDULE``, use that fee.
+        2. Otherwise fall back to the rule's hardcoded
+           ``estimated_dollar``. Unmapped codes never fabricate a fee.
+    """
+    opportunities: list[dict[str, Any]] = []
+    for f in findings:
+        for rid in _finding_rule_ids(f):
+            meta = REVENUE_OPPORTUNITY_RULES.get(rid)
+            if meta is None:
+                continue
+            enriched = dict(f)
+            enriched["opportunity_rule_id"] = rid
+            enriched["rule_name"] = meta["rule_name"]
+            enriched["suggested_action"] = meta["suggested_action"]
+
+            # Try SOMB schedule first, then fall back to the rule's
+            # hardcoded estimate.
+            codes = _codes_from_finding(f)
+            somb_fee, somb_code, somb_descriptor = _best_somb_fee(codes)
+            if somb_fee is not None and somb_fee > 0:
+                enriched["estimated_dollar"] = float(somb_fee)
+                enriched["somb_fee"] = float(somb_fee)
+                enriched["somb_code"] = somb_code
+                enriched["somb_descriptor"] = somb_descriptor
+                enriched["somb_confidence"] = None
+                enriched["estimated_source"] = "somb_schedule"
+            else:
+                # SOMB has no number for this code (modifier -25,
+                # unmapped telehealth add-on, etc.). Fall back to
+                # the rule's hardcoded estimate and annotate the
+                # confidence as None so the UI can flag it.
+                fallback = float(meta["estimated_dollar"])
+                enriched["estimated_dollar"] = fallback
+                enriched["somb_fee"] = None
+                enriched["somb_code"] = None
+                enriched["somb_descriptor"] = None
+                enriched["somb_confidence"] = None
+                enriched["estimated_source"] = "rule_default"
+
+            opportunities.append(enriched)
+            # One opportunity per finding — the first matching rule_id wins.
+            break
+    opportunities.sort(key=lambda x: x.get("estimated_dollar", 0.0), reverse=True)
+    return opportunities
+
+# Dismissal reasons — the closed-loop learning signal. When the biller
+# dismisses a finding, they pick one of these + an optional free-text
+# note. The categories are coarse on purpose: they're meant to bucket
+# "why was the AI wrong" so we can group prompts-iteration examples
+# later. ``false_positive`` is the most valuable bucket — every
+# dismissal in this category becomes a candidate few-shot example
+# for the next prompt revision.
+_DISMISS_CATEGORIES = frozenset({
+    "false_positive",     # The finding is wrong; the auditor is overcalling
+    "already_documented", # The finding is right but the note already covers it
+    "not_applicable",     # Payer-specific override (e.g. this payer doesn't require modifier-25)
+    "other",              # Free text; review later for new categories
+})
+
+
+def _min_severity_threshold() -> int:
+    """Read MIN_SEVERITY_TO_SHOW env var, return the rank.
+
+    Per-tenant setting in v2 (per-tenant config table). v1 uses an
+    env var: MIN_SEVERITY_TO_SHOW=high means only "high" and "critical"
+    findings surface on the dashboard. Default: "info" (show
+    everything).
+
+    The env var is read fresh on every request so an admin can
+    change it without restarting the API. Cheap because the env
+    lookup is O(1).
+    """
+    raw = os.environ.get("MIN_SEVERITY_TO_SHOW", "info").strip().lower()
+    return SEVERITY_RANK.get(raw, SEVERITY_RANK["info"])
+
+
+# Average claim value used to translate "X claims clean" into
+# "$Y revenue confirmed clean". Industry average for US office
+# visit. v2: per-tenant config that reads the clinic's own avg
+# claim value from their billing data.
+AVG_CLAIM_VALUE_USD = 190.0
+# Industry average denial rate (CMS commercial). Used to estimate
+# how many claims the auditor caught that would have been denied.
+INDUSTRY_DENIAL_RATE = 0.075
+
+# Multi-tenant scoping. ``TENANT_NAME`` is the human-readable
+# label shown in the topbar pill. ``TENANT_ID`` is the stable
+# identifier used in the audit trail's tenant_id field to
+# scope reads per-clinic. Both default to "Acme Family Practice"
+# until the first pilot signs; v2 reads from a per-session auth
+# payload. Setting TENANT_ID explicitly to a non-"default"
+# value gives the activity feed row-level isolation per clinic.
+import os as _os
+_TENANT_NAME = _os.environ.get("TENANT_NAME", "Acme Family Practice")
+_TENANT_ID = _os.environ.get("TENANT_ID", "default")
+
+
+def compute_clean_rate_metrics(
+    cards: list[dict[str, Any]],
+    *,
+    now: float,
+) -> dict[str, Any]:
+    """Compute clean-rate + dollar-value metrics for the home page hero.
+
+    Why this exists: the home page leads with positive signal
+    ("94% of claims clean, $73k confirmed") rather than negative
+    signal ("2 findings, 0 awaiting"). The clinic owner wants
+    the positive number. The biller wants the same number — it's
+    the metric that justifies the monthly fee.
+
+    Module-scope (not closure-bound) so it can be unit-tested
+    without spinning up the FastAPI app.
+
+    Inputs:
+      cards: list of card dicts from _build_audit_card or
+             equivalent. Each must have `finished_at` (unix sec)
+             and `findings` (list).
+      now: current time (passed in for testability).
+
+    Outputs: see the keys in the returned dict below.
+    """
+    if not cards:
+        return {
+            "ready": False,
+            "this_month_count": 0,
+            "this_month_clean": 0,
+            "this_month_flagged": 0,
+            "this_month_clean_rate": None,
+            "this_month_revenue_confirmed": 0.0,
+            "this_month_avoided_denials_dollar": 0.0,
+            "last_month_clean_rate": None,
+            "clean_rate_delta": None,
+            "avg_claim_value_usd": AVG_CLAIM_VALUE_USD,
+        }
+
+    this_month_start = now - 30 * 86400
+    last_month_start = now - 60 * 86400
+    this_month_clean = 0
+    this_month_flagged = 0
+    last_month_clean = 0
+    last_month_total = 0
+    for c in cards:
+        finished = c.get("finished_at") or 0
+        if not finished:
+            continue
+        findings = c.get("findings", []) or []
+        is_clean = len(findings) == 0
+        if finished >= this_month_start:
+            if is_clean:
+                this_month_clean += 1
+            else:
+                this_month_flagged += 1
+        elif finished >= last_month_start:
+            last_month_total += 1
+            if is_clean:
+                last_month_clean += 1
+
+    this_month_total = this_month_clean + this_month_flagged
+    this_month_clean_rate = (
+        this_month_clean / this_month_total if this_month_total else None
+    )
+    last_month_clean_rate = (
+        last_month_clean / last_month_total if last_month_total else None
+    )
+    clean_rate_delta: float | None = None
+    if this_month_clean_rate is not None and last_month_clean_rate is not None:
+        clean_rate_delta = this_month_clean_rate - last_month_clean_rate
+
+    revenue_confirmed = this_month_clean * AVG_CLAIM_VALUE_USD
+    baseline_clean_rate = 1.0 - INDUSTRY_DENIAL_RATE
+    if this_month_clean_rate is not None:
+        extra_clean_pct = max(0.0, this_month_clean_rate - baseline_clean_rate)
+    else:
+        extra_clean_pct = 0.0
+    avoided_denial_dollar = (
+        extra_clean_pct * this_month_total * AVG_CLAIM_VALUE_USD
+    )
+
+    return {
+        "ready": True,
+        "this_month_count": this_month_total,
+        "this_month_clean": this_month_clean,
+        "this_month_flagged": this_month_flagged,
+        "this_month_clean_rate": this_month_clean_rate,
+        "this_month_revenue_confirmed": revenue_confirmed,
+        "this_month_avoided_denials_dollar": avoided_denial_dollar,
+        "last_month_clean_rate": last_month_clean_rate,
+        "clean_rate_delta": clean_rate_delta,
+        "avg_claim_value_usd": AVG_CLAIM_VALUE_USD,
+    }
+
+
+def read_latest_real_audit(
+    *,
+    encounter_id: str,
+    tenant_id: str,
+    log_path: str | os.PathLike[str] = "/app/logs/upload_jobs.jsonl",
+) -> dict[str, Any] | None:
+    """Read the most recent completed LLM audit for an encounter.
+
+    Multi-tenant hardening: this function is module-level so it's
+    unit-testable in isolation (the closure-bound version inside
+    create_app() can't easily be tested without HTTP). Reads the
+    most recent row in upload_jobs.jsonl whose encounter_id
+    matches AND whose tenant_id matches the supplied tenant_id.
+
+    Returns a dict with the audit's findings, summary, and
+    metadata; None if no match. Legacy rows without a tenant_id
+    key default to "default" so existing audit trails don't
+    disappear after the upgrade.
+
+    Used by the index and encounter-detail handlers to surface
+    live LLM audit results alongside the demo cards.
+    """
+    from pathlib import Path as _P
+    log = _P(log_path)
+    if not log.is_file():
+        return None
+    try:
+        with log.open() as fh:
+            lines = fh.readlines()
+    except OSError:
+        return None
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("encounter_id") != encounter_id:
+            continue
+        # Tenant filter: skip rows that belong to a different
+        # tenant. Legacy rows (no tenant_id key) default to
+        # "default" so existing audit trails don't disappear.
+        if rec.get("tenant_id", "default") != tenant_id:
+            continue
+        if rec.get("status") != "done":
+            continue
+        res = rec.get("result", {}) or {}
+        if res.get("audit_status") != "ok":
+            continue
+        return {
+            "job_id": rec.get("job_id"),
+            "encounter_id": rec.get("encounter_id"),
+            "source": rec.get("source"),
+            "submitted_at": rec.get("submitted_at"),
+            "finished_at": rec.get("finished_at"),
+            "findings_count": res.get("findings_count", 0),
+            "findings": res.get("findings", []),
+            "summary": res.get("summary", ""),
+            "difficulty_tier": res.get("difficulty_tier"),
+            "variant": res.get("variant"),
+            "zorva_context": res.get("zorva_context"),
+            "tenant_id": rec.get("tenant_id", "default"),
+        }
+    return None
+
+
 def create_app() -> FastAPI:
     """Build a fresh FastAPI app.
 
@@ -174,11 +769,74 @@ def create_app() -> FastAPI:
         ),
     )
 
-    if _STATIC_DIR.is_dir():
-        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+    # Bearer-token auth middleware (F-3 fix from QA_API_HARDENING.md).
+    # The /healthz endpoint is whitelisted for load balancer health
+    # checks. All other routes require `Authorization: Bearer ***`
+    # to match the AUDIT_BEARER_TOKEN env var, or to be in
+    # AUDIT_ALLOW_NO_AUTH (set to "1" only for local dev).
+    import os as _os
+    _BEARER = _os.environ.get("AUDIT_BEARER_TOKEN", "")
+    _ALLOW_NO_AUTH = _os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
+
+    @app.middleware("http")
+    async def _bearer_auth(request, call_next):
+        # Whitelist: healthz + static
+        if request.url.path in ("/healthz",) or request.url.path.startswith("/static"):
+            return await call_next(request)
+        # Public demo paths: the home page, the docs path, the upload
+        # portal HTML. These are read-only and don't expose data; the
+        # POST endpoints that mutate (upload/preview, upload/submit,
+        # upload/notes, upload/paste) still require auth.
+        if _ALLOW_NO_AUTH:
+            return await call_next(request)
+        if not _BEARER:
+            # Auth disabled because no token is configured. Refuse
+            # anything that isn't a GET on / or /healthz.
+            if request.method == "GET" and request.url.path in ("/", "/healthz"):
+                return await call_next(request)
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                {"detail": "server has no AUDIT_BEARER_TOKEN configured; POST endpoints disabled"},
+                status_code=503,
+            )
+        auth = request.headers.get("authorization", "")
+        if not auth.startswith("Bearer "):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "missing bearer token"}, status_code=401)
+        token = auth[len("Bearer "):].strip()
+        if token != _BEARER:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
+        return await call_next(request)
+
+    def _latest_real_audit_for(encounter_id: str) -> dict[str, Any] | None:
+        """Return the most recent completed LLM audit for an encounter.
+
+        Tenant scoping (multi-tenant hardening): the upload_jobs
+        log is append-only and lives in /app/logs. Without a
+        tenant filter here, one tenant's encounter_id could
+        collide with another tenant's (and one tenant's biller
+        could read another tenant's findings). We delegate to
+        the module-level ``read_latest_real_audit`` and pass
+        _TENANT_ID explicitly so the function is unit-testable
+        in isolation.
+
+        Log path is configurable via the UPLOAD_AUDIT_LOG_PATH env
+        var so tests can point at a tmp file. Default is the
+        production path inside the container.
+        """
+        return read_latest_real_audit(
+            encounter_id=encounter_id,
+            tenant_id=_TENANT_ID,
+            log_path=_os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl",
+            ),
+        )
 
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
     templates.env.filters["highlight_quote"] = _highlight_quote
+    templates.env.globals["tenant_name"] = _TENANT_NAME
+    templates.env.globals["tenant_id"] = _TENANT_ID
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
@@ -191,6 +849,49 @@ def create_app() -> FastAPI:
         for entry in registered:
             record = load_encounter_record(entry.encounter_id)
             n_findings = len(record.get("ground_truth", [])) if record else 0
+            # Per-tenant severity threshold (v1: env var). Findings with
+            # severity BELOW this are not counted. The card still shows
+            # "flagged" if any sub-threshold finding exists (so the
+            # clinic owner knows there's something to look at), but the
+            # n_findings badge reflects what the biller would actually
+            # see in the detail page.
+            min_sev = _min_severity_threshold()
+            # Score denial risk from the gold findings. Demo cards
+            # get a deterministic score that mirrors what the biller
+            # sees when they click through.
+            visible_for_card = []
+            if record is not None:
+                visible_for_card = [
+                    f for f in _finding_dicts(record)
+                    if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+                ]
+            from .denial_risk import compute_denial_risk
+            if visible_for_card:
+                card_risk = compute_denial_risk(
+                    visible_for_card, min_severity=min_sev
+                )
+            else:
+                card_risk = {
+                    "denial_probability": 0.0,
+                    "tier": "low",
+                    "top_risk": None,
+                }
+            # Per-encounter revenue opportunity summary. Powers the
+            # "$$ opportunity" badge on the home page card so the
+            # biller can scan for highest-value encounters first.
+            # Tier thresholds: green < $50, yellow $50-200, red >= $200.
+            opp = compute_revenue_opportunities(visible_for_card)
+            opp_total = round(
+                sum(o.get("estimated_dollar", 0.0) for o in opp), 2
+            )
+            if opp_total >= 200:
+                opp_tier = "high"
+            elif opp_total >= 50:
+                opp_tier = "medium"
+            elif opp_total > 0:
+                opp_tier = "low"
+            else:
+                opp_tier = None
             cards.append(
                 {
                     "encounter_id": entry.encounter_id,
@@ -199,51 +900,330 @@ def create_app() -> FastAPI:
                     "is_flagged": bool(record.get("is_flagged")) if record else False,
                     "n_findings": n_findings,
                     "available": record is not None,
+                    "denial_risk": card_risk,
+                    "revenue_opportunity_total": opp_total,
+                    "revenue_opportunity_tier": opp_tier,
+                    "revenue_opportunity_count": len(opp),
                 }
             )
+        # Filter chips (counts) and clean-rate hero (metrics). Both
+        # are derived from the registered demo cards here; the
+        # template renders them in the filter-bar and hero panel.
+        # Real uploaded encounters are surfaced via _list_parsed_encounters()
+        # in the upload-portal pages, not on the public home page.
+        counts = {
+            "all": len(cards),
+            "flagged": sum(1 for c in cards if c["is_flagged"]),
+            "clean": sum(1 for c in cards if not c["is_flagged"]),
+            "opportunities": sum(
+                1 for c in cards if c["revenue_opportunity_total"] > 0
+            ),
+        }
+        # Honour ?status= query param so the chip click actually
+        # filters the rendered card grid. Default and fallback is
+        # "all" so existing links keep working.
+        raw_filter = request.query_params.get("status", "all").lower()
+        allowed_filters = {"all", "flagged", "clean", "opportunities"}
+        active_filter = raw_filter if raw_filter in allowed_filters else "all"
+        if active_filter == "flagged":
+            visible_cards = [c for c in cards if c["is_flagged"]]
+        elif active_filter == "clean":
+            visible_cards = [c for c in cards if not c["is_flagged"]]
+        elif active_filter == "opportunities":
+            visible_cards = [
+                c for c in cards if c["revenue_opportunity_total"] > 0
+            ]
+        else:
+            visible_cards = list(cards)
+        # No real-audit running totals on the demo dashboard; the
+        # metrics dict is the "no data" shape so the template's
+        # `{% if metrics and metrics.ready %}` skips the hero. Once
+        # the demo registry accumulates real audits, this gets
+        # populated.
+        metrics = compute_clean_rate_metrics(cards, now=time.time())
+        # Most recent real-audit run. Walk the job-queue JSONL log
+        # back to the last line with audit_status=ok (no per-encounter
+        # filter — we want the latest one for the home page).
+        latest_real_audit: dict[str, Any] | None = None
+        try:
+            from pathlib import Path as _P
+            log_path = _P("/app/logs/upload_jobs.jsonl")
+            if log_path.is_file():
+                with log_path.open() as fh:
+                    lines = fh.readlines()
+                for line in reversed(lines):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("status") != "done":
+                        continue
+                    res = rec.get("result", {}) or {}
+                    if res.get("audit_status") != "ok":
+                        continue
+                    latest_real_audit = {
+                        "job_id": rec.get("job_id"),
+                        "encounter_id": rec.get("encounter_id"),
+                        "source": rec.get("source"),
+                        "submitted_at": rec.get("submitted_at"),
+                        "finished_at": rec.get("finished_at"),
+                        "findings_count": res.get("findings_count", 0),
+                        "summary": res.get("summary", ""),
+                        "difficulty_tier": res.get("difficulty_tier"),
+                        "variant": res.get("variant"),
+                    }
+                    break
+        except Exception:
+            latest_real_audit = None
+        # Top missed-revenue patterns this month — feeds the
+        # "Revenue opportunity by rule" bar chart in the dashboard.
+        # Computed after cards so the aggregation can reuse the
+        # same encounter data without an extra registry walk.
+        try:
+            from .dashboard import (
+                aggregate_missed_revenue_by_rule,
+                aggregate_monthly_revenue_kpi,
+                month_label as _month_label,
+            )
+            top_missed_revenue_rules = aggregate_missed_revenue_by_rule(top_n=5)
+            missed_revenue_month_label = _month_label()
+        except Exception:
+            top_missed_revenue_rules = []
+            missed_revenue_month_label = ""
+        # Monthly "revenue recovered" KPI for the dashboard hero tile.
+        # Shows identified / recovered / pending dollars for the current
+        # calendar month so the biller can see whether the system is
+        # trustworthy at a glance. Same try/except fallback pattern as
+        # the rule aggregator above — empty state if anything fails.
+        try:
+            from .dashboard import aggregate_monthly_revenue_kpi as _amrk
+            monthly_revenue_kpi = _amrk()
+        except Exception:
+            monthly_revenue_kpi = {
+                "total_dollar": 0.0,
+                "recovered_dollar": 0.0,
+                "pending_dollar": 0.0,
+                "n_opportunities": 0,
+                "n_accepted": 0,
+                "acceptance_ratio": 0.0,
+                "month_label": "",
+                "ready": False,
+            }
+        # Per-clinic F1 widget — same data the
+        # ``/api/dashboard/per_clinic_f1`` JSON endpoint serves, but
+        # rendered server-side so the dashboard shows the
+        # "insufficient data" empty state on first paint without
+        # waiting for the JS fetch. The try/except fallback mirrors
+        # the rest of the dashboard: missing module / broken
+        # feedback log → empty state, not a 500.
+        try:
+            from .per_clinic_f1 import (
+                insufficient_data_state,
+                per_rule_metrics as _pcf1_per_rule,
+            )
+            _pcf1_clinic = _TENANT_ID or "default_biller"
+            _pcf1_per_rule = _pcf1_per_rule(clinic_id=_pcf1_clinic, days=30)
+            per_clinic_f1_widget = insufficient_data_state(
+                clinic_id=_pcf1_clinic,
+                per_rule=_pcf1_per_rule,
+                window_days=30,
+            )
+        except Exception:
+            per_clinic_f1_widget = {
+                "is_insufficient": True,
+                "total_support": 0,
+                "threshold": 3,
+                "window_days": 30,
+                "clinic_id": "default_biller",
+                "headline": "Insufficient data — need a few more reviews",
+                "message": (
+                    "The per-clinic F1 number isn't available yet. "
+                    "Once a biller has accepted or dismissed a few "
+                    "findings, this tile will start showing your "
+                    "model's accuracy for this clinic."
+                ),
+                "cta": "Review a few findings to start measuring.",
+            }
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"cards": cards, "n_registered": len(cards)},
+            {
+                "cards": cards,
+                "audits": visible_cards,
+                "filter": active_filter,
+                "counts": counts,
+                "total_this_week": 0,
+                "metrics": metrics,
+                "n_registered": len(cards),
+                "latest_real_audit": latest_real_audit,
+                "top_missed_revenue_rules": top_missed_revenue_rules,
+                "missed_revenue_month_label": missed_revenue_month_label,
+                "monthly_revenue_kpi": monthly_revenue_kpi,
+                "per_clinic_f1_widget": per_clinic_f1_widget,
+            },
         )
 
     @app.get("/encounter/{encounter_id}", response_class=HTMLResponse)
     def encounter_detail(request: Request, encounter_id: str) -> HTMLResponse:
+        """Render the encounter detail page.
+
+        Three lookup paths, in order:
+        1. Demo registry (encounters registered in demo_entries.py)
+        2. Real uploaded encounter with a completed audit (reads
+           /app/logs/upload_jobs.jsonl for the most recent audit
+           for this encounter_id)
+        3. 404 if neither
+
+        The detail template is shared across all three; demo
+        encounters use gold-ground-truth findings, uploaded
+        encounters use real-LLM-audit findings.
+        """
         demo = get_demo_encounter(encounter_id)
-        if demo is None:
+        if demo is not None:
+            record = load_encounter_record(encounter_id)
+            if record is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"encounter {encounter_id!r} is registered but the "
+                        "underlying record could not be located in data/val.json "
+                        "or data/train.json."
+                    ),
+                )
+            findings = _finding_dicts(record)
+            min_sev = _min_severity_threshold()
+            visible_findings = [
+                f for f in findings
+                if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+            ]
+            hidden_count = len(findings) - len(visible_findings)
+            real_audit = _latest_real_audit_for(encounter_id)
+            # Score denial risk from the visible findings. Demo
+            # encounters don't get a separate real-audit risk score
+            # because the gold findings are deterministic; we
+            # score from the same finding list the page shows.
+            from .denial_risk import compute_denial_risk
+            denial_risk = compute_denial_risk(
+                visible_findings, min_severity=min_sev
+            )
+            # Surface missed-revenue findings as a distinct card so the
+            # biller sees dollar uplifts separately from denial risks.
+            # We derive from visible_findings (not raw findings) so the
+            # card respects MIN_SEVERITY_TO_SHOW.
+            revenue_opportunities = compute_revenue_opportunities(visible_findings)
+            total_opportunity_dollars = round(
+                sum(o["estimated_dollar"] for o in revenue_opportunities), 2
+            )
+            # Attach per-finding "Model confidence" buckets derived from
+            # the feedback log so the encounter-detail template can
+            # render a color-coded badge per finding (HIGH/MEDIUM/LOW or
+            # "Not yet calibrated" placeholder).
+            _attach_model_confidence(visible_findings)
+            _attach_model_confidence(revenue_opportunities)
+            # Attach per-finding appeal context: which findings have a
+            # generated appeal letter (gates the outcome form) and the
+            # most recent outcome (rendered as "Last outcome" above the
+            # form). Best-effort; never raises.
+            _attach_appeal_context(visible_findings, encounter_id)
+            return templates.TemplateResponse(
+                request,
+                "encounter_detail.html",
+                {
+                    "encounter_id": encounter_id,
+                    "difficulty": demo.difficulty,
+                    "summary": demo.summary,
+                    "is_flagged": record.get("is_flagged", False),
+                    "clinical_note": record.get("clinical_note", ""),
+                    "claim": record.get("claim", {}),
+                    "rules": record.get("rules", []),
+                    "findings": visible_findings,
+                    "n_findings": len(visible_findings),
+                    "n_findings_total": len(findings),
+                    "n_findings_hidden": hidden_count,
+                    "min_severity": min_sev,
+                    "real_audit": real_audit,
+                    "is_uploaded_encounter": False,
+                    "denial_risk": denial_risk,
+                    "revenue_opportunities": revenue_opportunities,
+                    "total_opportunity_dollars": total_opportunity_dollars,
+                },
+            )
+
+        # Path 2: uploaded encounter. Look up the most recent audit
+        # for this encounter_id in the upload-jobs JSONL log.
+        uploaded_audit = _latest_real_audit_for(encounter_id)
+        if uploaded_audit is None:
             raise HTTPException(
                 status_code=404,
                 detail=(
                     f"encounter {encounter_id!r} is not registered on the "
-                    "demo dashboard. Use one of the registered ids."
+                    "demo dashboard, and no completed audit was found "
+                    "for it in the upload history."
                 ),
             )
-        record = load_encounter_record(encounter_id)
-        if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    f"encounter {encounter_id!r} is registered but the "
-                    "underlying record could not be located in data/val.json "
-                    "or data/train.json."
-                ),
-            )
-        findings = _finding_dicts(record)
+        uploaded_findings = uploaded_audit.get("findings", []) or []
+        min_sev = _min_severity_threshold()
+        visible_uploaded = [
+            f for f in uploaded_findings
+            if SEVERITY_RANK.get(str(f.get("severity", "info")).lower(), 0) >= min_sev
+        ]
+        hidden_count = len(uploaded_findings) - len(visible_uploaded)
+        # Score denial risk. For uploaded encounters this is the
+        # REAL risk — it's the LLM's actual findings from the
+        # clinic's data, not the demo's gold findings. This is
+        # the number the biller actually cares about.
+        from .denial_risk import compute_denial_risk
+        denial_risk = compute_denial_risk(
+            uploaded_findings, min_severity=min_sev
+        )
+        # Same revenue-opportunity pass for uploaded encounters.
+        revenue_opportunities = compute_revenue_opportunities(visible_uploaded)
+        total_opportunity_dollars = round(
+            sum(o["estimated_dollar"] for o in revenue_opportunities), 2
+        )
+        # Same model-confidence pass as the demo path above — derive
+        # per-finding buckets from the feedback log so the template
+        # can render the "Model confidence: HIGH" badge on each
+        # finding. Idempotent on findings that already have the
+        # field set by an earlier handler.
+        _attach_model_confidence(visible_uploaded)
+        _attach_model_confidence(revenue_opportunities)
+        # Same appeal-context pass for uploaded encounters so the
+        # per-finding "Log appeal outcome" form appears once an
+        # appeal letter has been generated for the encounter.
+        _attach_appeal_context(visible_uploaded, encounter_id)
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
             {
                 "encounter_id": encounter_id,
-                "difficulty": demo.difficulty,
-                "summary": demo.summary,
-                "is_flagged": record.get("is_flagged", False),
-                "clinical_note": record.get("clinical_note", ""),
-                "claim": record.get("claim", {}),
-                "rules": record.get("rules", []),
-                "findings": findings,
-                "n_findings": len(findings),
+                "difficulty": uploaded_audit.get("difficulty_tier", ""),
+                "summary": uploaded_audit.get("summary", ""),
+                "is_flagged": bool(uploaded_findings),
+                "clinical_note": "",
+                "claim": {
+                    "encounter_id": encounter_id,
+                    "line_items": [],
+                    "diagnosis_codes": [],
+                },
+                "rules": [],
+                "findings": visible_uploaded,
+                "n_findings": len(visible_uploaded),
+                "n_findings_total": len(uploaded_findings),
+                "n_findings_hidden": hidden_count,
+                "min_severity": min_sev,
+                "real_audit": uploaded_audit,
+                "is_uploaded_encounter": True,
+                "zorva_context": uploaded_audit.get("zorva_context"),
+                "denial_risk": denial_risk,
+                "revenue_opportunities": revenue_opportunities,
+                "total_opportunity_dollars": total_opportunity_dollars,
             },
         )
+        real_audit = _latest_real_audit_for(encounter_id)
 
     @app.get("/encounter/{encounter_id}/json")
     def encounter_json(encounter_id: str) -> JSONResponse:
@@ -267,6 +1247,525 @@ def create_app() -> FastAPI:
             }
         )
 
+    @app.get("/encounter/{encounter_id}/opportunities", response_class=JSONResponse)
+    def encounter_opportunities(encounter_id: str) -> JSONResponse:
+        """Return the list of revenue-opportunity findings for an encounter.
+
+        Powers the '$$ opportunity' detail modal that opens when a biller
+        clicks the revenue badge on an audit card on the dashboard. The
+        response shape is a thin projection of ``compute_revenue_opportunities``
+        — enough for the modal to render rule name, suggested SOMB code,
+        estimated dollar uplift, and the one-sentence 'why this matters'.
+
+        Each opportunity carries the original ``finding_id`` so the modal
+        can reuse the existing per-finding accept / dismiss endpoints.
+
+        Mirrors the encounter-detail handler's lookup paths:
+          1. Demo registry (gold ground-truth findings)
+          2. Uploaded encounter with a completed audit (real LLM findings)
+          3. 404 if neither
+        """
+        findings = _load_visible_findings_for_modal(encounter_id)
+        if findings is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"{encounter_id!r} not found or has no visible findings",
+            )
+        opportunities = compute_revenue_opportunities(findings)
+        # Project to the slim modal shape — drop heavy fields, keep
+        # only what the UI needs to render the per-finding row.
+        rows = [
+            {
+                "finding_id": o.get("finding_id") or "",
+                "rule_id": o.get("opportunity_rule_id") or o.get("rule_id") or "",
+                "rule_name": o.get("rule_name") or o.get("opportunity_rule_id") or "",
+                "suggested_code": o.get("suggested_code") or o.get("somb_code") or "",
+                "estimated_dollar": float(o.get("estimated_dollar") or 0.0),
+                "why": o.get("suggested_action") or "",
+                "severity": o.get("severity") or "info",
+            }
+            for o in opportunities
+        ]
+        total = round(sum(r["estimated_dollar"] for r in rows), 2)
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "opportunities": rows,
+                "total_dollar": total,
+                "n_opportunities": len(rows),
+            }
+        )
+
+    def _load_visible_findings_for_modal(encounter_id: str) -> list[dict] | None:
+        """Return severity-filtered findings for the modal API.
+
+        Same lookup paths as ``encounter_detail``: demo registry first,
+        then uploaded/real-audit log. Returns ``None`` if the encounter
+        is unknown OR has zero visible findings after the MIN_SEVERITY
+        threshold is applied.
+        """
+        min_sev = _min_severity_threshold()
+        demo = get_demo_encounter(encounter_id)
+        if demo is not None:
+            record = load_encounter_record(encounter_id)
+            if record is None:
+                return None
+            findings = _finding_dicts(record)
+            return [
+                f for f in findings
+                if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+            ]
+        # Path 2: uploaded encounter with a completed audit.
+        uploaded_audit = _latest_real_audit_for(encounter_id)
+        if uploaded_audit is None:
+            return None
+        uploaded_findings = uploaded_audit.get("findings", []) or []
+        return [
+            f for f in uploaded_findings
+            if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
+        ]
+
+    # ---- Reviewer actions: accept-all / dismiss / rerun / flag ----
+    # Persisted via audit_actions.append(); each row is SHA-256-chained
+    # so the trail is tamper-evident. The encounter detail page posts
+    # to these endpoints when the biller clicks Accept / Dismiss / etc.
+    # Each decision ALSO writes a FeedbackEntry to feedback.py — the
+    # "training data" layer that seeds the learning loop (per-encounter
+    # accept/dismiss/modify log with severity, rule_id, category).
+
+    def _lookup_finding_meta(encounter_id: str, finding_id: str) -> tuple[str, str, str]:
+        """Return (severity, rule_id, category) for a finding, or '' if unknown."""
+        record = load_encounter_record(encounter_id)
+        if not record:
+            return "", "", ""
+        for f in record.get("ground_truth", []) or []:
+            if (f.get("finding_id") or f.get("id")) == finding_id:
+                return (
+                    str(f.get("severity", "") or ""),
+                    str(f.get("rule_id", "") or ""),
+                    str(f.get("category", "") or ""),
+                )
+        return "", "", ""
+
+    def _record_feedback(
+        encounter_id: str,
+        finding_id: str,
+        action: str,
+        *,
+        user_identifier: str,
+        modify_severity: str | None = None,
+        modify_category: str | None = None,
+        note: str | None = None,
+        correct_finding: dict[str, Any] | None = None,
+    ) -> None:
+        """Append one FeedbackEntry to the per-encounter learning-loop log."""
+        try:
+            from .feedback import FeedbackEntry, get_default_store
+        except ImportError:
+            return
+        severity, rule_id, category = _lookup_finding_meta(encounter_id, finding_id)
+        # For modify actions the spec'd schema records the biller's
+        # override; we still keep the original severity/rule/category
+        # so the training-data view can diff old vs. new.
+        if action == "modify":
+            ms = modify_severity if modify_severity is not None else severity
+            mc = modify_category if modify_category is not None else category
+        else:
+            ms, mc = None, None
+        store = get_default_store()
+        entry_kwargs: dict = dict(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action=action,  # type: ignore[arg-type]
+            severity=severity,
+            rule_id=rule_id,
+            category=category,
+            biller_id=user_identifier or "default_biller",
+            modify_severity=ms,
+            modify_category=mc,
+        )
+        # Forward-compatible: if FeedbackEntry has these fields, attach them.
+        try:
+            from dataclasses import fields as _dc_fields
+            field_names = {f.name for f in _dc_fields(FeedbackEntry)}
+            if "correct_finding" in field_names and correct_finding is not None:
+                entry_kwargs["correct_finding"] = correct_finding
+            if "note" in field_names and note is not None:
+                entry_kwargs["note"] = note
+        except Exception:
+            pass
+        store.append(FeedbackEntry(**entry_kwargs))
+
+    @app.post("/encounter/{encounter_id}/accept-all")
+    async def encounter_accept_all(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        try:
+            findings_count = int(body.get("findings_count", 0))
+        except (TypeError, ValueError):
+            findings_count = 0
+        event = audit_append(
+            action="accept_all",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
+            extra={"findings_count": findings_count},
+        )
+        # Learning-loop: log one synthetic feedback entry per accept-all so
+        # the per-encounter view shows the decision. The finding_id is
+        # "__accept_all__" to disambiguate from per-finding accept rows.
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__accept_all__",
+            action="accept",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({"ok": True, "n_accepted": findings_count, "event": event})
+
+    @app.post("/encounter/{encounter_id}/dismiss")
+    async def encounter_dismiss(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        finding_id = str(body.get("finding_id", "") or "")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        # Closed-loop learning signal: why did the biller dismiss this
+        # finding? Captured as a free-text reason + a coarse category
+        # (false_positive, already_documented, not_applicable, other).
+        # Persisted in audit_actions.append via the ``note`` field so
+        # the existing chain signature still covers the dismissal.
+        reason_category = str(body.get("reason_category", "") or "").strip()
+        reason_text = str(body.get("reason_text", "") or "").strip()[:500]
+        if reason_category and not _DISMISS_CATEGORIES.__contains__(reason_category):
+            reason_category = ""
+        note = ""
+        if reason_category or reason_text:
+            parts = []
+            if reason_category:
+                parts.append(f"category={reason_category}")
+            if reason_text:
+                parts.append(reason_text)
+            note = " | ".join(parts)
+        event = audit_append(
+            action="dismiss",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+            note=note,
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="dismiss",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "reason_category": reason_category,
+            "event": event,
+        })
+
+    # ---- Per-finding Accept / Dismiss / Modify ------------------------
+    # These endpoints mirror the encounter-level accept-all / dismiss
+    # ones above but target a single finding via its finding_id. They
+    # are the primary affordance now: every finding card on the
+    # encounter detail page renders its own Accept / Dismiss / Modify
+    # button row. Each call writes:
+    #   - one audit_actions row (audit trail / hash chain), AND
+    #   - one FeedbackEntry (learning-loop training seed)
+    # so the per-encounter view shows one row per finding decision.
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/accept")
+    async def finding_accept(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Mark a single finding as accepted by the biller.
+
+        Writes both an audit_actions row (tamper-evident chain) and a
+        FeedbackEntry (learning-loop training seed).
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        user_identifier = str(request.client.host if request.client else "anon")
+        event = audit_append(
+            action="accept",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="accept",
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({"ok": True, "finding_id": finding_id, "action": "accept", "event": event})
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/dismiss")
+    async def finding_dismiss(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Dismiss a single finding. Optional closed-loop reason fields
+        are accepted (``reason_category`` + ``reason_text``) and stored in
+        the audit_actions row's ``note`` field — same shape as the
+        encounter-level dismiss endpoint.
+
+        Also accepts an optional ``correct_finding`` (a free-form dict
+        with any of ``severity`` / ``category`` / ``suggested_code`` /
+        ``rule_id``) so the biller can label what the right finding
+        would have been. The label is persisted on the FeedbackEntry
+        as a separate field — the audit_actions row keeps the
+        existing schema. The new ``correct_finding_pairs()`` view on
+        the FeedbackStore joins these dismissals to the original
+        prediction for training (see ``docs/learning_loop.md``).
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        reason_category = str(body.get("reason_category", "") or "").strip()
+        reason_text = str(body.get("reason_text", "") or "").strip()[:500]
+        if reason_category and not _DISMISS_CATEGORIES.__contains__(reason_category):
+            reason_category = ""
+        # ``correct_finding`` is an optional free-form dict. The biller
+        # is allowed to label any of: severity, category, suggested_code,
+        # rule_id, or a free-form ``note`` of their own. Validation is
+        # permissive — only the type-check is enforced. Missing or
+        # empty ``correct_finding`` keeps the dismiss endpoint exactly
+        # backward-compatible.
+        raw_correct = body.get("correct_finding")
+        correct_finding: dict[str, Any] | None = None
+        if isinstance(raw_correct, dict) and raw_correct:
+            correct_finding = {
+                str(k): (v if isinstance(v, (str, int, float, bool)) else str(v))
+                for k, v in raw_correct.items()
+            }
+        note = ""
+        if reason_category or reason_text:
+            parts = []
+            if reason_category:
+                parts.append(f"category={reason_category}")
+            if reason_text:
+                parts.append(reason_text)
+            note = " | ".join(parts)
+        if correct_finding:
+            # Persist a compact one-line summary into the audit_actions
+            # row's note for self-contained audit-trail readability.
+            cf_summary = ", ".join(
+                f"{k}={v}" for k, v in sorted(correct_finding.items())
+            )
+            note = f"{note} | correct: {cf_summary}" if note else f"correct: {cf_summary}"
+        user_identifier = str(request.client.host if request.client else "anon")
+        event = audit_append(
+            action="dismiss",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+            note=note,
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="dismiss",
+            user_identifier=user_identifier,
+            correct_finding=correct_finding,
+        )
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "action": "dismiss",
+            "reason_category": reason_category,
+            "correct_finding_recorded": bool(correct_finding),
+            "event": event,
+        })
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/modify")
+    async def finding_modify(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Record a biller's override of a single finding's severity and/or
+        category. Body: ``{"new_severity": "...", "new_category": "...",
+        "why": "..."}``. At least one of severity/category must be present.
+        The optional ``why`` is the biller's free-text rationale ("why
+        was the AI wrong?") and is persisted as the high-quality
+        training signal the biller-correction form exists to capture.
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        new_severity = str(body.get("new_severity", "") or "").strip()
+        new_category = str(body.get("new_category", "") or "").strip()
+        why = str(body.get("why", "") or "").strip()
+        if not new_severity and not new_category:
+            raise HTTPException(
+                status_code=400,
+                detail="new_severity and/or new_category required",
+            )
+        user_identifier = str(request.client.host if request.client else "anon")
+        # Persist a structured note with the before/after values so the
+        # existing audit_actions chain still covers the override. The
+        # biller's "why" rationale is folded into the same note so the
+        # audit trail is self-contained — no schema change needed to
+        # audit_actions, but the rationale is preserved.
+        original_severity, original_rule_id, original_category = _lookup_finding_meta(
+            encounter_id, finding_id
+        )
+        note_parts = []
+        if new_severity:
+            note_parts.append(f"severity: {original_severity} -> {new_severity}")
+        if new_category:
+            note_parts.append(f"category: {original_category} -> {new_category}")
+        note = " | ".join(note_parts)
+        if why:
+            note = f"{note} | why: {why}" if note else f"why: {why}"
+        event = audit_append(
+            action="modify",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+            note=note,
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="modify",
+            user_identifier=user_identifier,
+            modify_severity=new_severity or None,
+            modify_category=new_category or None,
+            note=why or None,
+        )
+        # Also write a structured BillerCorrection record to the
+        # dedicated biller_corrections.jsonl log. This is the
+        # high-quality training signal the spec'd biller-correction
+        # form exists to capture: (corrected) severity, category,
+        # rationale, biller_id, and a SHA-256 chain signature. Best
+        # effort; never raises.
+        try:
+            from .feedback import record_biller_correction
+            record_biller_correction(
+                encounter_id=encounter_id,
+                finding_id=finding_id,
+                severity=new_severity or original_severity or "",
+                category=new_category or original_category or "",
+                rationale=why,
+                biller_id=user_identifier or "default_biller",
+            )
+        except Exception:
+            pass
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "action": "modify",
+            "new_severity": new_severity,
+            "new_category": new_category,
+            "why": why,
+            "event": event,
+        })
+
+    @app.post("/encounter/{encounter_id}/rerun")
+    async def encounter_rerun(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        event = audit_append(
+            action="rerun",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
+        )
+        # rerun is a system action, not a per-finding biller decision,
+        # but the spec'd feedback table requires a row for every
+        # /encounter/* endpoint so the encounter timeline is complete.
+        # Tag it action="modify" so it isn't bucketed with accept/dismiss
+        # in the stats() view (downstream trainers filter on action).
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__rerun__",
+            action="modify",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({"ok": True, "event": event})
+
+    @app.post("/encounter/{encounter_id}/flag")
+    async def encounter_flag(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        event = audit_append(
+            action="flag",
+            encounter_id=encounter_id,
+            user_identifier=str(request.client.host if request.client else "anon"),
+            tenant_id=_TENANT_ID,
+        )
+        # See rerun note above — flag is system-level, recorded for
+        # timeline completeness, bucketed as action="modify" so it
+        # doesn't pollute accept/dismiss precision stats.
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__flag__",
+            action="modify",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
+        return JSONResponse({"ok": True, "event": event})
+
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         return {
@@ -275,6 +1774,566 @@ def create_app() -> FastAPI:
             "title": app.title,
             "n_registered": len(list_demo_encounters()),
         }
+
+    @app.get("/reports/by-clinic", response_class=HTMLResponse)
+    def by_clinic_monthly(request: Request) -> HTMLResponse:
+        """Clinic-level monthly revenue opportunity dashboard.
+
+        Renders the per-month headline figure ("This month Zorva
+        identified $X in missed revenue across N encounters") plus
+        the top 10 highest-value individual opportunities for the
+        current calendar month. Sibling to the home-page KPI tile
+        but rendered as its own URL so it can be linked from the
+        activity feed, share dialogs, and email summaries without
+        re-rendering the full dashboard.
+        """
+        try:
+            from .dashboard import (
+                aggregate_monthly_revenue_by_encounter,
+                aggregate_monthly_revenue_kpi,
+            )
+            kpi = aggregate_monthly_revenue_kpi()
+            rollup = aggregate_monthly_revenue_by_encounter(top_n=10)
+        except Exception:
+            kpi = {
+                "total_dollar": 0.0,
+                "recovered_dollar": 0.0,
+                "pending_dollar": 0.0,
+                "n_opportunities": 0,
+                "n_accepted": 0,
+                "acceptance_ratio": 0.0,
+                "month_label": "",
+                "ready": False,
+            }
+            rollup = {
+                "month_label": "",
+                "encounter_count": 0,
+                "top_opportunities": [],
+                "ready": False,
+            }
+        return templates.TemplateResponse(
+            request,
+            "reports/by_clinic.html",
+            {
+                "month_label": kpi.get("month_label")
+                or rollup.get("month_label", ""),
+                "total_dollar": kpi.get("total_dollar", 0.0),
+                "recovered_dollar": kpi.get("recovered_dollar", 0.0),
+                "pending_dollar": kpi.get("pending_dollar", 0.0),
+                "n_opportunities": kpi.get("n_opportunities", 0),
+                "n_accepted": kpi.get("n_accepted", 0),
+                "encounter_count": rollup.get("encounter_count", 0),
+                "top_opportunities": rollup.get("top_opportunities", []),
+                "ready": kpi.get("ready") or rollup.get("ready", False),
+            },
+        )
+
+    @app.get("/legal/privacy", response_class=HTMLResponse)
+    def legal_privacy(request: Request) -> HTMLResponse:
+        """Privacy Policy. v1 stub copy — replace with lawyer-reviewed
+        text before the first paying pilot signs."""
+        return templates.TemplateResponse(
+            request,
+            "legal_privacy.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "tenant_id": _TENANT_ID,
+                "data_residency": "Canada (region confirmed in the BAA)",
+                "support_email": "privacy@zorva.ca",
+            },
+        )
+
+    @app.get("/legal/terms", response_class=HTMLResponse)
+    def legal_terms(request: Request) -> HTMLResponse:
+        """Terms of Service. v1 stub copy — replace with lawyer-reviewed
+        text before the first paying pilot signs."""
+        return templates.TemplateResponse(
+            request,
+            "legal_terms.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "support_email": "support@zorva.ca",
+            },
+        )
+
+    @app.get("/contact", response_class=HTMLResponse)
+    @app.post("/contact", response_class=HTMLResponse)
+    async def contact_sales(
+        request: Request,
+        name: str = Form(""),
+        clinic: str = Form(""),
+        email: str = Form(""),
+        monthly_claims: str = Form(""),
+        message: str = Form(""),
+    ):
+        """Contact sales — book a 15-minute walkthrough.
+
+        GET: render the empty form.
+        POST: validate input, write to audit trail, render
+        the success page with a follow-up message.
+        """
+        from .contact import (
+            _append_contact_event,
+            valid_email,
+            valid_volume,
+        )
+
+        error: str | None = None
+        success = False
+        email_hash_prefix: str | None = None
+        if request.method == "POST":
+            # Validate
+            if not name or len(name) > 200:
+                error = "Please enter your name (max 200 chars)."
+            elif not clinic or len(clinic) > 200:
+                error = "Please enter your clinic name (max 200 chars)."
+            elif not valid_email(email):
+                error = (
+                    "Please enter a valid email address."
+                )
+            elif not valid_volume(monthly_claims):
+                error = (
+                    "Please enter a positive number for "
+                    "monthly claim volume (max 1,000,000)."
+                )
+            elif len(message) > 2000:
+                error = "Message is too long (max 2000 chars)."
+            if error is None:
+                row = _append_contact_event(
+                    name=name,
+                    clinic=clinic,
+                    email=email,
+                    monthly_claims=monthly_claims,
+                    message=message,
+                )
+                success = True
+                # Show first 16 chars of the email hash so the
+                # user sees that the email was registered
+                # without us showing the email itself.
+                email_hash_prefix = (
+                    row["user_identifier"][:16] + "..."
+                )
+
+        return templates.TemplateResponse(
+            request,
+            "contact.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "success": success,
+                "error": error,
+                "email_hash_prefix": email_hash_prefix,
+                "name": name if not success else "",
+                "clinic": clinic if not success else "",
+                "email": email if not success else "",
+                "monthly_claims": monthly_claims if not success else "",
+                "message": message if not success else "",
+                "support_email": "sales@zorva.ca",
+            },
+        )
+
+    @app.get("/case-studies", response_class=HTMLResponse)
+    def case_studies_index(request: Request) -> HTMLResponse:
+        """Marketing index of worked-example case studies."""
+        from .case_studies import case_studies_index as _index
+        return templates.TemplateResponse(
+            request,
+            "case_studies.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "studies": _index(),
+            },
+        )
+
+    @app.get("/case-studies/{slug}", response_class=HTMLResponse)
+    def case_study_detail(slug: str, request: Request) -> HTMLResponse:
+        """One case study by slug."""
+        from .case_studies import get_case_study
+        cs = get_case_study(slug)
+        if cs is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"case study '{slug}' not found",
+            )
+        return templates.TemplateResponse(
+            request,
+            "case_study_detail.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "cs": cs,
+            },
+        )
+
+    @app.get("/roi", response_class=HTMLResponse)
+    @app.get("/roi/results", response_class=JSONResponse)
+    def roi_calculator(
+        request: Request,
+        monthly_claims: int = 1000,
+        current_denial_rate: float = 0.075,
+        avg_claim_value_usd: float = 190.0,
+        current_appeal_rate: float = 0.50,
+        catch_rate: float = 0.42,
+        plan_tier: str | None = None,
+    ):
+        """ROI calculator for the one-pager.
+
+        GET /roi: render the HTML form (with results embedded
+        when called from a form POST).
+        GET /roi/results: return the JSON output for an embeddable
+        widget that the marketing site can iframe.
+        POST /roi: accept form-encoded inputs and redirect back
+        to /roi?monthly_claims=...&... with the inputs as query
+        params so the URL is shareable.
+
+        Defaults reflect industry averages:
+          * 1,000 claims/month (mid-size practice)
+          * 7.5% denial rate (CMS commercial average)
+          * $190/claim (CMS commercial office-visit average)
+          * 50% manual appeal rate (industry average)
+          * 42% catch rate (v10 smartness-test F1 score)
+        """
+        from .roi import compute_roi
+
+        try:
+            result = compute_roi(
+                monthly_claims=monthly_claims,
+                current_denial_rate=current_denial_rate,
+                avg_claim_value_usd=avg_claim_value_usd,
+                current_appeal_rate=current_appeal_rate,
+                catch_rate=catch_rate,
+                plan_tier=plan_tier,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        # JSON endpoint for the embeddable widget
+        if request.url.path.endswith("/results"):
+            return JSONResponse(result)
+
+        # HTML rendering for /roi (form + result side by side)
+        return templates.TemplateResponse(
+            request,
+            "roi.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "result": result,
+                "inputs": {
+                    "monthly_claims": monthly_claims,
+                    "current_denial_rate": current_denial_rate,
+                    "avg_claim_value_usd": avg_claim_value_usd,
+                    "current_appeal_rate": current_appeal_rate,
+                    "catch_rate": catch_rate,
+                    "plan_tier": plan_tier,
+                },
+            },
+        )
+
+    @app.post("/roi", response_class=HTMLResponse)
+    async def roi_calculator_post(request: Request):
+        """Accept form-encoded POST and redirect to GET with query params.
+
+        The form is a normal HTML form (no JS) so the salesperson
+        can fill it in during a demo on a desktop browser, see the
+        results, and copy the URL to share with the prospect.
+        """
+        from fastapi.responses import RedirectResponse
+
+        form = await request.form()
+        params: dict[str, str] = {}
+        for k in (
+            "monthly_claims",
+            "current_denial_rate",
+            "avg_claim_value_usd",
+            "current_appeal_rate",
+            "catch_rate",
+            "plan_tier",
+        ):
+            v = form.get(k)
+            if v is not None and str(v).strip():
+                params[k] = str(v).strip()
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        return RedirectResponse(url=f"/roi?{qs}", status_code=303)
+
+    @app.get("/activity", response_class=HTMLResponse)
+    def activity_page(request: Request) -> HTMLResponse:
+        """Show recent reviewer actions across all encounters.
+
+        Reads /app/logs/audit_trail.jsonl and renders the last N
+        events in reverse chronological order. Each row shows the
+        action type, encounter_id, finding_id (for dismiss), and
+        the SHA-256 signature so the privacy officer can verify
+        the chain is intact.
+        """
+        try:
+            from .audit_actions import read_all
+            events = read_all(limit=50, tenant_id=_TENANT_ID)
+        except Exception:
+            events = []
+        events = list(reversed(events))  # newest first
+        return templates.TemplateResponse(
+            request,
+            "activity.html",
+            {"items": events, "n_events": len(events)},
+        )
+
+    # ---- Appeal-letter generator --------------------------------------
+    # When a claim is denied by a payer, the biller POSTs here with
+    # the finding_id and the denial reason. We pull the finding +
+    # the encounter metadata + the zorva_context, build the prompt,
+    # call the LLM, and return a Markdown letter the biller can
+    # review + send. The body is PHI-scrubbed before being logged
+    # to /app/logs/appeal_letters.jsonl.
+
+    @app.post("/encounter/{encounter_id}/appeal", response_class=JSONResponse)
+    async def encounter_appeal(
+        encounter_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .appeal_letter import (
+                generate_appeal_letter,
+                log_appeal_letter,
+            )
+            from .llm import LLMClient
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503, detail=f"appeal_letter module unavailable: {e}"
+            )
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        # The biller may pass either a finding_id (preferred) or
+        # a rule_id (the LLM doesn't always emit a stable finding_id).
+        # We try finding_id first; if no match, we try rule_id.
+        finding_id = str(body.get("finding_id", "") or "")
+        rule_id = str(body.get("rule_id", "") or "")
+        if not finding_id and not rule_id:
+            raise HTTPException(
+                status_code=400,
+                detail="finding_id or rule_id required",
+            )
+        denial_reason = str(body.get("denial_reason", "") or "").strip()
+        if not denial_reason:
+            raise HTTPException(status_code=400, detail="denial_reason required")
+
+        # Find the most recent real audit for this encounter (the
+        # biller is appealing a finding from this audit) and pull
+        # the matching finding from its findings list.
+        real_audit = _latest_real_audit_for(encounter_id)
+        if real_audit is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"no audit found for {encounter_id!r}; "
+                       "upload + audit a claim first",
+            )
+        target_finding = None
+        for f in real_audit.get("findings", []):
+            if finding_id and f.get("finding_id") == finding_id:
+                target_finding = f
+                break
+        if target_finding is None and rule_id:
+            # Try exact rule_id match first (single key or
+            # rule_ids list), then fall back to a prefix/substring
+            # match because the LLM sometimes emits rule_ids with
+            # different endings (DX_LINKAGE_REQUIREMENT vs
+            # DX_LINKAGE_REQUIRED — singular vs plural, singular
+            # vs -MENT suffix, etc.).
+            for f in real_audit.get("findings", []):
+                rid = f.get("rule_id") or (
+                    f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
+                )
+                if rid == rule_id:
+                    target_finding = f
+                    break
+            if target_finding is None:
+                # Fuzzy match: same first 12 characters of the
+                # rule_id, OR one is a substring of the other.
+                # This catches singular/plural ("DX_LINKAGE_REQUIRED"
+                # vs "DX_LINKAGE_REQUIREMENT") and minor
+                # variation in the suffix. Underscores and dashes
+                # both normalize to empty so DX_LINKAGE_001 and
+                # DX-LINKAGE-001 are equivalent.
+                rule_norm = rule_id.upper().replace("_", "").replace("-", "")
+                for f in real_audit.get("findings", []):
+                    rid = f.get("rule_id") or (
+                        f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
+                    )
+                    if not rid:
+                        continue
+                    rid_norm = rid.upper().replace("_", "").replace("-", "")
+                    if (
+                        rule_norm[:12] == rid_norm[:12]
+                        or rule_norm in rid_norm
+                        or rid_norm in rule_norm
+                    ):
+                        target_finding = f
+                        break
+        if target_finding is None:
+            key = f"finding_id={finding_id!r}" if finding_id else f"rule_id={rule_id!r}"
+            raise HTTPException(
+                status_code=404,
+                detail=f"{key} not in the most recent audit",
+            )
+        zctx = real_audit.get("zorva_context") or {}
+        # Build a minimal encounter dict the generator can consume.
+        # The clinical_note isn't persisted to upload_jobs.jsonl yet
+        # (v0 only stores the audit result), so the generator gets
+        # the finding's quote as a stand-in for the note text. v1:
+        # persist the clinical_note alongside the audit result.
+        clinical_note = target_finding.get("quote", "")
+        encounter_for_letter = {
+            "encounter_id": encounter_id,
+            "claim": {
+                "encounter_id": encounter_id,
+                "date_of_service": "",
+                "line_items": [],
+            },
+        }
+        # Use the LLM client. The generator wants a free-text
+        # completion (no JSON schema constraint — the prose is
+        # markdown), so we use complete() not complete_json(). v0
+        # falls through to a template-only letter if the LLM call
+        # fails.
+        llm_client = LLMClient()
+        def llm_complete(prompt: str) -> str:
+            response = llm_client.complete(
+                messages=[{"role": "user", "content": prompt}],
+            )
+            # litellm returns a dict with the OpenAI response shape;
+            # pull the content string out of the first choice.
+            return (response.get("choices", [{}])[0]
+                          .get("message", {})
+                          .get("content", ""))
+
+        try:
+            letter = generate_appeal_letter(
+                finding=target_finding,
+                encounter=encounter_for_letter,
+                clinical_note=clinical_note,
+                denial_reason=denial_reason,
+                zorva_context=zctx,
+                llm_complete=llm_complete,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"appeal-letter generation failed: {e}",
+            )
+        if letter is None:
+            raise HTTPException(
+                status_code=500,
+                detail="appeal-letter generation returned no result",
+            )
+        # Log metadata only (body already PHI-scrubbed by the generator).
+        # Pass the resolved finding_id so the encounter-detail page
+        # can gate the "appeal outcome" form on "letter generated for
+        # this finding" (see _attach_appeal_context).
+        resolved_finding_id = (
+            (target_finding or {}).get("finding_id") if target_finding else finding_id
+        ) or None
+        log_appeal_letter(
+            letter,
+            encounter_id,
+            tenant_id=_TENANT_ID,
+            finding_id=resolved_finding_id,
+        )
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "finding_id": finding_id,
+            "letter": letter,
+        })
+
+    # ---- Appeal outcome tracking ----------------------------------------
+    # After a biller submits an appeal letter, the payer's response
+    # (won / lost / withdrawn / pending) feeds back into the learning
+    # loop. The biller POSTs the outcome here; we append it to
+    # /app/logs/appeal_outcomes.jsonl alongside the letter log so
+    # the outcome can be joined with the letter at training time.
+    #
+    # The appeal_id is the biller's identifier for the appeal
+    # (typically the same id returned by /encounter/{id}/appeal once
+    # the letter is filed, or a finding_id the biller is using as
+    # a stable reference). In v0 the endpoint accepts any non-empty
+    # appeal_id — a missing/empty id is a 404. Status validation
+    # mirrors the task body: only won/lost/withdrawn/pending are
+    # accepted; anything else is a 400.
+
+    @app.post(
+        "/encounter/{encounter_id}/appeal/{appeal_id}/outcome",
+        response_class=JSONResponse,
+    )
+    async def encounter_appeal_outcome(
+        encounter_id: str,
+        appeal_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .appeal_letter import (
+                AppealOutcome,
+                log_appeal_outcome,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"appeal_outcome module unavailable: {e}",
+            )
+
+        # Empty appeal_id is treated as "not found" — the biller
+        # must reference a real appeal. This also covers the case
+        # where the URL path is missing the {appeal_id} segment
+        # (FastAPI would 404 the route match, but defence-in-depth).
+        if not appeal_id or not appeal_id.strip():
+            raise HTTPException(
+                status_code=404,
+                detail="appeal_id required",
+            )
+
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        status = str(body.get("status", "")).strip().lower()
+        # Five values per the learning-loop spec: won / lost /
+        # withdrawn / pending / did_not_file. Anything else is a 400.
+        allowed_statuses = {
+            "won", "lost", "withdrawn", "pending", "did_not_file",
+        }
+        if status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"status must be one of {sorted(allowed_statuses)}; "
+                    f"got {status!r}"
+                ),
+            )
+        notes = str(body.get("notes", "") or "").strip()
+        biller_id = body.get("biller_id")
+        if biller_id is not None:
+            biller_id = str(biller_id).strip() or None
+
+        outcome = AppealOutcome.now(
+            appeal_id=appeal_id,
+            encounter_id=encounter_id,
+            status=status,  # type: ignore[arg-type]
+            biller_id=biller_id,
+            notes=notes,
+        )
+        log_appeal_outcome(outcome)
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "appeal_id": appeal_id,
+            "outcome": {
+                "status": outcome.status,
+                "notes": outcome.notes,
+                "biller_id": outcome.biller_id,
+                "timestamp": outcome.timestamp,
+            },
+        })
 
     # -------------------------------------------------------------------
     # /encounters/upload — staff upload portal
@@ -513,6 +2572,11 @@ def create_app() -> FastAPI:
         rows = data.get("rows") or []
         if not isinstance(rows, list):
             raise HTTPException(status_code=400, detail="rows must be a list")
+        # Allow the submit payload to override per-row difficulty_tier and
+        # variant (set by the paste-form). When the dashboard reuses
+        # the preview's rows, these fields are absent and the runner's
+        # defaults take over.
+        extra = data.get("defaults", {}) or {}
         queue = get_default_queue()
         accepted: list[dict[str, Any]] = []
         rejected: list[dict[str, Any]] = []
@@ -526,6 +2590,11 @@ def create_app() -> FastAPI:
                     }
                 )
                 continue
+            # Merge the request-level defaults with the row. Per-row
+            # fields win so the dashboard's per-encounter setting still
+            # works.
+            for k, v in extra.items():
+                row.setdefault(k, v)
             # Re-validate server-side; the preview's "errors" array
             # is the source of truth but we never trust the client
             # to decide what's accepted.
@@ -561,6 +2630,7 @@ def create_app() -> FastAPI:
                 encounter=claim,
                 source=source,
                 source_filename=row.get("source_filename") or None,
+                tenant_id=_TENANT_ID,
             )
             accepted.append(
                 {
@@ -662,6 +2732,764 @@ def create_app() -> FastAPI:
                 "size_bytes": len(raw),
                 "stored_path": str(target.relative_to(_PKG_DIR.parent.parent)),
                 "ocr_status": "deferred",
+            }
+        )
+
+    @app.post("/encounters/upload/text-note")
+    async def encounters_upload_text_note(
+        encounter_id: str = Form(...),
+        clinical_note: str = Form(...),
+    ) -> JSONResponse:
+        """Accept a plain-text clinical note for a given encounter.
+
+        The MVP pilot's most common flow: a clinic exports an 837P
+        file from their EHR and pastes the corresponding clinical
+        note text into the upload form. The text is stored on disk
+        under ``logs/uploaded_notes/`` with the encounter_id in the
+        filename, and the runner picks it up on the next audit job
+        for that encounter.
+
+        This bypasses the synth encounter generator entirely: the
+        runner reads the stored text and uses it as the clinical_note
+        field of the audit's encounter dict. The pilot is real-data
+        end-to-end from this point.
+
+        Returns the note_id (also used as the on-disk filename stem)
+        so the client can confirm what was stored.
+        """
+        # The encounter_id is a user-controlled string; sanitise
+        # it to a safe filename component. Strip path separators
+        # and limit length so we don't blow the filesystem's
+        # name limit on pathological inputs.
+        import re as _re
+        safe = _re.sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id).strip("._")[:80]
+        if not safe:
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id must contain at least one alphanumeric",
+            )
+        if not clinical_note.strip():
+            raise HTTPException(
+                status_code=400, detail="clinical_note is empty"
+            )
+        if len(clinical_note) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"clinical_note is {len(clinical_note)} bytes, max is {_MAX_UPLOAD_BYTES}",
+            )
+        import uuid as _uuid
+        note_id = _uuid.uuid4().hex[:12]
+        target = _NOTES_DIR / f"{safe}.{note_id}.txt"
+        target.write_text(clinical_note, encoding="utf-8")
+        return JSONResponse(
+            {
+                "note_id": note_id,
+                "encounter_id": encounter_id,
+                "stored_path": str(target.relative_to(_PKG_DIR.parent.parent)),
+                "size_bytes": len(clinical_note.encode("utf-8")),
+            }
+        )
+
+    # -------------------------------------------------------------------
+    # POST /encounters/{encounter_id}/audit — re-run the auditor on
+    # a previously uploaded encounter.
+    #
+    # Spec: the dashboard submits a request body containing the
+    # clinical narrative; the endpoint reuses the audit-ready claim
+    # the upload flow stored in the job cache, runs the LLM auditor
+    # against the (claim, clinical_note) pair, and returns the
+    # findings as JSON. The endpoint exists so the dashboard does
+    # not need to know the underlying job_id — the encounter id is
+    # the user-facing key.
+    #
+    # Why this re-uses the cached claim rather than re-parsing the
+    # original 837P: the upload flow strips envelope segments and
+    # normalises to a 5-field claim shape (encounter_id, patient_id,
+    # NPI, date_of_service, CPT_codes); the synth runner then
+    # expands that into the full claim object the auditor expects
+    # (line items, dx_pointers, payer, etc.). The synth materialised
+    # form is the audit-ready claim and is what lives in
+    # ``Job.result`` once a job finishes. Re-parsing the original
+    # 837P would require us to persist the raw file (we don't) AND
+    # re-run the synth (we'd lose determinism). The cache lookup
+    # recovers everything we need.
+    # -------------------------------------------------------------------
+
+    # Stored stub used when the caller omits `clinical_note` and no
+    # uploaded text-note exists on disk for the encounter. Kept
+    # short and clinically generic so the auditor has *something*
+    # to evaluate; the dashboard's real pilot flow always sends
+    # the full note, so this is the fallback path.
+    _STUB_CLINICAL_NOTE = (
+        "Patient seen for routine follow-up. History of present "
+        "illness unremarkable. Physical exam within normal limits. "
+        "Medical decision making: low complexity. No additional "
+        "workup indicated. Plan: continue current management, "
+        "return in 6 months or sooner if symptoms change."
+    )
+
+    # Same handler at the spec-mandated plural path. The dashboard's
+    # upload portal links to /encounters/{id} from the success state
+    # per the upload-UI task body; the singular form stays as the
+    # legacy alias for older links. Both render the same page.
+    #
+    # Declared AFTER every static /encounters/upload* route above so
+    # FastAPI's declaration-order matching gives precedence to the
+    # upload portal's specific paths (/encounters/upload,
+    # /encounters/upload/preview, /encounters/upload/submit, etc.)
+    # over the catch-all /encounters/{encounter_id}.
+    @app.get("/encounters/{encounter_id}", response_class=HTMLResponse)
+    def encounter_detail_plural(request: Request, encounter_id: str) -> HTMLResponse:
+        return encounter_detail(request, encounter_id)
+
+    # ──────────────────────── per-clinic F1 dashboard ──────────────────
+    # The learning-loop surface: per-clinic, per-rule precision /
+    # recall / F1 over a rolling 30-day window, plus a weekly F1
+    # time series. The dashboard widget in templates/index.html
+    # calls this endpoint to render the table + the "F1 over
+    # time" chart. Tenant-scoped via the X-Tenant-Id header
+    # (matches the rest of the API); the clinic_id is the biller
+    # proxy when the feedback log doesn't yet have a clinic_id
+    # field (see per_clinic_f1.py docstring).
+    @app.get("/api/dashboard/per_clinic_f1")
+    def per_clinic_f1_dashboard(
+        request: Request,
+        clinic_id: str | None = None,
+    ) -> JSONResponse:
+        """Return per-rule P/R/F1 + a weekly F1 time series for a clinic.
+
+        Query params:
+          * ``clinic_id`` (optional) — defaults to the active
+            tenant_id (or "default_biller" in dev). The dashboard
+            picker calls this endpoint once per clinic switch.
+          * ``days`` (optional, default 30) — rolling window size.
+        """
+        try:
+            from .per_clinic_f1 import (
+                insufficient_data_state,
+                list_clinics,
+                per_rule_metrics,
+                weekly_f1,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"per_clinic_f1 module unavailable: {e}",
+            )
+        # Default the clinic to the active tenant / dev fallback.
+        if not clinic_id:
+            clinic_id = _TENANT_ID or "default_biller"
+        # Days window is clamped to [7, 180] to keep the
+        # aggregation bounded; the dashboard asks for 30 by
+        # default but a power user can dial it down to 7 or up to
+        # 180 (one billing quarter).
+        try:
+            days = int(request.query_params.get("days", "30"))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(7, min(180, days))
+        try:
+            per_rule = per_rule_metrics(clinic_id=clinic_id, days=days)
+            weekly = weekly_f1(clinic_id=clinic_id, days=days)
+            clinics = list_clinics()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"per-clinic F1 aggregation failed: {e}",
+            )
+        # Roll-up: clinic-level F1 across all rules (micro-average
+        # over the per-rule TP/FP totals) so the dashboard can
+        # render a single "Clinic F1: 0.62" tile next to the
+        # per-rule table.
+        total_tp = sum(
+            v["precision"] * v["support"] for v in per_rule.values()
+        )
+        total_fp = sum(
+            (1.0 - v["precision"]) * v["support"] for v in per_rule.values()
+        )
+        total_sup = sum(v["support"] for v in per_rule.values())
+        # Empty-state: if the clinic has fewer than the threshold
+        # feedback events in the window, surface the friendly
+        # "insufficient data" payload so the UI doesn't render a
+        # misleading 0% F1 tile. The actual clinic_f1 rollup is
+        # still computed below so the dashboard can transition
+        # smoothly when the threshold is crossed on the next render.
+        empty_state = insufficient_data_state(
+            clinic_id=clinic_id,
+            per_rule=per_rule,
+            window_days=days,
+        )
+        if total_sup == 0:
+            clinic_f1 = 0.0
+        else:
+            p = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
+            r = 1.0  # within-clinic recall proxy saturates at 1.0 in the rollup
+            clinic_f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
+        return JSONResponse({
+            "ok": True,
+            "clinic_id": clinic_id,
+            "days": days,
+            "per_rule": per_rule,
+            "weekly": weekly,
+            "clinics": clinics,
+            "clinic_f1": round(clinic_f1, 4),
+            "n_rules": len(per_rule),
+            "n_feedback": total_sup,
+            "insufficient_data": empty_state["is_insufficient"],
+            "empty_state": empty_state,
+        })
+
+    # ──────────────────────── tenant data export / deletion ─────────────────
+    #
+    # PHIPA s.53 / PIPEDA: a patient (or the clinic on their behalf) has the
+    # right to a copy of every piece of PHI we hold about them. The export
+    # endpoint returns every claim, every audit-trail row, and every appeal
+    # letter for the calling tenant as JSONL with a SHA-256 manifest.
+    # The deletion endpoint accepts a confirmation phrase and writes a
+    # final deletion record to the audit trail before purging.
+    #
+    # Both routes are gated by the bearer-token middleware so they
+    # require the same auth as any other write/read. They're also
+    # tenant-scoped: a request for tenant A only returns A's data.
+
+    @app.get("/api/tenants/{tenant_id}/export.jsonl")
+    def tenant_export_jsonl(tenant_id: str) -> Response:
+        """Export every record for a tenant as JSONL with a manifest.
+
+        Each line is one JSON object (audit_trail row, appeal-letter
+        record, or upload-jobs entry) belonging to the tenant. The
+        final line is a manifest object:
+
+          {
+            "manifest": true,
+            "tenant_id": "...",
+            "n_audit_trail": N,
+            "n_appeal_letters": M,
+            "n_upload_jobs": K,
+            "sha256_audit_trail": "hex...",
+            "sha256_appeal_letters": "hex...",
+            "sha256_upload_jobs": "hex...",
+            "generated_at": "ISO-8601"
+          }
+
+        Caller verifies the manifest hashes against their local
+        re-computation to detect tampering. The PHIPA s.53 right-of-
+        access window is 30 days; this endpoint is synchronous
+        so the caller can re-fetch immediately.
+        """
+        import hashlib
+        from pathlib import Path as _P
+
+        if tenant_id != _TENANT_ID:
+            raise HTTPException(
+                status_code=403,
+                detail="tenant_id does not match the current tenant scope",
+            )
+
+        try:
+            from .audit_actions import read_all
+            audit_rows = read_all(tenant_id=_TENANT_ID)
+        except Exception:
+            audit_rows = []
+
+        appeal_rows: list[dict[str, Any]] = []
+        appeal_log = _P(
+            os.environ.get("ZORVA_LOGS_DIR", "/app/logs")
+        ) / "appeal_letters.jsonl"
+        if appeal_log.is_file():
+            with appeal_log.open() as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if row.get("tenant_id", "default") == _TENANT_ID:
+                        appeal_rows.append(row)
+
+        upload_rows: list[dict[str, Any]] = []
+        upload_log = _P(
+            os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl"
+            )
+        )
+        if upload_log.is_file():
+            with upload_log.open() as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if row.get("tenant_id", "default") == _TENANT_ID:
+                        upload_rows.append(row)
+
+        def _sha256(rows: list[dict]) -> str:
+            h = hashlib.sha256()
+            for r in rows:
+                h.update(
+                    (json.dumps(r, sort_keys=True) + "\n").encode("utf-8")
+                )
+            return h.hexdigest()
+
+        manifest = {
+            "manifest": True,
+            "tenant_id": _TENANT_ID,
+            "n_audit_trail": len(audit_rows),
+            "n_appeal_letters": len(appeal_rows),
+            "n_upload_jobs": len(upload_rows),
+            "sha256_audit_trail": _sha256(audit_rows),
+            "sha256_appeal_letters": _sha256(appeal_rows),
+            "sha256_upload_jobs": _sha256(upload_rows),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # The export is JSONL: one record per line, manifest last.
+        # Caller can stream-parse without loading the whole file.
+        lines: list[str] = []
+        for r in audit_rows:
+            lines.append(json.dumps({"kind": "audit_trail", **r}))
+        for r in appeal_rows:
+            lines.append(json.dumps({"kind": "appeal_letter", **r}))
+        for r in upload_rows:
+            lines.append(json.dumps({"kind": "upload_job", **r}))
+        lines.append(json.dumps(manifest))
+        body = "\n".join(lines) + "\n"
+
+        # Write a final export event to the audit trail so the
+        # export itself is part of the tenant's permanent record.
+        try:
+            from .audit_actions import append as _audit_append
+            _audit_append(
+                action="data_export",
+                encounter_id="*",  # tenant-wide; not a single encounter
+                user_identifier="data_export_endpoint",
+                tenant_id=_TENANT_ID,
+                extra={
+                    "n_audit_trail": len(audit_rows),
+                    "n_appeal_letters": len(appeal_rows),
+                    "n_upload_jobs": len(upload_rows),
+                    "sha256_audit_trail": manifest["sha256_audit_trail"],
+                },
+            )
+        except Exception:
+            # Don't crash the export on audit-write failure; the
+            # export itself is the contract.
+            pass
+
+        return Response(
+            content=body,
+            media_type="application/x-ndjson",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="zorva-export-'
+                    f'{_TENANT_ID}-{int(time.time())}.jsonl"'
+                ),
+                "X-Tenant-Id": _TENANT_ID,
+            },
+        )
+
+    @app.delete("/api/tenants/{tenant_id}")
+    def tenant_delete(tenant_id: str, confirmation: str = "") -> JSONResponse:
+        """Purge every record for a tenant.
+
+        Confirmation phrase: the caller must pass
+        ``confirmation="delete-all-my-data"`` (literal string) in
+        the request body or query string. This is a guard against
+        accidental deletion from a typo'd request.
+
+        Writes a final deletion event to the audit trail BEFORE
+        purging — so the deletion itself is part of the tenant's
+        permanent record (a "this is when you said delete" timestamp).
+
+        Currently the actual purge step is a no-op: the upload
+        portal + job queue are read-only on the JSONL logs, and
+        the volume-mounted files survive container recreates. v2:
+        integrate with the container's volume snapshot or with
+        a per-tenant data deletion worker. For now, the deletion
+        event is the contract — the privacy officer can verify
+        via the audit trail.
+        """
+        if tenant_id != _TENANT_ID:
+            raise HTTPException(
+                status_code=403,
+                detail="tenant_id does not match the current tenant scope",
+            )
+        if confirmation != "delete-all-my-data":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "confirmation phrase required; pass "
+                    "confirmation='delete-all-my-data' to confirm"
+                ),
+            )
+
+        # Write the deletion event BEFORE purging anything.
+        try:
+            from .audit_actions import append as _audit_append
+            _audit_append(
+                action="tenant_purge",
+                encounter_id="*",
+                user_identifier="data_delete_endpoint",
+                tenant_id=_TENANT_ID,
+                extra={
+                    "confirmation": confirmation,
+                    "requested_at": datetime.now(timezone.utc).isoformat(),
+                    "note": (
+                        "tenant requested purge of all data; "
+                        "actual file deletion is a v2 worker task"
+                    ),
+                },
+            )
+        except Exception:
+            pass
+
+        return JSONResponse({
+            "ok": True,
+            "tenant_id": _TENANT_ID,
+            "purge_status": "audit_recorded",
+            "note": (
+                "v1: deletion is recorded in the audit trail. "
+                "v2: actual file purge is queued in a background worker."
+            ),
+        })
+
+    @app.post("/encounters/{encounter_id}/audit")
+    async def encounters_audit(
+        request: Request,
+        encounter_id: str,
+    ) -> JSONResponse:
+        """Run the auditor on a previously uploaded encounter.
+
+        Request body (JSON or form):
+
+        - ``clinical_note`` (optional): the clinical narrative.
+          When omitted, falls back to a stored stub note so the
+          endpoint still returns a valid audit result.
+
+        Response (HTTP 200):
+
+        - ``encounter_id``: echoed from the path
+        - ``has_discrepancy``: ``true`` if the auditor emitted any
+          findings
+        - ``findings``: list of finding dicts (category, severity,
+          rule_id, suggested_code, quote, explanation)
+        - ``summary``: the auditor's plain-text synopsis
+        - ``source_job_id``: the job_id the cached claim came from
+        - ``note_source``: ``"request"``, ``"uploaded"``, or
+          ``"stub"`` — useful for the dashboard to show which
+          clinical note was used
+
+        Error responses:
+
+        - 404 if no cached job exists for ``encounter_id``
+        - 400 if the cached claim is missing the audit-ready
+          fields the auditor expects
+        - 502 if the LLM call itself errors (the synth runner
+          has its own retry; the audit route does not, since
+          the request is synchronous)
+        """
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+
+        # ---- 1. read the optional clinical_note from the body ----
+        # Accept JSON or form. JSON is the dashboard's preferred
+        # shape; form is a fallback so a curl-based smoke test
+        # can do `-F "clinical_note=..."`.
+        clinical_note: str | None = None
+        note_source = "stub"
+        content_type = (request.headers.get("content-type") or "").lower()
+        try:
+            if "application/json" in content_type:
+                body = await request.json()
+                if isinstance(body, dict):
+                    raw = body.get("clinical_note")
+                    if isinstance(raw, str) and raw.strip():
+                        clinical_note = raw
+                        note_source = "request"
+            else:
+                form = await request.form()
+                raw = form.get("clinical_note")
+                if isinstance(raw, str) and raw.strip():
+                    clinical_note = raw
+                    note_source = "request"
+        except Exception:  # noqa: BLE001 (deliberately broad)
+            # Malformed body — fall through to the stub path
+            # rather than 400. The dashboard can re-submit.
+            clinical_note = None
+
+        # ---- 2. look up the cached job for this encounter ----
+        #
+        # Two-step lookup so we can distinguish "no job exists at all"
+        # (404 — the caller should upload first) from "a job exists but
+        # is still in flight" (409 — the dashboard should poll and
+        # retry). ``find_by_encounter`` defaults to status="done", so
+        # a queued/running job is invisible to the default call and we
+        # have to query again with status=None to surface it.
+        #
+        # The previous (single-step) lookup returned None for the
+        # in-flight case, which translated to a misleading 404 —
+        # callers re-trying an audit during a long synth run had no
+        # way to tell "you haven't uploaded yet" from "your upload is
+        # still running". The test
+        # ``test_audit_returns_409_when_job_still_running`` pins the
+        # correct behaviour.
+        queue = get_default_queue()
+        job = queue.find_by_encounter(encounter_id)
+        if job is None:
+            # No done-job. Check whether any job exists at all so we
+            # can return 409 for the in-flight case instead of 404.
+            in_flight = queue.find_by_encounter(encounter_id, status=None)
+            if in_flight is not None and in_flight.status != "done":
+                # Job exists but hasn't finished. The synth runner is
+                # fast, but we should not double-fire; surface a 409
+                # so the dashboard can poll /jobs/{id} and retry.
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"encounter {encounter_id!r} is in job "
+                        f"{in_flight.job_id!r} (status={in_flight.status}); "
+                        f"wait for it to finish and retry."
+                    ),
+                )
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"encounter {encounter_id!r} has no cached audit "
+                    f"job. Upload the 837P first via "
+                    f"/encounters/upload/submit, then re-audit."
+                ),
+            )
+        if job.status != "done":
+            # Job exists but hasn't finished. The synth runner is
+            # fast, but we should not double-fire; surface a 409
+            # so the dashboard can poll /jobs/{id} and retry.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"encounter {encounter_id!r} is in job "
+                    f"{job.job_id!r} (status={job.status}); "
+                    f"wait for it to finish and retry."
+                ),
+            )
+
+        # ---- 3. recover the audit-ready claim from the upload ----
+        # Re-audit must operate on the biller's originally uploaded
+        # data, NOT a fresh synth materialised from a hash of the
+        # encounter id. Per kanban task t_75202858, the upload
+        # portal's "real-data" branch in job_queue._default_runner
+        # is the source of truth for what the prior audit ran on.
+        #
+        # The clinical note is the piece of uploaded data that
+        # persists on disk: /encounters/upload/text-note writes
+        # ``<encounter_id>.<note_id>.txt`` under logs/uploaded_notes/
+        # and the upload portal's _load_uploaded_note() helper reads
+        # the most-recent one back. We mirror that glob/sort
+        # resolution here (computing the notes dir from this
+        # module's __file__ so the test suite's tmp_path redirect
+        # keeps working) so the resolution logic is single-sourced
+        # with the runner — no parallel implementation in two
+        # places.
+        #
+        # The claim payload (CPT codes, ICDs, NPI, date_of_service,
+        # patient_id) is now persisted on job.result['claim'] by
+        # job_queue._default_runner (see kanban card t_10774785). The
+        # re-audit endpoint reads it back here so the audit operates
+        # on the exact claim object the original runner built, instead
+        # of the historical PT_REAUDIT placeholder with empty
+        # line_items. Pre-fix jobs (those that never persisted a
+        # claim) still surface the placeholder for backward
+        # compatibility — we do NOT fabricate a claim.
+        result = job.result or {}
+        synth_encounter_id = result.get("synth_encounter_id")
+        ran_via = result.get("ran_via", "upload_portal")
+        used_uploaded_note = bool(result.get("used_uploaded_note")) or (
+            ran_via == "upload_portal_with_user_note"
+        )
+        persisted_claim = result.get("claim")
+
+        # Resolve the clinical_note: request > uploaded on-disk
+        # text-note > stub.
+        if clinical_note is None:
+            try:
+                from pathlib import Path as _P
+                notes_dir = (
+                    _P(__file__).resolve().parent.parent.parent
+                    / "logs" / "uploaded_notes"
+                )
+                if notes_dir.is_dir():
+                    safe = __import__("re").sub(
+                        r"[^A-Za-z0-9_.-]+", "_", encounter_id
+                    ).strip("._")[:80]
+                    if safe:
+                        candidates = sorted(
+                            notes_dir.glob(f"{safe}.*.txt"),
+                            key=lambda p: p.stat().st_mtime,
+                            reverse=True,
+                        )
+                        if candidates:
+                            clinical_note = candidates[0].read_text(encoding="utf-8")
+                            note_source = "uploaded"
+            except Exception:  # noqa: BLE001 (deliberately broad)
+                clinical_note = None
+        if clinical_note is None:
+            clinical_note = _STUB_CLINICAL_NOTE
+            note_source = "stub"
+
+        # ---- 4. rebuild the audit encounter and run the auditor ----
+        # Read-from-uploaded-data branch: prefer the on-disk
+        # uploaded clinical note over a re-synthesised one. Two
+        # sub-branches:
+        # - ``used_uploaded_note`` was set by the runner: the prior
+        #   audit was the upload portal's "real data" path. Mirror
+        #   that branch's claim shape; the runner's encounter
+        #   payload (CPTs, NPI, etc.) is not in job.result so
+        #   line_items is empty. The dashboard should treat this
+        #   as "re-upload required for a full re-audit" rather
+        #   than silently zeroing.
+        # - Otherwise: legacy synth-only demo path. Re-run the
+        #   synth with the cached tier/variant/seed (read from
+        #   job.result) so the re-audit is deterministic.
+        try:
+            from .auditor import run_audit as _run_audit, AuditValidationError
+            from .zorva_context import build_context_for_encounter
+
+            if used_uploaded_note:
+                zorva_ctx = build_context_for_encounter(
+                    country_code=None,
+                    payer_id=None,
+                    province=None,
+                    health_number=None,
+                )
+                # Prefer the claim the runner persisted on
+                # Job.result (t_10774785). Fall back to the legacy
+                # PT_REAUDIT placeholder ONLY for jobs that ran
+                # before the fix landed — those will not have
+                # result['claim'].
+                if (
+                    isinstance(persisted_claim, dict)
+                    and persisted_claim.get("line_items")
+                ):
+                    claim = dict(persisted_claim)
+                else:
+                    claim = {
+                        "encounter_id": encounter_id,
+                        "patient_id": "PT_REAUDIT",
+                        "rendering_provider_npi": "",
+                        "billing_provider_tax_id": "",
+                        "date_of_service": "",
+                        "payer_id": "",
+                        "payer_name": "",
+                        "line_items": [],
+                        "diagnosis_codes": [],
+                        "_reaudit_note": (
+                            "claim payload not persisted; re-audit "
+                            "ran against the uploaded note only. "
+                            "Re-upload the 837P for a full re-audit."
+                        ),
+                    }
+                audit_encounter = {
+                    "encounter_id": encounter_id,
+                    "is_flagged": False,
+                    "clinical_note": clinical_note,
+                    "claim": claim,
+                    "rules": [],
+                    "ground_truth": [],
+                    "zorva_context": zorva_ctx,
+                }
+            else:
+                from .synth_agent import generate, Template
+
+                difficulty_tier = result.get("difficulty_tier")
+                variant = result.get("variant", "clean")
+                seed = int(result.get("seed") or (abs(hash(encounter_id)) % (2**31)))
+                tier_norm = str(difficulty_tier or "EASY").upper()
+                if tier_norm not in ("EASY", "MEDIUM", "HARD"):
+                    tier_norm = "EASY"
+                variant_norm = str(variant or "clean").lower()
+                if variant_norm not in ("clean", "flagged"):
+                    variant_norm = "clean"
+                synth_out = generate(
+                    Template(tier=tier_norm, variant=variant_norm, schema_version=1),
+                    seed=seed,
+                )
+                cpts = synth_out.get("cpt_codes", []) or []
+                icds = synth_out.get("icd10_codes", []) or []
+                claim = {
+                    "encounter_id": synth_out.get("encounter_id"),
+                    "patient_id": "PT_AUDIT",
+                    "rendering_provider_npi": "1992039481",
+                    "billing_provider_tax_id": "XX-XXX1234",
+                    "date_of_service": "2026-06-15",
+                    "payer_id": "PAYER-AUDIT-001",
+                    "payer_name": "Audit Payer",
+                    "line_items": [
+                        {
+                            "line_id": i + 1,
+                            "cpt_code": c.get("code", ""),
+                            "modifiers": [],
+                            "dx_pointers": icds,
+                            "charge_amount": 150.00,
+                            "units": 1,
+                        }
+                        for i, c in enumerate(cpts)
+                    ],
+                    "diagnosis_codes": icds,
+                }
+                audit_encounter = {
+                    "encounter_id": synth_out.get("encounter_id"),
+                    "is_flagged": bool(synth_out.get("flagged", False)),
+                    "clinical_note": clinical_note,
+                    "claim": claim,
+                    "rules": [],
+                    "ground_truth": [],
+                }
+            audit = _run_audit(audit_encounter)
+        except AuditValidationError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"auditor validation failed: {exc}",
+            )
+        except Exception as exc:  # noqa: BLE001 (deliberately broad)
+            raise HTTPException(
+                status_code=502,
+                detail=f"auditor invocation failed: {type(exc).__name__}: {exc}"[:500],
+            )
+
+        findings_payload: list[dict[str, Any]] = []
+        for f in audit.findings:
+            rule_ids = list(f.rule_ids) if f.rule_ids else []
+            findings_payload.append(
+                {
+                    "finding_id": f.finding_id,
+                    "category": f.category,
+                    "severity": f.severity,
+                    "rule_id": rule_ids[0] if rule_ids else "",
+                    "rule_ids": rule_ids,
+                    "suggested_code": f.suggested_code,
+                    "quote": f.quote,
+                    "explanation": f.explanation,
+                }
+            )
+
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "synth_encounter_id": synth_encounter_id,
+                "has_discrepancy": bool(findings_payload),
+                "findings": findings_payload,
+                "summary": audit.summary,
+                "source_job_id": job.job_id,
+                "note_source": note_source,
+                "ran_via": "audit_endpoint",
             }
         )
 

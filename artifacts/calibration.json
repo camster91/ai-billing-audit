@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-06-19T22:42:46Z",
+  "split": "val",
+  "encounter_count": 3,
+  "errored_count": 3,
+  "tp": 0,
+  "fp": 0,
+  "fn": 11,
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1": 0.0,
+  "rule_breakdown_gold_counts": {},
+  "per_encounter": [
+    {
+      "encounter_id": "enc_10000",
+      "error": "litellm.InternalServerError: InternalServerError: OpenAIException - Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable.",
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "n_gold": 4,
+      "n_pred": 0
+    },
+    {
+      "encounter_id": "enc_10001",
+      "error": "litellm.InternalServerError: InternalServerError: OpenAIException - Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable.",
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "n_gold": 5,
+      "n_pred": 0
+    },
+    {
+      "encounter_id": "enc_10002",
+      "error": "litellm.InternalServerError: InternalServerError: OpenAIException - Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable.",
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "n_gold": 2,
+      "n_pred": 0
+    }
+  ]
+}

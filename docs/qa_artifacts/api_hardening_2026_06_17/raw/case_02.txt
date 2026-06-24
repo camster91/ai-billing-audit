@@ -1,0 +1,22 @@
+endpoint: GET /encounter/../../../etc/passwd (path traversal, percent-encoded + raw)
+expected: 404 (or sanitized; 200 leaks sensitive data)
+actual:   encoded=404 raw=404
+raw response:
+HTTP/2 404 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:19 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 22
+
+{"detail":"Not Found"}
+
+--- raw path ---
+HTTP/2 404 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:20 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 22
+
+{"detail":"Not Found"}

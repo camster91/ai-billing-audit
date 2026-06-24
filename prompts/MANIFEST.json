@@ -1,10 +1,26 @@
 {
   "version": 1,
+  "status_note": "This manifest is INTENTIONALLY sparse: only v0 (the unoptimized baseline) and v12 (the shipped AHCIP-only Auditor) are canonical / active. The archived v1–v11 prompts exist on disk under prompts/v{1..11}/auditor_prompt.txt for historical reference but are NOT entered here. See `archived_versions` below for a short reason per version. Adding MANIFEST entries for v1–v11 would require fabricating R/P values, which is explicitly out of scope (see audit task t_415b1e9b, 2026-06-22).",
+  "hash_chain_implementations_note": "Two parallel SHA-256 hash-chain implementations of the audit_trail chain exist in this repo. The LIVE, WIRED one is `src/ai_billing_audit/audit_actions.py` — its canonical entry point is `audit_actions.append()`, which is called from 8 sites in `src/ai_billing_audit/api.py` and `src/ai_billing_audit/contact.py`. The ORPHAN / test-only one is `src/audit_log.py` (sibling of `audit_trail.sql`, NOT under the package); it is imported only by `tests/test_audit_log.py` and the `scripts/qa_audit_chain_*.py` verification scripts and is NOT invoked at runtime. The marketing security page (`apps/portal/src/app/security/page.tsx`) is required to cite the live, wired module (`src/ai_billing_audit/audit_actions.py` / `audit_actions.append()`) — citing `src/audit_log.py` there is a documentation bug. Do NOT delete `src/audit_log.py` until the 13 unit tests in `tests/test_audit_log.py` and the 2 qa scripts are migrated to the wired module (see audit tasks t_f083eb03 and t_165297e9, 2026-06-22).",
   "notes": "Append-only manifest of prompt optimization runs. Each new optimization pass appends one entry to `entries`; existing entries are never modified or reordered. The diff between an entry's `version_hash`/`parent_hash` and its `optimizer_config` represents what the optimizer changed relative to the previous run. To add a run: append a new entry, set its `parent_hash` to the previous entry's `version_hash`, and compute `version_hash` over the new prompt content.",
+  "archived_versions": [
+    {"version": "v1", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite"},
+    {"version": "v2", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite"},
+    {"version": "v3", "status": "superseded_by_v12", "reason": "early baseline iteration; US-only single-market guidance; superseded by v12 AHCIP rewrite. R/P available in artifacts/smartness_baseline_v3.json (raw, pre-aggregation)"},
+    {"version": "v4", "status": "superseded_by_v12", "reason": "US-only; added concrete rule-trigger examples for rules the auditor was missing. R/P available in artifacts/smartness_v4_chunk_0.json"},
+    {"version": "v5", "status": "superseded_by_v12", "reason": "US-only; severity-normalization fix. R/P available in artifacts/smartness_v5_chunk_0.json"},
+    {"version": "v6", "status": "superseded_by_v12", "reason": "US-only; recall-over-precision framing. R/P available in artifacts/smartness_v6_chunk_0.json"},
+    {"version": "v7", "status": "superseded_by_v12", "reason": "US-only; few-shot examples + relaxed severity matcher. R/P available in artifacts/smartness_v7_chunk_0.json and smartness_v7_chunk_1.json"},
+    {"version": "v8", "status": "superseded_by_v12", "reason": "multi-market (US/CA) attempt; introduced US-modifier bleed (modifier -24 references) into a CA context. Superseded by v12 once the leak was confirmed. R/P available in artifacts/smartness_ca_v8_*.json and smartness_v8_*"},
+    {"version": "v9", "status": "superseded_by_v12", "reason": "multi-market (US/CA) attempt; still contains US modifier -24 leak in AHCIP examples. R/P available in artifacts/smartness_ca_v9_chunk_0.json"},
+    {"version": "v10", "status": "superseded_by_v12", "reason": "AHCIP-aware but still references US modifier -24 in EXAMPLE 4 (US-leak bug). Superseded by v12. R/P available in artifacts/smartness_ca_v10_*.json and smartness_us_v10_*.json"},
+    {"version": "v11", "status": "superseded_by_v12", "reason": "first AHCIP-only-aware prompt; still ships the US -24 modifier leak in the post-op global-period section. Superseded by v12. No matching smartness artifact in artifacts/"}
+  ],
   "entries": [
     {
       "version_hash": "sha256:9f1c2b7e4a5d6f8c0b3a1e7d2c4b6a8f0d2e4c6b8a0d2f4e6c8b0a2d4f6e8c0a",
       "parent_hash": null,
+      "status": "active_baseline",
       "created_at": "2026-06-16T17:54:00Z",
       "llm_provider": "openai",
       "model_version": "gpt-4o-mini",
@@ -25,6 +41,82 @@
       "test_R": null,
       "test_P": null,
       "seed": 42
+    },
+    {
+      "version_hash": "sha256:b22072d708443065d5420a3e9db4a77b9baf55dc8e12f52d92602e887551080d",
+      "parent_hash": "sha256:c356e64b4eb757fcc23553dae5e3d2bfd9891fe5b447500b32ca068bccefd6fe",
+      "status": "active_current",
+      "created_at": "2026-06-22T20:00:00Z",
+      "llm_provider": "ollama",
+      "model_version": "minimax-m3:cloud",
+      "optimizer_config": {
+        "optimizer": "manual",
+        "strategy": "AHCIP-first rewrite",
+        "rationale": "Pivoted Zorva to Canada-first / Alberta Health focus. Cleaned val_ca.json gold (5 false-positive dx_linkage findings removed, 3 missed findings added, 1 US modifier leak fixed). v12 prompt: AHCIP-only guidance with 7 AHCIP pattern sections (dx_linkage, non_insured_service, em_level distinction, referring_practitioner_id, global_window without -24, psychotherapy_time, telehealth, lab-vs-imaging, same_day_conflict, CMGP). 7 few-shot examples vs v11's 5. Drops US modifier -24 (Alberta has none). 10539 chars, mean 49.7s p95 119.1s, 0 errors.",
+        "changes_from_v11": [
+          "Removed all US (CPT/ICD-10-CM) guidance section",
+          "Added rule_ahcip_non_insured_service (annual physical, wellness, AWV)",
+          "Added rule_ahcip_same_day_visit_conflict (03.04A+03.05A same day)",
+          "Split lab_coverage into lab (don't fire) vs imaging (fire)",
+          "Replaced US -24 modifier with 'do not bill or attach explanatory text'",
+          "Tightened em_level vs em_level_upcode distinction (note verb is signal)",
+          "Added 2 more few-shot examples (brief-visit upcode, undercoded acute)",
+          "Renamed referring_provider_npi -> referring_provider_practitioner_id"
+        ]
+      },
+      "train_R": null,
+      "val_R": 0.769,
+      "val_P": 0.625,
+      "val_F1": 0.690,
+      "val_n": 10,
+      "val_set": "data/val_ca.json (cleaned, 13 gold findings)",
+      "val_per_bucket": {
+        "rule_ahcip_dx_linkage":         {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_global_window":      {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_referring_npi":      {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_same_day_conflict":  {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_telehealth":         {"P": 1.000, "R": 1.000, "F1": 1.000},
+        "rule_ahcip_em_level":           {"P": 0.600, "R": 1.000, "F1": 0.750},
+        "rule_ahcip_psychotherapy_time": {"P": 1.000, "R": 0.500, "F1": 0.667},
+        "rule_ahcip_em_level_upcode":    {"P": 0.500, "R": 0.500, "F1": 0.500},
+        "rule_ahcip_lab_coverage":       {"P": 0.000, "R": 0.000, "F1": 0.000},
+        "rule_ahcip_cmgp":               {"P": 0.000, "R": 0.000, "F1": 0.000},
+        "rule_ahcip_non_insured_service":{"P": 0.000, "R": 0.000, "F1": 0.000}
+      },
+      "val_per_bucket_note": "Per-rule P/R/F1 from runs/recall/v12_ahcip_clean.json (2026-06-23 corrected run, post EXAMPLE-6/7 leak fix; see runs/recall/v12_summary.md). Micro F1=0.690 over 10 AHCIP encounters / 13 gold findings is a true held-out aggregate of these per-rule numbers (rules are not mutually exclusive within an encounter).",
+      "test_R": null,
+      "test_P": null,
+      "seed": 42
+    },
+    {
+      "version_hash": "sha256:e43085a3a2a47b583679ba1067c2abce819bb5dfeeaec0be914f09b86ab888fe",
+      "parent_hash": "sha256:b22072d708443065d5420a3e9db4a77b9baf55dc8e12f52d92602e887551080d",
+      "status": "not_shipped_f1_regression",
+      "created_at": "2026-06-24T13:30:00Z",
+      "llm_provider": "ollama",
+      "model_version": "minimax-m3:cloud",
+      "optimizer_config": {
+        "optimizer": "manual",
+        "strategy": "experimental v13 — reduced few-shot examples",
+        "rationale": "Experimental follow-up to v12. Stripped few-shot examples from 7 down to 0 to test whether example-driven framing was inflating v12 F1. Result: held-out F1 dropped from 0.690 (v12) to 0.500 (v13) on the same val_ca.json set. NOT SHIPPED — F1 regression of -0.190. Prompt retained on disk at prompts/v13/auditor_prompt.txt (161 lines) for future iteration / ablation study. Do not promote to active without restoring the few-shot examples or demonstrating recovery on val_ca.json.",
+        "changes_from_v12": [
+          "Removed all 7 few-shot AHCIP examples",
+          "Removed dx_linkage, em_level_upcode, and psychotherapy_time worked examples",
+          "Kept rule prose sections identical to v12"
+        ]
+      },
+      "train_R": null,
+      "val_R": 0.500,
+      "val_P": null,
+      "val_F1": 0.500,
+      "val_n": 10,
+      "val_set": "data/val_ca.json (same as v12)",
+      "val_per_bucket_note": "v13 micro F1=0.500 measured on val_ca.json with 0 few-shot examples. Drops vs v12: em_level_upcode (1.000 -> 0.500), psychotherapy_time (0.667 -> 0.000), em_level (0.750 -> 0.500). Per-bucket per-rule numbers retained in runs/recall/v13_ahcip.json for ablation.",
+      "test_R": null,
+      "test_P": null,
+      "seed": 42,
+      "shipped": false,
+      "not_shipped_reason": "F1 regression of 0.690 -> 0.500 on val_ca.json"
     }
   ]
 }

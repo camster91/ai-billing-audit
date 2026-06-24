@@ -1,0 +1,5 @@
+endpoint: Every endpoint with NO Authorization header (no auth exists; documenting status codes)
+expected: 401 (not honored — no auth on this API)
+actual:   [('GET', '/', '200'), ('GET', '/healthz', '200'), ('GET', '/encounter/enc_0000', '404'), ('GET', '/encounter/enc_0000/json', '404'), ('GET', '/encounters/upload', '200'), ('GET', '/encounters/upload/jobs/nonexistent_job_xyz', '404'), ('POST', '/encounters/upload/preview', '000'), ('POST', '/encounters/upload/submit', '422'), ('POST', '/encounters/upload/paste', '422'), ('POST', '/encounters/upload/notes', '000')]
+raw response:
+

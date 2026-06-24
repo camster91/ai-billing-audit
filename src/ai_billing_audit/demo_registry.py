@@ -8,10 +8,16 @@ registered.
 The contract is intentionally tiny: a `DemoEncounter` is just a stable id
 plus a `difficulty` label (EASY / MEDIUM / HARD). The actual record —
 clinical note, claim, rules, ground-truth findings — is loaded from
-`data/val.json` / `data/train.json` at request time, keyed by
+`data/synth/val.json` / `data/synth/train.json` at request time, keyed by
 `encounter_id`. This keeps the registry a coordination surface (no data
 duplication) and means a new sibling can ship a single
 ``register_demo_encounter(...)`` call without touching the route code.
+
+The split is intentional: `data/synth/` is the synthetic dev/holdout
+data that's safe to ship in the Docker image; `data/private/` is reserved
+for real PHI and is excluded from the image via .dockerignore. This
+loader points at `data/synth/` so production encounters can never resolve
+to a private record.
 """
 from __future__ import annotations
 
@@ -31,8 +37,10 @@ __all__ = [
 
 # Repo layout: this file lives at
 #   src/ai_billing_audit/demo_registry.py
-# so the data dir is ../../../data relative to this file.
-_DATA_DIR = (Path(__file__).resolve().parent.parent.parent / "data").resolve()
+# so the data dir is ../../../data/synth relative to this file
+# (synthetic subset only — data/private/ is for real PHI and
+# must never be read from this code path).
+_DATA_DIR = (Path(__file__).resolve().parent.parent.parent / "data" / "synth").resolve()
 
 
 _Difficulty = str  # "EASY" | "MEDIUM" | "HARD"

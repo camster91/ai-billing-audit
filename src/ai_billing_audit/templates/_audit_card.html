@@ -1,0 +1,85 @@
+{# Single audit card partial — used by index (Your audits) and Examples page.
+   Expects `card` dict with:
+     encounter_id, patient_id, cpt, dx, time_ago, source, difficulty,
+     n_findings, n_critical, n_high, n_medium, n_low, summary,
+     status ("clean" | "flagged"), audit_status (str) #}
+<a class="card card-clickable audit-card" href="/encounter/{{ card.encounter_id }}">
+  <div class="audit-card__head">
+    <div class="row" style="gap: var(--space-2);">
+      <span class="audit-card__id">{{ card.encounter_id }}</span>
+      {% if card.difficulty %}
+        <span class="badge badge-{{ card.difficulty|lower }}">{{ card.difficulty }}</span>
+      {% endif %}
+    </div>
+    {% if card.status == "flagged" %}
+      <span class="badge badge-flagged" aria-label="flagged">
+        <span aria-hidden="true">⚠</span> Flagged
+      </span>
+    {% else %}
+      <span class="badge badge-clean" aria-label="clean">
+        <span aria-hidden="true">✓</span> Clean
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="audit-card__meta">
+    {% if card.patient_id and card.patient_id != "—" %}<span>{{ card.patient_id }}</span>{% endif %}
+    {% if card.cpt %}<span>&middot;</span><span class="mono">{{ card.cpt }}</span>{% endif %}
+    {% if card.dx %}<span>&middot;</span><span class="mono">{{ card.dx }}</span>{% endif %}
+    {% if card.time_ago %}<span>&middot;</span><span>{{ card.time_ago }}</span>{% endif %}
+  </div>
+
+  {% if card.summary %}
+  <p class="audit-card__summary">{{ card.summary }}</p>
+  {% endif %}
+
+  <div class="audit-card__chips">
+    {% if card.n_findings == 0 %}
+      <span class="badge badge-clean">0 findings</span>
+    {% else %}
+      <span class="badge badge-flagged">{{ card.n_findings }} finding{{ "" if card.n_findings == 1 else "s" }}</span>
+      {% if card.n_critical %}<span class="badge badge-sev-critical">{{ card.n_critical }} critical</span>{% endif %}
+      {% if card.n_high %}<span class="badge badge-sev-high">{{ card.n_high }} high</span>{% endif %}
+      {% if card.n_medium %}<span class="badge badge-sev-medium">{{ card.n_medium }} med</span>{% endif %}
+      {% if card.n_low %}<span class="badge badge-sev-low">{{ card.n_low }} low</span>{% endif %}
+    {% endif %}
+    {# Denial-risk score on the card. Tier drives the colour and
+       a copyable "%" so the biller can prioritise the queue. #}
+    {% if card.denial_risk %}
+      <span class="badge denial-risk denial-risk--{{ card.denial_risk.tier }}" title="Estimated denial probability">
+        <span aria-hidden="true">&#9888;</span>
+        {{ (card.denial_risk.denial_probability * 100) | round(1) }}% denial risk
+      </span>
+    {% endif %}
+    {# Revenue opportunity badge. Sum of estimated_dollar across
+       missed-revenue findings for this encounter. Colour tiers:
+         low (green)    < $50
+         medium (amber) $50-$200
+         high (red)     >= $200
+       Lets the biller scan the home page for highest-value
+       opportunities without clicking into each encounter.
+
+       The badge is rendered as a real <button> nested INSIDE the
+       card's outer <a>. We stopPropagation + preventDefault on
+       click so the badge opens the detail modal instead of
+       navigating to the encounter page. data-opportunity-encounter
+       is what the global handler reads to fetch the modal body. #}
+    {% if card.revenue_opportunity_tier and card.revenue_opportunity_total %}
+      <button
+        type="button"
+        class="badge badge-revenue badge-revenue--{{ card.revenue_opportunity_tier }} audit-card__opportunity-btn"
+        title="{{ card.revenue_opportunity_count }} missed-revenue finding{{ '' if card.revenue_opportunity_count == 1 else 's' }} — estimated total uplift. Click for details."
+        data-action="open-opportunity-modal"
+        data-opportunity-encounter="{{ card.encounter_id }}"
+      >
+        <span aria-hidden="true">$$</span>
+        ${{ '%0.0f'|format(card.revenue_opportunity_total) }} opportunity
+      </button>
+    {% endif %}
+  </div>
+
+  <div class="audit-card__foot">
+    <span class="muted small">via {{ card.source|default("upload") }}</span>
+    <span class="btn btn-ghost btn-sm">View details &rarr;</span>
+  </div>
+</a>

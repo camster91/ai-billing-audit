@@ -39,7 +39,7 @@ if str(SRC_ROOT) not in sys.path:
 
 import optimize as opt  # noqa: E402
 
-VAL_PATH = PROJECT_ROOT / "data" / "val.json"
+VAL_PATH = PROJECT_ROOT / "data" / "synth" / "val.json"
 OPTIMIZE_PATH = SRC_ROOT / "optimize.py"
 
 

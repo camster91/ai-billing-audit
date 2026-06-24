@@ -1,0 +1,776 @@
+{
+  "summary": {
+    "n_encounters": 13,
+    "mean_per_encounter": {
+      "precision": 0.6153846153846154,
+      "recall": 0.7692307692307693,
+      "f1": 0.6692307692307693
+    },
+    "micro_aggregate": {
+      "precision": 0.6086956521739131,
+      "recall": 0.7368421052631579,
+      "f1": 0.6666666666666666,
+      "true_positives": 14,
+      "total_predicted": 23,
+      "total_gold": 19
+    },
+    "clean_encounters": {
+      "n_gold_clean": 0,
+      "n_pred_clean": 0,
+      "n_overcalled_clean": 0
+    },
+    "per_rule": {
+      "rule_ahcip_cmgp": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_ahcip_dx_linkage": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_em_level": {
+        "tp": 4,
+        "fp": 2,
+        "fn": 2,
+        "precision": 0.6666666666666666,
+        "recall": 0.6666666666666666
+      },
+      "rule_ahcip_em_level_upcode": {
+        "tp": 1,
+        "fp": 2,
+        "fn": 1,
+        "precision": 0.3333333333333333,
+        "recall": 0.5
+      },
+      "rule_ahcip_global_window": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_lab_coverage": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0
+      },
+      "rule_ahcip_missing_procedure": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_non_insured_service": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null
+      },
+      "rule_ahcip_psychotherapy_time": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "rule_ahcip_referring_npi": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_same_day_conflict": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ahcip_telehealth": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "per_severity": {
+      "info": {
+        "n_encounters": 6,
+        "n_gold_findings": 6,
+        "mean_p": 0.38888888888888884,
+        "mean_r": 0.6666666666666666,
+        "mean_f1": 0.47222222222222215
+      },
+      "medium": {
+        "n_encounters": 1,
+        "n_gold_findings": 1,
+        "mean_p": 0.3333333333333333,
+        "mean_r": 1.0,
+        "mean_f1": 0.5
+      },
+      "high": {
+        "n_encounters": 11,
+        "n_gold_findings": 11,
+        "mean_p": 0.4393939393939394,
+        "mean_r": 0.7272727272727273,
+        "mean_f1": 0.5303030303030304
+      },
+      "critical": {
+        "n_encounters": 1,
+        "n_gold_findings": 1,
+        "mean_p": 0.5,
+        "mean_r": 1.0,
+        "mean_f1": 0.6666666666666666
+      }
+    },
+    "latency": {
+      "mean_s": 42.77231832650992,
+      "p95_s": 80.40761208534241,
+      "n_errors": 0
+    }
+  },
+  "results": [
+    {
+      "encounter_id": "ca_ahcip_001",
+      "n_gold": 1,
+      "n_pred": 1,
+      "n_matched": 1,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 33.15353083610535,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "comprehensive assessment for diabetes follow-up",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca1",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "comprehensive assessment for diabetes follow-up"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_002",
+      "n_gold": 1,
+      "n_pred": 2,
+      "n_matched": 1,
+      "p": 0.5,
+      "r": 1.0,
+      "f1": 0.6666666666666666,
+      "latency_s": 57.5681939125061,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "consultation",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_referring_npi",
+          "rule_ids": [
+            "rule_ahcip_referring_npi"
+          ],
+          "quote": "referred by Dr. Smith for hypertension management",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_cmgp",
+          "rule_ids": [
+            "rule_ahcip_cmgp"
+          ],
+          "quote": "hypertension management. BP 168/102, HR 84. No end-organ damage. Started amlodipine 5mg daily",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca3",
+          "rule_id": "rule_ahcip_referring_npi",
+          "severity": "high",
+          "category": "consultation",
+          "suggested_code": "03.03A",
+          "clinical_evidence_quote": "referred by Dr. Smith"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_003",
+      "n_gold": 2,
+      "n_pred": 3,
+      "n_matched": 2,
+      "p": 0.6666666666666666,
+      "r": 1.0,
+      "f1": 0.8,
+      "latency_s": 45.72710561752319,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "Note explicitly documents a 'comprehensive assessment' and claim bills 03.04A comprehensive \u2014 E/M level matches the documentation, no action required."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_same_day_conflict",
+          "rule_ids": [
+            "rule_ahcip_same_day_conflict"
+          ],
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "Claim bills 03.04A (comprehensive) AND 03.05A (minor) on the same date for the same patient. Per SOMB, comprehensive + minor cannot both be billed on the same day, and the note documents a single comprehensive chronic-disease visit with no separately identifiable minor component. Action: remove 03.05A from the claim (or, if a distinct minor element was intended, downgrade 03.04A to 03.05A \u2014 but documentation supports retaining the comprehensive level)."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_cmgp",
+          "rule_ids": [
+            "rule_ahcip_cmgp"
+          ],
+          "quote": "Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees",
+          "explanation": "Patient has multiple CMGP-qualifying chronic conditions (T2DM, HTN, dyslipidemia, and OA with active medication management \u2014 atorvastatin adjusted) and claim bills 03.04A comprehensive, but no CMGP modifier is attached. Action: append the CMGP modifier to capture the chronic disease management general premium."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca5",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "annual comprehensive assessment"
+        },
+        {
+          "finding_id": "ca16",
+          "rule_id": "rule_ahcip_same_day_conflict",
+          "severity": "high",
+          "category": "modifier",
+          "suggested_code": "03.04A (drop 03.05A \u2014 same-day conflict per SOMB)",
+          "clinical_evidence_quote": "annual comprehensive assessment",
+          "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_004",
+      "n_gold": 1,
+      "n_pred": 1,
+      "n_matched": 1,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 22.5550639629364,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "brief assessment",
+          "explanation": "The clinical note explicitly states 'brief assessment' for a focused, problem-oriented URTI visit (cough x 5 days, lung exam, supportive care advised), but the claim bills 03.04A (comprehensive assessment). The documented scope does not meet comprehensive criteria (no multi-system workup, no complex decision-making, no chronic disease management depth). This is an upcode. Recommended action: drop the claim from 03.04A to 03.01A (brief assessment) or 03.05A (minor assessment) to match the documented level of service. Submitting a comprehensive code for a brief, single-complaint visit is a common AHCIP auto-denial trigger and a compliance risk."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca7",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "03.01A",
+          "clinical_evidence_quote": "Office visit, brief assessment"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_005",
+      "n_gold": 1,
+      "n_pred": 2,
+      "n_matched": 1,
+      "p": 0.5,
+      "r": 1.0,
+      "f1": 0.6666666666666666,
+      "latency_s": 63.722399950027466,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_global_window",
+          "rule_ids": [
+            "rule_ahcip_global_window"
+          ],
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago",
+          "explanation": "This is a post-operative follow-up 8 days after cholecystectomy, well within the 90-day global surgical period under SOMB GR 3.2.1. The documentation describes routine post-operative care (incision check, infection assessment, discharge from surgical care) which is included in the surgical fee and should not be billed separately. The claim has no modifier-attached explanatory text to indicate an unrelated condition was addressed."
+        },
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "Incision well-healed, no signs of infection. Patient reports mild fatigue. Discharged from surgical care.",
+          "explanation": "The note documents a focused, single-system post-op assessment (incision check, infection check, one patient-reported symptom, discharge from surgical care). This content is consistent with a brief or minor assessment, not a comprehensive multi-system workup. The claim bills 03.04A comprehensive, which overstates the level of service documented."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca8",
+          "rule_id": "rule_ahcip_global_window",
+          "severity": "high",
+          "category": "modifier",
+          "suggested_code": "drop visit (within 90-day global period) or attach explanatory text",
+          "clinical_evidence_quote": "Post-op follow-up, cholecystectomy 8 days ago",
+          "note": "Alberta SOMB does not use US -24 modifier"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_006",
+      "n_gold": 2,
+      "n_pred": 3,
+      "n_matched": 1,
+      "p": 0.3333333333333333,
+      "r": 0.5,
+      "f1": 0.4,
+      "latency_s": 46.17101192474365,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "rule_ids": [
+            "rule_ahcip_em_level_upcode"
+          ],
+          "quote": "Telehealth follow-up for stable depression. PHQ-9 score 6, down from 12 last visit. Continuing sertraline 100mg. No side effects reported.",
+          "explanation": "Documentation describes a brief follow-up for stable depression \u2014 a single PHQ-9 score, unchanged medication (sertraline 100mg), and no reported side effects. A 03.04A comprehensive assessment requires multi-system, detailed history and exam that is not present in this note. The encounter is more consistent with 03.05A (minor assessment) or 03.01A (brief assessment). Recommend downgrading 03.04A to the level supported by documentation."
+        },
+        {
+          "finding_id": "",
+          "category": "telehealth",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_telehealth",
+          "rule_ids": [
+            "rule_ahcip_telehealth"
+          ],
+          "quote": "Telehealth follow-up",
+          "explanation": "The encounter is explicitly documented as a telehealth visit, but the claim has no telehealth premium indicator/code attached. Verify the current SOMB telehealth premium for the date of service and append it to the claim (Alberta's telehealth premium code has changed in recent SOMB updates; do not hardcode)."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_cmgp",
+          "rule_ids": [
+            "rule_ahcip_cmgp"
+          ],
+          "quote": "Continuing sertraline 100mg",
+          "explanation": "Patient has a documented chronic mental health condition (F32.1 major depressive disorder, recurrent) with active ongoing medication management (sertraline 100mg) and standardized symptom monitoring (PHQ-9). 03.04A comprehensive assessment is billed without a CMGP modifier. The published CMGP list (T2DM, HTN, CKD, COPD, CHF, dyslipidemia, OA) is weighted toward physical chronic disease \u2014 confirm against the current SOMB whether recurrent depression with active pharmacologic management meets CMGP criteria for this patient; if so, append CMGP to capture the chronic disease management premium."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca9",
+          "rule_id": "rule_ahcip_telehealth",
+          "severity": "medium",
+          "category": "modifier",
+          "suggested_code": "telehealth modifier",
+          "clinical_evidence_quote": "Telehealth follow-up"
+        },
+        {
+          "finding_id": "ca17",
+          "rule_id": "rule_ahcip_psychotherapy_time",
+          "severity": "high",
+          "category": "psychotherapy",
+          "suggested_code": "08.19A (45-min psychotherapy)",
+          "clinical_evidence_quote": "PHQ-9 score 6, down from 12 last visit",
+          "note": "If session is 45+ min and physician-delivered, 08.19A applies"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_007",
+      "n_gold": 1,
+      "n_pred": 1,
+      "n_matched": 1,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 20.4206600189209,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "psychotherapy",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_psychotherapy_time",
+          "rule_ids": [
+            "rule_ahcip_psychotherapy_time"
+          ],
+          "quote": "Mental health counselling, 45-minute session",
+          "explanation": "The clinical note documents a 45-minute physician-delivered mental health counselling / psychotherapy session for generalized anxiety (F41.1). The claim bills 03.04A (comprehensive assessment) instead of the appropriate time-based psychotherapy code. Per SOMB, a physician-delivered 45-minute psychotherapy session is billed as 08.19A, not as a general E/M assessment. The clinic is likely under-billing the encounter by missing the psychotherapy fee."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca11",
+          "rule_id": "rule_ahcip_psychotherapy_time",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "08.19A",
+          "clinical_evidence_quote": "45-minute session"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_008",
+      "n_gold": 1,
+      "n_pred": 1,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 20.52929711341858,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Office visit, brief assessment for cough",
+          "explanation": "Note documents a 'brief assessment' and the claim bills 03.01A (brief assessment). The E/M level matches the documentation; no action required."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca18",
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "03.04A (comprehensive assessment)",
+          "clinical_evidence_quote": "rhonchi bilaterally",
+          "note": "Moderate-acuity pneumonia visit should bill 03.04A, not 03.01A (undercode)"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_009",
+      "n_gold": 1,
+      "n_pred": 2,
+      "n_matched": 1,
+      "p": 0.5,
+      "r": 1.0,
+      "f1": 0.6666666666666666,
+      "latency_s": 75.47139978408813,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_non_insured_service",
+          "rule_ids": [
+            "rule_ahcip_non_insured_service"
+          ],
+          "quote": "Annual health maintenance visit",
+          "explanation": "Note documents 'Annual health maintenance visit' with no specific presenting complaint \u2014 only routine screening, immunization review, and lifestyle counselling. Alberta does not insure annual physicals, health maintenance visits, wellness exams, or preventive check-ups as separately billable SOMB services. The claim should not be submitted to AHCIP at all; the patient pays out-of-pocket or via private insurance."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "rule_ids": [
+            "rule_ahcip_dx_linkage"
+          ],
+          "quote": "Annual health maintenance visit",
+          "explanation": "The claim's diagnosis_codes list is empty while a SOMB code (03.04A) is billed. Per AHCIP rules, all SOMB service codes must be linked to a valid ICD-10-CA diagnosis code. The note describes a preventive health-maintenance encounter with no specific reportable condition documented, and the claim has no diagnosis codes \u2014 this will trigger auto-denial on submission. (If the visit is converted to a non-AHCIP/private-pay preventive visit, the dx-linkage concern is moot; if any AHCIP-billable service is carved out of the preventive portion, a diagnosis must be linked.)"
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca13",
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "REVIEW",
+          "clinical_evidence_quote": "Annual health maintenance visit"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_010",
+      "n_gold": 2,
+      "n_pred": 1,
+      "n_matched": 0,
+      "p": 0.0,
+      "r": 0.0,
+      "f1": 0.0,
+      "latency_s": 35.87268090248108,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "complex assessment for new patient with multiple concerns: fatigue, weight loss, night sweats",
+          "explanation": "The note documents a 'complex assessment' for a new patient with multiple presenting concerns (fatigue, weight loss, night sweats) and 'Reviewed systems' as part of the workup. The claim bills 03.04A (comprehensive assessment), which matches the documented level of service. No E/M mismatch \u2014 no action needed."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca14",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "complex assessment for new patient"
+        },
+        {
+          "finding_id": "ca15",
+          "rule_id": "rule_ahcip_lab_coverage",
+          "severity": "high",
+          "category": "laboratory",
+          "suggested_code": "X-ray chest 2-view",
+          "clinical_evidence_quote": "ordered CBC, TSH, ferritin, chest X-ray"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_011",
+      "n_gold": 2,
+      "n_pred": 2,
+      "n_matched": 2,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 33.20318412780762,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Routine chronic disease follow-up for established patient with T2DM and dyslipidemia",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "rule_ids": [
+            "rule_ahcip_missing_procedure"
+          ],
+          "quote": "Pneumococcal vaccine (PPSV23) administered in office today, right deltoid IM, lot #PPV456, no immediate reaction",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca19",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "Routine chronic disease follow-up for established patient with T2DM and dyslipidemia"
+        },
+        {
+          "finding_id": "ca20",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "severity": "high",
+          "category": "procedure",
+          "suggested_code": "13.59A (pneumococcal vaccination) or current SOMB immunization code",
+          "clinical_evidence_quote": "Pneumococcal vaccine (PPSV23) administered in office today, right deltoid IM",
+          "note": "In-office vaccine given but no immunization / procedure code billed; lost revenue"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_012",
+      "n_gold": 2,
+      "n_pred": 2,
+      "n_matched": 2,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 21.237998008728027,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_em_level",
+          "rule_ids": [
+            "rule_ahcip_em_level"
+          ],
+          "quote": "Office visit, brief assessment for episodic palpitations",
+          "explanation": "Clinical note explicitly documents a 'brief assessment' and the claim bills 03.01A (brief). The documentation verb matches the billed level \u2014 no E/M mismatch, no action required."
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "rule_ids": [
+            "rule_ahcip_missing_procedure"
+          ],
+          "quote": "12-lead EKG performed in office",
+          "explanation": "The physician performed and interpreted a 12-lead EKG in office, but the claim contains only 03.01A (E/M) with no EKG/ECG procedure code. In-office ECG interpretation is a separately billable physician service under SOMB. Add the appropriate diagnostic/cardiac procedure code (e.g., current SOMB ECG interpretation code) to capture the lost revenue. Diagnosis linkage is already established via R00.2, so no dx-linkage finding is required."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca21",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.01A",
+          "clinical_evidence_quote": "Office visit, brief assessment for episodic palpitations"
+        },
+        {
+          "finding_id": "ca22",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "severity": "high",
+          "category": "procedure",
+          "suggested_code": "X140A or current SOMB ECG / 12-lead EKG interpretation code",
+          "clinical_evidence_quote": "12-lead EKG performed in office \u2014 normal sinus rhythm",
+          "note": "In-office EKG performed and interpreted by physician; no cardiology / diagnostic SOMB code billed"
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_013",
+      "n_gold": 2,
+      "n_pred": 2,
+      "n_matched": 1,
+      "p": 0.5,
+      "r": 0.5,
+      "f1": 0.5,
+      "latency_s": 80.40761208534241,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "rule_ids": [
+            "rule_ahcip_missing_procedure"
+          ],
+          "quote": "Right knee injection performed in office today \u2014 40mg triamcinolone acetonide + 3mL 1% lidocaine via superolateral approach",
+          "explanation": "The physician performed an in-office right knee intra-articular injection (triamcinolone acetonide 40mg + 1% lidocaine 3mL via superolateral approach, aseptic technique). This is a billable physician procedure, but the claim's SOMB code list contains only 03.04A with no corresponding joint injection / intra-articular procedure code. The procedure work is fully documented in the note but the procedure code is missing from the claim, resulting in lost revenue."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ahcip_cmgp",
+          "rule_ids": [
+            "rule_ahcip_cmgp"
+          ],
+          "quote": "Established patient 58yo F with bilateral knee osteoarthritis, here for scheduled intra-articular injection",
+          "explanation": "Patient has documented chronic osteoarthritis (ICD-10-CA M17.9 and M17.11) with active ongoing management \u2014 the visit itself is a scheduled intra-articular injection for chronic bilateral knee OA. 03.04A is billed without the CMGP (chronic disease management general premium) modifier. OA with active management is on the CMGP-eligible chronic disease list, and the modifier should be appended to the 03.04A claim line."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "ca23",
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "03.04A",
+          "clinical_evidence_quote": "Established patient 58yo F with bilateral knee osteoarthritis"
+        },
+        {
+          "finding_id": "ca24",
+          "rule_id": "rule_ahcip_missing_procedure",
+          "severity": "high",
+          "category": "procedure",
+          "suggested_code": "X311A (intra-articular joint injection) or current SOMB injection code",
+          "clinical_evidence_quote": "Right knee injection performed in office today \u2014 40mg triamcinolone acetonide",
+          "note": "Major in-office procedure performed but no joint-injection / procedure SOMB code billed"
+        }
+      ]
+    }
+  ]
+}

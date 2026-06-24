@@ -9,13 +9,28 @@ versioned here reproduces a given model behaviour.
 ```
 prompts/
 ├── README.md                # this file
-├── MANIFEST.json            # append-only log of optimization runs (R/P + hash per run)
+├── MANIFEST.json            # append-only log of canonical optimization runs (R/P + hash per run)
 ├── grader_config.json       # judge model + temperature=0 + seed=42
 ├── grader_prompt.txt        # LLM judge system prompt
-└── v0/                      # the unoptimized v0 Auditor prompt (baseline reference)
-    ├── MANIFEST.json        # v0 pin (content_sha256 + paired test split hash)
-    └── auditor_prompt.txt   # verbatim copy of the v0 system prompt
+├── v0/                      # the unoptimized v0 Auditor prompt (baseline reference, canonical)
+│   ├── MANIFEST.json        # v0 pin (content_sha256 + paired test split hash)
+│   └── auditor_prompt.txt   # verbatim copy of the v0 system prompt
+├── v1..v11/                 # archived / superseded prompts; each begins with a STATUS header
+│   └── auditor_prompt.txt   # first line: "# STATUS: superseded by v12 AHCIP-only. Do not use."
+├── v12/                     # the shipped AHCIP-only Auditor (canonical, current)
+│   └── auditor_prompt.txt
+└── v13/                     # trimmed v12 derivative (production-candidate; not in MANIFEST)
+    └── auditor_prompt.txt
 ```
+
+**Why only 2 entries in `MANIFEST.json`?**  The codebase iterates through many prompt
+versions (v0..v13) but only v0 (the unoptimized baseline) and v12 (the shipped
+AHCIP-only rewrite) are canonical.  v1–v7 were US-only single-market iterations,
+v8–v11 were multi-market / AHCIP-aware but still carried a US-modifier (-24) leak,
+and all eleven are superseded by v12.  v13 is a trimmed derivative of v12 for
+production latency.  See `MANIFEST.json`'s `archived_versions` and `status_note`
+keys for the full per-version rationale, and the `# STATUS: superseded by v12...`
+header at the top of each `v1..v11/auditor_prompt.txt` file.
 
 ## v0 Auditor prompt (baseline)
 

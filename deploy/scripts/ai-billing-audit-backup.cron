@@ -1,0 +1,28 @@
+# /etc/cron.d/ai-billing-audit-backup
+# ============================================================================
+# Cron entries for the ai-billing-audit backup + monthly restore verification.
+#
+# Schedule:
+#   - Weekly backup at 02:00 UTC every Sunday (Sundays are "weekly" tier).
+#   - Monthly restore-verify at 02:30 UTC on the first Sunday of the month.
+#     (The monthly backup itself is a side-effect of the weekly run on the
+#     first Sunday — see backup.sh's auto-tier logic. The 02:30 verify run
+#     happens AFTER the 02:00 backup, so it always verifies the freshest
+#     possible artifact.)
+#
+# CRITICAL: cron entries MUST include the user column (6 fields total).
+# A 5-field entry is silently ignored by crond. Verified pitfall on the
+# Ashbi VPS (2026-06-16, jw-habits).
+#
+# Logs:
+#   /var/log/ai-billing-audit/backup.log
+#   /var/log/ai-billing-audit/verify.log
+#
+# To verify the schedule is loaded:
+#   systemctl status crond
+#   grep CRON /var/log/cron   # entries appear here within ~60s of the run
+# ============================================================================
+
+# m  h  dom mon dow user  command
+  0  2  *   *   0   root  /usr/local/bin/audit-backup.sh        >> /var/log/ai-billing-audit/backup.log 2>&1
+ 30  2  1-7 *   0   root  /usr/local/bin/audit-restore-verify.sh >> /var/log/ai-billing-audit/verify.log 2>&1

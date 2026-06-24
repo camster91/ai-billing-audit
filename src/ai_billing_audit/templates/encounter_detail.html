@@ -1,236 +1,743 @@
 {% extends "base.html" %}
-{% block title %}{{ encounter_id }} — audit panel{% endblock %}
+{% block title %}{{ encounter_id }} — audit{% endblock %}
 {% block content %}
-<section class="page-head">
-  <p class="crumbs"><a href="/">all encounters</a> &rsaquo; {{ encounter_id }}</p>
-  <h1>
-    <span class="encounter-id">{{ encounter_id }}</span>
-    <span class="badge badge--{{ difficulty|lower }}">{{ difficulty }}</span>
-    {% if is_flagged %}
-      <span class="badge badge--flag">flagged</span>
-    {% else %}
-      <span class="badge badge--clean">clean</span>
+
+<div class="page-head">
+  <div>
+    <p class="sub"><a href="/">&larr; Back to audits</a></p>
+    <h1 style="margin: 0;">
+      <span class="mono">{{ encounter_id }}</span>
+      {% if is_uploaded_encounter %}
+        <span class="badge badge-uploaded">Uploaded</span>
+      {% endif %}
+      {% if zorva_context and zorva_context.market %}
+        <span class="badge badge-neutral" title="{{ zorva_context.billing_authority or zorva_context.compliance_law or '' }}">{{ zorva_context.market }}{% if zorva_context.province %} · {{ zorva_context.province }}{% endif %}</span>
+      {% endif %}
+      {% if is_flagged %}
+        <span class="badge badge-flagged">Flagged</span>
+      {% else %}
+        <span class="badge badge-clean">Clean</span>
+      {% endif %}
+    </h1>
+    {% if zorva_context and zorva_context.compliance_law %}
+    <p class="sub mono muted">
+      {{ zorva_context.compliance_law }}{% if zorva_context.billing_authority %} &middot; {{ zorva_context.billing_authority }}{% endif %}{% if zorva_context.invoice_format %} &middot; {{ zorva_context.invoice_format }}{% endif %}
+    </p>
     {% endif %}
-  </h1>
-  <p class="muted">{{ summary }}</p>
-</section>
-
-<section class="panel">
-  <h2>Clinical note</h2>
-  {% if findings and findings[0].quote %}
-    <p class="clinical-note">
-      {{ clinical_note | highlight_quote(findings[0].quote) }}
+    {% if difficulty or source or job_id %}
+    <p class="sub mono">
+      {% if difficulty %}{{ difficulty }}{% endif %}
+      {% if source %} &middot; via {{ source }}{% endif %}
+      {% if job_id %} &middot; job <a href="/encounter/{{ encounter_id }}/json">{{ job_id[:8] }}</a>{% endif %}
     </p>
-    <p class="muted small">
-      Highlighted span is the evidence quote for finding
-      <code class="finding-id">{{ findings[0].finding_id }}</code> (rule
-      <code class="rule-id">{{ findings[0].rule_id }}</code>).
-    </p>
-  {% else %}
-    <p class="clinical-note">{{ clinical_note }}</p>
-    <p class="muted small">No evidence quote on the primary finding.</p>
-  {% endif %}
-</section>
+    {% endif %}
+  </div>
+  <div class="row">
+    <span class="muted small">Ran {{ time_ago }}</span>
+  </div>
+</div>
 
-<section class="panel-grid">
-  <section class="panel">
-    <h2>Claim</h2>
-    <dl class="kv">
-      <dt>CPT codes</dt>
-      <dd>
-        {% if claim.cpt_codes %}
-          {% for c in claim.cpt_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
-        {% else %}
-          <span class="muted">none billed</span>
-        {% endif %}
-      </dd>
-      <dt>ICD-10 codes</dt>
-      <dd>
-        {% if claim.icd10_codes %}
-          {% for c in claim.icd10_codes %}<code>{{ c }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}
-        {% else %}
-          <span class="muted">none</span>
-        {% endif %}
-      </dd>
-    </dl>
+<div class="detail-grid">
+  <section class="card">
+    <h2 style="margin-top: 0;">Claim</h2>
+    {% if claim.cpt_codes or claim.dx_codes %}
+      <div class="detail-row">
+        <div class="detail-label">CPT</div>
+        <div class="detail-value mono">{{ claim.cpt_codes|join(" &middot; ") or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">ICD-10</div>
+        <div class="detail-value mono">{{ claim.dx_codes|join(" &middot; ") or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Patient</div>
+        <div class="detail-value">{{ claim.patient_id or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Provider NPI</div>
+        <div class="detail-value mono">{{ claim.npi or "—" }}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Date of service</div>
+        <div class="detail-value">{{ claim.date_of_service or "—" }}</div>
+      </div>
+    {% else %}
+      <p class="muted">No claim data parsed. This audit ran against a paste-form or a non-837P input.</p>
+    {% endif %}
   </section>
 
-  <section class="panel">
-    <h2>Retrieved rules</h2>
-    {% if rules %}
-      <ul class="rule-list">
-        {% for r in rules %}
-        <li>
-          <code class="rule-id">{{ r.rule_id }}</code>
-          <span class="rule-cat">{{ r.category }}</span>
-          <span class="badge badge--{{ r.severity|lower }}">{{ r.severity }}</span>
-          <p class="rule-trigger">{{ r.trigger }}</p>
-        </li>
+  <section class="card">
+    <h2 style="margin-top: 0;">Audit summary</h2>
+    {% if summary %}
+      <p style="font-size: var(--font-size-lg); line-height: 1.5;">{{ summary }}</p>
+    {% else %}
+      <p class="muted">No summary recorded.</p>
+    {% endif %}
+    {# Denial-risk score. Computed from the LLM's findings using
+       severity weights + rule-family multipliers. The tier
+       (low / medium / high / critical) drives the colour and
+       the call-to-action. v0: heuristic weights. v1: logistic
+       regression on the first pilot clinic's historical denial
+       log. #}
+    {% if denial_risk %}
+      <div class="denial-risk denial-risk--{{ denial_risk.tier }}">
+        <span class="denial-risk__pct">{{ (denial_risk.denial_probability * 100) | round(1) }}%</span>
+        <span class="denial-risk__label">denial risk ({{ denial_risk.tier }})</span>
+        {% if denial_risk.top_risk %}
+          <span class="denial-risk__top">
+            top risk:
+            {% if denial_risk.top_risk.rule_id %}
+              <span class="mono">{{ denial_risk.top_risk.rule_id }}</span>
+            {% endif %}
+            ({{ (denial_risk.top_risk.risk * 100) | round(1) }}%)
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="audit-card__chips mt-2">
+      {% if findings|length == 0 %}
+        <span class="badge badge-clean">0 findings</span>
+      {% else %}
+        <span class="badge badge-flagged">{{ findings|length }} finding{{ "" if findings|length == 1 else "s" }}</span>
+        {% for f in findings %}
+          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
         {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No rules retrieved for this encounter.</p>
-    {% endif %}
+      {% endif %}
+    </div>
   </section>
-</section>
+</div>
 
-<section class="panel">
-  <h2>Ground-truth findings <span class="muted small">({{ n_findings }})</span></h2>
-  {% if findings %}
-    <ul class="finding-list">
-      {% for f in findings %}
-      <li class="finding finding--{{ f.severity|lower }}">
-        <div class="finding__head">
-          <code class="finding-id">{{ f.finding_id }}</code>
-          <span class="badge badge--{{ f.severity|lower }}">{{ f.severity }}</span>
-          <span class="badge badge--cat">{{ f.category }}</span>
-          <code class="rule-id rule-id-inline">rule: {{ f.rule_id }}</code>
-          {% if f.suggested_is_verdict %}
-            <span class="suggested suggested--verdict suggested--verdict-{{ f.suggested_verdict }}">{{ f.suggested_code }}</span>
-          {% else %}
-            <code class="suggested">suggested: {{ f.suggested_code }}</code>
-          {% endif %}
+{% if revenue_opportunities %}
+<section class="section revenue-opportunities">
+  <div class="section-head">
+    <h2>Revenue opportunities</h2>
+    <span class="sub">
+      {% set opp_n = revenue_opportunities|length %}
+      {{ opp_n }} missed-revenue finding{{ "" if opp_n == 1 else "s" }}
+      &middot;
+      estimated total uplift
+      <strong class="mono">${{ "%0.2f"|format(total_opportunity_dollars or 0) }}</strong>
+    </span>
+  </div>
+  <ul class="revenue-opportunity-list">
+    {% for opp in revenue_opportunities %}
+      <li class="revenue-opportunity-card" id="opp-{{ opp.finding_id or loop.index }}">
+        <div class="revenue-opportunity-card__head">
+          <span class="revenue-opportunity-card__dollar-badge mono">
+            ${{ "%0.0f"|format(opp.estimated_dollar) }}
+          </span>
+          <div class="revenue-opportunity-card__title">
+            <span class="revenue-opportunity-card__name">{{ opp.rule_name or opp.opportunity_rule_id }}</span>
+            {% if opp.opportunity_rule_id %}
+              <span class="chip-rule mono">{{ opp.opportunity_rule_id }}</span>
+            {% endif %}
+            {% if opp.suggested_code %}
+              <span class="muted small">&rarr; {{ opp.suggested_code }}</span>
+            {% endif %}
+            {# Same per-finding model-confidence badge as the findings
+               list. Bucket is keyed by ``opportunity_rule_id`` for
+               opportunities because they don't always carry a
+               ``rule_id`` field directly. #}
+            {% set omc = opp.model_confidence or {"bucket": "uncalibrated", "label": "Not yet calibrated at this clinic"} %}
+            <span class="badge badge-confidence badge-confidence--{{ omc.bucket }}"
+                  title="Calibrated from {{ omc.get('validations', 0) if omc is mapping else 0 }} accept decision(s) for this rule">
+              Model confidence: {{ omc.label }}
+            </span>
+          </div>
         </div>
-        <blockquote class="finding-quote">{{ f.quote }}</blockquote>
-        <div class="finding__actions">
-          <button type="button" class="btn btn--ghost" data-action="copy-quote"
-                  data-finding-id="{{ f.finding_id }}">copy quote</button>
-          <button type="button" class="btn btn--ghost" data-action="scroll-to-note"
-                  data-finding-id="{{ f.finding_id }}">show in note</button>
-        </div>
+        {% if opp.quote %}
+          <div class="finding-item__quote">&ldquo;{{ opp.quote }}&rdquo;</div>
+        {% endif %}
+        {% if opp.suggested_action %}
+          <p class="revenue-opportunity-card__action">
+            <span class="revenue-opportunity-card__action-label">Suggested action:</span>
+            {{ opp.suggested_action }}
+          </p>
+        {% endif %}
       </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if findings %}
+<section class="section">
+  <h2>Findings ({{ findings|length }})</h2>
+  {% if n_findings_hidden %}
+    <p class="muted small" style="margin: 0 0 var(--space-3);">
+      Showing {{ findings|length }} of {{ n_findings_total }} findings.
+      {{ n_findings_hidden }} below the severity threshold are hidden.
+      Set <code>MIN_SEVERITY_TO_SHOW=info</code> in the env to see them.
+    </p>
+  {% endif %}
+  <ul class="finding-list">
+    {% for f in findings %}
+      <li class="finding-item" id="finding-{{ f.finding_id }}">
+        <div class="finding-item__head">
+          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
+          {% if f.category %}<span class="badge badge-neutral">{{ f.category }}</span>{% endif %}
+          {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
+          {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
+          {# Per-finding model-confidence badge. Rendered as a small
+             color-coded pill ("HIGH" green, "MEDIUM" amber, "LOW" red,
+             "Not yet calibrated" muted) so the biller can see how
+             much real-world signal the model has for this rule.
+             The bucket is computed in the API from the per-rule
+             accept-count in the feedback log; when the log is empty
+             we surface the explicit "uncalibrated" placeholder
+             rather than a misleading HIGH. #}
+          {% set mc = f.model_confidence or {"bucket": "uncalibrated", "label": "Not yet calibrated at this clinic"} %}
+          <span class="badge badge-confidence badge-confidence--{{ mc.bucket }}"
+                title="Calibrated from {{ mc.get('validations', 0) if mc is mapping else 0 }} accept decision(s) for this rule">
+            Model confidence: {{ mc.label }}
+          </span>
+          <span class="grow"></span>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-toggle" data-finding-id="{{ f.finding_id }}">
+            Appeal denial
+          </button>
+        </div>
+        {# Per-finding Accept / Dismiss / Modify button row.
+           Each button POSTs to its own per-finding endpoint which
+           writes one FeedbackEntry to the learning-loop log. The
+           Modify form is collapsed by default and revealed when the
+           Modify button is clicked. #}
+        <div class="finding-actions" data-finding-id="{{ f.finding_id }}">
+          <button type="button" class="btn btn-primary btn-sm finding-actions__btn"
+                  data-action="finding-accept" data-finding-id="{{ f.finding_id }}">
+            Accept
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm finding-actions__btn"
+                  data-action="finding-dismiss" data-finding-id="{{ f.finding_id }}">
+            Dismiss
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm finding-actions__btn"
+                  data-action="finding-modify-toggle" data-finding-id="{{ f.finding_id }}">
+            Modify
+          </button>
+          <span class="finding-actions__status muted small" data-finding-id="{{ f.finding_id }}"></span>
+        </div>
+        {# Inline modify form: collapsed by default, expands when the
+           Modify button above is clicked. Captures new severity and/or
+           category before sending. #}
+        <form
+          class="modify-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/finding/{{ f.finding_id }}/modify"
+          data-current-severity="{{ f.severity }}"
+          data-current-category="{{ f.category or '' }}"
+          hidden
+        >
+          <div class="modify-form__row">
+            <label class="dismiss-form__label">
+              New severity
+              <select name="new_severity" class="dismiss-form__select">
+                <option value="">— keep —</option>
+                <option value="info">info</option>
+                <option value="low">low</option>
+                <option value="medium"{% if f.severity == 'medium' %} selected{% endif %}>medium</option>
+                <option value="high"{% if f.severity == 'high' %} selected{% endif %}>high</option>
+                <option value="critical"{% if f.severity == 'critical' %} selected{% endif %}>critical</option>
+              </select>
+            </label>
+            <label class="dismiss-form__label">
+              New category
+              <input
+                type="text"
+                name="new_category"
+                class="dismiss-form__input"
+                maxlength="80"
+                value="{{ f.category or '' }}"
+                placeholder="e.g. documentation_gap"
+              />
+            </label>
+          </div>
+          {# "Why" rationale — captured as free text so the
+             learning-loop can distinguish a severity down-grade
+             from a category re-classification from a typo
+             correction. Persisted into the feedback / audit
+             trail alongside the override. #}
+          <label class="dismiss-form__label" for="modify-why-{{ f.finding_id }}">
+            Why are you changing this?
+            <textarea
+              id="modify-why-{{ f.finding_id }}"
+              name="why"
+              class="dismiss-form__input"
+              rows="2"
+              maxlength="500"
+              placeholder="e.g. Severity should be low because the documentation is borderline; not a high-confidence finding."
+            ></textarea>
+          </label>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="finding-modify-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Save override
+            </button>
+          </div>
+        </form>
+        {% if f.quote %}
+          <div class="finding-item__quote">&ldquo;{{ f.quote }}&rdquo;</div>
+        {% endif %}
+        {% if f.explanation %}
+          <p class="finding-item__explain">{{ f.explanation }}</p>
+        {% endif %}
+        {# Inline dismiss form: collapsed by default, expands when the
+           Dismiss button above is clicked. Captures the closed-loop
+           learning signal (why was the AI wrong) before sending. #}
+        <form
+          class="dismiss-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/dismiss"
+          hidden
+        >
+          <label class="dismiss-form__label">
+            Why dismiss?
+            <select name="reason_category" class="dismiss-form__select">
+              <option value="false_positive">False positive — the auditor is wrong</option>
+              <option value="already_documented">Already documented in the note</option>
+              <option value="not_applicable">Doesn't apply (payer-specific)</option>
+              <option value="other">Other (explain)</option>
+            </select>
+          </label>
+          <label class="dismiss-form__label">
+            Detail (optional)
+            <input
+              type="text"
+              name="reason_text"
+              class="dismiss-form__input"
+              maxlength="500"
+              placeholder="e.g. note already says 'modifier 25 applied'"
+            />
+          </label>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Confirm dismiss
+            </button>
+          </div>
+        </form>
+        {# Inline appeal form: collapsed by default, expands when the
+           "Appeal denial" button is clicked. Asks for the payer's
+           denial reason and generates a letter. #}
+        <form
+          class="appeal-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/appeal"
+          hidden
+        >
+          <input type="hidden" name="rule_id" value="{{ f.rule_id }}">
+          <label class="dismiss-form__label">
+            Why did the payer deny this claim?
+            <input
+              type="text"
+              name="denial_reason"
+              class="dismiss-form__input"
+              maxlength="500"
+              required
+              placeholder="e.g. Modifier -25 not supported without separate documentation"
+            />
+          </label>
+          <div class="dismiss-form__actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-cancel" data-finding-id="{{ f.finding_id }}">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Generate appeal letter
+            </button>
+          </div>
+          <div
+            class="appeal-letter-output muted small mono"
+            data-finding-id="{{ f.finding_id }}"
+            hidden
+          ></div>
+        </form>
+        {# Per-finding appeal-outcome form. Revealed via a "Log appeal
+           outcome" link after an appeal letter has been generated. The
+           appeal_id defaults to the finding_id (the biller can use
+           their own UUID; we just need a stable reference). Posts to
+           the existing /encounter/{id}/appeal/{appeal_id}/outcome
+           endpoint. Status dropdown covers the 5 options the task
+           specifies (Won / Lost / Withdrawn / Pending / Did not file);
+           "did_not_file" is sent as status="did_not_file" and the
+           server validates the 5-value set. #}
+        <form
+          class="appeal-outcome-form"
+          data-finding-id="{{ f.finding_id }}"
+          data-endpoint="/encounter/{{ encounter_id }}/appeal/{{ f.finding_id }}/outcome"
+          data-current-status="{{ (f.appeal_outcome.status if f.appeal_outcome else '') }}"
+          data-current-notes="{{ (f.appeal_outcome.notes if f.appeal_outcome else '') }}"
+          {% if not f.appeal_letter_generated %}hidden{% endif %}
+        >
+          <div class="appeal-outcome-form__head">
+            {% if f.appeal_outcome %}
+              <span class="muted small">
+                Last outcome: <strong>{{ f.appeal_outcome.status|replace('_', ' ')|title }}</strong>
+                {% if f.appeal_outcome.notes %} &middot; <span class="mono">{{ f.appeal_outcome.notes[:80] }}</span>{% endif %}
+              </span>
+            {% else %}
+              <span class="muted small">What happened with this appeal?</span>
+            {% endif %}
+          </div>
+          <div class="modify-form__row">
+            <label class="dismiss-form__label" for="appeal-outcome-status-{{ f.finding_id }}">
+              Outcome
+              <select
+                id="appeal-outcome-status-{{ f.finding_id }}"
+                name="status"
+                class="dismiss-form__select"
+                required
+              >
+                <option value="">— choose —</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+                <option value="withdrawn">Withdrawn</option>
+                <option value="pending">Pending</option>
+                <option value="did_not_file">Did not file</option>
+              </select>
+            </label>
+            <label class="dismiss-form__label" for="appeal-outcome-notes-{{ f.finding_id }}">
+              Notes
+              <input
+                id="appeal-outcome-notes-{{ f.finding_id }}"
+                type="text"
+                name="notes"
+                class="dismiss-form__input"
+                maxlength="500"
+                placeholder="e.g. Payer reprocessed at 100% on resubmission"
+              />
+            </label>
+          </div>
+          <div class="dismiss-form__actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+              {% if f.appeal_outcome %}Update outcome{% else %}Log outcome{% endif %}
+            </button>
+            <span class="appeal-outcome-form__status muted small"
+                  data-finding-id="{{ f.finding_id }}"></span>
+          </div>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if clinical_note %}
+<section class="section">
+  <h2>Clinical note</h2>
+  <pre class="clinical-note">{{ clinical_note }}</pre>
+</section>
+{% endif %}
+
+<div class="action-bar">
+  <button class="btn btn-ghost" data-action="rerun" data-endpoint="/encounter/{{ encounter_id }}/rerun">
+    Re-run audit
+  </button>
+  <button class="btn btn-ghost" data-action="flag" data-endpoint="/encounter/{{ encounter_id }}/flag">
+    Flag for review
+  </button>
+  <span class="grow"></span>
+  <a class="btn btn-ghost" href="/encounter/{{ encounter_id }}/json">View raw JSON</a>
+</div>
+
+{% if audit_trail %}
+<section class="section">
+  <h2>Audit trail <span class="muted small">({{ audit_trail|length }} event{{ "" if audit_trail|length == 1 else "s" }})</span></h2>
+  <table class="audit-trail-table">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Action</th>
+        <th>Details</th>
+        <th>Signature</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in audit_trail %}
+        <tr>
+          <td class="muted small mono">{{ row.timestamp }}</td>
+          <td>{{ row.action|replace("_", " ")|title }}</td>
+          <td class="muted small mono">
+            {% if row.data_elements.n_findings is defined %}{{ row.data_elements.n_findings }} finding{{ "s" if row.data_elements.n_findings != 1 else "" }}{% endif %}
+            {% if row.data_elements.finding_id is defined and row.data_elements.finding_id %} finding={{ row.data_elements.finding_id }}{% endif %}
+          </td>
+          <td class="hash" title="{{ row.cryptographic_signature }}">{{ row.cryptographic_signature[:16] }}…</td>
+        </tr>
       {% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">No ground-truth findings for this encounter.</p>
-  {% endif %}
+    </tbody>
+  </table>
 </section>
+{% endif %}
 
-<section class="panel panel--actions">
-  <h2>Actions</h2>
-  <div class="action-row">
-    <a class="btn btn--primary" href="/">back to index</a>
-    <a class="btn btn--ghost" href="/encounter/{{ encounter_id }}/json">view raw json</a>
-    <button type="button" class="btn btn--ghost" id="btn-toggle-mark">toggle evidence highlight</button>
-  </div>
-  {% if difficulty == "HARD" %}
-  {# Advanced actions are unique to hard encounters — they are only
-     meaningful when the audit panel has many findings across many
-     categories, which is the hard-tier complexity band. #}
-  <div class="action-row action-row--hard">
-    <span class="action-row__label">Advanced (hard tier):</span>
-    <button type="button" class="btn btn--hard" id="btn-jump-high"
-            data-target-severity="high">jump to high-severity finding</button>
-    <button type="button" class="btn btn--hard" id="btn-next-finding">next finding</button>
-    <button type="button" class="btn btn--hard" id="btn-severity-filter"
-            data-severity="all">filter: all</button>
-  </div>
-  {% endif %}
-</section>
+{% endblock %}
 
+{% block scripts %}
 <script>
-  // Three tiny, dependency-free interactions. Each button is real
-  // (no disabled state) and writes to the DOM — the visual-qa pass
-  // (kanban t_e88a2734) verifies that the buttons produce a visible
-  // effect and don't throw.
   (function () {
-    var noteEl = document.querySelector(".clinical-note");
-    var copyButtons = document.querySelectorAll('[data-action="copy-quote"]');
-    copyButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var fid = btn.getAttribute("data-finding-id");
-        var li = btn.closest(".finding");
-        var quote = li ? li.querySelector(".finding-quote") : null;
-        var text = quote ? quote.textContent : "";
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () {
-            btn.textContent = "copied " + fid;
-            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
-          }, function () {
-            btn.textContent = "copy failed";
-            setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
+    // Each [data-action] button POSTs to its endpoint, shows a
+    // toast on success, and refreshes the audit trail table.
+    function post(url, body) {
+      return fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: body ? JSON.stringify(body) : null,
+      }).then(function (r) { return r.json(); });
+    }
+    function refreshTrail() {
+      // Reload just the audit trail + audit summary by re-fetching
+      // the page and replacing the action bar's adjacent section.
+      window.location.reload();
+    }
+    // Toggle buttons: dismiss-toggle / appeal-toggle expand the
+    // inline form; dismiss-cancel / appeal-cancel collapse it.
+    // Per-finding Accept / Dismiss / Modify buttons also live in the
+    // same [data-action] sweep below.
+    document.querySelectorAll('[data-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = btn.dataset.action;
+        var findingId = btn.dataset.findingId;
+        // Per-finding inline-form toggles (Modify). Accept / Dismiss
+        // skip the form step and POST directly.
+        if (action === 'finding-modify-toggle') {
+          var form = document.querySelector('.modify-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
+        }
+        if (action === 'finding-modify-cancel') {
+          var form = document.querySelector('.modify-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        if (action === 'finding-accept' || action === 'finding-dismiss') {
+          var endpoint = '/encounter/' + encounterId() + '/finding/' + encodeURIComponent(findingId) + '/' + (action === 'finding-accept' ? 'accept' : 'dismiss');
+          btn.disabled = true;
+          post(endpoint, null).then(function (resp) {
+            btn.disabled = false;
+            if (resp && resp.ok) {
+              var statusEl = document.querySelector('.finding-actions__status[data-finding-id="' + findingId + '"]');
+              if (statusEl) statusEl.textContent = action === 'finding-accept' ? 'accepted' : 'dismissed';
+              if (window.showToast) window.showToast(
+                (action === 'finding-accept' ? 'Accepted ' : 'Dismissed ') + findingId + '.'
+              );
+              setTimeout(refreshTrail, 400);
+            } else {
+              if (window.showToast) window.showToast("Action failed: " + (resp.detail || JSON.stringify(resp)));
+            }
+          }).catch(function (err) {
+            btn.disabled = false;
+            if (window.showToast) window.showToast("Network error: " + err);
           });
-        } else {
-          btn.textContent = "copied " + fid;
-          setTimeout(function () { btn.textContent = "copy quote"; }, 1500);
+          return;
         }
-      });
-    });
-    var scrollButtons = document.querySelectorAll('[data-action="scroll-to-note"]');
-    scrollButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (noteEl) {
-          noteEl.scrollIntoView({ behavior: "smooth", block: "center" });
-          noteEl.classList.add("flash");
-          setTimeout(function () { noteEl.classList.remove("flash"); }, 1200);
+        if (action === 'dismiss-toggle') {
+          var form = document.querySelector('.dismiss-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
         }
-      });
-    });
-    var toggleBtn = document.getElementById("btn-toggle-mark");
-    if (toggleBtn && noteEl) {
-      toggleBtn.addEventListener("click", function () {
-        noteEl.classList.toggle("evidence-off");
-        var marks = noteEl.querySelectorAll("mark.evidence");
-        marks.forEach(function (m) { m.classList.toggle("evidence-off"); });
-      });
-    }
-
-    // --- Advanced actions (hard tier only) ----------------------------
-    // These buttons only render when difficulty is HARD — see the
-    // conditional block in the actions panel above. Each handler is
-    // real (writes to the DOM, scrolls, or toggles a class) and never
-    // throws. The visual-qa pass verifies they produce a visible effect.
-    var findingEls = Array.prototype.slice.call(
-      document.querySelectorAll(".finding")
-    );
-    var nextIdx = 0;
-    var nextBtn = document.getElementById("btn-next-finding");
-    if (nextBtn) {
-      nextBtn.addEventListener("click", function () {
-        if (!findingEls.length) return;
-        // Drop the active class on the previous one.
-        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
-        var el = findingEls[nextIdx % findingEls.length];
-        el.classList.add("finding--active");
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        nextIdx += 1;
-      });
-    }
-    var jumpHighBtn = document.getElementById("btn-jump-high");
-    if (jumpHighBtn) {
-      jumpHighBtn.addEventListener("click", function () {
-        var target = null;
-        for (var i = 0; i < findingEls.length; i++) {
-          if (findingEls[i].classList.contains("finding--high")) {
-            target = findingEls[i];
-            break;
+        if (action === 'dismiss-cancel') {
+          var form = document.querySelector('.dismiss-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        if (action === 'appeal-toggle') {
+          var form = document.querySelector('.appeal-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = !form.hidden;
+          return;
+        }
+        if (action === 'appeal-cancel') {
+          var form = document.querySelector('.appeal-form[data-finding-id="' + findingId + '"]');
+          if (form) form.hidden = true;
+          return;
+        }
+        // Action-bar buttons: rerun, flag
+        var endpoint = btn.dataset.endpoint;
+        var body = null;
+        if (action === 'dismiss') body = {finding_id: findingId};
+        btn.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          btn.disabled = false;
+          if (resp && resp.ok) {
+            var msg = {
+              'rerun': "Re-run queued. Reload in a few seconds.",
+              'flag': "Flagged for review.",
+              'dismiss': "Dismissed finding " + resp.finding_id + "."
+            }[action] || 'Action recorded.';
+            if (window.showToast) window.showToast(msg);
+            // Refresh the page so the audit trail table updates.
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Action failed: " + (resp.detail || JSON.stringify(resp)));
           }
-        }
-        if (!target) return;
-        findingEls.forEach(function (el) { el.classList.remove("finding--active"); });
-        target.classList.add("finding--active");
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }).catch(function (err) {
+          btn.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
       });
+    });
+    // Helper to pull the current encounter id out of any data-finding-id
+    // URL we already built — we encode it into the endpoint template so
+    // we don't need to embed it in JS.
+    function encounterId() {
+      var anyBtn = document.querySelector('.finding-actions__btn');
+      if (!anyBtn) return '';
+      // Each .finding-actions form holds the endpoint, e.g.
+      // /encounter/{id}/finding/{fid}/modify
+      var form = document.querySelector('.modify-form');
+      if (!form) return '';
+      var m = form.dataset.endpoint.match(/\/encounter\/([^/]+)\/finding\//);
+      return m ? m[1] : '';
     }
-    var filterBtn = document.getElementById("btn-severity-filter");
-    if (filterBtn) {
-      var severities = ["all", "critical", "high", "medium", "low", "info"];
-      var fIdx = 0;
-      filterBtn.addEventListener("click", function () {
-        fIdx = (fIdx + 1) % severities.length;
-        var sev = severities[fIdx];
-        filterBtn.setAttribute("data-severity", sev);
-        filterBtn.textContent = "filter: " + sev;
-        if (sev === "all") {
-          findingEls.forEach(function (el) { el.style.display = ""; });
-        } else {
-          findingEls.forEach(function (el) {
-            var elSev = (el.className.match(/finding--(critical|high|medium|low|info)/) || [])[1];
-            el.style.display = (elSev === sev) ? "" : "none";
-          });
+    // Inline modify-form submit: POSTs new severity + category to
+    // /encounter/{id}/finding/{fid}/modify and updates the inline
+    // status label.
+    document.querySelectorAll('.modify-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var newSeverity = fd.get('new_severity') || '';
+        var newCategory = fd.get('new_category') || '';
+        var why = (fd.get('why') || '').toString().trim();
+        // If the biller didn't actually change anything, treat it as
+        // a no-op rather than failing server-side. The "why" field
+        // alone is not a meaningful override.
+        var currentSeverity = form.dataset.currentSeverity || '';
+        var currentCategory = form.dataset.currentCategory || '';
+        if (!newSeverity) newSeverity = '';
+        if (newSeverity === currentSeverity) newSeverity = '';
+        if (newCategory === currentCategory) newCategory = '';
+        if (!newSeverity && !newCategory) {
+          if (window.showToast) window.showToast("No change to save.");
+          form.hidden = true;
+          return;
         }
+        var body = {
+          new_severity: newSeverity,
+          new_category: newCategory,
+          why: why,
+        };
+        var submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok) {
+            var statusEl = document.querySelector('.finding-actions__status[data-finding-id="' + findingId + '"]');
+            var parts = [];
+            if (resp.new_severity) parts.push('severity → ' + resp.new_severity);
+            if (resp.new_category) parts.push('category → ' + resp.new_category);
+            if (statusEl) statusEl.textContent = parts.length ? 'modified (' + parts.join(', ') + ')' : 'modified';
+            if (window.showToast) window.showToast("Override saved for " + findingId + ".");
+            form.hidden = true;
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Override failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        }).catch(function (err) {
+          submit.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
       });
-    }
+    });
+    // Inline appeal-outcome-form submit: POSTs outcome status + notes
+    // to /encounter/{id}/appeal/{appeal_id}/outcome and updates the
+    // inline status label + the last-outcome text.
+    document.querySelectorAll('.appeal-outcome-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var status = fd.get('status') || '';
+        var notes = fd.get('notes') || '';
+        if (!status) {
+          if (window.showToast) window.showToast("Choose an outcome first.");
+          return;
+        }
+        var body = {status: status, notes: notes};
+        var submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok) {
+            var statusEl = form.querySelector('.appeal-outcome-form__status');
+            if (statusEl) statusEl.textContent = 'logged: ' + status;
+            // Refresh the head line so the last-outcome is visible
+            // even after a hard reload.
+            if (window.showToast) window.showToast("Appeal outcome saved for " + findingId + ".");
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Outcome failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        }).catch(function (err) {
+          submit.disabled = false;
+          if (window.showToast) window.showToast("Network error: " + err);
+        });
+      });
+    });
+    // Inline dismiss-form submit: POSTs the reason to /encounter/{id}/dismiss
+    document.querySelectorAll('.dismiss-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        var body = {
+          finding_id: findingId,
+          reason_category: fd.get('reason_category') || '',
+          reason_text: fd.get('reason_text') || '',
+        };
+        form.querySelector('button[type="submit"]').disabled = true;
+        post(endpoint, body).then(function (resp) {
+          form.querySelector('button[type="submit"]').disabled = false;
+          if (resp && resp.ok) {
+            if (window.showToast) window.showToast(
+              "Dismissed " + resp.finding_id + " (category: " +
+              (resp.reason_category || 'none') + ")."
+            );
+            setTimeout(refreshTrail, 400);
+          } else {
+            if (window.showToast) window.showToast("Dismiss failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        });
+      });
+    });
+    // Inline appeal-form submit: POSTs the denial reason to /encounter/{id}/appeal,
+    // then renders the returned letter in the .appeal-letter-output div
+    document.querySelectorAll('.appeal-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var findingId = form.dataset.findingId;
+        var endpoint = form.dataset.endpoint;
+        var fd = new FormData(form);
+        // The LLM often emits empty finding_id and a non-empty
+        // rule_id, so we send both. The endpoint prefers finding_id
+        // and falls back to rule_id.
+        var ruleId = fd.get('rule_id') || '';
+        var body = {
+          finding_id: findingId,
+          rule_id: ruleId,
+          denial_reason: fd.get('denial_reason') || '',
+        };
+        var submit = form.querySelector('button[type="submit"]');
+        var output = form.querySelector('.appeal-letter-output');
+        submit.disabled = true;
+        post(endpoint, body).then(function (resp) {
+          submit.disabled = false;
+          if (resp && resp.ok && resp.letter) {
+            if (window.showToast) window.showToast("Appeal letter generated (" + (resp.letter.template_only ? "template" : "LLM") + ").");
+            // Render the letter body inline; biller copies to clipboard
+            // or prints. v1: add a copy-to-clipboard button.
+            output.textContent = resp.letter.letter_markdown;
+            output.hidden = false;
+          } else {
+            if (window.showToast) window.showToast("Appeal generation failed: " + (resp.detail || JSON.stringify(resp)));
+          }
+        });
+      });
+    });
   })();
 </script>
 {% endblock %}

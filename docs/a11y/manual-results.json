@@ -1,0 +1,1042 @@
+[
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "marketing-home",
+    "path": "/",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Pricing"
+      },
+      {
+        "level": "H2",
+        "text": "Small practice"
+      },
+      {
+        "level": "H2",
+        "text": "Mid clinic"
+      },
+      {
+        "level": "H2",
+        "text": "Large practice"
+      },
+      {
+        "level": "H3",
+        "text": "AKS / Stark / safe / harbor compliance"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 2,
+      "nav": 1,
+      "main": 1,
+      "footer": 1,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "Pricing",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 36,
+        "fontWeight": 700,
+        "tag": "H1"
+      },
+      {
+        "text": "Flat monthly fees, volume-bracketed. Built for Can",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 4.5,
+        "fontSize": 17,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Start CAD plan",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 14,
+        "fontWeight": 600,
+        "tag": "BUTTON"
+      },
+      {
+        "text": "AKS / Stark / safe / harbor compliance",
+        "fg": "rgb(45, 212, 191)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.00",
+        "required": 3,
+        "fontSize": 16,
+        "fontWeight": 700,
+        "tag": "H3"
+      },
+      {
+        "text": "This pricing is built on a flat-fee, volume-bracke",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.57",
+        "required": 4.5,
+        "fontSize": 14,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Reference: Zorva §11 — flat-volume-bracketed prici",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.57",
+        "required": 4.5,
+        "fontSize": 14,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Flat monthly fee per tier — predictable, audit-fri",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.35",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 400,
+        "tag": "LI"
+      },
+      {
+        "text": "Volume cap tied to encounter audits, not to revenu",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.35",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 400,
+        "tag": "LI"
+      },
+      {
+        "text": "No commission, no per-dollar markup, no success fe",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgba(45, 212, 191, 0.06)",
+        "ratio": "1.35",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 400,
+        "tag": "LI"
+      }
+    ],
+    "route": "marketing-pricing",
+    "path": "/pricing",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Three steps. Your claims, checked before they go out."
+      },
+      {
+        "level": "H2",
+        "text": "Connect your EHR"
+      },
+      {
+        "level": "H2",
+        "text": "AI audits every claim pre-bill"
+      },
+      {
+        "level": "H2",
+        "text": "Your billing team reviews"
+      },
+      {
+        "level": "H2",
+        "text": "See it in 90 seconds"
+      },
+      {
+        "level": "H2",
+        "text": "Ready to see what your team is leaving on the table?"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 2,
+      "nav": 1,
+      "main": 1,
+      "footer": 1,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "How it works — AI billing audit in 3 steps — AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "How it works",
+        "fg": "rgb(79, 140, 255)",
+        "bg": "rgba(79, 140, 255, 0.12)",
+        "ratio": "1.00",
+        "required": 4.5,
+        "fontSize": 12,
+        "fontWeight": 600,
+        "tag": "SPAN"
+      },
+      {
+        "text": "Three steps. Your claims, checked before they go o",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 40,
+        "fontWeight": 700,
+        "tag": "H1"
+      },
+      {
+        "text": "We sit between your billing system and the payer. ",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 3,
+        "fontSize": 18,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "See it in 90 seconds",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 24,
+        "fontWeight": 700,
+        "tag": "H2"
+      },
+      {
+        "text": "A short walkthrough of the reviewer screen, from c",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 4.5,
+        "fontSize": 14,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Ready to see what your team is leaving on the tabl",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 28,
+        "fontWeight": 700,
+        "tag": "H2"
+      },
+      {
+        "text": "Flat monthly pricing. No percentage of revenue. No",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Sign in",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "marketing-how-it-works",
+    "path": "/how-it-works",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "How we handle your data, your claims, and your risk"
+      },
+      {
+        "level": "H2",
+        "text": "Your data stays in the region you choose"
+      },
+      {
+        "level": "H2",
+        "text": "Encryption in transit and at rest"
+      },
+      {
+        "level": "H2",
+        "text": "We sign the contract before we see a single claim"
+      },
+      {
+        "level": "H2",
+        "text": "A human approves every recommendation"
+      },
+      {
+        "level": "H2",
+        "text": "Flat fee. No percentage of revenue. No upcoding incentive."
+      },
+      {
+        "level": "H2",
+        "text": "Tamper-evident audit log on every recommendation"
+      },
+      {
+        "level": "H2",
+        "text": "Compliance matrix"
+      },
+      {
+        "level": "H2",
+        "text": "Send this to your privacy officer and procurement"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 2,
+      "nav": 1,
+      "main": 1,
+      "footer": 1,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "Security & compliance — AI billing audit — AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "Security & compliance",
+        "fg": "rgb(79, 140, 255)",
+        "bg": "rgba(79, 140, 255, 0.12)",
+        "ratio": "1.00",
+        "required": 4.5,
+        "fontSize": 12,
+        "fontWeight": 600,
+        "tag": "SPAN"
+      },
+      {
+        "text": "How we handle your data, your claims, and your ris",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 40,
+        "fontWeight": 700,
+        "tag": "H1"
+      },
+      {
+        "text": "Healthcare buyers should not have to read legalese",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 3,
+        "fontSize": 18,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Law or framework",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(79, 140, 255, 0.08)",
+        "ratio": "2.72",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "What it requires",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(79, 140, 255, 0.08)",
+        "ratio": "2.72",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "Control that satisfies it",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(79, 140, 255, 0.08)",
+        "ratio": "2.72",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "PHIPA (Ontario)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "HIA (Alberta)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "HIPAA (US)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "PIPEDA (federal Canada)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "AIDA (Alberta)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "US state privacy laws (CCPA/CPRA, WA My Health My ",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "Anti-Kickback Statute (AKS)",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgba(255, 255, 255, 0.02)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 14,
+        "fontWeight": 700,
+        "tag": "TH"
+      },
+      {
+        "text": "Send this to your privacy officer and procurement",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 3,
+        "fontSize": 28,
+        "fontWeight": 700,
+        "tag": "H2"
+      },
+      {
+        "text": "The one-pager has the same content in a single pri",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 400,
+        "tag": "P"
+      },
+      {
+        "text": "Request the BAA / HIC-Agent agreement",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "Pricing",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "How it works",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "Security",
+        "fg": "rgb(231, 236, 246)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "1.18",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 600,
+        "tag": "A"
+      },
+      {
+        "text": "Questions? Email us at hello@ai-billing-audit.ashb",
+        "fg": "rgb(154, 163, 189)",
+        "bg": "rgb(255, 255, 255)",
+        "ratio": "2.52",
+        "required": 4.5,
+        "fontSize": 13,
+        "fontWeight": 400,
+        "tag": "P"
+      }
+    ],
+    "route": "marketing-security",
+    "path": "/security",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "login",
+    "path": "/login",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "dashboard",
+    "path": "/dashboard",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "encounters-list",
+    "path": "/encounters",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "encounter-detail",
+    "path": "/encounters/enc-list-0001",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "findings",
+    "path": "/findings",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "billing",
+    "path": "/billing",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "settings",
+    "path": "/settings",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Sign in"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 1,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "team",
+    "path": "/team",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Start here"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 0,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "onboarding",
+    "path": "/portal/onboarding",
+    "httpStatus": 200
+  },
+  {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Manage billing"
+      }
+    ],
+    "h1Count": 1,
+    "images": [],
+    "unlabeledInputs": [],
+    "unnamedButtons": [],
+    "unnamedLinks": [],
+    "landmarks": {
+      "header": 1,
+      "nav": 1,
+      "main": 0,
+      "footer": 0,
+      "aside": 0
+    },
+    "skipLink": {
+      "text": "Skip to content",
+      "target": "#main"
+    },
+    "htmlLang": "en",
+    "liveRegions": [],
+    "pageTitle": "AI Pre-Bill Audit",
+    "viewport": "width=device-width, initial-scale=1",
+    "colorProbe": [
+      {
+        "text": "Skip to content",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(79, 140, 255)",
+        "ratio": "3.22",
+        "required": 4.5,
+        "fontSize": 16,
+        "fontWeight": 600,
+        "tag": "A"
+      }
+    ],
+    "route": "portal-billing",
+    "path": "/portal/billing",
+    "httpStatus": 200
+  }
+]

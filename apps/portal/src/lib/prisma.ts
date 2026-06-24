@@ -14,7 +14,10 @@
 // access (no more "magic" DATABASE_URL from schema). For local dev we use
 // @prisma/adapter-better-sqlite3 (synchronous, fast, single-file). In
 // production swap this for @prisma/adapter-pg pointed at the ca-central-1
-// or us-east-1 Postgres cluster.
+// or us-east-1 Postgres cluster. (NOTE t_96d9a4f9: as of 2026-06-23 the
+// marketing portal no longer claims AWS ca-central-1 explicitly — the
+// production Postgres cluster is whatever the active deployment runs in,
+// and the region is documented in the executed BAA.)
 
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@/generated/prisma/client";

@@ -13,18 +13,24 @@
 // chars so the file stays a reasonable size for Excel), and the
 // estimated impact in dollars.
 //
-// Auth: same as the inbox — `auth()` + `getActiveTenant()` with a
-// 401/403 fallthrough. Scoping: every row's `encounter.tenantId`
-// must equal the active tenant. The single SELECT uses an `in:`
-// filter on the encounter ids (which the inbox page just queried
-// for the current view) so the export is bounded by what the user
-// is actually looking at.
+// Auth: the proxy redirects unauthenticated users; this route also
+// re-checks via `auth()` + `getActiveTenant()` and returns 401/403
+// if the session has gone stale. Role gate (t_23bfd49c): any
+// active member with the `read` capability (viewer / auditor /
+// owner / admin) can export. Disabled members and non-members
+// receive 403.
+//
+// Scoping: every row's `encounter.tenantId` must equal the active
+// tenant. The single SELECT uses an `in:` filter on the encounter
+// ids (which the inbox page just queried for the current view)
+// so the export is bounded by what the user is actually looking at.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { FINDING_CATEGORY_LABEL, FINDING_STATUSES } from "@/lib/encounter-types";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +64,19 @@ export async function GET(request: Request): Promise<Response> {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+  // Role gate (t_23bfd49c): export is a read — every active
+  // member role qualifies.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "read",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
+      { status: 403 },
+    );
   }
 
   const url = new URL(request.url);
@@ -126,6 +145,15 @@ export async function GET(request: Request): Promise<Response> {
             { id: "asc" },
           ];
 
+  // Re-read the tenant's redactPatientNamesInExports flag so the
+  // export reflects the user's current /settings preference. Same
+  // default-to-on contract as the encounters export.
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: tenant.id },
+    select: { redactPatientNamesInExports: true },
+  });
+  const redact = tenantRow?.redactPatientNamesInExports ?? true;
+
   const rows = await prisma.finding.findMany({
     where,
     orderBy,
@@ -165,23 +193,26 @@ export async function GET(request: Request): Promise<Response> {
       for (const r of rows) {
         controller.enqueue(
           encoder.encode(
-            encodeRow({
-              id: r.id,
-              encounterId: r.encounterId,
-              dateOfService: r.encounter.dateOfService,
-              category: r.category,
-              categoryLabel: CATEGORY_LABEL[r.category] ?? r.category,
-              currentCode: r.currentCode,
-              suggestedCode: r.suggestedCode,
-              ruleRef: r.billingRuleReference,
-              evidenceQuote: r.evidenceQuote,
-              payer: r.encounter.claim.payer,
-              providerName: r.encounter.claim.providerName,
-              providerNpi: r.encounter.claim.providerNpi,
-              estImpactCents: r.estFinancialImpactCents,
-              status: r.status,
-              patientHash: r.encounter.patientHash,
-            }),
+            encodeRow(
+              {
+                id: r.id,
+                encounterId: r.encounterId,
+                dateOfService: r.encounter.dateOfService,
+                category: r.category,
+                categoryLabel: CATEGORY_LABEL[r.category] ?? r.category,
+                currentCode: r.currentCode,
+                suggestedCode: r.suggestedCode,
+                ruleRef: r.billingRuleReference,
+                evidenceQuote: r.evidenceQuote,
+                payer: r.encounter.claim.payer,
+                providerName: r.encounter.claim.providerName,
+                providerNpi: r.encounter.claim.providerNpi,
+                estImpactCents: r.estFinancialImpactCents,
+                status: r.status,
+                patientHash: r.encounter.patientHash,
+              },
+              redact,
+            ),
           ),
         );
       }
@@ -197,6 +228,7 @@ export async function GET(request: Request): Promise<Response> {
       "content-disposition": `attachment; filename="${filename}"`,
       "cache-control": "no-store",
       "x-row-count": String(rows.length),
+      "x-phi-redacted": redact ? "true" : "false",
     },
   });
 }
@@ -245,7 +277,7 @@ interface ExportRow {
   patientHash: string;
 }
 
-function encodeRow(r: ExportRow): string {
+function encodeRow(r: ExportRow, redact: boolean): string {
   const evidence =
     r.evidenceQuote.length > EVIDENCE_QUOTE_CSV_MAX
       ? r.evidenceQuote.slice(0, EVIDENCE_QUOTE_CSV_MAX - 1) + "…"
@@ -265,7 +297,7 @@ function encodeRow(r: ExportRow): string {
     r.payer,
     String(r.estImpactCents),
     r.status,
-    r.patientHash.slice(0, 12),
+    redact ? "[redacted]" : r.patientHash.slice(0, 12),
   ];
   return cells.map(csvEscape).join(",") + "\n";
 }

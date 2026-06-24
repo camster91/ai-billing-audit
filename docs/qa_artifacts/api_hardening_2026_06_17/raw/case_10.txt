@@ -1,0 +1,5 @@
+endpoint: 100x concurrent POST /encounters/upload/preview (burst over 3.95s)
+expected: ≥some 429s, zero 500s
+actual:   {'200': 100}
+raw response:
+elapsed=3.95s; total responses=100; distribution={'200': 100}

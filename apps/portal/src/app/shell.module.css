@@ -131,6 +131,83 @@
   line-height: 1.5;
 }
 
+/* In-flow empty-state block (used above tables / inside cards).
+   Same visual language as `.empty` but left-aligned and supporting
+   an inline primary CTA + secondary link. Use this when the page has
+   other content the empty state should not visually outweigh
+   (e.g. /encounters with the filter UI present). */
+.emptyInline {
+  border: 1px dashed #28324f;
+  border-radius: 12px;
+  padding: 24px 20px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyInlineBody {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.emptyInlineBody h2 {
+  color: #e7ecf6;
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.emptyInlineBody p {
+  margin: 0;
+  color: #9aa3bd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyInlineActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-block;
+  background: #2dd4bf;
+  color: #0b1020;
+  border: 1px solid #2dd4bf;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ctaPrimary:hover {
+  background: #5eead4;
+  border-color: #5eead4;
+  text-decoration: none;
+}
+
+.ctaSecondary {
+  display: inline-block;
+  background: transparent;
+  color: #2dd4bf;
+  border: 1px solid #2dd4bf;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ctaSecondary:hover {
+  background: rgba(45, 212, 191, 0.08);
+  text-decoration: none;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -176,6 +253,196 @@
 .statusPillPending { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
 .statusPillAuditing { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
 .statusPillCompleted { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; }
+
+/* /team — role + status badges (shared with team-client.tsx). */
+.badgeOwner,
+.badgeAuditor,
+.badgeViewer,
+.badgeActive,
+.badgePending,
+.badgeInactive {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.badgeOwner   { background: rgba(167, 139, 250, 0.14); color: #c4b5fd; border-color: rgba(167, 139, 250, 0.4); }
+.badgeAuditor { background: rgba(96, 165, 250, 0.14);  color: #93c5fd; border-color: rgba(96, 165, 250, 0.4); }
+.badgeViewer  { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4); }
+
+.badgeActive   { background: rgba(45, 212, 191, 0.14);  color: #5eead4; border-color: rgba(45, 212, 191, 0.4); }
+.badgePending  { background: rgba(251, 191, 36, 0.14);  color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+.badgeInactive { background: rgba(127, 29, 29, 0.2);    color: #fca5a5; border-color: rgba(220, 38, 38, 0.5); }
+
+/* /billing — alert banners, card grid, invoice table, usage progress. */
+.alertWarn {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alertDanger {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.billingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.billingCard {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 20px 24px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: #e7ecf6;
+}
+
+.tierName {
+  font-size: 22px;
+  font-weight: 600;
+  color: #e7ecf6;
+  margin-bottom: 12px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: 6px;
+  column-gap: 12px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.kv dt {
+  color: #9aa3bd;
+  font-size: 13px;
+}
+
+.kv dd {
+  margin: 0;
+  color: #e7ecf6;
+  word-break: break-word;
+}
+
+.usageNumber {
+  font-size: 28px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+  color: #e7ecf6;
+}
+
+.usageNumber strong {
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.progress {
+  background: #1a2340;
+  border: 1px solid #28324f;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressBar {
+  height: 100%;
+  background: #2dd4bf;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progressBar[data-state="near"] { background: #fbbf24; }
+.progressBar[data-state="over"] { background: #f87171; }
+
+.invoiceSection {
+  background: #131a2e;
+  border: 1px solid #28324f;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-top: 8px;
+}
+
+.invoiceTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.invoiceTable th,
+.invoiceTable td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #28324f;
+}
+
+.invoiceTable th {
+  color: #9aa3bd;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invoiceTable tr:last-child td {
+  border-bottom: none;
+}
+
+.invoiceTable a {
+  color: #2dd4bf;
+  text-decoration: none;
+}
+
+.invoiceTable a:hover {
+  text-decoration: underline;
+}
+
+/* Subscription-status pill variants (shared by the current-plan card
+   and the invoice table). */
+.statusPill_active { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; }
+.statusPill_past_due { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.statusPill_canceled { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.statusPill_paid { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; }
+.statusPill_open { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.statusPill_void { background: rgba(156, 163, 189, 0.12); color: #9aa3bd; }
+.statusPill_uncollectible { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.statusPill_draft { background: rgba(156, 163, 189, 0.12); color: #9aa3bd; }
 
 /* /login: centered card on the same dark background. */
 
@@ -238,6 +505,12 @@
 
 .input:focus {
   outline: none;
+  border-color: #2dd4bf;
+}
+
+.input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
   border-color: #2dd4bf;
 }
 

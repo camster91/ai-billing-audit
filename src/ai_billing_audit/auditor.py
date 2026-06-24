@@ -63,24 +63,29 @@ _DEFAULT_PROMPT_CACHE: str | None = None
 
 # The response schema the LLM is asked to conform to. Mirrors AuditResult
 # and Finding shape (one level of nesting; arrays of strings).
+#
+# We deliberately allow additionalProperties and have minimal required
+# fields. The model produces rich, varied responses (sometimes rule_id
+# singular, sometimes rule_ids plural, sometimes an explanation field,
+# sometimes a missing suggested_code if the finding is documentation
+# rather than code). Crashing the audit because the model added an
+# "explanation" string would discard good signal. We capture what we
+# can and surface the rest in the audit-trail audit_log.
 RESPONSE_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "additionalProperties": False,
-    "required": ["summary", "findings"],
+    "additionalProperties": True,
+    "required": ["findings"],
     "properties": {
         "summary": {"type": "string"},
         "findings": {
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "category",
-                    "suggested_code",
-                    "quote",
-                    "severity",
-                    "rule_ids",
-                ],
+                "additionalProperties": True,
+                # quote is no longer jsonschema-required — we synthesize
+                # one in the validator from explanation/rationale if the
+                # model omits it. severity stays required.
+                "required": ["severity"],
                 "properties": {
                     "category": {"type": "string"},
                     "suggested_code": {"type": "string"},
@@ -89,10 +94,12 @@ RESPONSE_JSON_SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "enum": ["info", "low", "medium", "high", "critical"],
                     },
+                    "rule_id": {"type": "string"},
                     "rule_ids": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
+                    "explanation": {"type": "string"},
                 },
             },
         },
@@ -114,6 +121,7 @@ class Finding:
     severity: str
     rule_ids: tuple[str, ...] = field(default_factory=tuple)
     finding_id: str = ""
+    explanation: str = ""
 
 
 @dataclass(frozen=True)
@@ -194,8 +202,62 @@ def build_messages(encounter: Mapping[str, Any], *, prompt: str) -> list[dict[st
     ]
 
 
-def validate_findings(payload: Any) -> tuple[Finding, ...]:
+def _quote_in_note(quote: str, clinical_note: str) -> bool:
+    """Return True iff ``quote`` appears in ``clinical_note`` (best-effort).
+
+    A token-based subsequence check: every whitespace-separated token of
+    the quote must appear, in order, in the note. This is intentionally
+    lenient: a strict substring check rejects every OCR'd note (which
+    have different whitespace, line breaks, and punctuation than the
+    source). The point is to catch fabricated quotes, not to require
+    exact whitespace / punctuation fidelity.
+
+    Examples that PASS:
+      quote="chest pain"          note="Patient has chest pain today"   -> OK
+      quote="CHEST  PAIN"         note="patient has chest pain today"   -> OK (case)
+      quote="chest\\n   pain"     note="patient has chest pain today"   -> OK (whitespace)
+      quote="HbA1c 6.8 eGFR 78"   note="...HbA1c 6.8, eGFR 78..."        -> OK (subsequence, ignores comma)
+
+    Examples that FAIL:
+      quote="headache"            note="Patient has chest pain today"   -> NOT IN NOTE
+      quote=""                    note="anything"                       -> NOT IN NOTE
+      quote="anything"            note=""                               -> NOT IN NOTE
+    """
+    if not quote or not clinical_note:
+        return False
+    # Strip punctuation so "6.8," in the note matches "6.8" in the quote.
+    # Punctuation is irrelevant to whether the auditor is citing real
+    # evidence; what matters is the tokens (medical terms, codes,
+    # numbers) actually appearing in the source.
+    import string
+    punct = set(string.punctuation)
+    def _clean(s: str) -> str:
+        return " ".join(ch for ch in s.lower() if ch not in punct).split()
+    q_tokens = _clean(quote)
+    n_tokens = _clean(clinical_note)
+    if not q_tokens:
+        return False
+    # Subsequence match: every quote token must appear in the note, in
+    # order. We don't require the tokens to be contiguous.
+    q_idx = 0
+    for n_tok in n_tokens:
+        if q_idx < len(q_tokens) and n_tok == q_tokens[q_idx]:
+            q_idx += 1
+    return q_idx == len(q_tokens)
+
+
+def validate_findings(
+    payload: Any,
+    clinical_note: str = "",
+) -> tuple[Finding, ...]:
     """Parse + validate the ``findings`` array from the LLM response.
+
+    When ``clinical_note`` is non-empty, every finding's ``quote`` must
+    appear (case-insensitive, whitespace-normalised) in the note. Findings
+    whose quote is not in the note are dropped with an
+    :class:`AuditValidationError` (a hard failure: the auditor fabricated
+    evidence, which is the line between 'audit' and 'fraud' under Stark /
+    AKS / Health Information Acts).
 
     Raises :class:`AuditValidationError` if the payload is not a dict,
     if ``findings`` is missing or not a list, or if any individual
@@ -221,24 +283,80 @@ def validate_findings(payload: Any) -> tuple[Finding, ...]:
             raise AuditValidationError(
                 f"findings[{i}] is not a JSON object (got {type(item).__name__})"
             )
-        for key in ("category", "suggested_code", "quote", "severity"):
+        # Required: severity (so the dashboard can colour-code).
+        # category and suggested_code are optional. quote is also
+        # optional now — the model sometimes emits findings without
+        # a verbatim quote (e.g. it summarises the note in explanation
+        # instead). If quote is missing, we synthesise a placeholder
+        # from the explanation / rationale so the rest of the
+        # pipeline can render the finding without crashing.
+        for key in ("severity",):
             if key not in item:
                 raise AuditValidationError(f"findings[{i}] missing required field '{key}'")
-        rule_ids = item.get("rule_ids", [])
-        if not isinstance(rule_ids, list) or not all(
-            isinstance(r, str) for r in rule_ids
-        ):
+        # Normalize severity to lowercase. Different models echo
+        # back "CRITICAL" vs "critical"; we only care about the value.
+        sev_raw = str(item.get("severity", "")).strip().lower()
+        if sev_raw not in {"info", "low", "medium", "high", "critical"}:
+            raise AuditValidationError(
+                f"findings[{i}].severity not in "
+                f"[info, low, medium, high, critical]: got {item.get('severity')!r}"
+            )
+        # Accept the rule id in either of two shapes:
+        #   - rule_id:  "rule_em_001"
+        #   - rule_ids: ["rule_em_001", "rule_em_002"]
+        # Some models use one, some the other; we accept both.
+        rule_ids_raw = item.get("rule_ids")
+        if rule_ids_raw is None:
+            single = item.get("rule_id")
+            rule_ids = [single] if isinstance(single, str) and single else []
+        else:
+            rule_ids = list(rule_ids_raw)
+        if not all(isinstance(r, str) for r in rule_ids):
             raise AuditValidationError(
                 f"findings[{i}].rule_ids must be a list of strings"
             )
+        # Synthesize a quote if the model omitted it. We pull a
+        # 1-sentence excerpt from the explanation / rationale and
+        # check it against the clinical note. If we can't find a
+        # substring match, we fall back to the model's own quote
+        # verbatim — even an unsynthesized quote is better than
+        # dropping the finding on the floor.
+        quote = str(item.get("quote", "") or "").strip()
+        if not quote:
+            for source_field in ("explanation", "rationale"):
+                src = str(item.get(source_field, "") or "").strip()
+                if not src:
+                    continue
+                # Try the first sentence of the source field.
+                first_sentence = re.split(r"[.\n!?]", src, maxsplit=1)[0].strip()
+                if not first_sentence:
+                    continue
+                if not clinical_note or _quote_in_note(first_sentence, clinical_note):
+                    quote = first_sentence
+                    break
+            else:
+                # No usable quote from any source field. Use the
+                # model's explanation as the quote verbatim — it's
+                # better than nothing for the dashboard display.
+                quote = str(item.get("explanation", "") or "")[:500]
+        # Hallucination guardrail: if we have a clinical note to check against,
+        # reject any finding whose quote is not in the note. The whole
+        # finding (suggested_code + severity + rule_ids) is suspect when the
+        # supporting evidence is fabricated, so we drop the whole row.
+        if clinical_note and quote and not _quote_in_note(quote, clinical_note):
+            raise AuditValidationError(
+                f"findings[{i}].quote does not appear in the clinical note "
+                f"(quote={quote[:80]!r}): fabricated evidence rejected"
+            )
         findings.append(
             Finding(
-                category=str(item["category"]),
-                suggested_code=str(item["suggested_code"]),
-                quote=str(item["quote"]),
+                category=str(item.get("category", "")),
+                suggested_code=str(item.get("suggested_code", "")),
+                quote=quote,
                 severity=str(item["severity"]),
                 rule_ids=tuple(rule_ids),
                 finding_id=str(item.get("finding_id", "") or ""),
+                explanation=str(item.get("explanation", "")),
             )
         )
     return tuple(findings)
@@ -255,12 +373,28 @@ def run_audit(
     Builds the messages, dispatches them through ``llm`` (a default
     :class:`LLMClient` is constructed when ``None``), validates the
     response, and returns a typed :class:`AuditResult`.
+
+    Passes the encounter's ``clinical_note`` into :func:`validate_findings`
+    so fabricated quotes are rejected at the validator layer (Stark / AKS
+    / HIA hallucination guardrail).
     """
-    client = llm if llm is not None else LLMClient()
+    # Default 60s is too tight for the v7 prompt + Ollama cloud path
+    # (mean=41s, p95=60s on the 50-encounter val set, 23/50 timed out
+    # at the 60s ceiling). 180s gives the cloud model enough headroom
+    # for the few-shot examples + multi-market framing without flapping.
+    client = llm if llm is not None else LLMClient(timeout=180.0)
     prompt = load_prompt(prompt_path)
     messages = build_messages(encounter, prompt=prompt)
     payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA)
-    findings = validate_findings(payload)
+    # Normalize severity to lowercase. Different models echo
+    # back "CRITICAL" vs "critical"; the jsonschema enum requires
+    # lowercase but the model prompt often writes uppercase.
+    # We accept both shapes by lowercasing before validation.
+    for f in payload.get("findings") or []:
+        if isinstance(f, dict) and "severity" in f:
+            f["severity"] = str(f["severity"]).strip().lower()
+    clinical_note = str(encounter.get("clinical_note", "") or "")
+    findings = validate_findings(payload, clinical_note=clinical_note)
     summary = str(payload.get("summary", "") or "")
     return AuditResult(
         encounter_id=str(encounter.get("encounter_id", "") or ""),

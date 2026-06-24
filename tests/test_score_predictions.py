@@ -257,8 +257,8 @@ def test_build_report_marks_unmet_targets() -> None:
             "gold_categories": ["cardiology", "evaluation", "diagnosis"],
         },
     ]
-    pred_path = PROJECT_ROOT / "data" / "predictions_v0.jsonl"
-    man_path = PROJECT_ROOT / "data" / "val_manifest.json"
+    pred_path = PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl"
+    man_path = PROJECT_ROOT / "data" / "synth" / "val_manifest.json"
     report = _build_report(
         predictions, manifest, pred_path, man_path, 0.001,
     )
@@ -280,8 +280,8 @@ def test_build_report_missing_prediction_marks_fn() -> None:
     manifest = [
         {"encounter_id": "enc_a", "gold_categories": ["cardiology"]},
     ]
-    pred_path = PROJECT_ROOT / "data" / "predictions_v0.jsonl"
-    man_path = PROJECT_ROOT / "data" / "val_manifest.json"
+    pred_path = PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl"
+    man_path = PROJECT_ROOT / "data" / "synth" / "val_manifest.json"
     report = _build_report(predictions, manifest, pred_path, man_path, 0.0)
     assert report["encounter_missing_from_predictions"] == ["enc_a"]
     assert report["micro"]["tp"] == 0
@@ -294,8 +294,8 @@ def test_build_report_keeps_schema_stable() -> None:
     report = _build_report(
         predictions=[],
         manifest=[],
-        predictions_path=PROJECT_ROOT / "data" / "predictions_v0.jsonl",
-        manifest_path=PROJECT_ROOT / "data" / "val_manifest.json",
+        predictions_path=PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl",
+        manifest_path=PROJECT_ROOT / "data" / "synth" / "val_manifest.json",
         elapsed_s=0.0,
     )
     expected_keys = {
@@ -335,8 +335,8 @@ def test_render_markdown_contains_required_sections() -> None:
     report = _build_report(
         predictions=[],
         manifest=[],
-        predictions_path=PROJECT_ROOT / "data" / "predictions_v0.jsonl",
-        manifest_path=PROJECT_ROOT / "data" / "val_manifest.json",
+        predictions_path=PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl",
+        manifest_path=PROJECT_ROOT / "data" / "synth" / "val_manifest.json",
         elapsed_s=0.001,
     )
     md = _render_markdown(report)
@@ -357,8 +357,8 @@ def test_render_markdown_contains_required_sections() -> None:
 def test_load_predictions_and_manifest_real_data() -> None:
     """The shipped v0 files are valid input — loaders don't crash and
     the two have the same encounter_id set with no extras / no misses."""
-    preds = _load_predictions(PROJECT_ROOT / "data" / "predictions_v0.jsonl")
-    manifest = _load_manifest(PROJECT_ROOT / "data" / "val_manifest.json")
+    preds = _load_predictions(PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl")
+    manifest = _load_manifest(PROJECT_ROOT / "data" / "synth" / "val_manifest.json")
     assert len(preds) == 50
     assert len(manifest) == 50
     pred_ids = {r["encounter_id"] for r in preds}
@@ -373,12 +373,12 @@ def test_real_data_metrics_match_known_values() -> None:
 
     This test pins the numbers so a future scoring change is caught.
     """
-    preds = _load_predictions(PROJECT_ROOT / "data" / "predictions_v0.jsonl")
-    manifest = _load_manifest(PROJECT_ROOT / "data" / "val_manifest.json")
+    preds = _load_predictions(PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl")
+    manifest = _load_manifest(PROJECT_ROOT / "data" / "synth" / "val_manifest.json")
     report = _build_report(
         preds, manifest,
-        PROJECT_ROOT / "data" / "predictions_v0.jsonl",
-        PROJECT_ROOT / "data" / "val_manifest.json",
+        PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl",
+        PROJECT_ROOT / "data" / "synth" / "val_manifest.json",
         0.0,
     )
     assert report["micro"]["tp"] == 148

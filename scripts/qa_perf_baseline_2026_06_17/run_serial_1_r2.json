@@ -1,0 +1,65 @@
+{
+  "shape": "serial_1",
+  "n": 1,
+  "parallel": false,
+  "run_id": "r2",
+  "started_at_wall": 0.078182708,
+  "submit_window_ms": 168.53545799999998,
+  "poll_window_ms": 40.729667,
+  "wall_clock_ms": 209.26512499999998,
+  "summary": {
+    "n": 1,
+    "n_ok": 1,
+    "n_failed": 0,
+    "submit_latency_ms": {
+      "min": 168.472584,
+      "max": 168.472584,
+      "median": 168.472584,
+      "mean": 168.472584
+    },
+    "queue_wait_ms": {
+      "min": 0.49686431884765625,
+      "max": 0.49686431884765625,
+      "median": 0.49686431884765625,
+      "mean": 0.49686431884765625
+    },
+    "runner_ms": {
+      "min": 0.5733966827392578,
+      "max": 0.5733966827392578,
+      "median": 0.5733966827392578,
+      "mean": 0.5733966827392578
+    },
+    "end_to_end_ms": {
+      "min": 1.070261001586914,
+      "max": 1.070261001586914,
+      "median": 1.070261001586914,
+      "mean": 1.070261001586914,
+      "p50": 1.070261001586914,
+      "p95": 1.070261001586914,
+      "p99": 1.070261001586914
+    }
+  },
+  "records": [
+    {
+      "seq": 1,
+      "encounter_id": "ENC-PERF-0001-8e6f045b",
+      "job_id": "9d585bd2d84e",
+      "ok": true,
+      "status": "done",
+      "error": "",
+      "submit_latency_ms": 168.472584,
+      "queue_wait_ms": 0.49686431884765625,
+      "runner_ms": 0.5733966827392578,
+      "end_to_end_ms": 1.070261001586914,
+      "poll_count": 1,
+      "poll_ms": 40.45125000000002,
+      "result": {
+        "synth_encounter_id": "enc_synth_easy_clean_ba7979c2",
+        "difficulty_tier": "EASY",
+        "variant": "clean",
+        "seed": 2081633498,
+        "ran_via": "upload_portal"
+      }
+    }
+  ]
+}

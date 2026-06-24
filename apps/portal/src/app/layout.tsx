@@ -1,7 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+// Zorva brand typefaces (see docs/BRANDING_TYPOGRAPHY.md).
+// Inter is the default body + heading face; JetBrains Mono handles code.
+// Geist is kept on --font-geist-sans / --font-geist-mono for any existing
+// component that already references it — no functional removal here.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +37,18 @@ export const metadata: Metadata = {
   description:
     "AI pre-bill audit catches what your billing team misses. Region-pinned " +
     "data, hash-chain audit log, AKS-safe-harbor flat-fee pricing.",
+  // Marketing pages are indexable so search engines can surface them.
+  // Authenticated portal routes (/encounters, /findings, /billing,
+  // /dashboard, /settings, /portal/*) each override this in their own
+  // page.tsx with `robots: { index: false, follow: false }`.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 // Marketing-site header. Public-only pages (/, /pricing, /how-it-works,
@@ -33,6 +61,7 @@ const NAV = [
   { href: "/pricing", label: "Pricing" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/security", label: "Security" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function RootLayout({
@@ -41,15 +70,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
+    >
+      <body className="body">
         <a className="skip-link" href="#main">
           Skip to content
         </a>
         <header className="site-header">
           <div className="site-header-inner">
-            <Link href="/" className="site-brand">
-              AI Pre-Bill Audit
+            <Link href="/" className="site-brand" aria-label="Zorva — home">
+              Zorva
             </Link>
             <nav aria-label="Primary" className="site-nav">
               {NAV.map((n) => (

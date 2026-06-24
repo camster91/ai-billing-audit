@@ -22,6 +22,7 @@
 // src/proxy.ts) which redirects unauthenticated users to /login.
 
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { loadEncounterDetail } from "@/lib/encounter-data";
 import { formatCents, formatDate, wrapEvidenceQuotes } from "@/lib/encounter-format";
@@ -41,6 +42,18 @@ interface PageProps {
 }
 
 export const dynamic = "force-dynamic"; // session-driven; never cache
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  // The id may be a Mongo ObjectId or a friendly encounter_id (e.g. ca_ahcip_004).
+  // Surface the first 12 chars of whatever the URL holds so each encounter gets
+  // its own unique tab title; we do not load the full record here because
+  // generateMetadata runs for every render and we want this cheap.
+  const short = id.length > 12 ? `${id.slice(0, 12)}…` : id;
+  return {
+    title: `Encounter ${short} — Zorva`,
+  };
+}
 
 export default async function EncounterDetailPage({ params }: PageProps) {
   const { id } = await params;

@@ -1,65 +1,135 @@
-import Image from "next/image";
+// / — marketing landing page (t_fa2149e1 wiring).
+//
+// Lightweight, single-column landing: a one-line value prop, the three
+// pillars the spec leans on (audit every claim / region-pinned data /
+// flat-fee pricing), and a "Talk to sales" CTA that links to the
+// /contact form. Server component — no client hooks, no fetch.
+//
+// The previous incarnation was the `create-next-app` starter
+// ("To get started, edit the page.tsx file"), which is fine for a
+// greenfield scaffold but is the wrong message to ship to a
+// prospective clinic operator. Replacing it with a real landing
+// page was a natural side effect of adding the /contact form, so
+// the marketing surface has a CTA at every entry point.
+
+import type { Metadata } from "next";
+import Link from "next/link";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "Zorva — AI pre-bill audit for Alberta clinics",
+  description:
+    "Zorva reads every Alberta claim against AHCIP and the SOMB before submission, surfacing missed codes and underbilled modifiers that drain your monthly revenue. Human-reviewed.",
+};
 
 export default function Home() {
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+      <main id="main" className={styles.main}>
+        <header className={styles.hero}>
+          <span className={styles.eyebrow}>Pre-submit audit for Alberta clinic billing teams</span>
+          <h1 className={styles.headline}>
+            Find the revenue your billers are leaving on the table.
+          </h1>
+          <p className={styles.subhead}>
+            Zorva reads every Alberta claim against AHCIP and the SOMB
+            before it leaves your desk — catching the missed codes,
+            underbilled modifiers, and shadow-billed services that
+            quietly drain your monthly revenue. Your billing team
+            reviews what it finds. Nothing ships until a human signs
+            off.
           </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className={styles.ctaRow}>
+            <Link href="/contact" className={styles.primary}>
+              Book a demo
+            </Link>
+            <Link href="/how-it-works" className={styles.secondary}>
+              Calculate your revenue opportunity →
+            </Link>
+            <Link href="/pricing" className={styles.secondary}>
+              See pricing
+            </Link>
+          </div>
+        </header>
+
+        <section
+          className={styles.videoWrap}
+          aria-label="Product walkthrough — coming soon"
+        >
+          <div className={styles.videoFrame}>
+            <div
+              className={styles.videoPlaceholder}
+              role="img"
+              aria-label="Product walkthrough video coming soon"
+            >
+              <span className={styles.videoPlaceholderTitle}>
+                Product walkthrough coming soon
+              </span>
+              <span className={styles.videoPlaceholderSub}>
+                We&apos;re recording a fresh demo. In the meantime, the
+                <Link href="/how-it-works" className={styles.link}>
+                  {" "}how-it-works
+                </Link>{" "}
+                page walks through the same flow.
+              </span>
+            </div>
+          </div>
+          <p className={styles.videoCaption}>
+            Until the walkthrough is ready, the how-it-works page covers
+            the same flow in text — what the auditor reads, what rules it
+            pulls, and how the findings surface to your billing team for
+            review before anything is submitted.
+          </p>
+        </section>
+
+        <section className={styles.pillars} aria-label="What the product does">
+          <article className={styles.pillar}>
+            <h2>Audit every claim, not just the flagged ones</h2>
+            <p>
+              The auditor reads the clinical narrative, the billed
+              codes, and the retrieved rules for every encounter —
+              E/M level, NCCI edits, MUE limits, modifier pairs, payer
+              policy. Findings cite the exact rule and the exact
+              passage in the note.
+            </p>
+          </article>
+          <article className={styles.pillar}>
+            <h2>Region-pinned data</h2>
+            <p>
+              Your data is stored in a Canadian data centre, region
+              confirmed in the BAA. No cross-region replication, no
+              sale of customer data, no analytics egress. HIA, PHIPA,
+              HIPAA, and the Washington My Health My Data Act are all
+              addressed in the security page.
+            </p>
+          </article>
+          <article className={styles.pillar}>
+            <h2>Flat monthly fee, AKS safe-harbor clean</h2>
+            <p>
+              No percentage of revenue, no per-claim charge, no
+              recovery-linked fee. Three tiers bracketed by audit
+              volume. Sales can walk you through the fit in twenty
+              minutes.
+            </p>
+          </article>
+        </section>
+
+        <section className={styles.altPath} aria-label="Other ways to learn more">
+          <h2>Want the full picture first?</h2>
+          <p>
+            <Link href="/pricing" className={styles.link}>
+              See pricing
+            </Link>{" "}
+            ·{" "}
+            <Link href="/how-it-works" className={styles.link}>
+              How it works
+            </Link>{" "}
+            ·{" "}
+            <Link href="/security" className={styles.link}>
+              Security and compliance
+            </Link>
+          </p>
+        </section>
       </main>
     </div>
   );

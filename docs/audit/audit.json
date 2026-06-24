@@ -1,0 +1,1051 @@
+{
+  "pages": {
+    "home_desktop": {
+      "url": "http://localhost:3456/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "page_height_px": 957,
+      "horizontal_scroll": false,
+      "scroll_w": 1440,
+      "client_w": 1440,
+      "full_screenshot": "/tmp/portal-audit/screenshots/home_desktop.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/home_desktop_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        }
+      ],
+      "tap_targets": null,
+      "pricing_link_above_fold": true
+    },
+    "pricing_desktop": {
+      "url": "http://localhost:3456/pricing",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "page_height_px": 1351,
+      "horizontal_scroll": false,
+      "scroll_w": 1440,
+      "client_w": 1440,
+      "full_screenshot": "/tmp/portal-audit/screenshots/pricing_desktop.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/pricing_desktop_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 219,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 367,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 576,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 724,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 934,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 1081,
+          "y": 864,
+          "w": 140,
+          "h": 39,
+          "visible": true,
+          "aboveFold": true
+        }
+      ],
+      "tap_targets": null,
+      "pricing_link_above_fold": true
+    },
+    "how-it-works_desktop": {
+      "url": "http://localhost:3456/how-it-works",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "page_height_px": 2008,
+      "horizontal_scroll": false,
+      "scroll_w": 1440,
+      "client_w": 1440,
+      "full_screenshot": "/tmp/portal-audit/screenshots/how-it-works_desktop.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/how-it-works_desktop_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "A",
+          "text": "See pricing",
+          "href": "/pricing",
+          "x": 579,
+          "y": 1777,
+          "w": 161,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Sign in",
+          "href": "/login",
+          "x": 752,
+          "y": 1777,
+          "w": 109,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        }
+      ],
+      "tap_targets": null,
+      "pricing_link_above_fold": true
+    },
+    "security_desktop": {
+      "url": "http://localhost:3456/security",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "page_height_px": 3056,
+      "horizontal_scroll": false,
+      "scroll_w": 1440,
+      "client_w": 1440,
+      "full_screenshot": "/tmp/portal-audit/screenshots/security_desktop.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/security_desktop_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 1009,
+          "y": 14,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "A",
+          "text": "Download /security.pdf",
+          "href": "/security.pdf",
+          "x": 405,
+          "y": 2793,
+          "w": 254,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Request the BAA / HIC-Agent agreement",
+          "href": "mailto:legal@ai-billing-audit.ashbi.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request",
+          "x": 671,
+          "y": 2793,
+          "w": 365,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 603,
+          "y": 2956,
+          "w": 44,
+          "h": 20,
+          "visible": true,
+          "aboveFold": false
+        }
+      ],
+      "tap_targets": null,
+      "pricing_link_above_fold": true
+    },
+    "home_mobile": {
+      "url": "http://localhost:3456/",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page_height_px": 935,
+      "horizontal_scroll": false,
+      "scroll_w": 390,
+      "client_w": 390,
+      "full_screenshot": "/tmp/portal-audit/screenshots/home_mobile.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/home_mobile_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 89,
+          "y": 48,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        }
+      ],
+      "tap_targets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "href": "#main",
+          "w": 148,
+          "h": 38
+        },
+        {
+          "tag": "A",
+          "text": "AI Pre-Bill Audit",
+          "href": "/",
+          "w": 118,
+          "h": 18
+        },
+        {
+          "tag": "A",
+          "text": "Home",
+          "href": "/",
+          "w": 45,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "w": 51,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "How it works",
+          "href": "/how-it-works",
+          "w": 87,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Security",
+          "href": "/security",
+          "w": 59,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Send magic link",
+          "href": "",
+          "w": 260,
+          "h": 42
+        }
+      ],
+      "pricing_link_above_fold": true
+    },
+    "pricing_mobile": {
+      "url": "http://localhost:3456/pricing",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page_height_px": 2888,
+      "horizontal_scroll": false,
+      "scroll_w": 390,
+      "client_w": 390,
+      "full_screenshot": "/tmp/portal-audit/screenshots/pricing_mobile.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/pricing_mobile_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 89,
+          "y": 48,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 49,
+          "y": 862,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 199,
+          "y": 862,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 49,
+          "y": 1465,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 199,
+          "y": 1465,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "x": 49,
+          "y": 2124,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "x": 199,
+          "y": 2124,
+          "w": 142,
+          "h": 39,
+          "visible": true,
+          "aboveFold": false
+        }
+      ],
+      "tap_targets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "href": "#main",
+          "w": 148,
+          "h": 38
+        },
+        {
+          "tag": "A",
+          "text": "AI Pre-Bill Audit",
+          "href": "/",
+          "w": 118,
+          "h": 18
+        },
+        {
+          "tag": "A",
+          "text": "Home",
+          "href": "/",
+          "w": 45,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "w": 51,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "How it works",
+          "href": "/how-it-works",
+          "w": 87,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Security",
+          "href": "/security",
+          "w": 59,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start CAD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Start USD plan",
+          "href": "",
+          "w": 142,
+          "h": 39
+        }
+      ],
+      "pricing_link_above_fold": true
+    },
+    "how-it-works_mobile": {
+      "url": "http://localhost:3456/how-it-works",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page_height_px": 3121,
+      "horizontal_scroll": false,
+      "scroll_w": 390,
+      "client_w": 390,
+      "full_screenshot": "/tmp/portal-audit/screenshots/how-it-works_mobile.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/how-it-works_mobile_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 89,
+          "y": 48,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "A",
+          "text": "See pricing",
+          "href": "/pricing",
+          "x": 54,
+          "y": 2890,
+          "w": 161,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Sign in",
+          "href": "/login",
+          "x": 227,
+          "y": 2890,
+          "w": 109,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        }
+      ],
+      "tap_targets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "href": "#main",
+          "w": 148,
+          "h": 38
+        },
+        {
+          "tag": "A",
+          "text": "AI Pre-Bill Audit",
+          "href": "/",
+          "w": 118,
+          "h": 18
+        },
+        {
+          "tag": "A",
+          "text": "Home",
+          "href": "/",
+          "w": 45,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "w": 51,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "How it works",
+          "href": "/how-it-works",
+          "w": 87,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Security",
+          "href": "/security",
+          "w": 59,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "See pricing",
+          "href": "/pricing",
+          "w": 161,
+          "h": 59
+        },
+        {
+          "tag": "A",
+          "text": "Sign in",
+          "href": "/login",
+          "w": 109,
+          "h": 59
+        }
+      ],
+      "pricing_link_above_fold": true
+    },
+    "security_mobile": {
+      "url": "http://localhost:3456/security",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page_height_px": 5631,
+      "horizontal_scroll": false,
+      "scroll_w": 390,
+      "client_w": 390,
+      "full_screenshot": "/tmp/portal-audit/screenshots/security_mobile.png",
+      "fold_screenshot": "/tmp/portal-audit/screenshots/security_mobile_fold.png",
+      "ctas": [
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 89,
+          "y": 48,
+          "w": 51,
+          "h": 28,
+          "visible": true,
+          "aboveFold": true
+        },
+        {
+          "tag": "A",
+          "text": "Download /security.pdf",
+          "href": "/security.pdf",
+          "x": 68,
+          "y": 5272,
+          "w": 254,
+          "h": 59,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Request the BAA / HIC-Agent agreement",
+          "href": "mailto:legal@ai-billing-audit.ashbi.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request",
+          "x": 24,
+          "y": 5343,
+          "w": 342,
+          "h": 84,
+          "visible": true,
+          "aboveFold": false
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "x": 78,
+          "y": 5531,
+          "w": 44,
+          "h": 20,
+          "visible": true,
+          "aboveFold": false
+        }
+      ],
+      "tap_targets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "href": "#main",
+          "w": 148,
+          "h": 38
+        },
+        {
+          "tag": "A",
+          "text": "AI Pre-Bill Audit",
+          "href": "/",
+          "w": 118,
+          "h": 18
+        },
+        {
+          "tag": "A",
+          "text": "Home",
+          "href": "/",
+          "w": 45,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "w": 51,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "How it works",
+          "href": "/how-it-works",
+          "w": 87,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "Security",
+          "href": "/security",
+          "w": 59,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "text": "legal@ai-billing-audit.ashbi.ca",
+          "href": "mailto:legal@ai-billing-audit.ashbi.ca",
+          "w": 237,
+          "h": 41
+        },
+        {
+          "tag": "A",
+          "text": "Download /security.pdf",
+          "href": "/security.pdf",
+          "w": 254,
+          "h": 59
+        },
+        {
+          "tag": "A",
+          "text": "Request the BAA / HIC-Agent agreement",
+          "href": "mailto:legal@ai-billing-audit.ashbi.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request",
+          "w": 342,
+          "h": 84
+        },
+        {
+          "tag": "A",
+          "text": "Pricing",
+          "href": "/pricing",
+          "w": 44,
+          "h": 20
+        },
+        {
+          "tag": "A",
+          "text": "How it works",
+          "href": "/how-it-works",
+          "w": 81,
+          "h": 20
+        },
+        {
+          "tag": "A",
+          "text": "Security",
+          "href": "/security",
+          "w": 53,
+          "h": 20
+        }
+      ],
+      "pricing_link_above_fold": true
+    }
+  },
+  "interactive": {
+    "dark_mode": {
+      "initial_bg": "rgb(10, 10, 10)",
+      "initial_color": "rgb(237, 237, 237)",
+      "reload_bg": "rgb(10, 10, 10)",
+      "found_toggle_in_dom": true,
+      "candidates": [
+        {
+          "tag": "BUTTON",
+          "cls": "shell-module__oibs4a__button",
+          "label": "",
+          "text": "Send magic link"
+        }
+      ],
+      "html_class": "geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-module__8Li5zG__variable",
+      "data_theme": null,
+      "color_scheme_meta": null,
+      "load_shot": "/tmp/portal-audit/screenshots/home_dark_load.png",
+      "settled_shot": "/tmp/portal-audit/screenshots/home_dark_settled.png"
+    },
+    "small_tap_targets": [
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "Skip to content",
+        "href": "#main",
+        "w": 148,
+        "h": 38
+      },
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "w": 118,
+        "h": 18
+      },
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "Home",
+        "href": "/",
+        "w": 45,
+        "h": 28
+      },
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "Pricing",
+        "href": "/pricing",
+        "w": 51,
+        "h": 28
+      },
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "w": 87,
+        "h": 28
+      },
+      {
+        "page": "home_mobile",
+        "tag": "A",
+        "text": "Security",
+        "href": "/security",
+        "w": 59,
+        "h": 28
+      },
+      {
+        "page": "home_mobile",
+        "tag": "BUTTON",
+        "text": "Send magic link",
+        "href": "",
+        "w": 260,
+        "h": 42
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "Skip to content",
+        "href": "#main",
+        "w": 148,
+        "h": 38
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "w": 118,
+        "h": 18
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "Home",
+        "href": "/",
+        "w": 45,
+        "h": 28
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "Pricing",
+        "href": "/pricing",
+        "w": 51,
+        "h": 28
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "w": 87,
+        "h": 28
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "A",
+        "text": "Security",
+        "href": "/security",
+        "w": 59,
+        "h": 28
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start CAD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start USD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start CAD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start USD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start CAD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "pricing_mobile",
+        "tag": "BUTTON",
+        "text": "Start USD plan",
+        "href": "",
+        "w": 142,
+        "h": 39
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "Skip to content",
+        "href": "#main",
+        "w": 148,
+        "h": 38
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "w": 118,
+        "h": 18
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "Home",
+        "href": "/",
+        "w": 45,
+        "h": 28
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "Pricing",
+        "href": "/pricing",
+        "w": 51,
+        "h": 28
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "w": 87,
+        "h": 28
+      },
+      {
+        "page": "how-it-works_mobile",
+        "tag": "A",
+        "text": "Security",
+        "href": "/security",
+        "w": 59,
+        "h": 28
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Skip to content",
+        "href": "#main",
+        "w": 148,
+        "h": 38
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "AI Pre-Bill Audit",
+        "href": "/",
+        "w": 118,
+        "h": 18
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Home",
+        "href": "/",
+        "w": 45,
+        "h": 28
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Pricing",
+        "href": "/pricing",
+        "w": 51,
+        "h": 28
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "w": 87,
+        "h": 28
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Security",
+        "href": "/security",
+        "w": 59,
+        "h": 28
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "legal@ai-billing-audit.ashbi.ca",
+        "href": "mailto:legal@ai-billing-audit.ashbi.ca",
+        "w": 237,
+        "h": 41
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Pricing",
+        "href": "/pricing",
+        "w": 44,
+        "h": 20
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "How it works",
+        "href": "/how-it-works",
+        "w": 81,
+        "h": 20
+      },
+      {
+        "page": "security_mobile",
+        "tag": "A",
+        "text": "Security",
+        "href": "/security",
+        "w": 53,
+        "h": 20
+      }
+    ]
+  },
+  "errors": []
+}

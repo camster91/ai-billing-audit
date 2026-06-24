@@ -1,0 +1,60 @@
+{# Revenue opportunity detail modal — opened by clicking the '$$ opportunity'
+   badge on any audit card. Lists every missed-revenue finding for the
+   encounter with rule name, suggested SOMB code, estimated dollar
+   uplift, and a 1-sentence "why this matters" explanation.
+
+   Per-finding Accept / Dismiss buttons reuse the existing per-finding
+   endpoints (POST /encounter/{id}/finding/{fid}/{accept,dismiss}). The
+   modal is hidden by default; the global `openRevenueOpportunityModal`
+   function (defined in base.html) populates + reveals it.
+
+   This partial is rendered once at the bottom of any page that shows
+   audit cards (index, examples, encounter detail). Including it from
+   base.html would inflate every page; we keep it opt-in so other pages
+   (legal, contact, etc.) don't pay the markup cost. #}
+<div
+  id="revenue-opportunity-modal"
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="revenue-opportunity-modal__title"
+  hidden
+>
+  <div class="modal__backdrop" data-action="modal-close"></div>
+  <div class="modal__panel" role="document">
+    <header class="modal__header">
+      <div>
+        <h2 id="revenue-opportunity-modal__title" class="modal__title">
+          Revenue opportunities
+        </h2>
+        <p class="modal__subtitle muted small">
+          <span data-modal-encounter-id></span>
+          &middot;
+          <span data-modal-summary>loading…</span>
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        data-action="modal-close"
+        aria-label="Close"
+      >&times;</button>
+    </header>
+
+    <div class="modal__body" data-modal-body>
+      {# Populated by openRevenueOpportunityModal(encounterId). #}
+      <p class="muted">Loading opportunities…</p>
+    </div>
+
+    <footer class="modal__footer">
+      <a class="btn btn-ghost btn-sm" data-modal-encounter-link href="#">
+        Open full encounter &rarr;
+      </a>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        data-action="modal-close"
+      >Close</button>
+    </footer>
+  </div>
+</div>

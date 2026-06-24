@@ -29,9 +29,18 @@ WORKDIR /app
 # Install Python deps first so layer caching kicks in for code changes.
 COPY pyproject.toml ./
 COPY src ./src
+# Synthetic data files (train.json, val.json, etc.) are needed by
+# the demo dashboard to render encounter detail pages. Without
+# this, the home page lists registered encounters but /encounter/{id}
+# 404s because load_encounter_record() can't find the underlying data.
+#
+# Only data/synth/ is baked into the image. data/private/ (for real
+# PHI, empty today) is excluded via .dockerignore so production
+# deployments never ship real patient data in the image layer.
+COPY data/synth ./data
 RUN pip install --upgrade pip \
     && pip install -e . \
-    && pip install "psycopg[binary]>=3.1"
+    && pip install "psycopg[binary]>=3.1" "uvicorn[standard]>=0.27"
 
 # Persistent data + audit-output mounts. Compose binds ../data and
 # ../artifacts into these paths; on a fresh deploy the dirs are created

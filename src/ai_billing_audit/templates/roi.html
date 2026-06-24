@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}ROI calculator — Zorva{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 880px;">
+  <h1>ROI calculator</h1>
+  <p class="muted">
+    For clinic decision-makers: how much revenue will Zorva save?
+    Numbers are conservative. Catch rate is the v10 smartness-test
+    F1 score on the val set (0.42 = recall × precision).
+  </p>
+
+  <div class="roi-grid">
+    <form class="card roi-form" method="post" action="/roi">
+      <h2 style="margin-top: 0;">Your clinic</h2>
+
+      <label class="roi-form__label">
+        Monthly claim volume
+        <input
+          type="number"
+          name="monthly_claims"
+          min="1"
+          step="1"
+          value="{{ inputs.monthly_claims }}"
+          required
+        />
+        <span class="muted small">e.g. 1000 for a mid-size practice</span>
+      </label>
+
+      <label class="roi-form__label">
+        Current denial rate
+        <input
+          type="number"
+          name="current_denial_rate"
+          min="0"
+          max="1"
+          step="0.001"
+          value="{{ inputs.current_denial_rate }}"
+          required
+        />
+        <span class="muted small">fraction (0.075 = 7.5%, CMS commercial average)</span>
+      </label>
+
+      <label class="roi-form__label">
+        Average revenue per claim (USD)
+        <input
+          type="number"
+          name="avg_claim_value_usd"
+          min="1"
+          step="1"
+          value="{{ inputs.avg_claim_value_usd }}"
+          required
+        />
+        <span class="muted small">CMS office-visit average is $190</span>
+      </label>
+
+      <label class="roi-form__label">
+        Current appeal rate
+        <input
+          type="number"
+          name="current_appeal_rate"
+          min="0"
+          max="1"
+          step="0.01"
+          value="{{ inputs.current_appeal_rate }}"
+          required
+        />
+        <span class="muted small">fraction of denials your team recovers (50% is typical)</span>
+      </label>
+
+      <label class="roi-form__label">
+        Zorva catch rate (advanced)
+        <input
+          type="number"
+          name="catch_rate"
+          min="0"
+          max="1"
+          step="0.01"
+          value="{{ inputs.catch_rate }}"
+        />
+        <span class="muted small">Default 0.42 = v10 F1 score (recall × precision). Run your own smartness test to refine.</span>
+      </label>
+
+      <label class="roi-form__label">
+        Plan tier (leave blank to auto-pick)
+        <select name="plan_tier">
+          <option value="" {% if not inputs.plan_tier %}selected{% endif %}>Auto (based on volume)</option>
+          <option value="starter" {% if inputs.plan_tier == 'starter' %}selected{% endif %}>Starter — $499/mo, up to 200 claims</option>
+          <option value="growth" {% if inputs.plan_tier == 'growth' %}selected{% endif %}>Growth — $1,499/mo, up to 2,000 claims</option>
+          <option value="scale" {% if inputs.plan_tier == 'scale' %}selected{% endif %}>Scale — $2,999/mo, 2,000+ claims</option>
+        </select>
+      </label>
+
+      <button type="submit" class="btn btn-primary">Calculate</button>
+    </form>
+
+    <div class="card roi-results">
+      <h2 style="margin-top: 0;">Your savings</h2>
+
+      <p class="roi-summary">
+        <strong>{{ result.narrative.summary }}</strong>
+      </p>
+
+      <table class="roi-table">
+        <thead>
+          <tr><th>Metric</th><th class="num">Value</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Claims submitted / month</td>
+            <td class="num">{{ "{:,}".format(result.monthly.claims_submitted) }}</td>
+          </tr>
+          <tr>
+            <td>Denials without Zorva</td>
+            <td class="num">{{ result.monthly.denials_without_zorva }}</td>
+          </tr>
+          <tr>
+            <td>Currently recovered manually</td>
+            <td class="num">{{ result.monthly.recovered_manually }}</td>
+          </tr>
+          <tr class="roi-loss">
+            <td>Revenue lost without Zorva</td>
+            <td class="num">${{ "{:,.0f}".format(result.monthly.revenue_lost_without_zorva) }}</td>
+          </tr>
+          <tr>
+            <td>Caught by Zorva / month</td>
+            <td class="num">{{ result.monthly.caught_by_zorva }}</td>
+          </tr>
+          <tr class="roi-gain">
+            <td>Revenue saved by Zorva</td>
+            <td class="num">${{ "{:,.0f}".format(result.monthly.revenue_saved_by_zorva) }}</td>
+          </tr>
+          <tr class="roi-cost">
+            <td>Plan cost (CAD)</td>
+            <td class="num">${{ "{:,}".format(result.monthly.plan_cost_cad) }}/mo</td>
+          </tr>
+          <tr class="roi-net {% if result.monthly.net_monthly_savings_usd >= 0 %}roi-net--positive{% else %}roi-net--negative{% endif %}">
+            <td><strong>Net monthly savings (USD)</strong></td>
+            <td class="num"><strong>${{ "{:,.0f}".format(result.monthly.net_monthly_savings_usd) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Annualized</h3>
+      <table class="roi-table">
+        <tbody>
+          <tr>
+            <td>Annual revenue saved (USD)</td>
+            <td class="num">${{ "{:,.0f}".format(result.annual.revenue_saved_usd) }}</td>
+          </tr>
+          <tr>
+            <td>Annual plan cost (CAD)</td>
+            <td class="num">${{ "{:,}".format(result.annual.plan_cost_cad) }}</td>
+          </tr>
+          <tr class="roi-net {% if result.annual.net_savings_usd >= 0 %}roi-net--positive{% else %}roi-net--negative{% endif %}">
+            <td><strong>Annual net savings (USD)</strong></td>
+            <td class="num"><strong>${{ "{:,.0f}".format(result.annual.net_savings_usd) }}</strong></td>
+          </tr>
+          <tr>
+            <td>Annual ROI</td>
+            <td class="num"><strong>{{ result.annual.roi_pct }}%</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="roi-after-subs">
+        {{ result.narrative.after_subs }}
+      </p>
+
+      <p class="muted small">
+        Plan tier selected: <strong>{{ result.inputs.plan_tier }}</strong>.
+        Adjust inputs to model different scenarios. JSON results
+        are at <a href="/roi/results">/roi/results</a> for an
+        embeddable widget.
+      </p>
+    </div>
+  </div>
+</main>
+{% endblock %}

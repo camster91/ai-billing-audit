@@ -37,8 +37,8 @@ from ai_billing_audit.auditor import (  # noqa: E402
 from ai_billing_audit.llm import LLMClient  # noqa: E402
 
 
-VAL_PATH = PROJECT_ROOT / "data" / "val.json"
-MANIFEST_PATH = PROJECT_ROOT / "data" / "val_manifest.json"
+VAL_PATH = PROJECT_ROOT / "data" / "synth" / "val.json"
+MANIFEST_PATH = PROJECT_ROOT / "data" / "synth" / "val_manifest.json"
 V0_PIN_PATH = PROJECT_ROOT / "prompts" / "v0" / "auditor_prompt.txt"
 V0_MANIFEST_PATH = PROJECT_ROOT / "prompts" / "v0" / "MANIFEST.json"
 BUNDLED_PROMPT_PATH = PROJECT_ROOT / "src" / "ai_billing_audit" / "auditor_prompt.txt"

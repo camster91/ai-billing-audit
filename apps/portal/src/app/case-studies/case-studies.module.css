@@ -1,0 +1,368 @@
+/* /case-studies — three worked-example case studies.
+   Mirrors the dark blue gradient theme of /pricing, /how-it-works,
+   /security, and /contact. Single column on mobile, two-column on
+   desktop for the hero, one-column cards for the case studies. */
+
+.page {
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --panel-2: #1a2340;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #60a5fa;
+  --accent-bg: #2563eb;
+  --accent-2: #2dd4bf;
+  --warn: #f59e0b;
+  --good: #22c55e;
+  --err: #fca5a5;
+  --sev-critical: #dc2626;
+  --sev-high: #ef4444;
+  --sev-medium: #f59e0b;
+  --sev-low: #60a5fa;
+  --sev-info: #9aa3bd;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.main {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+  box-sizing: border-box;
+}
+
+.header {
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 720px;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 18px 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.summaryStat {
+  flex: 1 1 140px;
+}
+
+.summaryStat .statNum {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryStat .statLabel {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+/* ------- Case study cards ------- */
+
+.caseList {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.caseCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.caseHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.difficultyBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.difficultyEasy {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: var(--good);
+}
+
+.difficultyMedium {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--warn);
+}
+
+.difficultyHard {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--sev-high);
+}
+
+.specialtyTag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.caseTitle {
+  margin: 8px 0 16px;
+  font-size: 22px;
+  letter-spacing: -0.2px;
+}
+
+.caseSection {
+  margin-top: 18px;
+}
+
+.caseSection h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.caseSection p,
+.caseSection ul {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.caseSection ul {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.findingList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.findingRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.severityPill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sevInfo {
+  background: rgba(154, 163, 189, 0.12);
+  border: 1px solid rgba(154, 163, 189, 0.35);
+  color: var(--sev-info);
+}
+
+.sevLow {
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: var(--sev-low);
+}
+
+.sevMedium {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--sev-medium);
+}
+
+.sevHigh {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: var(--sev-high);
+}
+
+.sevCritical {
+  background: rgba(220, 38, 38, 0.16);
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  color: var(--sev-critical);
+}
+
+.findingRule {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.findingCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.findingQuote {
+  flex: 1 1 240px;
+  font-size: 14px;
+  color: var(--text);
+  font-style: italic;
+}
+
+.findingRationale {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dollarImpact {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(45, 212, 191, 0.10) 0%,
+    rgba(34, 197, 94, 0.06) 100%
+  );
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.dollarImpact strong {
+  color: var(--accent-2);
+}
+
+.cta {
+  margin-top: 32px;
+  padding: 28px;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.18) 0%,
+    rgba(45, 212, 191, 0.12) 100%
+  );
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.cta h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.cta p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.ctaButton {
+  display: inline-block;
+  background: var(--accent-bg);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+
+.ctaButton:hover {
+  background: #1d4ed8;
+}
+
+.ctaSecondary {
+  display: inline-block;
+  margin-left: 16px;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .header h1 {
+    font-size: 26px;
+  }
+  .caseCard {
+    padding: 20px;
+  }
+  .main {
+    padding: 40px 16px 64px;
+  }
+  .findingRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

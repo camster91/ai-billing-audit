@@ -9,7 +9,10 @@
 //
 // Auth: the proxy redirects unauthenticated users; this route also
 // re-checks via `auth()` + `getActiveTenant()` and returns 401/403 if
-// the session has gone stale.
+// the session has gone stale. Role gate (t_23bfd49c): any active
+// member of the tenant with the `read` capability (viewer / auditor
+// / owner / admin) can export. Disabled members and non-members
+// receive 403.
 //
 // Response shape: text/csv with the seven list columns plus the
 // per-row total_billed_cents and the audit_chain_anchor (the
@@ -21,6 +24,7 @@ import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { buildEncounterListOrderBy, buildEncounterListWhere, parseEncounterListFilters, parseEncounterListSort } from "@/lib/encounter-list";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +52,19 @@ export async function GET(request: Request): Promise<Response> {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no_tenant" }, { status: 403 });
+  }
+  // Role gate (t_23bfd49c): export is a read — every active
+  // member role qualifies.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "read",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
+      { status: 403 },
+    );
   }
 
   const url = new URL(request.url);
@@ -79,6 +96,16 @@ export async function GET(request: Request): Promise<Response> {
       ? { AND: [baseWhere, { id: { in: idScope } }] }
       : baseWhere;
   const orderBy = buildEncounterListOrderBy(sort);
+
+  // Re-read the tenant's redactPatientNamesInExports flag so the
+  // export reflects the user's current /settings preference. The
+  // flag defaults to true (set in the migration), so clinics that
+  // never open /settings still get redaction by default.
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: tenant.id },
+    select: { redactPatientNamesInExports: true },
+  });
+  const redact = tenantRow?.redactPatientNamesInExports ?? true;
 
   const rawRows = await prisma.encounter.findMany({
     where,
@@ -149,7 +176,7 @@ export async function GET(request: Request): Promise<Response> {
     start(controller) {
       controller.enqueue(encoder.encode(CSV_HEADERS.join(",") + "\n"));
       for (const r of rows) {
-        controller.enqueue(encoder.encode(encodeRow(r)));
+        controller.enqueue(encoder.encode(encodeRow(r, redact)));
       }
       controller.close();
     },
@@ -163,22 +190,29 @@ export async function GET(request: Request): Promise<Response> {
       "content-disposition": `attachment; filename="${filename}"`,
       "cache-control": "no-store",
       "x-row-count": String(rows.length),
+      // Surface the redaction state in a response header so a CI check
+      // or downstream consumer can verify the export matches the
+      // /settings preference without diffing CSV cells.
+      "x-phi-redacted": redact ? "true" : "false",
     },
   });
 }
 
-function encodeRow(r: {
-  id: string;
-  dateOfService: Date;
-  provider: string;
-  providerNpi: string;
-  payer: string;
-  status: string;
-  billedCents: number;
-  patientHash: string;
-  findingCount: number;
-  estImpactCents: number;
-}): string {
+function encodeRow(
+  r: {
+    id: string;
+    dateOfService: Date;
+    provider: string;
+    providerNpi: string;
+    payer: string;
+    status: string;
+    billedCents: number;
+    patientHash: string;
+    findingCount: number;
+    estImpactCents: number;
+  },
+  redact: boolean,
+): string {
   const cells = [
     r.id,
     r.dateOfService.toISOString().slice(0, 10),
@@ -189,7 +223,7 @@ function encodeRow(r: {
     String(r.findingCount),
     String(r.estImpactCents),
     String(r.billedCents),
-    r.patientHash.slice(0, 12),
+    redact ? "[redacted]" : r.patientHash.slice(0, 12),
   ];
   return cells.map(csvEscape).join(",") + "\n";
 }

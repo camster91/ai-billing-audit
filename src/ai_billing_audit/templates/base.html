@@ -2,23 +2,257 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{% block title %}ai-billing-audit dashboard{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ai-billing-audit{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">ai-billing-audit <span class="brand-sub">demo dashboard</span></a>
-    <nav class="topnav">
-      <a href="/">index</a>
-      <a href="/encounters/upload">upload</a>
-      <a href="/healthz">health</a>
+    <a class="brand" href="/">
+      <span class="brand-mark">A</span>
+      <span class="brand-text">ai-billing-audit</span>
+    </a>
+    <nav>
+      <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Audits</a>
+      <a href="/encounters/upload" {% if request.url.path == "/encounters/upload" %}class="is-active"{% endif %}>Upload</a>
+      <a href="/activity" {% if request.url.path == "/activity" %}class="is-active"{% endif %}>Activity</a>
+      <a href="/roi" {% if request.url.path.startswith("/roi") %}class="is-active"{% endif %}>ROI</a>
+      <a href="/case-studies" {% if request.url.path.startswith("/case-studies") %}class="is-active"{% endif %}>Case studies</a>
+      <a href="/contact" {% if request.url.path.startswith("/contact") %}class="is-active"{% endif %}>Contact</a>
+      <a href="/legal/privacy" {% if request.url.path.startswith("/legal/privacy") %}class="is-active"{% endif %}>Privacy</a>
+      <a href="/legal/terms" {% if request.url.path.startswith("/legal/terms") %}class="is-active"{% endif %}>Terms</a>
     </nav>
+    <div class="tenant-pill" title="Tenant">{{ tenant_name or "Acme Family Practice" }}</div>
   </header>
-  <main class="container">
-    {% block content %}{% endblock %}
+
+  <main class="page">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
   <footer class="footer">
-    <span>ai-billing-audit v0.1.0 · demo dashboard</span>
+    ai-billing-audit v0.1.0 &middot; tenant: <strong>Acme Family Practice</strong> &middot; <a href="/healthz">health</a>
   </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // Tiny toast helper — used by stub action buttons.
+    (function () {
+      var el = document.getElementById("toast");
+      var timer = null;
+      window.showToast = function (msg) {
+        el.textContent = msg;
+        el.classList.add("is-visible");
+        clearTimeout(timer);
+        timer = setTimeout(function () { el.classList.remove("is-visible"); }, 4000);
+      };
+    })();
+
+    // Revenue opportunity modal — opened by clicking the '$$ opportunity'
+    // badge on any audit card. Lazily fetched from
+    // GET /encounter/{id}/opportunities, then rendered into the modal
+    // shell included via _revenue_opportunity_modal.html partial.
+    (function () {
+      var modal = null;        // cached after first lookup
+      var lastFocus = null;    // element to restore focus to on close
+
+      function ensureModal() {
+        if (modal) return modal;
+        modal = document.getElementById("revenue-opportunity-modal");
+        if (!modal) return null;
+        // Close handlers — backdrop, footer button, header × button.
+        modal.addEventListener("click", function (ev) {
+          var t = ev.target;
+          if (t && t.getAttribute && t.getAttribute("data-action") === "modal-close") {
+            closeModal();
+          }
+        });
+        // Escape key closes.
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key === "Escape" && modal && !modal.hidden) {
+            closeModal();
+          }
+        });
+        return modal;
+      }
+
+      function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === "function") {
+          lastFocus.focus();
+        }
+      }
+
+      function fmtDollar(n) {
+        var v = Number(n) || 0;
+        return "$" + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function renderRows(opps) {
+        if (!opps || opps.length === 0) {
+          return '<p class="opp-empty">No missed-revenue findings for this encounter.</p>';
+        }
+        return opps.map(function (o, i) {
+          var fid = escapeHtml(o.finding_id || ("row-" + i));
+          var name = escapeHtml(o.rule_name || o.rule_id || "Missed revenue");
+          var rid = escapeHtml(o.rule_id || "");
+          var sc = escapeHtml(o.suggested_code || "—");
+          var why = escapeHtml(o.why || "");
+          var sev = escapeHtml(o.severity || "info");
+          var dollar = fmtDollar(o.estimated_dollar);
+          return ''
+            + '<div class="opp-row" data-finding-id="' + fid + '">'
+            +   '<div>'
+            +     '<div class="opp-row__head">'
+            +       '<span class="opp-row__name">' + name + '</span>'
+            +       '<span class="chip-rule mono">' + rid + '</span>'
+            +       '<span class="badge badge-sev-' + sev + '">' + sev + '</span>'
+            +       '<span class="opp-row__meta">&rarr; ' + sc + '</span>'
+            +     '</div>'
+            +     (why ? '<p class="opp-row__why">' + why + '</p>' : '')
+            +     '<div class="opp-row__actions">'
+            +       '<button type="button" class="btn btn-primary btn-sm" data-action="opp-accept" data-finding-id="' + fid + '">Accept</button>'
+            +       '<button type="button" class="btn btn-ghost btn-sm" data-action="opp-dismiss" data-finding-id="' + fid + '">Dismiss</button>'
+            +       '<span class="opp-row__status" data-opp-status="' + fid + '"></span>'
+            +     '</div>'
+            +   '</div>'
+            +   '<span class="opp-row__dollar mono">' + dollar + '</span>'
+            + '</div>';
+        }).join("");
+      }
+
+      function postDecision(encounterId, findingId, action) {
+        // Reuse the existing per-finding endpoints (same shape as the
+        // encounter-detail page's accept/dismiss buttons).
+        var url = "/encounter/" + encodeURIComponent(encounterId)
+                + "/finding/" + encodeURIComponent(findingId) + "/" + action;
+        return fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json().catch(function () { return {}; });
+        });
+      }
+
+      function openModal(encounterId) {
+        var m = ensureModal();
+        if (!m) return;
+        lastFocus = document.activeElement;
+        // Header / footer slots
+        var idSlot = m.querySelector("[data-modal-encounter-id]");
+        var linkSlot = m.querySelector("[data-modal-encounter-link]");
+        var sumSlot = m.querySelector("[data-modal-summary]");
+        var bodySlot = m.querySelector("[data-modal-body]");
+        if (idSlot) idSlot.textContent = encounterId;
+        if (linkSlot) linkSlot.setAttribute("href", "/encounter/" + encodeURIComponent(encounterId));
+        if (sumSlot) sumSlot.textContent = "loading…";
+        if (bodySlot) bodySlot.innerHTML = '<p class="muted">Loading opportunities…</p>';
+        m.hidden = false;
+        // Move focus into the modal for keyboard users.
+        var closeBtn = m.querySelector('[data-action="modal-close"]');
+        if (closeBtn) closeBtn.focus();
+
+        fetch("/encounter/" + encodeURIComponent(encounterId) + "/opportunities", {
+          headers: { "Accept": "application/json" },
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+          })
+          .then(function (data) {
+            if (sumSlot) {
+              var n = data.n_opportunities || 0;
+              var total = fmtDollar(data.total_dollar || 0);
+              sumSlot.textContent = n + " finding" + (n === 1 ? "" : "s") + " · est. " + total + " uplift";
+            }
+            if (bodySlot) bodySlot.innerHTML = renderRows(data.opportunities || []);
+          })
+          .catch(function (err) {
+            if (bodySlot) {
+              bodySlot.innerHTML = '<p class="opp-empty">Could not load opportunities: ' + escapeHtml(err.message || "network error") + '</p>';
+            }
+          });
+      }
+
+      // Delegated click handler — catches the badge button + the
+      // modal's per-finding accept/dismiss buttons. We attach to
+      // document so the handler is active on every page (cards on
+      // /, /examples, encounter detail, etc.).
+      document.addEventListener("click", function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var trigger = t.closest('[data-action="open-opportunity-modal"]');
+        if (trigger) {
+          // Stop the click from bubbling up to the parent <a> card so
+          // we don't navigate away when the biller wants to read the
+          // modal instead of open the encounter.
+          ev.preventDefault();
+          ev.stopPropagation();
+          var eid = trigger.getAttribute("data-opportunity-encounter");
+          if (eid) openModal(eid);
+          return;
+        }
+        var acceptBtn = t.closest('[data-action="opp-accept"]');
+        if (acceptBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          handleDecision(acceptBtn, "accept");
+          return;
+        }
+        var dismissBtn = t.closest('[data-action="opp-dismiss"]');
+        if (dismissBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          handleDecision(dismissBtn, "dismiss");
+          return;
+        }
+      });
+
+      function handleDecision(btn, action) {
+        var row = btn.closest(".opp-row");
+        if (!row) return;
+        var findingId = row.getAttribute("data-finding-id");
+        var status = row.querySelector("[data-opp-status]");
+        var eid = (modal && modal.querySelector("[data-modal-encounter-id]") || {}).textContent;
+        if (!findingId || !eid) return;
+        if (status) status.textContent = action === "accept" ? "Saving…" : "Dismissing…";
+        // Disable both buttons in the row to prevent double-clicks.
+        var buttons = row.querySelectorAll("button[data-action]");
+        buttons.forEach(function (b) { b.disabled = true; });
+        postDecision(eid, findingId, action)
+          .then(function () {
+            if (status) status.textContent = action === "accept" ? "Accepted ✓" : "Dismissed ✓";
+            if (window.showToast) {
+              window.showToast(action === "accept" ? "Revenue opportunity accepted." : "Revenue opportunity dismissed.");
+            }
+            // Faint-out the row to signal the action took effect.
+            row.style.opacity = "0.55";
+          })
+          .catch(function (err) {
+            if (status) status.textContent = "Error — " + (err.message || "request failed");
+            buttons.forEach(function (b) { b.disabled = false; });
+          });
+      }
+
+      // Expose for any caller that wants to open the modal directly.
+      window.openRevenueOpportunityModal = openModal;
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

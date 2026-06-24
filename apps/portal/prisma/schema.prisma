@@ -113,7 +113,10 @@ model Authenticator {
 //
 //   tenant.tier:                "small" | "mid" | "large"
 //   tenant.subscriptionStatus:  "active" | "past_due" | "canceled"
-//   membership.role:            "owner" | "admin" | "auditor" | "viewer"
+//   membership.role:            "owner" | "auditor" | "viewer"
+//                              (admin is legacy and persisted for back-compat;
+//                               new invites only allow owner | auditor | viewer)
+//   membership.status:          "pending" | "active" | "inactive"
 //   encounter.status:           "pending" | "auditing" | "awaiting_review" | "completed"
 //   finding.category:           "em_level" | "documentation" | "medical_necessity" | "modifier" | "code_mismatch" | "payer_policy" | "other"
 //   finding.status:             "pending" | "accepted" | "dismissed"
@@ -145,9 +148,23 @@ model Tenant {
   stripeSubscriptionId String? @unique
   // Audit quota tracking — the billing-audit engine increments
   // audit_quota_used on each claim submitted for review; the portal UI
-  // surfaces used/limit and warns near the cap.
+  // surfaces used/limit and warns near the cap. See
+  // src/lib/audit-quota.ts for the server-side enforcement (atomic
+  // check-and-increment at 80% warn / 100% block, reset on
+  // invoice.payment_succeeded).
   auditQuotaUsed     Int      @default(0)
   auditQuotaLimit    Int      @default(100)
+  // First day (UTC) of the billing period in which the 80% warning
+  // email was last sent. Null until the first warning fires. Used to
+  // dedupe — the 80% threshold is "warn once per period", not
+  // "warn on every audit that crosses 80%".
+  quotaWarningSentAt DateTime?
+  // Start of the billing period (UTC date) that the most recent
+  // quota reset applied to. The webhook handler skips the reset when
+  // the new event would write to the same period as a prior reset —
+  // this is the "no double-reset within the same period" invariant.
+  // Null until the first reset fires.
+  lastQuotaResetPeriodStart DateTime?
 
   // -----------------------------------------------------------------------
   // Subscription lifecycle (t_c12cf722). Populated by the Stripe webhook
@@ -204,6 +221,10 @@ model Tenant {
   //   server-staged 837P file ready for the audit pipeline.
   // -----------------------------------------------------------------------
   clinicName                 String?
+  // Free-form mailing address. No per-field validation (suite number,
+  // province code, postal pattern varies by country); bounded to 500
+  // chars so the row can't grow unbounded. Optional.
+  clinicAddress              String?
   clinicNpi                  String?
   clinicTimezone             String?
   dataResidencyRegion        String?
@@ -221,13 +242,35 @@ model Tenant {
   firstEncounterFileName     String?
   firstEncounterUploadedAt   DateTime?
 
+  // -----------------------------------------------------------------------
+  // /settings page (t_1bab62b6) — clinic-level preferences editable
+  // from the post-onboarding settings surface.
+  //
+  // redactPatientNamesInExports: when true, the /api/encounters/export
+  //   and /api/findings/export routes replace the per-row patient hash
+  //   prefix with "[redacted]" so downstream spreadsheets don't carry
+  //   the SHA-256 fingerprint that ties a row back to a patient
+  //   identifier. Defaults to on — the spec requires the safe-by-default
+  //   posture; clinics that need unredacted exports (e.g. for in-house
+  //   reconciliation with the EMR) can toggle it off.
+  // -----------------------------------------------------------------------
+  redactPatientNamesInExports Boolean @default(true)
+
   // onboardingStep: 0 (not started) → 1 (clinic profile) → 2 (region) →
   // 3 (EHR) → 4 (first encounter) → 5 (complete). Persisted so a
   // returning user lands on the right step.
   // onboardingCompletedAt: timestamp the wizard completed. Null until
   // then.
-  onboardingStep             Int      @default(0)
-  onboardingCompletedAt      DateTime?
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
+
+  // First-audit-complete email (t_a0c9352e). Set the first time we
+  // dispatch the "your first audit is ready" email for this tenant.
+  // Acts as a dedup key — every call to maybeSendFirstAuditComplete
+  // short-circuits when this is non-null, so a tenant that ingests
+  // encounters in batches across multiple FastAPI runs only gets
+  // the email once.
+  firstAuditEmailSentAt  DateTime?
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -276,17 +319,38 @@ model RedeemedCheckoutSession {
 // `role` is the per-tenant role; the global superadmin flag is intentionally
 // absent here (out of scope for this milestone).
 model Membership {
-  id        String   @id @default(cuid())
-  userId    String
-  tenantId  String
+  id    String @id @default(cuid())
+  userId String?
+  tenantId String
+  // Role for this (user, tenant) pair. New invites only set
+  // owner | auditor | viewer; the existing "admin" value is
+  // preserved in the database for back-compat but is treated as
+  // equivalent to "owner" by the role enforcement helper.
   role      String   @default("viewer")
-  createdAt DateTime @default(now())
+  // Team-management status. "pending" = invite issued, user has
+  // not accepted; "active" = bound to a User row with a session;
+  // "inactive" = soft-disabled, treated as no longer a member
+  // for the purposes of tenant-scoped APIs.
+  status    String   @default("active")
+  // Captured at invite time. Stays set after activation so audit
+  // shows the original invited address even if the user later
+  // changes their account email.
+  email     String
+  // One-time magic-link token for the invite. Null once the
+  // membership is no longer "pending". Indexed for the accept
+  // route's lookup.
+  inviteToken String? @unique
+  invitedAt   DateTime  @default(now())
+  activatedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@index([tenantId])
+  @@index([email])
 }
 
 // ---------------------------------------------------------------------------
@@ -552,4 +616,130 @@ model Invoice {
   @@index([tenantId, createdAt])
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
+}
+
+// ---------------------------------------------------------------------------
+// Email suppression list (t_a0c9352e).
+//
+// SuppressListEntry is the current-state table: a row here means
+// "do not send any more email to this address until the row is
+// removed." The unique index on `email` is the dedup contract — the
+// Resend webhook handler upserts on conflict so a second bounce for
+// the same address updates the existing row instead of stacking
+// duplicates.
+//
+// Reasons:
+//   - "bounce"      — Resend delivered a hard bounce. We refuse further
+//                     sends of any kind (transactional or marketing) —
+//                     a bounced transactional address is a sign the
+//                     mailbox is dead and more sends will only damage
+//                     sender reputation.
+//   - "complaint"   — The recipient hit "Mark as spam" in their
+//                     mailbox. Required by RFC 8058 / Gmail Postmaster
+//                     guidance to never contact the address again
+//                     unless the user re-subscribes through an
+//                     explicit opt-in. Refused across all templates.
+//   - "unsubscribe" — The recipient hit the List-Unsubscribe link in
+//                     a marketing-adjacent email (welcome or
+//                     weekly_digest). Per the spec this is the only
+//                     reason that exempts password-reset and
+//                     first-audit-complete (purely transactional) from
+//                     suppression — the user only opted out of the
+//                     marketing stream, not the security/operational
+//                     stream. The send-time check in src/lib/email.ts
+//                     encodes this exemption by template kind.
+//
+// SuppressionEvent is the append-only history. Every webhook hit
+// (bounce, complaint, unsubscribe) writes one row here for forensic
+// audit; SuppressListEntry is the upserted current-state. The
+// separation is deliberate: keeping the history in a separate table
+// means we can reason about suppression from a single current-state
+// row without scanning all past events, and the history is still
+// available for "when did this address get suppressed" answers.
+// ---------------------------------------------------------------------------
+
+model SuppressListEntry {
+  id              String   @id @default(cuid())
+  // Lowercased address — the send-time check lowercases its input
+  // before looking up. Storing the lowercased form is the cheapest
+  // way to keep that invariant.
+  email           String   @unique
+  // "bounce" | "complaint" | "unsubscribe"
+  reason          String
+  // Resend's event id (or the inbound POST's stamp for
+  // List-Unsubscribe landing-page hits). Stored so a forensic
+  // investigator can re-fetch the original event from Resend.
+  sourceEventId   String?
+  // Free-form reason payload (e.g. bounce diagnostic, complaint
+  // feedback type). Helpful when triaging "why is this address
+  // suppressed" without re-pulling the event.
+  sourceDetail    String?
+  createdAt       DateTime @default(now())
+  // Updated when a subsequent event for the same email arrives
+  // (e.g. a complaint landing on an address previously bounced).
+  // lastEventAt gives "most recent signal" without scanning the
+  // SuppressionEvent history.
+  lastEventAt     DateTime @default(now())
+}
+
+model SuppressionEvent {
+  id              String   @id @default(cuid())
+  email           String
+  // "bounce" | "complaint" | "unsubscribe"
+  reason          String
+  // Resend event id (or local uuid for the List-Unsubscribe page hit).
+  sourceEventId   String?
+  sourceDetail    String?
+  // Full payload as JSON so a future forensic view can render the
+  // original webhook body without a separate event log.
+  payloadJson     String
+  receivedAt      DateTime @default(now())
+
+  @@index([email, receivedAt])
+  @@index([reason, receivedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Marketing-site leads (t_fa2149e1).
+//
+// Public contact form on the marketing site stores a row per submission.
+// Exactly the five fields the user submitted are persisted — no PII
+// enrichment, no IP capture, no UA, no timestamps beyond createdAt
+// (which the audit chain may want to correlate to inbound traffic;
+// itself is non-PII).
+//
+// "billingSetup" is a 3-valued enum string ("in_house" | "outsourced"
+// | "hybrid"). Stored as a plain string with a CHECK-equivalent
+// validation in the API route (zod enum) so the schema stays portable
+// to Postgres without a custom enum type.
+//
+// "claimVolume" is the slider value (0..100000, integer). Nullable
+// for back-compat with a future "Prefer not to say" UX — current form
+// makes it required, but a v2 may add a "Skip" button.
+//
+// No FK to User/Tenant — leads are pre-account. Once a lead converts,
+// a future task can attach the lead id to the resulting Tenant/User
+// via a linking table; out of scope here.
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id           String   @id @default(cuid())
+  // Required, plain text. We don't enforce uniqueness — the same
+  // clinic can submit multiple times; a downstream CRM dedup is
+  // responsible for that, not this table.
+  name         String
+  // Required, plain text. Not lowercased at the schema layer so
+  // the API can preserve user-supplied casing for display; the
+  // disposable-email check lowercases a copy before lookup.
+  clinicName   String
+  // Required, lowercased on insert (API contract).
+  email        String
+  // Slider 0..100000. Null means "not provided".
+  claimVolume  Int?
+  // "in_house" | "outsourced" | "hybrid"
+  billingSetup String
+  createdAt    DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([createdAt])
 }

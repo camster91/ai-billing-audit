@@ -6,15 +6,28 @@
 // Body: { tenantId: string }
 //
 // Demo mode: returns { url: <local /portal/billing stub>, demo: true }.
+//
+// Role gate (t_23bfd49c): only the `billing` capability is allowed
+// (owner / admin). The Stripe Customer Portal is the entire billing
+// surface — plan, payment method, invoice history, cancel — so an
+// auditor or viewer must NOT be able to mint a portal URL even
+// though the public proxy would otherwise let the request through.
 
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, isDemoMode } from "@/lib/stripe";
+import { assertMembershipCapability } from "@/lib/membership-gate";
 
 interface PortalBody {
   tenantId?: unknown;
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
   let raw: unknown;
   try {
     raw = await request.json();
@@ -27,6 +40,20 @@ export async function POST(request: Request) {
   const tenantId = (raw as PortalBody).tenantId;
   if (typeof tenantId !== "string" || tenantId.length === 0) {
     return Response.json({ error: "tenantId is required" }, { status: 400 });
+  }
+
+  // Role gate (t_23bfd49c): owner/admin only. Auditor and viewer
+  // are rejected with 403 before we touch Stripe.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenantId,
+    "billing",
+  );
+  if (!gate.ok) {
+    return Response.json(
+      { error: "forbidden", message: "Only owners can access the billing portal." },
+      { status: 403 },
+    );
   }
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });

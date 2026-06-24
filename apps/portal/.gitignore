@@ -48,3 +48,11 @@ next-env.d.ts
 /prisma/dev.db-journal
 /dev.db
 /dev.db-journal
+
+# Playwright E2E suite (CI artifacts, never commit)
+/tests/e2e/screenshots/
+/tests/e2e/playwright-report/
+/tests/e2e/test-results/
+
+# env / config backups (security)
+*.bak

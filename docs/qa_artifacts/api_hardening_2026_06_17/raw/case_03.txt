@@ -1,0 +1,15 @@
+endpoint: POST /encounters/upload/preview with 10 MiB file (and GET /encounter/AAA... 200 chars for path stress)
+expected: 413 or 422 (not 500)
+actual:   GET-status=404 POST-status=HTTP 200
+raw response:
+HTTP/2 404 
+content-type: application/json
+date: Wed, 17 Jun 2026 13:14:20 GMT
+server: uvicorn
+via: 1.1 Caddy
+content-length: 297
+
+{"detail":"encounter 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' is not registered on the demo dashboard. Use one of the registered ids."}
+
+--- POST 10MB upload body (first 2KB) ---
+{"filename":"big.txt","rows":[],"error":"no CLM segment found; the file is not a recognisable 837P payload"}

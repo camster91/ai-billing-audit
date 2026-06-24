@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Monthly revenue opportunity — Zorva{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 980px;">
+  <header style="margin-bottom: 24px;">
+    <span class="eyebrow">Clinic report</span>
+    <h1 style="margin-top: 8px;">{{ month_label or "This month" }} — missed revenue across the clinic</h1>
+    <p class="muted" style="max-width: 720px;">
+      A single, scannable view of every revenue opportunity the Zorva
+      pre-bill auditor identified this month, rolled up across the
+      clinic. Use the top 10 list to triage the highest-value
+      encounters first.
+    </p>
+  </header>
+
+  {% if not ready %}
+    <section class="card" style="padding: 32px; text-align: center;">
+      <h2 style="margin-top: 0;">No revenue opportunities identified yet</h2>
+      <p class="muted">
+        Upload your first batch of encounters and Zorva will start
+        surfacing missed revenue here within minutes.
+      </p>
+      <p style="margin-top: 16px;">
+        <a class="btn btn-primary" href="/encounters/upload">Upload encounters</a>
+        <a class="btn btn-secondary" href="/contact" style="margin-left: 8px;">Book a walkthrough</a>
+      </p>
+    </section>
+  {% else %}
+    <section class="card" style="padding: 28px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Identified</div>
+          <div style="font-size: 32px; font-weight: 700;" class="mono">
+            ${{ "{:,.0f}".format(total_dollar or 0) }}
+          </div>
+          <div class="muted small">{{ n_opportunities }} opportunit{{ "" if n_opportunities == 1 else "ies" }} this month</div>
+        </div>
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Recovered</div>
+          <div style="font-size: 32px; font-weight: 700; color: #1d7a3a;" class="mono">
+            ${{ "{:,.0f}".format(recovered_dollar or 0) }}
+          </div>
+          <div class="muted small">{{ n_accepted }} finding{{ "" if n_accepted == 1 else "s" }} actioned by billers</div>
+        </div>
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Pending</div>
+          <div style="font-size: 32px; font-weight: 700; color: #b45309;" class="mono">
+            ${{ "{:,.0f}".format(pending_dollar or 0) }}
+          </div>
+          <div class="muted small">awaiting biller review</div>
+        </div>
+      </div>
+      <p style="margin: 20px 0 0; font-size: 16px;">
+        This month, Zorva identified
+        <strong class="mono">${{ "{:,.0f}".format(total_dollar or 0) }}</strong>
+        in missed revenue across
+        <strong>{{ encounter_count }}</strong>
+        encounter{{ "" if encounter_count == 1 else "s" }}.
+      </p>
+    </section>
+
+    <section style="margin-top: 24px;">
+      <h2>Top 10 highest-value opportunities</h2>
+      <p class="muted">Click any encounter to review the underlying findings and the suggested SOMB code.</p>
+      {% if top_opportunities %}
+        <table class="data-table" style="width: 100%; margin-top: 12px;">
+          <thead>
+            <tr>
+              <th style="text-align: left;">Encounter</th>
+              <th style="text-align: left;">Top rule</th>
+              <th style="text-align: right;">Uplift</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for opp in top_opportunities %}
+              <tr>
+                <td>
+                  <a href="/encounter/{{ opp.encounter_id }}" class="mono">{{ opp.encounter_id }}</a>
+                </td>
+                <td>
+                  {{ opp.rule_name or opp.rule_id or "—" }}
+                  {% if opp.suggested_code %}<span class="muted small"> &rarr; {{ opp.suggested_code }}</span>{% endif %}
+                </td>
+                <td style="text-align: right;" class="mono">
+                  ${{ "{:,.0f}".format(opp.estimated_dollar or 0) }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">No individual opportunities ranked above zero this month.</p>
+      {% endif %}
+    </section>
+
+    <p style="margin-top: 32px;">
+      <a class="btn btn-secondary" href="/">&larr; Back to dashboard</a>
+    </p>
+  {% endif %}
+</main>
+{% endblock %}

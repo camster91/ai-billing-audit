@@ -20,7 +20,7 @@
 //
 // Exits 0 on success, 1 on the first failed assertion.
 
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
 import {
   writeAuditEntry,
@@ -28,10 +28,7 @@ import {
   normalizeDismissInput,
 } from "../src/lib/audit-write";
 import { GENESIS_PREVIOUS_SIGNATURE } from "../src/lib/audit-chain";
-
-function sha256Hex(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
+import { hashPatientId } from "../src/lib/patient-hash";
 
 function cuidLike(prefix = ""): string {
   return `${prefix}${prefix}${prefix}c${randomBytes(12).toString("hex")}`;
@@ -111,7 +108,7 @@ async function reseed(): Promise<{ tenantId: string; userId: string; encounterId
     create: {
       id: encounterId,
       tenantId: tenant.id,
-      patientHash: sha256Hex("smoke-patient-001"),
+      patientHash: hashPatientId("smoke-patient-001"),
       dateOfService: new Date("2026-06-12T00:00:00Z"),
       specialty: "cardiology",
       clinicalNote,
