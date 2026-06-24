@@ -464,6 +464,68 @@ main.page {
 .finding-item__quote { background: var(--color-warn-soft); border-left: 3px solid var(--color-warn); padding: var(--space-2) var(--space-3); font-style: italic; color: var(--color-fg); margin: var(--space-2) 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .finding-item__explain { color: var(--color-fg-muted); font-size: var(--font-size-sm); }
 
+/* ─── Revenue opportunity card ───────────────────────────── */
+/* Green-bordered card, visually distinct from the neutral
+   findings list. Used by encounter_detail.html to surface
+   missed-revenue findings (missing procedure, undercode,
+   modifier-25, telehealth premium, CMGP). Each card carries
+   a $X dollar badge so the uplift is immediately legible. */
+.revenue-opportunities .section-head .sub strong {
+  color: var(--color-clean);
+  font-size: var(--font-size-lg);
+}
+.revenue-opportunity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.revenue-opportunity-card {
+  background: var(--color-clean-soft);
+  border: 1px solid var(--color-clean);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.revenue-opportunity-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.revenue-opportunity-card__dollar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-clean);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.02em;
+}
+.revenue-opportunity-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+.revenue-opportunity-card__name {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.revenue-opportunity-card__action {
+  margin: 0;
+  color: var(--color-fg);
+  font-size: var(--font-size);
+  line-height: 1.5;
+}
+.revenue-opportunity-card__action-label {
+  font-weight: 600;
+  color: var(--color-clean);
+}
+
 /* ─── Clinical note ─────────────────────────────────────── */
 .clinical-note {
   background: var(--color-surface-2);

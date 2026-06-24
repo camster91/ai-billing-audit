@@ -107,6 +107,50 @@
   </section>
 </div>
 
+{% if revenue_opportunities %}
+<section class="section revenue-opportunities">
+  <div class="section-head">
+    <h2>Revenue opportunities</h2>
+    <span class="sub">
+      {% set opp_n = revenue_opportunities|length %}
+      {{ opp_n }} missed-revenue finding{{ "" if opp_n == 1 else "s" }}
+      &middot;
+      estimated total uplift
+      <strong class="mono">${{ "%0.2f"|format(total_opportunity_dollars or 0) }}</strong>
+    </span>
+  </div>
+  <ul class="revenue-opportunity-list">
+    {% for opp in revenue_opportunities %}
+      <li class="revenue-opportunity-card" id="opp-{{ opp.finding_id or loop.index }}">
+        <div class="revenue-opportunity-card__head">
+          <span class="revenue-opportunity-card__dollar-badge mono">
+            ${{ "%0.0f"|format(opp.estimated_dollar) }}
+          </span>
+          <div class="revenue-opportunity-card__title">
+            <span class="revenue-opportunity-card__name">{{ opp.rule_name or opp.opportunity_rule_id }}</span>
+            {% if opp.opportunity_rule_id %}
+              <span class="chip-rule mono">{{ opp.opportunity_rule_id }}</span>
+            {% endif %}
+            {% if opp.suggested_code %}
+              <span class="muted small">&rarr; {{ opp.suggested_code }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if opp.quote %}
+          <div class="finding-item__quote">&ldquo;{{ opp.quote }}&rdquo;</div>
+        {% endif %}
+        {% if opp.suggested_action %}
+          <p class="revenue-opportunity-card__action">
+            <span class="revenue-opportunity-card__action-label">Suggested action:</span>
+            {{ opp.suggested_action }}
+          </p>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if findings %}
 <section class="section">
   <h2>Findings ({{ findings|length }})</h2>

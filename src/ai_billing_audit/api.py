@@ -157,6 +157,120 @@ def _finding_dicts(record: dict[str, Any]) -> list[dict[str, Any]]:
 # Lower rank = lower severity. info < low < medium < high < critical.
 SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
+
+# ─── Revenue opportunities ─────────────────────────────────────────────
+# A subset of AHCIP rules identify "missed revenue" — the note documents
+# a billable service that the claim did not capture. These findings are
+# surfaced separately from the denial-risk findings list, with an
+# estimated dollar uplift per rule (rough SOMB estimates — to be refined
+# against zorva_context.SOMB_FEE_SCHEDULE in a follow-up).
+#
+# Rule selection is keyed by `rule_id` because the auditor's current
+# category enum (evaluation / diagnosis / modifier / laboratory / ...)
+# is a clinical-bucket taxonomy, not a revenue-vs-denial one. We
+# filter on rule_id directly until the auditor's output schema
+# includes a dedicated `opportunity_type` field.
+REVENUE_OPPORTUNITY_RULES: dict[str, dict[str, Any]] = {
+    "rule_ahcip_missing_procedure": {
+        "rule_name": "Missing billable procedure",
+        "estimated_dollar": 50.0,
+        "suggested_action": (
+            "Add the documented procedure to the claim — the note describes "
+            "a service that was not submitted for reimbursement."
+        ),
+    },
+    "rule_ahcip_em_level_upcode": {
+        "rule_name": "E/M visit undercoded",
+        "estimated_dollar": 40.0,
+        "suggested_action": (
+            "Upcode the E/M level to match the documentation complexity "
+            "(e.g. 03.04A instead of 03.01A)."
+        ),
+    },
+    "rule_ahcip_modifier_25_001": {
+        "rule_name": "Modifier -25 unlock",
+        "estimated_dollar": 45.0,
+        "suggested_action": (
+            "Append modifier -25 to the E/M code so a separately "
+            "identifiable procedure can be billed in addition."
+        ),
+    },
+    "rule_ahcip_telehealth": {
+        "rule_name": "Telehealth premium eligible",
+        "estimated_dollar": 15.0,
+        "suggested_action": (
+            "Append the telehealth premium code — the visit was virtual "
+            "but the claim was billed as in-person."
+        ),
+    },
+    "rule_ahcip_cmgp": {
+        "rule_name": "CMGP / chronic care premium",
+        "estimated_dollar": 20.0,
+        "suggested_action": (
+            "Add the CMGP (Chronic Disease Management / General "
+            "Practitioner) premium — patient meets eligibility."
+        ),
+    },
+}
+
+
+def _finding_rule_ids(finding: dict[str, Any]) -> list[str]:
+    """Return all rule_ids attached to a finding (deduped, order-preserved).
+
+    The auditor output schema permits both ``rule_id`` (singular, the
+    common shape from the v12 prompt) and ``rule_ids`` (plural, the
+    dataclass default). Findings shaped by ``_finding_dicts`` carry the
+    singular form; raw LLM payloads may carry either.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    singular = str(finding.get("rule_id") or "").strip()
+    if singular:
+        seen.add(singular)
+        out.append(singular)
+    plural = finding.get("rule_ids") or []
+    if isinstance(plural, (list, tuple)):
+        for rid in plural:
+            s = str(rid or "").strip()
+            if s and s not in seen:
+                seen.add(s)
+                out.append(s)
+    return out
+
+
+def compute_revenue_opportunities(
+    findings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Filter ``findings`` to revenue-opportunity ones and enrich them.
+
+    Each returned dict carries the original finding fields plus:
+        - ``rule_name``           human-readable rule label
+        - ``estimated_dollar``    rough SOMB uplift estimate (float)
+        - ``suggested_action``    one-line biller instruction
+        - ``opportunity_rule_id`` the rule_id that qualified it (canonical)
+
+    The list is sorted by descending ``estimated_dollar`` so the
+    biggest opportunities are listed first.
+
+    Findings with no matching rule_id are dropped.
+    """
+    opportunities: list[dict[str, Any]] = []
+    for f in findings:
+        for rid in _finding_rule_ids(f):
+            meta = REVENUE_OPPORTUNITY_RULES.get(rid)
+            if meta is None:
+                continue
+            enriched = dict(f)
+            enriched["opportunity_rule_id"] = rid
+            enriched["rule_name"] = meta["rule_name"]
+            enriched["estimated_dollar"] = float(meta["estimated_dollar"])
+            enriched["suggested_action"] = meta["suggested_action"]
+            opportunities.append(enriched)
+            # One opportunity per finding — the first matching rule_id wins.
+            break
+    opportunities.sort(key=lambda x: x.get("estimated_dollar", 0.0), reverse=True)
+    return opportunities
+
 # Dismissal reasons — the closed-loop learning signal. When the biller
 # dismisses a finding, they pick one of these + an optional free-text
 # note. The categories are coarse on purpose: they're meant to bucket
@@ -625,6 +739,14 @@ def create_app() -> FastAPI:
             denial_risk = compute_denial_risk(
                 visible_findings, min_severity=min_sev
             )
+            # Surface missed-revenue findings as a distinct card so the
+            # biller sees dollar uplifts separately from denial risks.
+            # We derive from visible_findings (not raw findings) so the
+            # card respects MIN_SEVERITY_TO_SHOW.
+            revenue_opportunities = compute_revenue_opportunities(visible_findings)
+            total_opportunity_dollars = round(
+                sum(o["estimated_dollar"] for o in revenue_opportunities), 2
+            )
             return templates.TemplateResponse(
                 request,
                 "encounter_detail.html",
@@ -644,6 +766,8 @@ def create_app() -> FastAPI:
                     "real_audit": real_audit,
                     "is_uploaded_encounter": False,
                     "denial_risk": denial_risk,
+                    "revenue_opportunities": revenue_opportunities,
+                    "total_opportunity_dollars": total_opportunity_dollars,
                 },
             )
 
@@ -674,6 +798,11 @@ def create_app() -> FastAPI:
         denial_risk = compute_denial_risk(
             uploaded_findings, min_severity=min_sev
         )
+        # Same revenue-opportunity pass for uploaded encounters.
+        revenue_opportunities = compute_revenue_opportunities(visible_uploaded)
+        total_opportunity_dollars = round(
+            sum(o["estimated_dollar"] for o in revenue_opportunities), 2
+        )
         return templates.TemplateResponse(
             request,
             "encounter_detail.html",
@@ -698,6 +827,8 @@ def create_app() -> FastAPI:
                 "is_uploaded_encounter": True,
                 "zorva_context": uploaded_audit.get("zorva_context"),
                 "denial_risk": denial_risk,
+                "revenue_opportunities": revenue_opportunities,
+                "total_opportunity_dollars": total_opportunity_dollars,
             },
         )
         real_audit = _latest_real_audit_for(encounter_id)
