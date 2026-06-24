@@ -11,7 +11,7 @@
 // sentence excerpt. The full piece is linked, never re-printed in
 // full (rights / paywall).
 //
-// Press contact: press@zorva.health. The footer email is a
+// Press contact: press@zorva.ca. The footer email is a
 // mailto: link so it works even if no contact-form route is wired.
 
 import type { Metadata } from "next";
@@ -135,7 +135,7 @@ export default function PressPage() {
           <h2>Press contact</h2>
           <p>
             For quotes, interviews, logo files, or fact-checks:{" "}
-            <a href="mailto:press@zorva.health">press@zorva.health</a>.
+            <a href="mailto:press@zorva.ca">press@zorva.ca</a>.
           </p>
           <p>
             We can usually turn around a same-day quote on a regulatory

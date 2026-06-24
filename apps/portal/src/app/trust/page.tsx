@@ -152,7 +152,7 @@ export default function TrustPage() {
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
         </div>
-        <p>Questions? Email us at hello@ai-billing-audit.ashbi.ca</p>
+        <p>Questions? Email us at hello@zorva.ca</p>
       </footer>
     </div>
   );
