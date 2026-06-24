@@ -49,9 +49,10 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .zorva_context import (
     MARKETS,
@@ -65,6 +66,7 @@ from .zorva_context import (
 # also get a Mailgun copy at their work address.
 _LOGS_DIR = Path(os.environ.get("ZORVA_LOGS_DIR", "/app/logs"))
 _APPEAL_LOG = _LOGS_DIR / "appeal_letters.jsonl"
+_APPEAL_OUTCOMES_LOG = _LOGS_DIR / "appeal_outcomes.jsonl"
 
 
 # --- v0 letter template ---------------------------------------------------
@@ -519,3 +521,169 @@ def log_appeal_letter(
     except OSError:
         # Don't crash the audit pipeline over a logging failure.
         pass
+
+
+# --- Appeal outcome tracking ---------------------------------------------
+# Once a biller sends an appeal letter to the payer, the result
+# (won, lost, withdrawn, or still pending) feeds back into the
+# learning loop: which letter styles correlate with wins? The
+# appeal_letter module writes letters to appeal_letters.jsonl;
+# the outcome of each appeal goes to appeal_outcomes.jsonl.
+# They are joined on (encounter_id, appeal_id) at training time.
+#
+# Status enum is closed: 'filed' is the implicit "letter generated
+# and on its way"; 'won' / 'lost' are terminal states; 'withdrawn'
+# means the biller pulled the appeal; 'pending' means the payer
+# hasn't responded yet (re-issued when the biller follows up).
+
+AppealOutcomeStatus = Literal["filed", "won", "lost", "withdrawn", "pending"]
+
+
+@dataclass
+class AppealOutcome:
+    """A single appeal-outcome record.
+
+    Stored as one JSON line per outcome in
+    /app/logs/appeal_outcomes.jsonl. The appeal_id is the same
+    identifier the biller passed to the /outcome endpoint (in v0
+    the biller can use the letter's finding_id or a UUID they
+    generated client-side). The record is the unit of training
+    data for the appeal-letter style classifier.
+    """
+
+    appeal_id: str
+    encounter_id: str
+    status: AppealOutcomeStatus
+    timestamp: str
+    biller_id: str | None = None
+    notes: str = ""
+
+    @classmethod
+    def now(
+        cls,
+        *,
+        appeal_id: str,
+        encounter_id: str,
+        status: AppealOutcomeStatus,
+        biller_id: str | None = None,
+        notes: str = "",
+    ) -> "AppealOutcome":
+        """Build an AppealOutcome with the current UTC timestamp."""
+        return cls(
+            appeal_id=appeal_id,
+            encounter_id=encounter_id,
+            status=status,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            biller_id=biller_id,
+            notes=notes,
+        )
+
+
+def log_appeal_outcome(outcome: AppealOutcome) -> None:
+    """Append an outcome record to appeal_outcomes.jsonl.
+
+    Mirrors log_appeal_letter: best-effort, never raises. A log
+    failure must not crash the API or the training pipeline.
+    """
+    try:
+        _LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        with _APPEAL_OUTCOMES_LOG.open("a") as f:
+            f.write(json.dumps(asdict(outcome)) + "\n")
+    except OSError:
+        pass
+
+
+def read_appeal_outcomes(
+    encounter_id: str | None = None,
+) -> list[AppealOutcome]:
+    """Read all logged outcomes, optionally filtered by encounter_id.
+
+    Skips malformed lines (a row with a missing required field
+    is dropped silently — a corrupted log row should not stop
+    the dashboard from loading). Returns outcomes in append
+    order (oldest first); callers that want a latest-wins
+    semantics can sort by ``timestamp``.
+    """
+    out: list[AppealOutcome] = []
+    if not _APPEAL_OUTCOMES_LOG.exists():
+        return out
+    try:
+        with _APPEAL_OUTCOMES_LOG.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    raw = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(raw, dict):
+                    continue
+                # Required fields must be present and non-empty —
+                # rows missing them are not valid outcome records
+                # and would corrupt any aggregation that joins on
+                # appeal_id or encounter_id.
+                if not raw.get("appeal_id") or not raw.get("encounter_id"):
+                    continue
+                if not raw.get("timestamp") or not raw.get("status"):
+                    continue
+                try:
+                    outcome = AppealOutcome(
+                        appeal_id=str(raw["appeal_id"]),
+                        encounter_id=str(raw["encounter_id"]),
+                        status=str(raw["status"]),
+                        timestamp=str(raw["timestamp"]),
+                        biller_id=raw.get("biller_id"),
+                        notes=str(raw.get("notes", "")),
+                    )
+                except Exception:
+                    continue
+                if encounter_id and outcome.encounter_id != encounter_id:
+                    continue
+                out.append(outcome)
+    except OSError:
+        return out
+    return out
+
+
+def appeal_win_rate() -> dict[str, Any]:
+    """Aggregate outcome stats across all logged appeals.
+
+    Returns a dict with these keys:
+
+      - ``total_filed``  : number of outcomes with status == 'filed'
+      - ``total_won``    : number of outcomes with status == 'won'
+      - ``total_lost``   : number of outcomes with status == 'lost'
+      - ``total_withdrawn`` : number of outcomes with status == 'withdrawn'
+      - ``total_pending``: number of outcomes with status == 'pending'
+      - ``win_rate``     : won / (won + lost) as a float in [0.0, 1.0],
+                           or None if there are no decided outcomes
+      - ``decided``      : won + lost (the denominator for win_rate)
+
+    Each appeal may appear multiple times in the log (the biller
+    can update the outcome from 'pending' to 'won' on a follow-up
+    POST). We collapse to the latest outcome per appeal_id so the
+    win rate reflects the current state, not the history of edits.
+    """
+    rows = read_appeal_outcomes()
+    latest: dict[str, AppealOutcome] = {}
+    for r in rows:
+        existing = latest.get(r.appeal_id)
+        if existing is None or r.timestamp >= existing.timestamp:
+            latest[r.appeal_id] = r
+    total_won = sum(1 for r in latest.values() if r.status == "won")
+    total_lost = sum(1 for r in latest.values() if r.status == "lost")
+    total_withdrawn = sum(1 for r in latest.values() if r.status == "withdrawn")
+    total_pending = sum(1 for r in latest.values() if r.status == "pending")
+    total_filed = sum(1 for r in latest.values() if r.status == "filed")
+    decided = total_won + total_lost
+    win_rate = (total_won / decided) if decided else None
+    return {
+        "total_filed": total_filed,
+        "total_won": total_won,
+        "total_lost": total_lost,
+        "total_withdrawn": total_withdrawn,
+        "total_pending": total_pending,
+        "win_rate": win_rate,
+        "decided": decided,
+    }

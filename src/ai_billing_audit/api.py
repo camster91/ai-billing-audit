@@ -1125,6 +1125,171 @@ def create_app() -> FastAPI:
             "event": event,
         })
 
+    # ---- Per-finding Accept / Dismiss / Modify ------------------------
+    # These endpoints mirror the encounter-level accept-all / dismiss
+    # ones above but target a single finding via its finding_id. They
+    # are the primary affordance now: every finding card on the
+    # encounter detail page renders its own Accept / Dismiss / Modify
+    # button row. Each call writes:
+    #   - one audit_actions row (audit trail / hash chain), AND
+    #   - one FeedbackEntry (learning-loop training seed)
+    # so the per-encounter view shows one row per finding decision.
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/accept")
+    async def finding_accept(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Mark a single finding as accepted by the biller.
+
+        Writes both an audit_actions row (tamper-evident chain) and a
+        FeedbackEntry (learning-loop training seed).
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        user_identifier = str(request.client.host if request.client else "anon")
+        event = audit_append(
+            action="accept",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="accept",
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({"ok": True, "finding_id": finding_id, "action": "accept", "event": event})
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/dismiss")
+    async def finding_dismiss(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Dismiss a single finding. Optional closed-loop reason fields
+        are accepted (``reason_category`` + ``reason_text``) and stored in
+        the audit_actions row's ``note`` field — same shape as the
+        encounter-level dismiss endpoint.
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        reason_category = str(body.get("reason_category", "") or "").strip()
+        reason_text = str(body.get("reason_text", "") or "").strip()[:500]
+        if reason_category and not _DISMISS_CATEGORIES.__contains__(reason_category):
+            reason_category = ""
+        note = ""
+        if reason_category or reason_text:
+            parts = []
+            if reason_category:
+                parts.append(f"category={reason_category}")
+            if reason_text:
+                parts.append(reason_text)
+            note = " | ".join(parts)
+        user_identifier = str(request.client.host if request.client else "anon")
+        event = audit_append(
+            action="dismiss",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+            note=note,
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="dismiss",
+            user_identifier=user_identifier,
+        )
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "action": "dismiss",
+            "reason_category": reason_category,
+            "event": event,
+        })
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/modify")
+    async def finding_modify(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Record a biller's override of a single finding's severity and/or
+        category. Body: ``{"new_severity": "...", "new_category": "..."}``.
+        At least one of the two must be present.
+        """
+        try:
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        new_severity = str(body.get("new_severity", "") or "").strip()
+        new_category = str(body.get("new_category", "") or "").strip()
+        if not new_severity and not new_category:
+            raise HTTPException(
+                status_code=400,
+                detail="new_severity and/or new_category required",
+            )
+        user_identifier = str(request.client.host if request.client else "anon")
+        # Persist a structured note with the before/after values so the
+        # existing audit_actions chain still covers the override.
+        original_severity, original_rule_id, original_category = _lookup_finding_meta(
+            encounter_id, finding_id
+        )
+        note_parts = []
+        if new_severity:
+            note_parts.append(f"severity: {original_severity} -> {new_severity}")
+        if new_category:
+            note_parts.append(f"category: {original_category} -> {new_category}")
+        note = " | ".join(note_parts)
+        event = audit_append(
+            action="modify",
+            encounter_id=encounter_id,
+            user_identifier=user_identifier,
+            tenant_id=_TENANT_ID,
+            findings=[{"finding_id": finding_id}],
+            note=note,
+        )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="modify",
+            user_identifier=user_identifier,
+            modify_severity=new_severity or None,
+            modify_category=new_category or None,
+        )
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "action": "modify",
+            "new_severity": new_severity,
+            "new_category": new_category,
+            "event": event,
+        })
+
     @app.post("/encounter/{encounter_id}/rerun")
     async def encounter_rerun(
         encounter_id: str,
@@ -1592,6 +1757,92 @@ def create_app() -> FastAPI:
             "encounter_id": encounter_id,
             "finding_id": finding_id,
             "letter": letter,
+        })
+
+    # ---- Appeal outcome tracking ----------------------------------------
+    # After a biller submits an appeal letter, the payer's response
+    # (won / lost / withdrawn / pending) feeds back into the learning
+    # loop. The biller POSTs the outcome here; we append it to
+    # /app/logs/appeal_outcomes.jsonl alongside the letter log so
+    # the outcome can be joined with the letter at training time.
+    #
+    # The appeal_id is the biller's identifier for the appeal
+    # (typically the same id returned by /encounter/{id}/appeal once
+    # the letter is filed, or a finding_id the biller is using as
+    # a stable reference). In v0 the endpoint accepts any non-empty
+    # appeal_id — a missing/empty id is a 404. Status validation
+    # mirrors the task body: only won/lost/withdrawn/pending are
+    # accepted; anything else is a 400.
+
+    @app.post(
+        "/encounter/{encounter_id}/appeal/{appeal_id}/outcome",
+        response_class=JSONResponse,
+    )
+    async def encounter_appeal_outcome(
+        encounter_id: str,
+        appeal_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            from .appeal_letter import (
+                AppealOutcome,
+                log_appeal_outcome,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"appeal_outcome module unavailable: {e}",
+            )
+
+        # Empty appeal_id is treated as "not found" — the biller
+        # must reference a real appeal. This also covers the case
+        # where the URL path is missing the {appeal_id} segment
+        # (FastAPI would 404 the route match, but defence-in-depth).
+        if not appeal_id or not appeal_id.strip():
+            raise HTTPException(
+                status_code=404,
+                detail="appeal_id required",
+            )
+
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        status = str(body.get("status", "")).strip().lower()
+        allowed_statuses = {"won", "lost", "withdrawn", "pending"}
+        if status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"status must be one of {sorted(allowed_statuses)}; "
+                    f"got {status!r}"
+                ),
+            )
+        notes = str(body.get("notes", "") or "").strip()
+        biller_id = body.get("biller_id")
+        if biller_id is not None:
+            biller_id = str(biller_id).strip() or None
+
+        outcome = AppealOutcome.now(
+            appeal_id=appeal_id,
+            encounter_id=encounter_id,
+            status=status,  # type: ignore[arg-type]
+            biller_id=biller_id,
+            notes=notes,
+        )
+        log_appeal_outcome(outcome)
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "appeal_id": appeal_id,
+            "outcome": {
+                "status": outcome.status,
+                "notes": outcome.notes,
+                "biller_id": outcome.biller_id,
+                "timestamp": outcome.timestamp,
+            },
         })
 
     # -------------------------------------------------------------------
