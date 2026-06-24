@@ -349,5 +349,130 @@
         "clinical_evidence_quote": "ordered CBC, TSH, ferritin, chest X-ray"
       }
     ]
+  },
+  {
+    "encounter_id": "ca_ahcip_011",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Routine chronic disease follow-up for established patient with T2DM and dyslipidemia. BP 128/82, HR 70. Reviewed recent A1C 7.1, LDL 2.4. Continued metformin 1000mg BID, atorvastatin 20mg. Pneumococcal vaccine (PPSV23) administered in office today, right deltoid IM, lot #PPV456, no immediate reaction.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "E78.5"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "234234234",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-02"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca19",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "Routine chronic disease follow-up for established patient with T2DM and dyslipidemia"
+      },
+      {
+        "finding_id": "ca20",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "procedure",
+        "suggested_code": "13.59A (pneumococcal vaccination) or current SOMB immunization code",
+        "clinical_evidence_quote": "Pneumococcal vaccine (PPSV23) administered in office today, right deltoid IM",
+        "note": "In-office vaccine given but no immunization / procedure code billed; lost revenue"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_012",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Office visit, brief assessment for episodic palpitations. Patient reports occasional skipped beats, no chest pain, no syncope. HR 78 regular on exam. 12-lead EKG performed in office — normal sinus rhythm, rate 76, no acute ST changes. Reassured; advised to limit caffeine.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "R00.2"
+      ],
+      "modifier": null,
+      "patient_health_number": "345345345",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-05"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca21",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.01A",
+        "clinical_evidence_quote": "Office visit, brief assessment for episodic palpitations"
+      },
+      {
+        "finding_id": "ca22",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "procedure",
+        "suggested_code": "X140A or current SOMB ECG / 12-lead EKG interpretation code",
+        "clinical_evidence_quote": "12-lead EKG performed in office — normal sinus rhythm",
+        "note": "In-office EKG performed and interpreted by physician; no cardiology / diagnostic SOMB code billed"
+      }
+    ]
+  },
+  {
+    "encounter_id": "ca_ahcip_013",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58yo F with bilateral knee osteoarthritis, here for scheduled intra-articular injection. No new symptoms. Right knee injection performed in office today — 40mg triamcinolone acetonide + 3mL 1% lidocaine via superolateral approach, aseptic technique. Tolerated well. Left knee deferred for next visit.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "M17.9",
+        "M17.11"
+      ],
+      "modifier": null,
+      "patient_health_number": "456456456",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-10"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "ca23",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "info",
+        "category": "evaluation",
+        "suggested_code": "03.04A",
+        "clinical_evidence_quote": "Established patient 58yo F with bilateral knee osteoarthritis"
+      },
+      {
+        "finding_id": "ca24",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "procedure",
+        "suggested_code": "X311A (intra-articular joint injection) or current SOMB injection code",
+        "clinical_evidence_quote": "Right knee injection performed in office today — 40mg triamcinolone acetonide",
+        "note": "Major in-office procedure performed but no joint-injection / procedure SOMB code billed"
+      }
+    ]
   }
-]
+] 

@@ -148,6 +148,41 @@ J. CHRONIC DISEASE (CMGP):
    - Do NOT fire on acute visits (URI, pneumonia, simple injury)
      even if the patient has a chronic history
 
+K. MISSING PROCEDURE / DOCUMENTED-BUT-UNBILLED SERVICE (HIGH) —
+   the note documents a billable physician service or in-office
+   procedure (immunization / vaccination, in-office EKG /
+   ECG / rhythm strip, joint / trigger-point / tendon injection,
+   IUD insertion or removal, cryotherapy / wart destruction,
+   biopsy, suturing / laceration repair, spirometry, nebulizer
+   treatment, ear irrigation, etc.) AND the claim's som_b_codes
+   list contains no corresponding SOMB procedure code → fire
+   rule_ahcip_missing_procedure HIGH (lost revenue; physician
+   performed the work but the SOMB code was not submitted).
+   - Suggested fix: add the appropriate SOMB procedure /
+     diagnostic / therapeutic code to the claim.
+   - Distinguishing signal: "administered", "given", "injected",
+     "performed", "done in office", "applied", "I did", "I
+     performed", "immunization given", "vaccination given",
+     "flu shot", "joint injection", "EKG performed", "EKG in
+     office".
+   - Do NOT fire on:
+     * lab orders (CBC, A1C, TSH, lipid panel, ferritin,
+       urinalysis) — Alberta physicians do NOT bill for the lab
+       test; the lab bills it directly (see rule H)
+     * imaging orders (X-ray, ultrasound, CT, MRI) that the
+       physician is not interpreting in the same encounter
+     * referrals / advice to "return if symptoms worsen" / plan
+       notes that do not document an in-office procedure
+   - Distinguish from rule_ahcip_em_level / E/M mismatch — this
+     rule fires when a *procedure* code is missing from a claim
+     that already has the E/M code billed. If neither E/M nor
+     procedure is billed, prefer rule_ahcip_em_level for the
+     assessment and add this finding for the procedure only.
+   - Many of these procedure codes also require a diagnostic
+     code linkage; if the claim's diagnosis_codes are empty or
+     contain only R69, also flag rule_ahcip_dx_linkage so the
+     fix instructions cover both gaps.
+
 Few-shot examples (AHCIP-encounter set; the val set is held out):
 
 EXAMPLE 1. Established CKD patient follow-up.
@@ -218,6 +253,23 @@ EXAMPLE 7. Annual preventive check billed to AHCIP.
     visits; the claim should not be submitted to AHCIP at all
     (patient pays privately or via private insurance)
 
+EXAMPLE 8. In-office influenza vaccination, E/M billed but no
+  immunization SOMB code.
+  clinical_note: "Office visit, brief assessment for cough and
+    nasal congestion x 4 days, no fever. Lungs clear. Supportive
+    care advised. Flu vaccine given today per request — quadrivalent
+    IIV4, lot #XYZ123, deltoid IM, no adverse reaction."
+  Findings:
+  - rule_ahcip_em_level (info): "Office visit, brief assessment
+    for cough and nasal congestion x 4 days" with claim billing
+    03.01A brief — matches documentation, no action needed
+  - rule_ahcip_missing_procedure (high): "Flu vaccine given today
+    per request — quadrivalent IIV4" — influenza vaccination
+    administered in office but no immunization / vaccination SOMB
+    code on the claim; add the appropriate influenza immunization
+    code (e.g., 13.59A or current SOMB equivalent) so the clinic
+    captures the vaccine administration fee
+
 OUTPUT RULES
 ============
 
@@ -232,7 +284,8 @@ OUTPUT RULES
 Severity escalation:
 - Missing dx with reportable condition → CRITICAL
 - Modifier / E/M mismatch / global window / non-insured service /
-  coverage gap → HIGH
+  coverage gap / missing-procedure (documented-but-unbilled service) →
+  HIGH
 - Telehealth / preventive / CMGP / referring NPI data-population → MEDIUM
 - E/M level appropriate as billed → INFO
 
