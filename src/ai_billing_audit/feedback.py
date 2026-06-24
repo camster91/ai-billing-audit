@@ -77,6 +77,107 @@ class FeedbackStore:
     def read_for_encounter(self, encounter_id: str) -> list[FeedbackEntry]:
         return [e for e in self.read_all() if e.encounter_id == encounter_id]
 
+    def biller_corrections(
+        self,
+        *,
+        encounter_id: str | None = None,
+        rule_id: str | None = None,
+    ) -> list[FeedbackEntry]:
+        """Return only the biller-initiated modify entries.
+
+        The feedback log is the union of three actions: ``accept``,
+        ``dismiss``, and ``modify``. The ``modify`` rows are
+        qualitatively different — they're not "the model was right" or
+        "the model was wrong", they're "the biller changed something
+        the model got wrong on the *content* level" (override severity
+        from ``medium`` to ``low``, re-classify a finding's category,
+        etc.). Training a precision-recall curve against this subset
+        would mix two different signals.
+
+        This helper is the read-side filter for that subset:
+
+          * ``action == "modify"``
+          * excludes the system-tagged ``__rerun__`` rows that
+            :func:`encounter_rerun` writes with action="modify" as a
+            marker (so the encounter timeline is complete without
+            polluting the corrections view).
+          * optionally narrowed by ``encounter_id`` and/or ``rule_id``
+            for drill-down views.
+
+        Ordering: most-recent first, so the UI can show "what the
+        biller changed today" without a sort step.
+        """
+        out: list[FeedbackEntry] = []
+        for e in self.read_all():
+            if e.action != "modify":
+                continue
+            if e.finding_id == "__rerun__":
+                continue
+            if encounter_id is not None and e.encounter_id != encounter_id:
+                continue
+            if rule_id is not None and (e.rule_id or "") != rule_id:
+                continue
+            out.append(e)
+        # Newest first. Tiebreak on event_id (a uuid4 hex) so the
+        # ordering is deterministic even when two rows share a
+        # 1-second-resolution timestamp (the default strftime format).
+        out.sort(key=lambda e: (e.timestamp, e.event_id), reverse=True)
+        return out
+
+    def corrections_summary(
+        self,
+        *,
+        encounter_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Aggregate rollup of :meth:`biller_corrections`.
+
+        Returns a dict the dashboard can render directly as a small
+        "Biller corrections" tile:
+
+            {
+              "total":            <int>,   # count of modify entries
+              "by_rule_id":       {rule_id: count, ...},
+              "by_category":      {category: count, ...},
+              "severity_changes": <int>,   # rows where the biller
+                                            # changed the severity
+              "category_changes": <int>,   # rows where the biller
+                                            # changed the category
+              "encounters_affected": <int>,# distinct encounter_ids
+            }
+
+        The ``severity_changes`` and ``category_changes`` counts let a
+        downstream trainer ask "how often does the biller correct
+        severity vs. category?" — useful for deciding whether the
+        auditor's severity scale or its category taxonomy is the
+        bigger source of friction.
+        """
+        rows = self.biller_corrections(encounter_id=encounter_id)
+        by_rule: Counter[str] = Counter()
+        by_cat: Counter[str] = Counter()
+        encs: set[str] = set()
+        sev_changes = 0
+        cat_changes = 0
+        for e in rows:
+            by_rule[e.rule_id or "<unknown>"] += 1
+            by_cat[e.category or "<unknown>"] += 1
+            if e.encounter_id:
+                encs.add(e.encounter_id)
+            # ``modify_severity`` is set on the row when the biller
+            # actually overrode the severity (the API writes
+            # ``None`` when the biller only changed the category).
+            if e.modify_severity:
+                sev_changes += 1
+            if e.modify_category:
+                cat_changes += 1
+        return {
+            "total": len(rows),
+            "by_rule_id": dict(by_rule),
+            "by_category": dict(by_cat),
+            "severity_changes": sev_changes,
+            "category_changes": cat_changes,
+            "encounters_affected": len(encs),
+        }
+
     def read_all(self) -> list[FeedbackEntry]:
         if not self._path.is_file():
             return []
