@@ -341,7 +341,14 @@ test("buildWeeklyDigestTenant: aggregates real encounter + finding data (no stub
   const tenant = await makeTenantFx();
   const userFx = await makeUserFx();
   await prisma.membership.create({
-    data: { userId: userFx.id, tenantId: tenant.id, role: "owner" },
+    data: {
+      userId: userFx.id,
+      tenantId: tenant.id,
+      role: "owner",
+      // email + status are required (t_23bfd49c).
+      email: userFx.email,
+      status: "active",
+    },
   });
   // `now` is Thu Jun 11 → digest window is Mon Jun 1 → Mon Jun 8.
   // Create the encounter inside that window.
@@ -421,7 +428,14 @@ test("maybeSendFirstAuditComplete: fires once and is idempotent on re-call", asy
   const tenant = await makeTenantFx();
   const userFx = await makeUserFx();
   await prisma.membership.create({
-    data: { userId: userFx.id, tenantId: tenant.id, role: "owner" },
+    data: {
+      userId: userFx.id,
+      tenantId: tenant.id,
+      role: "owner",
+      // email + status are required (t_23bfd49c).
+      email: userFx.email,
+      status: "active",
+    },
   });
   const enc = await makeEncounterFx(tenant.id);
   try {
@@ -461,7 +475,14 @@ test("maybeSendFirstAuditComplete: skips tenants with no encounter", async () =>
   const tenant = await makeTenantFx();
   const userFx = await makeUserFx();
   await prisma.membership.create({
-    data: { userId: userFx.id, tenantId: tenant.id, role: "owner" },
+    data: {
+      userId: userFx.id,
+      tenantId: tenant.id,
+      role: "owner",
+      // email + status are required (t_23bfd49c).
+      email: userFx.email,
+      status: "active",
+    },
   });
   try {
     const out = await maybeSendFirstAuditComplete(tenant.id);
@@ -555,7 +576,14 @@ test("sendWeeklyDigestForTenant: dispatch in mock mode", async () => {
   const tenant = await makeTenantFx();
   const userFx = await makeUserFx();
   await prisma.membership.create({
-    data: { userId: userFx.id, tenantId: tenant.id, role: "owner" },
+    data: {
+      userId: userFx.id,
+      tenantId: tenant.id,
+      role: "owner",
+      // email + status are required (t_23bfd49c).
+      email: userFx.email,
+      status: "active",
+    },
   });
   // `now` is Thu Jun 11 → window is Mon Jun 1 → Mon Jun 8.
   // Encounter must be inside the window.
@@ -586,7 +614,14 @@ test("sendWeeklyDigestForTenant: returns skipped when no encounters in window", 
   const tenant = await makeTenantFx();
   const userFx = await makeUserFx();
   await prisma.membership.create({
-    data: { userId: userFx.id, tenantId: tenant.id, role: "owner" },
+    data: {
+      userId: userFx.id,
+      tenantId: tenant.id,
+      role: "owner",
+      // email + status are required (t_23bfd49c).
+      email: userFx.email,
+      status: "active",
+    },
   });
   try {
     const res = await sendWeeklyDigestForTenant(tenant.id, new Date());

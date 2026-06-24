@@ -9,12 +9,17 @@ Covers the three required behaviours from the task spec:
    ``audit_actions``).
 3. ``stats()`` — counts roll up correctly across action / rule / category
    / biller axes.
+4. The per-finding Accept / Dismiss / Modify endpoints in
+   ``src/ai_billing_audit/api.py`` each write exactly one ``FeedbackEntry``
+   with the right ``action`` and ``finding_id`` (and modify captures the
+   before/after override values).
 
 Uses a tmp JSONL path so it never touches the production
 ``/app/logs/feedback.jsonl``.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 from pathlib import Path

@@ -98,12 +98,12 @@ alert() {
 #
 # backup.env uses `[ -z "$VAR" ] && export VAR=...` so caller-exported
 # values survive the source. Plain `VAR=foo` would clobber them.
+#
+# We source it AFTER arg-parsing so --help / --list don't need a writable
+# log dir. The drawback: env vars passed on the command line (e.g.
+# `CONFIG_FILE=/tmp/foo /usr/local/bin/audit-backup.sh`) must come BEFORE
+# the script, not as flags, because we won't see them in $1/$2.
 # ----------------------------------------------------------------------------
-if [ -f "$CONFIG_FILE" ]; then
-    log "loaded config from $CONFIG_FILE"
-    # shellcheck disable=SC1090
-    . "$CONFIG_FILE"
-fi
 
 # ----------------------------------------------------------------------------
 # Argument parsing — done FIRST so --help works on a dev box that can't
@@ -141,6 +141,15 @@ if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
 fi
 LOG_FILE="$LOG_DIR/verify.log"
 VERIFY_RECORD="$LOG_DIR/verify.history"
+
+# Source the operator config now that LOG_FILE exists for the
+# "loaded config from $CONFIG_FILE" line below.
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck disable=SC2218  # log() is defined a few lines below; bash looks it up at call time
+    log "loaded config from $CONFIG_FILE"
+    # shellcheck disable=SC1090
+    . "$CONFIG_FILE"
+fi
 
 # ----------------------------------------------------------------------------
 # Pre-flight

@@ -85,7 +85,7 @@ async function main() {
     check("synthetic tenant exists", before !== null);
     check(
       "synthetic tenant canceledAt is 31d ago",
-      before?.canceledAt !== null &&
+      before?.canceledAt != null &&
         Math.abs(before.canceledAt.getTime() - oldCancel.getTime()) < 1000,
     );
 

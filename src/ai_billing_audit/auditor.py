@@ -378,7 +378,11 @@ def run_audit(
     so fabricated quotes are rejected at the validator layer (Stark / AKS
     / HIA hallucination guardrail).
     """
-    client = llm if llm is not None else LLMClient()
+    # Default 60s is too tight for the v7 prompt + Ollama cloud path
+    # (mean=41s, p95=60s on the 50-encounter val set, 23/50 timed out
+    # at the 60s ceiling). 180s gives the cloud model enough headroom
+    # for the few-shot examples + multi-market framing without flapping.
+    client = llm if llm is not None else LLMClient(timeout=180.0)
     prompt = load_prompt(prompt_path)
     messages = build_messages(encounter, prompt=prompt)
     payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA)

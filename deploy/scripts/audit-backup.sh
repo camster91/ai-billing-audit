@@ -187,6 +187,15 @@ fi
 LOG_FILE="$LOG_DIR/backup.log"
 SIZE_LOG="$LOG_DIR/backup.sizes.log"
 
+# Source the operator config now that LOG_FILE exists for the
+# "loaded config from $CONFIG_FILE" line below.
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck disable=SC2218  # log() is defined a few lines below; bash looks it up at call time
+    log "loaded config from $CONFIG_FILE"
+    # shellcheck disable=SC1090
+    . "$CONFIG_FILE"
+fi
+
 # ----------------------------------------------------------------------------
 # Logging helpers — write to both the log file and stdout (cron captures stdout)
 # ----------------------------------------------------------------------------
@@ -232,12 +241,10 @@ alert() {
 # the caller's value survives. We use the latter (in backup.env) for the
 # vars the operator would most often want to override for a single run.
 # The script defaults still kick in for vars the config doesn't touch.
+#
+# We source it AFTER arg-parsing so --help / --list don't need a writable
+# log dir.
 # ----------------------------------------------------------------------------
-if [ -f "$CONFIG_FILE" ]; then
-    log "loaded config from $CONFIG_FILE"
-    # shellcheck disable=SC1090
-    . "$CONFIG_FILE"
-fi
 
 # ----------------------------------------------------------------------------
 # Pre-flight

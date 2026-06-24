@@ -96,15 +96,15 @@ def test_slugs_are_unique():
 
 def test_encounter_ids_correspond_to_real_data():
     """Each case study's encounter_id should exist in either
-    data/val.json or data/train.json. It doesn't have to be a
-    registered demo (case studies point to working endpoints that
+    data/synth/val.json or data/synth/train.json. It doesn't have to be
+    a registered demo (case studies point to working endpoints that
     load from the data files)."""
     import json
     val = {e["encounter_id"] for e in json.loads(
-        (Path(__file__).parent.parent / "data" / "val.json").read_text()
+        (Path(__file__).parent.parent / "data" / "synth" / "val.json").read_text()
     )}
     train = {e["encounter_id"] for e in json.loads(
-        (Path(__file__).parent.parent / "data" / "train.json").read_text()
+        (Path(__file__).parent.parent / "data" / "synth" / "train.json").read_text()
     )}
     for cs in CASE_STUDIES:
         assert cs.encounter_id in val or cs.encounter_id in train, (

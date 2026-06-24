@@ -1,0 +1,1117 @@
+{
+  "summary": {
+    "n_encounters": 10,
+    "mean_per_encounter": {
+      "precision": 0.7449999999999999,
+      "recall": 0.7783333333333333,
+      "f1": 0.7583333333333334
+    },
+    "micro_aggregate": {
+      "precision": 0.7435897435897436,
+      "recall": 0.7631578947368421,
+      "f1": 0.7532467532467534,
+      "true_positives": 29,
+      "total_predicted": 39,
+      "total_gold": 38
+    },
+    "clean_encounters": {
+      "n_gold_clean": 0,
+      "n_pred_clean": 0,
+      "n_overcalled_clean": 0
+    },
+    "per_rule": {
+      "rule_ecg_001": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_ecg_002": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_em_001": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_em_002": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_em_003": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_icd_001": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 2,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rule_icd_002": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.5,
+        "recall": 0.5
+      },
+      "rule_icd_003": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.5,
+        "recall": 0.5
+      },
+      "rule_icd_004": {
+        "tp": 1,
+        "fp": 4,
+        "fn": 4,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "rule_imaging_001": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_imaging_002": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.5,
+        "recall": 0.5
+      },
+      "rule_injection_001": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_lab_001": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_lab_002": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_missing_dx_001": {
+        "tp": 2,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0
+      },
+      "rule_modifier_25_001": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_overlap_001": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rule_preventive_001": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "per_severity": {
+      "info": {
+        "n_encounters": 9,
+        "n_gold_findings": 9,
+        "mean_p": 0.2611111111111111,
+        "mean_r": 1.0,
+        "mean_f1": 0.41111111111111115
+      },
+      "low": {
+        "n_encounters": 8,
+        "n_gold_findings": 13,
+        "mean_p": 0.2875,
+        "mean_r": 0.7708333333333334,
+        "mean_f1": 0.40238095238095234
+      },
+      "medium": {
+        "n_encounters": 6,
+        "n_gold_findings": 7,
+        "mean_p": 0.15,
+        "mean_r": 0.5833333333333334,
+        "mean_f1": 0.2333333333333333
+      },
+      "high": {
+        "n_encounters": 6,
+        "n_gold_findings": 7,
+        "mean_p": 0.21944444444444444,
+        "mean_r": 0.6666666666666666,
+        "mean_f1": 0.32857142857142857
+      },
+      "critical": {
+        "n_encounters": 2,
+        "n_gold_findings": 2,
+        "mean_p": 0.29166666666666663,
+        "mean_r": 1.0,
+        "mean_f1": 0.45
+      }
+    },
+    "latency": {
+      "mean_s": 26.986843585968018,
+      "p95_s": 37.559441804885864,
+      "n_errors": 0
+    }
+  },
+  "results": [
+    {
+      "encounter_id": "enc_10000",
+      "n_gold": 4,
+      "n_pred": 4,
+      "n_matched": 3,
+      "p": 0.75,
+      "r": 0.75,
+      "f1": 0.75,
+      "latency_s": 24.194804906845093,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_002",
+          "rule_ids": [
+            "rule_em_002"
+          ],
+          "quote": "New patient low complexity",
+          "explanation": "Documentation supports a new patient, low-complexity E/M. 99203 is consistent with the documented level of decision-making and problem acuity (chest pain on exertion, single chronic or acute uncomplicated problem). No upcoding/downcoding concern from the note text."
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_ecg_001",
+          "rule_ids": [
+            "rule_ecg_001"
+          ],
+          "quote": "ECG performed in office",
+          "explanation": "CPT 93000 (ECG with interpretation and report) is billed and the note confirms the ECG was performed in the office. The indication (chest pain on exertion) is appropriate, but the claim must carry a linked, valid ICD-10 code to support medical necessity. The presence of an invalid 'REVIEW' ICD entry on the claim risks denial."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_002",
+          "rule_ids": [
+            "rule_icd_002"
+          ],
+          "quote": "Documentation lacks diagnosis linkage for the procedure code billed",
+          "explanation": "The note itself flags that the procedure (ECG 93000) lacks a valid diagnosis linkage on the claim. I20.9 is plausible for the presenting complaint, but the second ICD slot is populated with the literal string 'REVIEW' \u2014 not a valid ICD-10-CM code. The procedure line must be linked to a payable, valid ICD-10 code; otherwise the ECG may deny as not medically necessary / not linked."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "critical",
+          "suggested_code": "",
+          "rule_id": "rule_missing_dx_001",
+          "rule_ids": [
+            "rule_missing_dx_001"
+          ],
+          "quote": "Documentation lacks diagnosis linkage for the procedure code billed",
+          "explanation": "The claim includes 'REVIEW' as an ICD-10 code, which is not a valid ICD-10-CM diagnosis. The ECG (93000) is therefore submitted without a complete, valid diagnosis linkage, and the encounter as a whole has only one valid diagnosis (I20.9) supporting two services (99203 + 93000). A missing/invalid dx on a procedure line is a critical billing error \u2014 correct to a specific ICD-10 (e.g., I20.9 for angina, or R07.9 for chest pain, unspecified) before submission."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99203",
+          "rule_id": "rule_em_002",
+          "clinical_evidence_quote": "new patient low complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "I20.9",
+          "rule_id": "rule_icd_002",
+          "clinical_evidence_quote": "chest pain on exertion"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "cardiology",
+          "severity": "medium",
+          "suggested_code": "93000",
+          "rule_id": "rule_ecg_001",
+          "clinical_evidence_quote": "ECG performed in office"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "missing-dx",
+          "severity": "critical",
+          "suggested_code": "REVIEW",
+          "rule_id": "rule_missing_dx_001",
+          "clinical_evidence_quote": "documentation lacks diagnosis linkage"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10001",
+      "n_gold": 5,
+      "n_pred": 5,
+      "n_matched": 2,
+      "p": 0.4,
+      "r": 0.4,
+      "f1": 0.4000000000000001,
+      "latency_s": 28.977172136306763,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_001",
+          "rule_ids": [
+            "rule_em_001"
+          ],
+          "quote": "Established patient moderate complexity",
+          "explanation": "Documentation explicitly states 'established patient moderate complexity', which supports CPT 99214 (established patient, moderate complexity). E/M level is consistent with the note."
+        },
+        {
+          "finding_id": "",
+          "category": "imaging",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_imaging_002",
+          "rule_ids": [
+            "rule_imaging_002"
+          ],
+          "quote": "Echocardiogram ordered for evaluation of palpitations reported",
+          "explanation": "CPT 93306 (complete echocardiogram with Doppler) is linked to R00.2 (palpitations). Palpitations as the sole indication may trigger medical-necessity review by payers; a documented cardiac finding (e.g., suspected arrhythmia, murmur, structural disease) would strengthen coverage."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_icd_001",
+          "rule_ids": [
+            "rule_icd_001"
+          ],
+          "quote": "Essential hypertension noted",
+          "explanation": "ICD-10 code I10 (essential hypertension) corresponds to the documented diagnosis of essential hypertension. Diagnosis linkage is appropriate for the encounter."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_004",
+          "rule_ids": [
+            "rule_icd_004"
+          ],
+          "quote": "palpitations reported",
+          "explanation": "R00.2 is a symptom code (palpitations), not a definitive diagnosis. For an echocardiogram (93306), a more specific underlying cardiac diagnosis (e.g., I47.x paroxysmal tachycardia, I49.x other arrhythmia, I51.7 aneurysm of heart) would strengthen medical necessity and avoid denial risk. The encounter has no documented underlying etiology for the palpitations."
+        },
+        {
+          "finding_id": "",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "rule_lab_001",
+          "rule_ids": [
+            "rule_lab_001"
+          ],
+          "quote": "Lipid panel ordered",
+          "explanation": "CPT 80061 (lipid panel) is linked to I10 (essential hypertension). Hypertension is an accepted indication for lipid panel testing. However, if the patient has known dyslipidemia, an E78.x code would be more specific and preferred; if screening, Z13.220/Z13.6 would be more accurate."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99214",
+          "rule_id": "rule_em_001",
+          "clinical_evidence_quote": "established patient moderate complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "imaging",
+          "severity": "high",
+          "suggested_code": "93306",
+          "rule_id": "rule_imaging_002",
+          "clinical_evidence_quote": "echocardiogram ordered"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "R00.2",
+          "rule_id": "rule_icd_001",
+          "clinical_evidence_quote": "palpitations reported"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "I10",
+          "rule_id": "rule_icd_004",
+          "clinical_evidence_quote": "essential hypertension"
+        },
+        {
+          "finding_id": "gt4",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "80061",
+          "rule_id": "rule_lab_001",
+          "clinical_evidence_quote": "lipid panel ordered"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10002",
+      "n_gold": 2,
+      "n_pred": 3,
+      "n_matched": 2,
+      "p": 0.6666666666666666,
+      "r": 1.0,
+      "f1": 0.8,
+      "latency_s": 15.732287883758545,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "overlap",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_overlap_001",
+          "rule_ids": [
+            "rule_overlap_001"
+          ],
+          "quote": "Duplicate service on same date",
+          "explanation": "The clinical note explicitly documents a duplicate service scenario: an annual wellness visit and a separate sick visit billed on the same date. Without distinct, separately identifiable documentation and the appropriate modifier (e.g., -25) on the sick-visit E/M code, the two services cannot both be billed in full; one will be considered overlapping/duplicative by the payer."
+        },
+        {
+          "finding_id": "",
+          "category": "preventive",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_preventive_001",
+          "rule_ids": [
+            "rule_preventive_001"
+          ],
+          "quote": "annual wellness visit",
+          "explanation": "An annual wellness visit (preventive medicine service) was rendered on the same date as a problem-oriented sick visit. Preventive E/M codes (e.g., 99381-99397 for preventive medicine re-evaluations, or G0438/G0439 for Medicare AWV) have specific coverage and cost-share rules, and bundling logic with sick-visit E/M codes is strict; the preventive component must be billed with the correct code and the sick-visit unbundled via modifier -25."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "critical",
+          "suggested_code": "",
+          "rule_id": "rule_missing_dx_001",
+          "rule_ids": [
+            "rule_missing_dx_001"
+          ],
+          "quote": "annual wellness visit and a separate sick visit billed the same day",
+          "explanation": "The submitted claim contains zero CPT codes and zero ICD-10-CM codes despite documentation describing both a preventive wellness visit and a problem-oriented sick visit. A claim without diagnosis codes cannot be adjudicated, and the absence of codes means there is nothing to link the documented conditions to a billing line item \u2014 this is a critical, claim-blocking error."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "preventive",
+          "severity": "info",
+          "suggested_code": "G0438",
+          "rule_id": "rule_preventive_001",
+          "clinical_evidence_quote": "annual wellness visit"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "duplicate",
+          "severity": "high",
+          "suggested_code": "DENY",
+          "rule_id": "rule_overlap_001",
+          "clinical_evidence_quote": "duplicate service on same date"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10003",
+      "n_gold": 4,
+      "n_pred": 4,
+      "n_matched": 3,
+      "p": 0.75,
+      "r": 0.75,
+      "f1": 0.75,
+      "latency_s": 37.47427487373352,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_003",
+          "rule_ids": [
+            "rule_em_003"
+          ],
+          "quote": "Established patient high complexity",
+          "explanation": "Documentation explicitly supports a high-complexity established patient E/M (99215) per the phrase 'high complexity' for an established patient."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_003",
+          "rule_ids": [
+            "rule_icd_003"
+          ],
+          "quote": "cough workup",
+          "explanation": "The encounter includes a cough workup with chest x-ray, but the claim only lists E11.9 (Type 2 DM). A cough/respiratory symptom diagnosis code (e.g., R05.9) is required to support the imaging service and properly document the presenting complaint."
+        },
+        {
+          "finding_id": "",
+          "category": "laboratory",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_lab_002",
+          "rule_ids": [
+            "rule_lab_002"
+          ],
+          "quote": "HbA1c drawn",
+          "explanation": "CPT 83036 (HbA1c) is reported and is appropriately linked to the documented T2DM diagnosis (E11.9) for diabetes monitoring."
+        },
+        {
+          "finding_id": "",
+          "category": "imaging",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_imaging_001",
+          "rule_ids": [
+            "rule_imaging_001"
+          ],
+          "quote": "Chest x-ray performed for cough workup",
+          "explanation": "CPT 71046 (chest x-ray, 2 views) is billed, but the only diagnosis on the claim is E11.9 (diabetes), which does not establish medical necessity for a chest x-ray. A respiratory/cough diagnosis code is required to justify the imaging."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99215",
+          "rule_id": "rule_em_003",
+          "clinical_evidence_quote": "established patient high complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "E11.9",
+          "rule_id": "rule_icd_003",
+          "clinical_evidence_quote": "type 2 diabetes follow-up"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "83036",
+          "rule_id": "rule_lab_002",
+          "clinical_evidence_quote": "HbA1c drawn"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "imaging",
+          "severity": "medium",
+          "suggested_code": "71046",
+          "rule_id": "rule_imaging_001",
+          "clinical_evidence_quote": "chest x-ray performed"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10004",
+      "n_gold": 3,
+      "n_pred": 3,
+      "n_matched": 2,
+      "p": 0.6666666666666666,
+      "r": 0.6666666666666666,
+      "f1": 0.6666666666666666,
+      "latency_s": 31.262664079666138,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_001",
+          "rule_ids": [
+            "rule_em_001"
+          ],
+          "quote": "Established patient moderate complexity",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_injection_001",
+          "rule_ids": [
+            "rule_injection_001"
+          ],
+          "quote": "Influenza vaccine administered",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_004",
+          "rule_ids": [
+            "rule_icd_004"
+          ],
+          "quote": "Influenza vaccine administered",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99214",
+          "rule_id": "rule_em_001",
+          "clinical_evidence_quote": "established patient moderate complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "procedure",
+          "severity": "low",
+          "suggested_code": "90686",
+          "rule_id": "rule_injection_001",
+          "clinical_evidence_quote": "influenza vaccine administered"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "I10",
+          "rule_id": "rule_icd_004",
+          "clinical_evidence_quote": "essential hypertension"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10005",
+      "n_gold": 4,
+      "n_pred": 4,
+      "n_matched": 3,
+      "p": 0.75,
+      "r": 0.75,
+      "f1": 0.75,
+      "latency_s": 37.559441804885864,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_001",
+          "rule_ids": [
+            "rule_em_001"
+          ],
+          "quote": "Patient presents for established patient moderate complexity",
+          "explanation": "Note explicitly states 'established patient moderate complexity', which maps to CPT 99214. E/M level is supported by documentation."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_001",
+          "rule_ids": [
+            "rule_icd_001"
+          ],
+          "quote": "Lipid panel ordered for cardiovascular risk stratification",
+          "explanation": "Lipid panel (80061) is linked only to R00.2 (palpitations). Palpitations is not a recognized supporting diagnosis for lipid panel/cardiovascular risk stratification. Expect a diagnosis such as E78.5 (hyperlipidemia), Z13.220 (lipid disorder screening), E11.9 (DM), or I10 (HTN). Missing appropriate dx linkage for the lab."
+        },
+        {
+          "finding_id": "",
+          "category": "modifier",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_modifier_25_001",
+          "rule_ids": [
+            "rule_modifier_25_001"
+          ],
+          "quote": "Documentation supports a separately identifiable E/M; modifier 25 applied",
+          "explanation": "Note asserts modifier -25 was applied to 99214, but the claim does not show modifier -25 on the 99214 line. Additionally, the only other billed service is 80061 (lab), and modifier -25 is intended for separately identifiable E/M same-day as a procedure, not a lab. Note also documents 'ECG performed in office' \u2014 the actual procedure that would justify -25 \u2014 but no ECG code (e.g., 93000) is on the claim. This is a documentation/claim mismatch with potential modifier misuse."
+        },
+        {
+          "finding_id": "",
+          "category": "laboratory",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_lab_001",
+          "rule_ids": [
+            "rule_lab_001"
+          ],
+          "quote": "Lipid panel ordered for cardiovascular risk stratification",
+          "explanation": "Lipid panel (80061) is billed for cardiovascular risk stratification, but the only reported diagnosis is R00.2 (palpitations), which does not meet medical-necessity criteria for lipid testing. No hyperlipidemia, diabetes, ASCVD, family history, or preventive screening code is present, so the lab is at risk of denial on coverage/medical-necessity grounds."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99214",
+          "rule_id": "rule_em_001",
+          "clinical_evidence_quote": "established patient moderate complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "R00.2",
+          "rule_id": "rule_icd_001",
+          "clinical_evidence_quote": "palpitations reported"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "modifier",
+          "severity": "high",
+          "suggested_code": "modifier 25",
+          "rule_id": "rule_modifier_25_001",
+          "clinical_evidence_quote": "separately identifiable E/M"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "80061",
+          "rule_id": "rule_lab_001",
+          "clinical_evidence_quote": "lipid panel ordered"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10006",
+      "n_gold": 5,
+      "n_pred": 5,
+      "n_matched": 5,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 20.883868932724,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_002",
+          "rule_ids": [
+            "rule_em_002"
+          ],
+          "quote": "New patient low complexity visit",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "",
+          "rule_id": "rule_icd_002",
+          "rule_ids": [
+            "rule_icd_002"
+          ],
+          "quote": "chest pain on exertion",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_ecg_001",
+          "rule_ids": [
+            "rule_ecg_001"
+          ],
+          "quote": "ECG performed in office",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_ecg_002",
+          "rule_ids": [
+            "rule_ecg_002"
+          ],
+          "quote": "rhythm strip reviewed",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "imaging",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_imaging_002",
+          "rule_ids": [
+            "rule_imaging_002"
+          ],
+          "quote": "Echocardiogram ordered for further workup",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99203",
+          "rule_id": "rule_em_002",
+          "clinical_evidence_quote": "new patient low complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "I20.9",
+          "rule_id": "rule_icd_002",
+          "clinical_evidence_quote": "chest pain on exertion"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "cardiology",
+          "severity": "medium",
+          "suggested_code": "93000",
+          "rule_id": "rule_ecg_001",
+          "clinical_evidence_quote": "ECG performed in office"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "cardiology",
+          "severity": "low",
+          "suggested_code": "93040",
+          "rule_id": "rule_ecg_002",
+          "clinical_evidence_quote": "rhythm strip reviewed"
+        },
+        {
+          "finding_id": "gt4",
+          "category": "imaging",
+          "severity": "high",
+          "suggested_code": "93306",
+          "rule_id": "rule_imaging_002",
+          "clinical_evidence_quote": "echocardiogram ordered"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10007",
+      "n_gold": 5,
+      "n_pred": 5,
+      "n_matched": 4,
+      "p": 0.8,
+      "r": 0.8,
+      "f1": 0.8000000000000002,
+      "latency_s": 31.850806713104248,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_em_003",
+          "rule_ids": [
+            "rule_em_003"
+          ],
+          "quote": "Established patient high complexity",
+          "explanation": "Documentation explicitly states high complexity for an established patient, which directly supports CPT 99215 (established patient, level 5). E/M level appears consistent with the documentation."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_icd_003",
+          "rule_ids": [
+            "rule_icd_003"
+          ],
+          "quote": "Type 2 diabetes follow-up with HbA1c drawn. Essential hypertension re-assessed.",
+          "explanation": "The billed diagnoses E11.9 (Type 2 diabetes mellitus without complications) and I10 (Essential hypertension) align with the two conditions addressed at the visit and support medical necessity for the 99215 E/M."
+        },
+        {
+          "finding_id": "",
+          "category": "laboratory",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_lab_002",
+          "rule_ids": [
+            "rule_lab_002"
+          ],
+          "quote": "HbA1c drawn",
+          "explanation": "CPT 83036 (Hemoglobin A1c) is billed with E11.9 (Type 2 diabetes mellitus), which establishes clear medical necessity for diabetes monitoring. Diagnosis-procedure linkage is appropriate."
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_icd_004",
+          "rule_ids": [
+            "rule_icd_004"
+          ],
+          "quote": "Influenza vaccine administered during visit",
+          "explanation": "For immunization encounters, ICD-10 Z23 (Encounter for immunization) is the standard primary diagnosis code that should accompany vaccine administration codes such as 90686. Z23 is not present on the claim, which can cause the vaccine line to deny or under-link to the immunization rationale."
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_injection_001",
+          "rule_ids": [
+            "rule_injection_001"
+          ],
+          "quote": "Influenza vaccine administered during visit",
+          "explanation": "Influenza vaccine administration requires both the product code (90686, billed) and a separate administration code (e.g., 90471 for adult IM administration, or G0008 for Medicare). Only the product code is on the claim, representing a coverage gap that will result in the administration portion of the service being unbilled."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "evaluation",
+          "severity": "info",
+          "suggested_code": "99215",
+          "rule_id": "rule_em_003",
+          "clinical_evidence_quote": "established patient high complexity"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "medium",
+          "suggested_code": "E11.9",
+          "rule_id": "rule_icd_003",
+          "clinical_evidence_quote": "type 2 diabetes follow-up"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "83036",
+          "rule_id": "rule_lab_002",
+          "clinical_evidence_quote": "HbA1c drawn"
+        },
+        {
+          "finding_id": "gt3",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "I10",
+          "rule_id": "rule_icd_004",
+          "clinical_evidence_quote": "essential hypertension"
+        },
+        {
+          "finding_id": "gt4",
+          "category": "procedure",
+          "severity": "low",
+          "suggested_code": "90686",
+          "rule_id": "rule_injection_001",
+          "clinical_evidence_quote": "influenza vaccine administered"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10008",
+      "n_gold": 3,
+      "n_pred": 3,
+      "n_matched": 3,
+      "p": 1.0,
+      "r": 1.0,
+      "f1": 1.0,
+      "latency_s": 22.057483911514282,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "preventive",
+          "severity": "medium",
+          "suggested_code": "",
+          "rule_id": "rule_preventive_001",
+          "rule_ids": [
+            "rule_preventive_001"
+          ],
+          "quote": "Annual wellness visit completed",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_icd_004",
+          "rule_ids": [
+            "rule_icd_004"
+          ],
+          "quote": "Patient with essential hypertension",
+          "explanation": ""
+        },
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "critical",
+          "suggested_code": "",
+          "rule_id": "rule_missing_dx_001",
+          "rule_ids": [
+            "rule_missing_dx_001"
+          ],
+          "quote": "Documentation lacks diagnosis linkage for the E/M code billed",
+          "explanation": ""
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "preventive",
+          "severity": "info",
+          "suggested_code": "G0438",
+          "rule_id": "rule_preventive_001",
+          "clinical_evidence_quote": "annual wellness visit"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "I10",
+          "rule_id": "rule_icd_004",
+          "clinical_evidence_quote": "essential hypertension"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "missing-dx",
+          "severity": "critical",
+          "suggested_code": "REVIEW",
+          "rule_id": "rule_missing_dx_001",
+          "clinical_evidence_quote": "documentation lacks diagnosis linkage"
+        }
+      ]
+    },
+    {
+      "encounter_id": "enc_10009",
+      "n_gold": 3,
+      "n_pred": 3,
+      "n_matched": 2,
+      "p": 0.6666666666666666,
+      "r": 0.6666666666666666,
+      "f1": 0.6666666666666666,
+      "latency_s": 19.875630617141724,
+      "error": null,
+      "pred_findings": [
+        {
+          "finding_id": "",
+          "category": "diagnosis",
+          "severity": "info",
+          "suggested_code": "",
+          "rule_id": "rule_icd_004",
+          "rule_ids": [
+            "rule_icd_004"
+          ],
+          "quote": "Follow-up for essential hypertension. Lipid panel ordered",
+          "explanation": "ICD-10 I10 (essential hypertension) is the sole diagnosis supporting CPT 80061 (lipid panel). Hypertension is a recognized cardiovascular risk indication for lipid screening, so the dx-to-lab linkage is appropriate. No additional diagnosis (e.g., E78.5 hyperlipidemia, E11.9 diabetes) is documented to strengthen medical necessity for the panel."
+        },
+        {
+          "finding_id": "",
+          "category": "laboratory",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_lab_001",
+          "rule_ids": [
+            "rule_lab_001"
+          ],
+          "quote": "Lipid panel ordered",
+          "explanation": "CPT 80061 (lipid panel) is billed. Coverage for screening lipid panels typically requires a documented indication such as known dyslipidemia, diabetes, established ASCVD risk, or as part of a preventive medicine visit. The note only documents essential hypertension without a lipid abnormality, diabetes, or cardiovascular risk score; payer may deny as non-covered screening. Confirm whether 80061 is intended as diagnostic (covered under medical benefit) versus screening (may require QW modifier or different Z-code)."
+        },
+        {
+          "finding_id": "",
+          "category": "procedure",
+          "severity": "high",
+          "suggested_code": "",
+          "rule_id": "rule_overlap_001",
+          "rule_ids": [
+            "rule_overlap_001"
+          ],
+          "quote": "Duplicate service on same date flagged by billing system",
+          "explanation": "The clinical note explicitly states the billing system has flagged a duplicate 80061 (lipid panel) for this same date of service. Submitting the claim without resolving the duplicate risks denial, recoupment, or a compliance flag. Verify whether a prior 80061 was already performed and resulted today; if so, the duplicate should be removed or appended with a -91 modifier (repeat clinical diagnostic laboratory test) only if medically justified, which is not documented here."
+        }
+      ],
+      "gold_findings": [
+        {
+          "finding_id": "gt0",
+          "category": "diagnosis",
+          "severity": "low",
+          "suggested_code": "I10",
+          "rule_id": "rule_icd_004",
+          "clinical_evidence_quote": "essential hypertension"
+        },
+        {
+          "finding_id": "gt1",
+          "category": "laboratory",
+          "severity": "low",
+          "suggested_code": "80061",
+          "rule_id": "rule_lab_001",
+          "clinical_evidence_quote": "lipid panel ordered"
+        },
+        {
+          "finding_id": "gt2",
+          "category": "duplicate",
+          "severity": "high",
+          "suggested_code": "DENY",
+          "rule_id": "rule_overlap_001",
+          "clinical_evidence_quote": "duplicate service on same date"
+        }
+      ]
+    }
+  ]
+}

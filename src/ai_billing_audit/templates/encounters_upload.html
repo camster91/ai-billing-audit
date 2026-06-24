@@ -1,147 +1,92 @@
 {% extends "base.html" %}
-{% block title %}encounter upload — ai-billing-audit{% endblock %}
+{% block title %}Upload — ai-billing-audit{% endblock %}
 {% block content %}
-<section class="page-head">
-  <p class="crumbs"><a href="/">all encounters</a> &rsaquo; upload</p>
-  <h1>Encounter upload</h1>
-  <p class="muted">
-    Drop a single 837P file, a ZIP of 837P files, a clinical note PDF or image,
-    or key an encounter in by hand. The audit job is enqueued after the
-    parse-preview step confirms every required field is present.
-  </p>
-</section>
+
+<div class="page-head">
+  <div>
+    <h1>Upload 837P</h1>
+    <p class="sub">Submit a billing claim file for pre-billing audit. Files are parsed, the claim is checked against retrieved billing rules by the LLM (minimax-m3), and the audit lands in your queue within seconds.</p>
+  </div>
+  <a class="btn btn-ghost" href="/">&larr; Back to audits</a>
+</div>
 
 <nav class="upload-tabs" role="tablist">
   <button class="upload-tab is-active" data-target="tab-837p" role="tab" aria-selected="true">837P file</button>
-  <button class="upload-tab" data-target="tab-zip" role="tab" aria-selected="false">837P ZIP (bulk)</button>
+  <button class="upload-tab" data-target="tab-zip" role="tab" aria-selected="false">ZIP of 837Ps</button>
   <button class="upload-tab" data-target="tab-note" role="tab" aria-selected="false">Clinical note</button>
   <button class="upload-tab" data-target="tab-paste" role="tab" aria-selected="false">Paste form</button>
 </nav>
 
-<section class="panel" id="tab-837p" data-tab-panel>
-  <h2>Upload 837P file</h2>
-  <p class="muted small">
-    ANSI X12 5010 837P (Professional) — drag a <code>.837</code>, <code>.txt</code>,
-    or <code>.x12</code> file onto the dropzone. Up to {{ (max_upload_bytes / 1024 / 1024)|round(1) }} MiB.
-  </p>
+<section class="card mt-4" id="tab-837p" data-tab-panel>
+  <h2 style="margin-top: 0;">Upload 837P file</h2>
+  <p class="muted small">ANSI X12 5010 837P (Professional). Drag a <code>.837</code>, <code>.txt</code>, or <code>.x12</code> file onto the dropzone. Up to {{ (max_upload_bytes / 1024 / 1024)|round(1) }} MiB.</p>
   <label class="dropzone" data-kind="837p">
     <input type="file" accept=".837,.txt,.x12,.edi" hidden>
     <span class="dropzone__hint">Drag an 837P file here, or click to choose</span>
     <span class="dropzone__filename muted small"></span>
   </label>
+  <div class="upload-output" data-output></div>
 </section>
 
-<section class="panel" id="tab-zip" data-tab-panel hidden>
-  <h2>Upload ZIP of 837P files (bulk)</h2>
-  <p class="muted small">
-    Drop a <code>.zip</code> archive of 837P files. Each entry is parsed
-    individually; non-EDI files are skipped and reported.
-  </p>
+<section class="card mt-4" id="tab-zip" data-tab-panel hidden>
+  <h2 style="margin-top: 0;">Upload ZIP of 837Ps</h2>
+  <p class="muted small">ZIP archive of 837P files. Each file is parsed and queued for audit individually.</p>
   <label class="dropzone" data-kind="zip">
     <input type="file" accept=".zip" hidden>
-    <span class="dropzone__hint">Drag a ZIP of 837P files here, or click to choose</span>
+    <span class="dropzone__hint">Drag a .zip here, or click to choose</span>
     <span class="dropzone__filename muted small"></span>
   </label>
+  <div class="upload-output" data-output></div>
 </section>
 
-<section class="panel" id="tab-note" data-tab-panel hidden>
-  <h2>Upload clinical note (PDF or image)</h2>
-  <p class="muted small">
-    Accepted: {% for ext in allowed_note_exts %}<code>{{ ext }}</code>{% if not loop.last %} &middot; {% endif %}{% endfor %}.
-    OCR is deferred — the file is stored as-is for the later LayoutLMv3 step.
-  </p>
+<section class="card mt-4" id="tab-note" data-tab-panel hidden>
+  <h2 style="margin-top: 0;">Attach clinical note</h2>
+  <p class="muted small">PDF or image of the encounter's clinical note. OCR is deferred — the file is stored on disk and linked to the most recently uploaded encounter for the same patient. If the note isn't available yet, paste the text in the next tab.</p>
   <label class="dropzone" data-kind="note">
     <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tiff" hidden>
-    <span class="dropzone__hint">Drag a clinical note here, or click to choose</span>
+    <span class="dropzone__hint">Drag a PDF or image, or click to choose</span>
     <span class="dropzone__filename muted small"></span>
   </label>
-  <div id="note-status" class="upload-status muted small" aria-live="polite"></div>
+  <div class="upload-output" data-output></div>
 </section>
 
-<section class="panel" id="tab-paste" data-tab-panel hidden>
-  <h2>Paste-form (manual entry)</h2>
-  <p class="muted small">
-    One encounter, hand-keyed. All five required fields are needed to
-    pass validation.
-  </p>
-  <form id="paste-form" class="paste-grid" autocomplete="off">
-    <label>Encounter ID<input name="encounter_id" required placeholder="enc_12345"></label>
-    <label>Patient ID<input name="patient_id" required placeholder="MBR-000123"></label>
-    <label>NPI<input name="npi" required pattern="\d{10}" placeholder="1234567890" maxlength="10"></label>
-    <label>Date of service<input name="date_of_service" type="date" required></label>
-    <label class="paste-grid__full">CPT codes (comma-separated)<input name="cpt_codes" required placeholder="99213, 99214-25"></label>
-    <label>Difficulty
-      <select name="difficulty_tier">
-        <option value="EASY">EASY</option>
-        <option value="MEDIUM">MEDIUM</option>
-        <option value="HARD">HARD</option>
-      </select>
-    </label>
-    <label>Variant
-      <select name="variant">
-        <option value="clean">clean</option>
-        <option value="flagged">flagged</option>
-      </select>
-    </label>
-    <button class="btn btn--ghost" type="button" id="btn-paste-preview">Preview</button>
+<section class="card mt-4" id="tab-paste" data-tab-panel hidden>
+  <h2 style="margin-top: 0;">Paste form</h2>
+  <p class="muted small">Manually key in a claim + clinical note. Useful when there's no EHR export to upload.</p>
+  <form data-form="paste" class="paste-form">
+    <div class="form-row">
+      <label class="form-label">Encounter ID</label>
+      <input class="form-input" type="text" name="encounter_id" required placeholder="e.g. ENC-2026-001">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Patient ID</label>
+      <input class="form-input" type="text" name="patient_id" placeholder="e.g. PT-12345">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Provider NPI</label>
+      <input class="form-input" type="text" name="npi" placeholder="10-digit NPI">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Date of service</label>
+      <input class="form-input" type="date" name="date_of_service">
+    </div>
+    <div class="form-row">
+      <label class="form-label">CPT code(s)</label>
+      <input class="form-input" type="text" name="cpt_codes" placeholder="e.g. 99213">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Clinical note</label>
+      <textarea class="form-input" name="clinical_note" rows="8" placeholder="Paste the clinical note here..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Submit for audit</button>
+    </div>
   </form>
+  <div class="upload-output" data-output></div>
 </section>
 
-<section class="panel" id="preview-panel" hidden>
-  <h2>Parse preview</h2>
-  <p class="muted small" id="preview-summary"></p>
-  <div class="preview-table-wrap">
-    <table class="preview-table" id="preview-table">
-      <thead>
-        <tr>
-          <th>encounter_id</th>
-          <th>patient_id</th>
-          <th>NPI</th>
-          <th>date_of_service</th>
-          <th>CPT codes</th>
-          <th>source</th>
-          <th>status</th>
-        </tr>
-      </thead>
-      <tbody id="preview-tbody"></tbody>
-    </table>
-  </div>
-  <details class="preview-raw" id="preview-raw-wrap">
-    <summary>Raw segments (per file)</summary>
-    <pre id="preview-raw"></pre>
-  </details>
-  <div class="preview-actions">
-    <button class="btn btn--primary" id="btn-submit" disabled>Submit accepted rows</button>
-    <button class="btn btn--ghost" id="btn-clear" type="button">Clear</button>
-    <span class="muted small" id="submit-summary"></span>
-  </div>
-</section>
+{% endblock %}
 
-<section class="panel" id="jobs-panel" hidden>
-  <h2>Audit jobs</h2>
-  <p class="muted small">Polling every second. Jobs are removed from the queue when the audit pipeline completes.</p>
-  <ul class="job-list" id="job-list"></ul>
-</section>
-
-<template id="row-template">
-  <tr>
-    <td class="cell-enc"></td>
-    <td class="cell-pid"></td>
-    <td class="cell-npi"></td>
-    <td class="cell-dos"></td>
-    <td class="cell-cpt"></td>
-    <td class="cell-source"></td>
-    <td class="cell-status"></td>
-  </tr>
-</template>
-
-<template id="job-template">
-  <li class="job-row" data-job-id="">
-    <span class="job-row__id"></span>
-    <span class="job-row__enc"></span>
-    <span class="job-row__status badge"></span>
-  </li>
-</template>
-
-<script src="/static/upload.js" defer></script>
+{% block scripts %}
+<script src="/static/upload.js"></script>
 {% endblock %}
