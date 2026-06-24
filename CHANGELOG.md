@@ -8,6 +8,74 @@ For the in-deploy / in-PR commit log, see `git log`.
 
 ## 2026-06-24
 
+### Public v1 API + webhooks for EHR integrations
+(kanban `t_f4f1c149` + `t_4496cee1`)
+
+**Why.** The operator-dashboard API was HTML-first with bearer-token
+auth + RBAC — fine for the internal team, wrong shape for EHR
+systems that want JSON in / JSON out + a stable machine contract.
+This change adds a separately-authenticated, JSON-only v1 surface
+(`/v1/audits`, `/v1/webhooks`) plus the at-least-once webhook
+delivery channel that EHRs need to react to audit completion
+without polling.
+
+**What changed.**
+
+- New `src/ai_billing_audit/public_api.py` registers the v1 routes:
+  - `POST /v1/audits` — accepts an 837P-shaped claim JSON, returns
+    **202** with `audit_id` + `status_url`.
+  - `GET /v1/audits/{audit_id}` — returns status (`queued` /
+    `running` / `complete` / `failed`) + findings when complete.
+    Polling-friendly: briefly waits server-side so a caller that
+    GETs right after POST usually gets the result in one round-trip.
+  - `POST /v1/webhooks` — register a `{url, events}` webhook.
+- Auth is a single shared `ZORVA_API_KEY` env var, accepted via
+  `Authorization: Bearer <key>` (preferred) or `X-API-Key: <key>`.
+  When `ZORVA_API_KEY` is unset, every `/v1/*` call returns **503**
+  with a stable `{"code": "api_key_not_configured"}` body (the
+  "feature-flagged off" pattern used by the dashboard's bearer
+  middleware). When the key is set and the presented key is wrong,
+  the call returns **401**.
+- Every `/v1/*` request (including 401 / 503 / 404) appends a row
+  to `/app/logs/usage_log.jsonl` (path configurable via
+  `ZORVA_USAGE_LOG_PATH`) so we can later rate-limit / audit
+  per-key without touching the contract.
+- New `src/ai_billing_audit/webhooks.py` owns webhook storage
+  (`/app/logs/webhooks.jsonl`, configurable via
+  `ZORVA_WEBHOOK_LOG_PATH`) + the dispatcher. Storage is one
+  JSONL file: registrations + delivery attempts (the latter
+  flagged with `{"_kind": "delivery"}`). Webhook delivery
+  failures are caught + logged but never block the audit.
+- `audit_complete` is fired synchronously by the GET endpoint
+  on the first observation of a `done` job (in-process dedup
+  set prevents duplicate fires across polls).
+  `finding_acknowledged` is dispatched via
+  `public_api.emit_finding_acknowledged(...)` from the operator
+  dashboard's accept / dismiss handlers.
+- `src/ai_billing_audit/api.py` calls `register_public_api(app)`
+  at the end of `create_app()` so the v1 surface is mounted on
+  every worker.
+- New tests: `tests/test_public_api.py` (12 tests covering
+  503/401/202/complete/404/usage_log) and `tests/test_webhooks.py`
+  (5 tests covering registration, delivery, failure-doesn't-block,
+  input validation, and the `finding_acknowledged` helper).
+
+**Design notes.**
+
+- v1 deliberately has no separate worker — the audit is enqueued
+  via the existing `JobQueue`, and the webhook is fired inline
+  in the GET endpoint. A background poller / worker can be added
+  later by replacing `_maybe_notify_audit_complete`'s caller
+  without changing the storage or event-payload shape.
+- `audit_id` and `job_id` are deliberately separate: the
+  v1 contract surfaces a stable `audit_id` (`va_<12hex>`) while
+  the underlying `JobQueue` keeps its own `job_id`. The mapping
+  lives in `v1_audits.jsonl` (next to `usage_log.jsonl`) for
+  crash recovery + an in-process dict for the fast path.
+- `Job` uses `__slots__` so we cannot attach a `v1_audit_id`
+  attribute to it — see the `_audit_id_for_job_id` dict in
+  `public_api.py`.
+
 ### Restore caddy `rate_limit` directive via a custom caddy build
 (kanban `t_0910e627`, post-deploy board `zorva-post-deploy-2026-06-24`)
 

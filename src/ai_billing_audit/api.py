@@ -4979,6 +4979,19 @@ def create_app() -> FastAPI:
             }
         )
 
+    # ── Public v1 API (kanban t_f4f1c149) ────────────────────────────
+    # The v1 surface is a separately-authenticated, JSON-only
+    # contract for EHR integrations. It's mounted by a sibling
+    # module (ai_billing_audit.public_api) so the operator
+    # dashboard (above) and the public API (below) can evolve
+    # independently — the dashboard needs HTML + RBAC, the
+    # public API needs machine-friendly errors + an API-key
+    # auth path. The companion task (kanban t_4496cee1) wires
+    # webhooks through the same module.
+    from ai_billing_audit.public_api import register_public_api
+
+    register_public_api(app)
+
     return app
 
 
