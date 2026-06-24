@@ -87,6 +87,36 @@
       "test_R": null,
       "test_P": null,
       "seed": 42
+    },
+    {
+      "version_hash": "sha256:e43085a3a2a47b583679ba1067c2abce819bb5dfeeaec0be914f09b86ab888fe",
+      "parent_hash": "sha256:b22072d708443065d5420a3e9db4a77b9baf55dc8e12f52d92602e887551080d",
+      "status": "not_shipped_f1_regression",
+      "created_at": "2026-06-24T13:30:00Z",
+      "llm_provider": "ollama",
+      "model_version": "minimax-m3:cloud",
+      "optimizer_config": {
+        "optimizer": "manual",
+        "strategy": "experimental v13 — reduced few-shot examples",
+        "rationale": "Experimental follow-up to v12. Stripped few-shot examples from 7 down to 0 to test whether example-driven framing was inflating v12 F1. Result: held-out F1 dropped from 0.690 (v12) to 0.500 (v13) on the same val_ca.json set. NOT SHIPPED — F1 regression of -0.190. Prompt retained on disk at prompts/v13/auditor_prompt.txt (161 lines) for future iteration / ablation study. Do not promote to active without restoring the few-shot examples or demonstrating recovery on val_ca.json.",
+        "changes_from_v12": [
+          "Removed all 7 few-shot AHCIP examples",
+          "Removed dx_linkage, em_level_upcode, and psychotherapy_time worked examples",
+          "Kept rule prose sections identical to v12"
+        ]
+      },
+      "train_R": null,
+      "val_R": 0.500,
+      "val_P": null,
+      "val_F1": 0.500,
+      "val_n": 10,
+      "val_set": "data/val_ca.json (same as v12)",
+      "val_per_bucket_note": "v13 micro F1=0.500 measured on val_ca.json with 0 few-shot examples. Drops vs v12: em_level_upcode (1.000 -> 0.500), psychotherapy_time (0.667 -> 0.000), em_level (0.750 -> 0.500). Per-bucket per-rule numbers retained in runs/recall/v13_ahcip.json for ablation.",
+      "test_R": null,
+      "test_P": null,
+      "seed": 42,
+      "shipped": false,
+      "not_shipped_reason": "F1 regression of 0.690 -> 0.500 on val_ca.json"
     }
   ]
 }
