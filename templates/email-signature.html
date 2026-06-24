@@ -1,0 +1,122 @@
+<!--
+  Zorva — standard email signature HTML template.
+  ───────────────────────────────────────────────
+  Single self-contained HTML snippet for use as an email
+  signature. Copy the <table> block below into your email
+  client's signature editor (Gmail → Settings → Signature,
+  Outlook → File → Options → Mail → Signatures, Apple Mail →
+  Preferences → Signatures).
+
+  Design rules followed (per the spec):
+    * Inline CSS only — email clients (Outlook desktop,
+      Gmail, Apple Mail) strip or ignore <style> blocks and
+      external stylesheets.
+    * Table-based layout with fixed widths — floats, flexbox,
+      and grid are unreliable in email clients.
+    * Renders without horizontal scroll at a typical email
+      width (~600 px).
+    * Self-contained markup; no JS; no remote fonts.
+    * Well-formed HTML — passes a basic validator check
+      (properly nested and closed elements).
+
+  Placeholders (replace before pasting into your client):
+    {{FULL_NAME}}   — e.g. "Cameron Ashley"
+    {{TITLE}}       — e.g. "Founder & CEO"
+    {{EMAIL}}       — e.g. "cameron@zorva.health"
+    {{PHONE}}       — optional, e.g. "+1 (555) 123-4567"
+    {{LOGO_URL}}    — public URL to the Zorva logo PNG,
+                       recommended 200×52 px, transparent bg.
+    {{LINK_URL}}    — e.g. "https://zorva.health"
+    {{LINK_LABEL}}  — display text for the link, e.g. "zorva.health"
+
+  Tested layout width: 600 px (Gmail web + mobile, Outlook 2019+,
+  Apple Mail 16+). At narrower widths (≤480 px) the right-side
+  logo and text stack naturally because of the table cell sizing.
+-->
+
+<table cellpadding="0" cellspacing="0" border="0" width="600"
+       style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; font-family: Arial, Helvetica, 'Segoe UI', sans-serif; color:#1F2937; font-size:14px; line-height:1.4;">
+
+  <!-- Top accent rule (1 px teal — Zorva brand accent) -->
+  <tr>
+    <td colspan="2" height="2" bgcolor="#5EEAD4"
+        style="background-color:#5EEAD4; line-height:2px; font-size:0; padding:0; margin:0;">
+      &nbsp;
+    </td>
+  </tr>
+
+  <!-- Spacer -->
+  <tr>
+    <td colspan="2" height="16" style="line-height:16px; font-size:0;">&nbsp;</td>
+  </tr>
+
+  <!-- Two-column body: text (left) + logo (right) -->
+  <tr>
+
+    <!-- LEFT: name, title, brand, contact -->
+    <td valign="top" width="420"
+        style="padding:0 16px 0 0; vertical-align:top; font-family: Arial, Helvetica, 'Segoe UI', sans-serif;">
+
+      <p style="margin:0 0 4px 0; padding:0; font-size:18px; font-weight:bold; color:#0F172A; line-height:1.2;">
+        Cameron Ashley
+      </p>
+
+      <p style="margin:0 0 12px 0; padding:0; font-size:14px; color:#334155; line-height:1.4;">
+        Founder &amp; CEO, Zorva
+      </p>
+
+      <p style="margin:0; padding:0; font-size:14px; color:#1F2937; line-height:1.6;">
+        <!--
+          Email + phone lines. Use &nbsp; in the phone label so
+          the colon doesn't wrap awkwardly in narrow clients.
+        -->
+        <a href="mailto:cameron@zorva.health"
+           style="color:#0F172A; text-decoration:none;">cameron@zorva.health</a>
+        <span style="color:#94A3B8;">&nbsp;&middot;&nbsp;</span>
+        <a href="tel:+15551234567"
+           style="color:#0F172A; text-decoration:none;">+1 (555)&nbsp;123&#8209;4567</a>
+      </p>
+
+      <p style="margin:8px 0 0 0; padding:0; font-size:14px; color:#1F2937; line-height:1.6;">
+        <a href="https://zorva.health"
+           style="color:#22D3EE; text-decoration:none; font-weight:bold;"
+           target="_blank" rel="noopener noreferrer">zorva.health</a>
+      </p>
+
+    </td>
+
+    <!-- RIGHT: Zorva logo -->
+    <td valign="top" width="180" align="right"
+        style="padding:0; vertical-align:top; text-align:right;">
+      <a href="https://zorva.health"
+         style="text-decoration:none; display:inline-block;"
+         target="_blank" rel="noopener noreferrer">
+        <img src="https://zorva.health/static/zorva-logo.png"
+             alt="Zorva"
+             width="160" height="42"
+             border="0"
+             style="display:block; border:0; outline:none; text-decoration:none; width:160px; height:42px; max-width:160px;" />
+      </a>
+    </td>
+
+  </tr>
+
+  <!-- Spacer -->
+  <tr>
+    <td colspan="2" height="16" style="line-height:16px; font-size:0;">&nbsp;</td>
+  </tr>
+
+  <!-- Bottom accent rule + tagline -->
+  <tr>
+    <td colspan="2" height="1" bgcolor="#334155"
+        style="background-color:#334155; line-height:1px; font-size:0; padding:0; margin:0;">
+      &nbsp;
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding:8px 0 0 0; font-size:12px; color:#94A3B8; line-height:1.4;">
+      Zorva &mdash; Pre-bill audit for clinics. PHIPA &amp; PIPEDA compliant.
+    </td>
+  </tr>
+
+</table>
