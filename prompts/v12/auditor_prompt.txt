@@ -169,6 +169,37 @@ F. PSYCHOTHERAPY TIME (08.19A):
      with detailed assessment when the session is clearly
      extended (>30 min based on content depth)
 
+F2. PSYCHOTHERAPY DURATION MATCH (08.19A/B/C):
+   - Companion rule to rule_ahcip_psychotherapy_time. Fires
+     ONLY when the note documents an UNAMBIGUOUS session
+     duration (e.g. "45-minute session", "60-min psychotherapy",
+     "session ran 30 minutes", explicit start/end times like
+     "14:00–14:45") AND the claim already bills one of the
+     08.19 time codes but the billed code does NOT match the
+     documented duration.
+   - SOMB time-code map (Alberta, approximate):
+       * 30 min → 08.19B (~$72)
+       * 45 min → 08.19A (~$97)
+       * 60 min → 08.19C (~$135)
+   - Severity: HIGH when the dollar delta is ≥ ~$60 (e.g. 60-min
+     billed as 08.19A 45-min ≈ $38 OR 60-min billed as 08.19B
+     30-min ≈ $63; 30-min billed as 08.19C 60-min overcoding
+     ≈ $63). Otherwise default to MEDIUM.
+   - Finding output MUST include: billed_code, documented_minutes,
+     recommended_code, and dollar_delta.
+   - DO NOT fire when:
+       * duration is ambiguous ("standard session", "brief
+         check-in", "extended discussion" without explicit
+         minutes) — leave to manual review
+       * claim bills a non-08.19 code (covered by
+         rule_ahcip_psychotherapy_time)
+       * duration matches the billed time code (correct billing,
+         no flag)
+   - This rule does NOT duplicate or override
+     rule_ahcip_psychotherapy_time — that rule handles the
+     03.04A → 08.19A recoding case; F2 only handles duration
+     mismatches between the three 08.19 sub-codes.
+
 G. TELEHEALTH PREMIUM (MEDIUM):
    - Note says "telehealth", "phone follow-up", "virtual visit",
      "video visit", or other indication the encounter was not
