@@ -650,6 +650,12 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
         "rules": [],
         "ground_truth": [],
     }
+    # Persist the audit-ready claim on Job.result so the re-audit
+    # endpoint can reconstruct the original claim byte-for-byte
+    # (CPT codes, ICDs, NPI, date_of_service, patient_id) instead
+    # of falling back to a PT_REAUDIT placeholder with empty
+    # line_items. See kanban card t_10774785.
+    _persisted_claim = dict(claim)
     # Add the Zorva system context to the encounter envelope. The
     # auditor doesn't see this prose — it's a structured payload that
     # downstream consumers (dashboard, appeal-letter generator, audit
@@ -700,6 +706,8 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             "findings": findings,
             "summary": result.summary,
             "zorva_context": zorva_ctx,
+            # Persisted for re-audit reconstruction — see t_10774785.
+            "claim": _persisted_claim,
             "doctor_emails_sent": _send_doctor_emails(
                 encounter, clinical_note, findings, synth_out
             ),
@@ -716,6 +724,10 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             "ran_via": "upload_portal",
             "audit_status": "failed",
             "audit_error": str(e)[:500],
+            # Persisted even on failure so re-audit can still
+            # recover the originally-uploaded claim payload — see
+            # t_10774785.
+            "claim": _persisted_claim,
         }
 
 

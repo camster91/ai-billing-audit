@@ -41,6 +41,17 @@ const PUBLIC_PREFIXES = [
   "/security",      // marketing page, public (HIA/PHIPA/HIPAA/AKS explainer + compliance matrix)
   "/security.pdf",  // one-pager download, public (linked from /security CTA)
   "/contact",       // marketing contact form, public (t_fa2149e1)
+  "/what-zorva-finds", // marketing findings gallery, public
+  "/pilot",         // pilot program page, public
+  "/trust",         // consumer-grade data-safety explainer, public
+  "/compare",       // Zorva vs manual/LLM/EHR/outsourced comparison, public
+  "/status",        // status/uptime page, public
+  "/changelog",     // public release notes for privacy officers + admins
+  "/careers",       // careers landing page, public
+  "/press",         // press / in the news page, public
+  "/technical",     // technical buyer (privacy officer, IT lead) page, public
+  "/glossary",      // billing terms glossary for non-billers, public
+  "/case-studies",  // anonymized worked examples, public
   "/portal/onboarding", // Stripe success_url lands here, must work w/o auth
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
