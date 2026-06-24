@@ -980,6 +980,59 @@ def create_app() -> FastAPI:
     # Persisted via audit_actions.append(); each row is SHA-256-chained
     # so the trail is tamper-evident. The encounter detail page posts
     # to these endpoints when the biller clicks Accept / Dismiss / etc.
+    # Each decision ALSO writes a FeedbackEntry to feedback.py — the
+    # "training data" layer that seeds the learning loop (per-encounter
+    # accept/dismiss/modify log with severity, rule_id, category).
+
+    def _lookup_finding_meta(encounter_id: str, finding_id: str) -> tuple[str, str, str]:
+        """Return (severity, rule_id, category) for a finding, or '' if unknown."""
+        record = load_encounter_record(encounter_id)
+        if not record:
+            return "", "", ""
+        for f in record.get("ground_truth", []) or []:
+            if (f.get("finding_id") or f.get("id")) == finding_id:
+                return (
+                    str(f.get("severity", "") or ""),
+                    str(f.get("rule_id", "") or ""),
+                    str(f.get("category", "") or ""),
+                )
+        return "", "", ""
+
+    def _record_feedback(
+        encounter_id: str,
+        finding_id: str,
+        action: str,
+        *,
+        user_identifier: str,
+        modify_severity: str | None = None,
+        modify_category: str | None = None,
+    ) -> None:
+        """Append one FeedbackEntry to the per-encounter learning-loop log."""
+        try:
+            from .feedback import FeedbackEntry, get_default_store
+        except ImportError:
+            return
+        severity, rule_id, category = _lookup_finding_meta(encounter_id, finding_id)
+        # For modify actions the spec'd schema records the biller's
+        # override; we still keep the original severity/rule/category
+        # so the training-data view can diff old vs. new.
+        if action == "modify":
+            ms = modify_severity if modify_severity is not None else severity
+            mc = modify_category if modify_category is not None else category
+        else:
+            ms, mc = None, None
+        store = get_default_store()
+        store.append(FeedbackEntry(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action=action,  # type: ignore[arg-type]
+            severity=severity,
+            rule_id=rule_id,
+            category=category,
+            biller_id=user_identifier or "default_biller",
+            modify_severity=ms,
+            modify_category=mc,
+        ))
 
     @app.post("/encounter/{encounter_id}/accept-all")
     async def encounter_accept_all(
@@ -1005,6 +1058,15 @@ def create_app() -> FastAPI:
             user_identifier=str(request.client.host if request.client else "anon"),
             tenant_id=_TENANT_ID,
             extra={"findings_count": findings_count},
+        )
+        # Learning-loop: log one synthetic feedback entry per accept-all so
+        # the per-encounter view shows the decision. The finding_id is
+        # "__accept_all__" to disambiguate from per-finding accept rows.
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__accept_all__",
+            action="accept",
+            user_identifier=str(request.client.host if request.client else "anon"),
         )
         return JSONResponse({"ok": True, "n_accepted": findings_count, "event": event})
 
@@ -1050,6 +1112,12 @@ def create_app() -> FastAPI:
             findings=[{"finding_id": finding_id}],
             note=note,
         )
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id=finding_id,
+            action="dismiss",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
         return JSONResponse({
             "ok": True,
             "finding_id": finding_id,
@@ -1072,6 +1140,17 @@ def create_app() -> FastAPI:
             user_identifier=str(request.client.host if request.client else "anon"),
             tenant_id=_TENANT_ID,
         )
+        # rerun is a system action, not a per-finding biller decision,
+        # but the spec'd feedback table requires a row for every
+        # /encounter/* endpoint so the encounter timeline is complete.
+        # Tag it action="modify" so it isn't bucketed with accept/dismiss
+        # in the stats() view (downstream trainers filter on action).
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__rerun__",
+            action="modify",
+            user_identifier=str(request.client.host if request.client else "anon"),
+        )
         return JSONResponse({"ok": True, "event": event})
 
     @app.post("/encounter/{encounter_id}/flag")
@@ -1088,6 +1167,15 @@ def create_app() -> FastAPI:
             encounter_id=encounter_id,
             user_identifier=str(request.client.host if request.client else "anon"),
             tenant_id=_TENANT_ID,
+        )
+        # See rerun note above — flag is system-level, recorded for
+        # timeline completeness, bucketed as action="modify" so it
+        # doesn't pollute accept/dismiss precision stats.
+        _record_feedback(
+            encounter_id=encounter_id,
+            finding_id="__flag__",
+            action="modify",
+            user_identifier=str(request.client.host if request.client else "anon"),
         )
         return JSONResponse({"ok": True, "event": event})
 
