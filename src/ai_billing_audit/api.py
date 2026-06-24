@@ -1720,6 +1720,106 @@ def create_app() -> FastAPI:
             "event": event,
         })
 
+    # ---- Per-finding comment thread ----------------------------------
+    # A "comment" is a biller's free-form note attached to a finding:
+    # "why is this flagged?", "I disagree — appeal basis is…", or
+    # a follow-up to another biller. Every comment is also written to
+    # the feedback log as a FeedbackEntry(action="comment") so the
+    # per_clinic_f1 rollup and the audit_actions chain both see it.
+    # Comments never expire — they live with the finding forever.
+    # The body is stored in /app/logs/finding_comments.jsonl (the
+    # source of truth for threading and ordered read); the
+    # FeedbackEntry is the audit-trail / training-data view.
+
+    @app.post("/encounter/{encounter_id}/finding/{finding_id}/comments")
+    async def finding_add_comment(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        """Append one comment to a finding's thread.
+
+        Body: ``{"author_id": "...", "body": "...",
+        "parent_comment_id": "..." (optional)}``.
+
+        ``parent_comment_id`` enables 1-level threaded replies
+        (the dashboard UI renders 2 levels — top-level + one
+        layer of replies). Deeper nesting is accepted by the
+        store but not rendered.
+        """
+        try:
+            from .feedback import add_comment as _add_comment
+            from .feedback import get_default_store
+        except ImportError:
+            raise HTTPException(
+                status_code=503, detail="feedback module unavailable"
+            )
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        author_id = str(
+            body.get("author_id")
+            or (request.client.host if request.client else "anon")
+        ).strip() or "anon"
+        text = str(body.get("body", "") or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="body required")
+        parent_comment_id = body.get("parent_comment_id")
+        if parent_comment_id is not None:
+            parent_comment_id = str(parent_comment_id).strip() or None
+        try:
+            comment, entry = _add_comment(
+                get_default_store(),
+                encounter_id=encounter_id,
+                finding_id=finding_id,
+                author_id=author_id,
+                body=text,
+                parent_comment_id=parent_comment_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return JSONResponse({
+            "ok": True,
+            "comment": comment.to_dict(),
+            "feedback_event_id": entry.event_id,
+        })
+
+    @app.get("/encounter/{encounter_id}/finding/{finding_id}/comments")
+    async def finding_list_comments(
+        encounter_id: str,
+        finding_id: str,
+    ) -> JSONResponse:
+        """Return the comment thread for one finding, oldest first.
+
+        Response shape: ``{"comments": [...], "count": N}`` so a
+        JS fetch can render the thread directly.
+        """
+        try:
+            from .feedback import list_comments as _list_comments
+            from .feedback import get_default_store
+        except ImportError:
+            raise HTTPException(
+                status_code=503, detail="feedback module unavailable"
+            )
+        if not finding_id:
+            raise HTTPException(status_code=400, detail="finding_id required")
+        try:
+            thread = _list_comments(
+                get_default_store(),
+                encounter_id=encounter_id,
+                finding_id=finding_id,
+            )
+        except Exception:
+            thread = []
+        return JSONResponse({
+            "comments": [c.to_dict() for c in thread],
+            "count": len(thread),
+        })
+
     @app.post("/encounter/{encounter_id}/rerun")
     async def encounter_rerun(
         encounter_id: str,

@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-Action = Literal["accept", "dismiss", "modify"]
+Action = Literal["accept", "dismiss", "modify", "comment"]
 
 _LOG_PATH = Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
 _GENESIS_SIG = "0" * 64
@@ -61,9 +61,9 @@ class FeedbackEntry:
     cryptographic_signature: str = ""
 
     def __post_init__(self) -> None:
-        if self.action not in ("accept", "dismiss", "modify"):
+        if self.action not in ("accept", "dismiss", "modify", "comment"):
             raise ValueError(
-                f"action must be accept|dismiss|modify, got {self.action!r}"
+                f"action must be accept|dismiss|modify|comment, got {self.action!r}"
             )
 
 
@@ -407,6 +407,7 @@ def _row_to_entry(row: dict[str, Any]) -> FeedbackEntry:
         modify_severity=row.get("modify_severity"),
         modify_category=row.get("modify_category"),
         correct_finding=row.get("correct_finding"),
+        note=row.get("note"),
         event_id=row.get("event_id", uuid.uuid4().hex),
         previous_signature=row.get("previous_signature", ""),
         cryptographic_signature=row.get("cryptographic_signature", ""),
@@ -600,3 +601,276 @@ def read_biller_corrections(
     except OSError:
         return []
     return out
+
+
+# ---- Per-finding comment thread ---------------------------------------
+# A "comment" is a biller's free-form note attached to a finding:
+# "why is this flagged?", "I disagree — the appeal basis is…", or just
+# a follow-up to another biller. Comments are also the cheapest
+# training signal we collect (anything a biller says about a finding
+# is data), so every comment is ALSO written to the feedback log as a
+# ``FeedbackEntry(action="comment")`` — the per_clinic_f1 rollup and
+# the audit_actions chain treat the two writes as one event.
+#
+# Comments never expire: they live with the finding forever. Storage
+# is a separate JSONL at /app/logs/finding_comments.jsonl so the
+# thread can be read independently from the feedback log and the
+# comment body is not constrained by the FeedbackEntry schema (which
+# was designed for the accept/dismiss/modify triad).
+_COMMENTS_LOG = Path(
+    os.environ.get("FINDING_COMMENTS_LOG", "/app/logs/finding_comments.jsonl")
+)
+
+
+@dataclass
+class Comment:
+    """One biller-authored note attached to a finding.
+
+    Threads are 1-level deep: ``parent_comment_id`` is set on a
+    reply and is None on a top-level comment. Deeper nesting is
+    accepted by the store (so a future UI can choose to render it)
+    but the spec says the dashboard UI only renders 2 levels.
+    """
+
+    comment_id: str
+    encounter_id: str
+    finding_id: str
+    author_id: str
+    body: str
+    created_at: str
+    parent_comment_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _row_to_comment(row: dict[str, Any]) -> Comment:
+    """Re-hydrate a Comment from a stored JSONL row, tolerating extra fields."""
+    valid = {f.name for f in dataclasses.fields(Comment)}
+    return Comment(**{k: v for k, v in row.items() if k in valid})
+
+
+class CommentStore:
+    """Append-only JSONL store for per-finding comment threads.
+
+    The FeedbackStore methods :meth:`add_comment` and
+    :meth:`list_comments` are the integration point — they create a
+    CommentStore on demand so callers don't have to manage two
+    separate log files. Most tests and the API should go through
+    FeedbackStore; CommentStore is here for the case where a test
+    needs an isolated comment log.
+    """
+
+    def __init__(self, log_path: Path | str | None = None) -> None:
+        self._path = Path(log_path) if log_path is not None else _COMMENTS_LOG
+
+    def add(
+        self,
+        *,
+        encounter_id: str,
+        finding_id: str,
+        author_id: str,
+        body: str,
+        parent_comment_id: str | None = None,
+    ) -> Comment:
+        """Append one comment and return it.
+
+        ``comment_id`` is a fresh uuid4 hex so two replies posted in
+        the same second still get distinct IDs. ``created_at`` is
+        ISO 8601 UTC at second granularity (matches FeedbackEntry
+        for sort stability across the two logs).
+        """
+        if not encounter_id or not finding_id:
+            raise ValueError("encounter_id and finding_id required")
+        if not body or not body.strip():
+            raise ValueError("comment body required")
+        c = Comment(
+            comment_id=uuid.uuid4().hex,
+            encounter_id=str(encounter_id),
+            finding_id=str(finding_id),
+            author_id=str(author_id or "default_biller"),
+            body=str(body),
+            created_at=time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+            ),
+            parent_comment_id=str(parent_comment_id) if parent_comment_id else None,
+        )
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        with self._path.open("a") as fh:
+            fh.write(json.dumps(c.to_dict()) + "\n")
+        return c
+
+    def list_for_finding(
+        self,
+        encounter_id: str,
+        finding_id: str,
+    ) -> list[Comment]:
+        """Return the thread for one finding, oldest first.
+
+        Skips malformed lines and rows that don't match
+        ``(encounter_id, finding_id)``. Order: ``created_at`` ascending
+        so the UI can render the thread in chronological order
+        without an extra sort. Ties on ``created_at`` break on the
+        file's append order (a monotonic counter) so two comments
+        posted in the same second still come back in the order
+        they were added — a uuid4 hex tiebreak would be random.
+
+        Named ``list_for_finding`` (not ``list``) to avoid shadowing
+        the builtin ``list`` inside the class body — mypy interprets
+        ``list[Comment]`` in a class that defines ``list`` as
+        ``(self.list)[Comment]``, which is not a valid type.
+        """
+        if not self._path.is_file():
+            return []
+        out: list[tuple[int, Comment]] = []
+        try:
+            with self._path.open() as fh:
+                for idx, line in enumerate(fh):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(row, dict):
+                        continue
+                    if row.get("encounter_id") != encounter_id:
+                        continue
+                    if row.get("finding_id") != finding_id:
+                        continue
+                    try:
+                        out.append((idx, _row_to_comment(row)))
+                    except Exception:
+                        continue
+        except OSError:
+            return []
+        out.sort(key=lambda ic: (ic[1].created_at, ic[0]))
+        return [c for _i, c in out]
+
+    def read_all(self) -> list[Comment]:
+        """Return every comment in append order (oldest first).
+
+        Used by tests; not called by the API (the API only lists
+        one finding's thread at a time).
+        """
+        if not self._path.is_file():
+            return []
+        out: list[Comment] = []
+        try:
+            with self._path.open() as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(row, dict):
+                        continue
+                    try:
+                        out.append(_row_to_comment(row))
+                    except Exception:
+                        continue
+        except OSError:
+            return []
+        return out
+
+
+# Wire comments through the FeedbackStore so callers only have to
+# manage one object. The feedback log keeps accepting the
+# ``FeedbackEntry`` (action="comment") variant unchanged; the
+# dedicated comments log is the source of truth for the body /
+# threading / ordered read path.
+_feedback_comment_stores: dict[str, CommentStore] = {}
+
+
+def _get_comment_store(log_path: Path | str | None = None) -> CommentStore:
+    """Return a CommentStore for the given log path (cached)."""
+    key = str(log_path) if log_path is not None else "__default__"
+    if key not in _feedback_comment_stores:
+        _feedback_comment_stores[key] = CommentStore(log_path)
+    return _feedback_comment_stores[key]
+
+
+def add_comment(
+    store: FeedbackStore,
+    *,
+    encounter_id: str,
+    finding_id: str,
+    author_id: str,
+    body: str,
+    parent_comment_id: str | None = None,
+    comments_log: Path | str | None = None,
+) -> tuple[Comment, FeedbackEntry]:
+    """Persist a comment AND write a paired FeedbackEntry.
+
+    Two writes happen in this order:
+
+    1. Append a ``Comment`` to ``comments_log`` (default
+       ``/app/logs/finding_comments.jsonl``). The comment is the
+       source of truth for the body, threading, and ordered read.
+    2. Append a ``FeedbackEntry(action="comment", ...)`` to the
+       store's chain so the comment shows up in
+       ``per_clinic_f1`` rollups and the audit trail. The body's
+       first 500 chars are folded into the entry's ``note`` so a
+       privacy officer reading the chain can see the gist without
+       joining the comments log.
+
+    Returns ``(comment, feedback_entry)`` so the API can echo the
+    comment_id and the event_id of the feedback row that was
+    written for it.
+    """
+    # Use the same parent directory as the feedback log when no
+    # explicit comments_log was given — keeps the dev / test / prod
+    # log directories co-located.
+    if comments_log is None:
+        comments_log = store._path.parent / "finding_comments.jsonl"  # noqa: SLF001
+    cstore = _get_comment_store(comments_log)
+    comment = cstore.add(
+        encounter_id=encounter_id,
+        finding_id=finding_id,
+        author_id=author_id,
+        body=body,
+        parent_comment_id=parent_comment_id,
+    )
+    # Fold the body into a feedback note (truncated to keep the
+    # chain payload reasonable). action="comment" is the spec'd
+    # signal that this row is a paired comment, not a biller
+    # judgment on accuracy.
+    note = (body or "").strip()[:500]
+    # Comments are also a biller interaction, so we record the
+    # biller_id — the same field used by accept/dismiss/modify.
+    entry = FeedbackEntry(
+        encounter_id=encounter_id,
+        finding_id=finding_id,
+        action="comment",  # type: ignore[arg-type]
+        severity="",
+        rule_id="",
+        category="",
+        biller_id=author_id or "default_biller",
+        note=note or None,
+    )
+    store.append(entry)
+    return comment, entry
+
+
+def list_comments(
+    store: FeedbackStore,
+    encounter_id: str,
+    finding_id: str,
+    *,
+    comments_log: Path | str | None = None,
+) -> list[Comment]:
+    """Read the thread for one finding.
+
+    ``store`` is the FeedbackStore whose parent directory holds
+    the comments log when ``comments_log`` is not given. The
+    FeedbackStore is used only to locate the default comments log;
+    the read goes straight to :class:`CommentStore`.
+    """
+    if comments_log is None:
+        comments_log = store._path.parent / "finding_comments.jsonl"  # noqa: SLF001
+    cstore = _get_comment_store(comments_log)
+    return cstore.list_for_finding(encounter_id, finding_id)
