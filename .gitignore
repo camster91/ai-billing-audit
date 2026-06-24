@@ -76,4 +76,52 @@ runs/acceptance/multi-*/
 runs/acceptance/live-parity/
 
 # Junk files from mis-quoted shell commands
-" if v else \"\"}\"\")\n"
+" if v else \"\"}\"\"')\n"
+
+# One-off diagnostic / probe scripts (audit-tooling, not part of source)
+scripts/ab_prompt.py
+scripts/analyze_failures.py
+scripts/audit_one.py
+scripts/calibration_report.py
+scripts/check_*.py
+scripts/daily_report.py
+scripts/final_status.py
+scripts/improve_iteration.sh
+scripts/live_*.py
+scripts/load_audit_fixes.py
+scripts/load_audit_kanban.py
+scripts/load_marketing_branding.py
+scripts/load_scope_followups.py
+scripts/load_scope_kanbans.py
+scripts/load_ui_ux_tasks.py
+scripts/prompt_history.py
+scripts/render_one_pager.py
+scripts/rescore_*.py
+scripts/run_7x.py
+scripts/run_ollama_audit.py
+scripts/run_v7b_full.sh
+scripts/score_ollama_audit.py
+scripts/show_home.py
+scripts/test_actions.py
+scripts/test_live_e2e.py
+scripts/test_text_note.py
+scripts/upload_and_test.py
+scripts/upload_one.py
+scripts/qa_*.py
+scripts/eval_*.py
+scripts/render_overfit_curve.py
+scripts/verify_grader_reproducibility.py
+scripts/run_cross_provider.py
+scripts/run_v0_auditor.py
+scripts/score_predictions.py
+scripts/aggregate_metrics.py
+scripts/smoke_dashboard.py
+scripts/smoke_test_auditor.py
+scripts/generate_*.py
+scripts/audit_chain_insert.py
+scripts/audit_chain_verify.py
+scripts/clean_claims.py
+scripts/llm_outage.py
+scripts/refusal_probe.py
+scripts/take-screenshots.mjs
+prompts/v13/
