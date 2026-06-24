@@ -64,18 +64,55 @@ B. NON-INSURED SERVICE (HIGH) — Alberta does not insure
    submitted to AHCIP at all; the patient pays out-of-pocket
    or via private insurance.
 
-C. E/M LEVEL DISTINCTION — be precise:
+C. E/M LEVEL DISTINCTION — be precise. The same rule_id
+   `rule_ahcip_em_level_upcode` is used in BOTH directions; what
+   changes is the polarity of the suggested_code (down vs. up).
    - Note documents "comprehensive" or "complex assessment" or
      "detailed assessment" AND claim bills 03.04A → rule_ahcip_em_level
      INFO (level matches documentation, no action needed)
-   - Note says "brief" or "minor" or "limited" or "quick" AND
-     claim bills 03.04A → rule_ahcip_em_level_upcode HIGH (over-billed,
-     drop to 03.01A or 03.05A)
-   - Note documents "comprehensive"/"complex" but claim bills
-     03.01A brief → rule_ahcip_em_level_upcode HIGH (under-coded,
-     increase to 03.04A)
-   Fire only ONE of these per encounter. The note's verb is the
-   signal, not the visit type or the billed code.
+
+   - OVERCODE (down): Note says "brief" or "minor" or "limited" or
+     "quick" AND claim bills 03.04A (or higher) → rule_ahcip_em_level_upcode
+     HIGH. suggested_code moves *down* to 03.01A or 03.05A. The clinic
+     is over-billing; a 03.01A brief-assessment bill should not be
+     submitted as 03.04A comprehensive.
+     Example: "Office visit, brief assessment for upper respiratory
+     symptoms. ... Lungs clear. Supportive care advised." billed as
+     03.04A → em_level_upcode HIGH, suggest 03.01A.
+
+   - UNDERCODE (up): The note documents a moderate-to-high-acuity
+     visit — even if the visit type is short — and the claim is
+     billed 03.01A (brief) → rule_ahcip_em_level_upcode HIGH.
+     suggested_code moves *up* to 03.04A (comprehensive). The clinic
+     is leaving $30–$50/claim on the table by under-billing. This is
+     the most-frequently-missed missed-revenue pattern in v12
+     (F1=0.50 baseline; targeting ≥0.67 after this fix).
+     Undercode SIGNALS (any one of these is sufficient on its own;
+     multiple together make the undercode fire nearly certain):
+       * DECISION-MAKING COMPLEXITY: differential diagnosis,
+         workup plan, "ordered", "review of systems", multi-system
+         assessment, complex assessment language.
+       * MEDICATION INITIATION: "started", "initiated", "new
+         prescription", "began", "added", "increased", dose
+         adjustments, antibiotic / antihypertensive / anticoagulant
+         starts.
+       * ABNORMAL LABS: documented abnormal results (e.g. "A1C 9.4",
+         "creatinine 185", "LDL 3.6", "rhonchi bilaterally", "BP
+         168/102") with clinical action being taken.
+       * MULTI-SYSTEM WORKUP: orders spanning two or more body
+         systems (CBC + chest X-ray; CBC + CMP + TSH + ferritin),
+         or a new-patient comprehensive intake.
+     Example: "productive cough x 1 week, rhonchi bilaterally.
+     Started amoxicillin 500mg TID" billed 03.01A →
+     em_level_upcode HIGH, suggest 03.04A.
+     Example: "BP 168/102, no end-organ damage. Started amlodipine
+     5mg" billed 03.01A → em_level_upcode HIGH, suggest 03.04A.
+
+   Fire only ONE of these per encounter. The note's content (verb
+   + complexity signals) is the signal, not the visit type or the
+   billed code. When in doubt between matched-level and undercode,
+   prefer undercode (recall over precision; missed revenue is the
+   bigger clinic loss than a dismissed false positive).
 
 D. CONSULTATION / REFERRING PRACTITIONER ID:
    - 03.03A billed without referring_provider_practitioner_id →
@@ -147,6 +184,101 @@ J. CHRONIC DISEASE (CMGP):
      03.04A billed AND no CMGP modifier → rule_ahcip_cmgp MEDIUM
    - Do NOT fire on acute visits (URI, pneumonia, simple injury)
      even if the patient has a chronic history
+
+L. PREVENTIVE SERVICE OPPORTUNITY (MEDIUM) — adult patient
+   (age >18) meets age / risk criteria for an AHCIP-INSURED
+   preventive service AND the encounter does NOT include the
+   corresponding service code, order, or documentation of
+   having been performed → rule_ahcip_preventive_opportunity
+   MEDIUM. Suggested action: "schedule follow-up" for the
+   indicated preventive service. This is a recall / clinic
+   capture opportunity, NOT an auto-denial — the clinic is
+   missing a billable INSURED service it could provide and
+   bill separately, not billing incorrectly.
+
+   IMPORTANT — AHCIP does NOT insure annual physicals /
+   "wellness exams" / "health maintenance visits" /
+   "preventive check-ups". The mere absence of an annual
+   physical from the encounter is NOT a missed preventive
+   opportunity under this rule. Do NOT fire when the only
+   "gap" is a missing annual physical.
+
+   Sub-conditions (each fires independently — multiple can
+   fire on a single encounter when several gaps exist):
+
+   1. INFLUENZA VACCINE — adult (≥18) patient AND note does
+      NOT document influenza vaccine given today AND note
+      does NOT document influenza vaccine within the prior
+      6 months (e.g., last season). Fire one finding; the
+      quote should reference the patient's age / visit
+      context (e.g., "BP 138/86, HR 72" + patient age), not
+      the absence itself.
+
+   2. PNEUMOCOCCAL VACCINE — adult age ≥65 AND note does NOT
+      document PPSV23, PCV13, PCV15, or PCV20 administration
+      (or documented prior receipt). Fire one finding;
+      suggested code is the current SOMB pneumococcal
+      immunization code.
+
+   3. COVID-19 BOOSTER — adult patient AND note does NOT
+      document a current-schedule COVID booster (per current
+      Alberta public-health guidance). Fire one finding; do
+      not hardcode a specific product / dose number — just
+      flag the missed booster opportunity.
+
+   4. MAMMOGRAPHY — female patient age 50–74 AND note does
+      NOT document a screening mammogram within the prior
+      2–3 years AND no mammogram order / referral in this
+      encounter. Fire one finding; suggested action is to
+      schedule a screening mammogram (a screening
+      mammogram SOMB code is separately billable).
+
+   5. FIT / FOBT (colorectal cancer screening) — adult
+      patient age 50–74 AND note does NOT document a FIT,
+      FOBT, or other CRC screening modality within the
+      prior 2 years AND no screening order / referral in
+      this encounter. Fire one finding for the missed FIT
+      opportunity.
+
+   6. AAA (abdominal aortic aneurysm) ultrasound — male
+      patient age 65–75 AND note documents current or past
+      smoking history AND note does NOT document a prior
+      AAA screen. Fire one finding for the one-time
+      AAA-screen opportunity (USPSTF / CTFPHC grade B
+      recommendation).
+
+   7. DIABETES SCREENING (A1C) — adult patient age >40 AND
+      note documents one or more diabetes risk factors
+      (BMI ≥25, family history of diabetes, prior
+      gestational diabetes, high-risk ethnicity, A1C not
+      documented in the prior 3 years) AND note does NOT
+      document a recent A1C (≤3 years). Fire one finding
+      for the missed A1C-screening opportunity.
+
+   Do NOT fire this rule when:
+   - the patient is ≤18 years old (pediatric preventive
+     care uses a different schedule);
+   - the encounter already includes the relevant
+     service code, order, referral, or documentation of
+     having been performed (e.g., "flu vaccine given
+     today" already covers the influenza sub-condition;
+     use rule_ahcip_missing_procedure for that case,
+     not this rule);
+   - the only "gap" is an annual physical / wellness
+     exam — that is uninsured under AHCIP and is not a
+     missed insured preventive opportunity (see rule B
+     rule_ahcip_non_insured_service for that scenario);
+   - the note explicitly documents patient declined or
+     has a contraindication ("patient declined flu
+     vaccine", "pneumococcal refused", "mammography
+     not done — patient opted out").
+
+   Distinguish from rule_ahcip_missing_procedure (rule K):
+   rule_ahcip_missing_procedure fires when a preventive
+   service was PERFORMED in office but not billed. This
+   rule (L) fires when a preventive service was NOT
+   performed but is INDICATED — i.e., a forward-looking
+   gap, not a billing-code gap on a performed service.
 
 K. MISSING PROCEDURE / DOCUMENTED-BUT-UNBILLED SERVICE (HIGH) —
    the note documents a billable physician service or in-office
@@ -269,6 +401,76 @@ EXAMPLE 8. In-office influenza vaccination, E/M billed but no
     code on the claim; add the appropriate influenza immunization
     code (e.g., 13.59A or current SOMB equivalent) so the clinic
     captures the vaccine administration fee
+
+EXAMPLE 9. 71-year-old male with hypertension follow-up; no
+  pneumococcal vaccination on file.
+  clinical_note: "Routine follow-up for established patient 71yo M
+    with well-controlled hypertension on amlodipine 5mg daily.
+    BP 132/82, HR 72. Reports last flu shot in October 2025,
+    no pneumococcal vaccination documented in chart, smoking
+    history 30 pack-years (quit 5 years ago). Patient declined
+    AAA screen at last visit. Continued amlodipine."
+  Findings:
+  - rule_ahcip_em_level (info): "Routine follow-up for established
+    patient" with 03.04A billed — comprehensive matches the
+    documentation, no action needed
+  - rule_ahcip_cmgp (medium): "established patient" with HTN +
+    03.04A billed and no CMGP modifier — patient meets CMGP
+    criteria for chronic-disease management
+  - rule_ahcip_preventive_opportunity (medium): "no pneumococcal
+    vaccination documented in chart" — 71yo M with no documented
+    PPSV23 / PCV series; pneumococcal vaccination is an
+    AHCIP-insured preventive service for adults ≥65. Suggested
+    action: schedule follow-up to administer PPSV23.
+  - AAA sub-condition does NOT fire: although the patient is a
+    71yo M with smoking history (which would meet AAA-screen
+    criteria), the note explicitly documents "Patient declined
+    AAA screen at last visit" — a documented decline is one of
+    the rule's negative triggers, so the AAA opportunity is
+    suppressed.
+
+EXAMPLE 10. 58-year-old woman with no recent mammography.
+  clinical_note: "Comprehensive medication review for established
+    patient 58yo F with depression on sertraline 50mg. Mood
+    stable. PHQ-9 today 4/27. No recent mammography reported —
+    last imaging 2019. No GI symptoms. Plan: continue sertraline,
+    order routine bloodwork, recommend patient schedule
+    screening mammogram."
+  Findings:
+  - rule_ahcip_em_level (info): "Comprehensive medication
+    review" with 03.04A billed — comprehensive matches
+    documentation
+  - rule_ahcip_preventive_opportunity (medium): "No recent
+    mammography reported — last imaging 2019" — female age 50–74
+    with no screening mammogram in the prior 2–3 years; FIT /
+    FOBT also not documented. Suggested action: schedule
+    follow-up for screening mammography (and consider FIT).
+    Note: even though the plan line says "recommend patient
+    schedule screening mammogram", the mammogram has NOT been
+    performed / ordered / referred — the rule fires on the gap,
+    not on the verbal recommendation.
+
+EXAMPLE 11. 45-year-old man, annual physical request.
+  clinical_note: "45yo M here for annual health maintenance
+    examination. No acute concerns. BP 124/78, HR 68. Physical
+    exam unremarkable. Reviewed family history (father: T2DM
+    at age 60). Patient up-to-date on influenza vaccine (Sep
+    2025)."
+  Findings:
+  - rule_ahcip_non_insured_service (high): "45yo M here for
+    annual health maintenance examination" with no specific
+    presenting complaint — Alberta does not insure annual
+    physicals; the visit should not be submitted to AHCIP
+    (patient pays privately or via private insurance)
+  - Do NOT fire rule_ahcip_preventive_opportunity for the
+    annual physical itself — annual physicals are uninsured
+    under AHCIP, so a "missing annual physical" is not a
+    missed INSURED preventive opportunity. The patient is
+    also under 50 so mammography / FIT / AAA criteria do
+    not apply; influenza vaccine is already documented, so
+    the influenza sub-condition does not fire; no other
+    insured-preventive gaps apply at age 45 with no other
+    risk factors in this encounter.
 
 OUTPUT RULES
 ============
