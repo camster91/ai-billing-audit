@@ -191,6 +191,20 @@
                 title="Calibrated from {{ mc.get('validations', 0) if mc is mapping else 0 }} accept decision(s) for this rule">
             Model confidence: {{ mc.label }}
           </span>
+          {# Finding assignment (kanban t_54262d96). Render a small
+             "Assigned to <biller>" badge when the current finding
+             has been assigned via the assignment store. Looks up
+             the assignment from the ``assignments`` map injected
+             by the encounter detail handler; missing entries
+             (no assignment) render no badge at all. The due_date
+             is surfaced as a separate small caption when set. #}
+          {% set assignment = (assignments or {}).get(f.finding_id) %}
+          {% if assignment %}
+            <span class="badge badge-assigned"
+                  title="Assigned by {{ assignment.assigned_by }} on {{ assignment.created_at }}{% if assignment.due_date %} (due {{ assignment.due_date }}){% endif %}">
+              Assigned to {{ assignment.assignee_id }}
+            </span>
+          {% endif %}
           <span class="grow"></span>
           <button type="button" class="btn btn-ghost btn-sm" data-action="appeal-toggle" data-finding-id="{{ f.finding_id }}">
             Appeal denial

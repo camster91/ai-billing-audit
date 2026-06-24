@@ -349,6 +349,113 @@ def _audit_status_to_dict(job: Any) -> dict[str, Any]:
     return out
 
 
+# ─── Zapier summary helpers (t_cab76c0b) ───────────────────────────────
+
+
+# Maximum look-back window a Zapier caller can request via the
+# ``days`` query param. 365 days is plenty for "give me the last
+# quarter" Zaps; longer windows should hit the operator-dashboard
+# export endpoint instead. Keeping the cap tight limits the worst
+# case when an integration author writes ``days=10000`` and the
+# caller serialises the whole queue into a single Zap payload.
+_ZAPIER_MAX_DAYS = 365
+
+# Page size for the list endpoint. The Zapier trigger contract
+# is "a list of records"; Zapier handles cursor pagination
+# itself, but a 50-item page is large enough that a typical
+# clinic (hundreds of encounters/month) doesn't paginate, and
+# small enough that the JSON response stays under 1 MB.
+_ZAPIER_PAGE_SIZE = 50
+
+
+def _job_zapier_summary(
+    job: Any,
+    *,
+    revenue_opportunities: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Return the Zapier-friendly shape for a single encounter.
+
+    Shape:
+        {
+          "encounter_id": "...",
+          "job_id": "...",
+          "status": "complete" | "queued" | "running" | "failed",
+          "submitted_at": <float>,
+          "finished_at": <float or null>,
+          "n_findings": <int>,
+          "n_revenue_opportunities": <int>,
+          "total_dollars": <float>,
+        }
+
+    The dollar total is the sum of ``estimated_dollar`` across
+    the opportunity list. ``revenue_opportunities`` is the
+    output of :func:`compute_revenue_opportunities` — the
+    caller is expected to compute it once and pass the same
+    list to all summary calls in a request so a 50-row page
+    doesn't trigger 50 LLM-backed recomputations. We accept
+    ``None`` to mean "no opportunity computation done" so a
+    caller that wants to skip the dollar enrichment (e.g. a
+    quick list view) can.
+    """
+    result = job.result if isinstance(job.result, dict) else {}
+    findings = result.get("findings") or []
+    n_findings = (
+        result.get("findings_count")
+        if isinstance(result.get("findings_count"), int)
+        else len(findings) if isinstance(findings, list)
+        else 0
+    )
+    # Compute the opportunity tally. The caller is expected to
+    # pass the precomputed list; if they didn't, we run it here
+    # (cheap — the list is per-encounter, not global).
+    opps: list[dict[str, Any]] = []
+    if revenue_opportunities is not None:
+        opps = list(revenue_opportunities)
+    elif isinstance(findings, list) and findings:
+        try:
+            from .api import compute_revenue_opportunities
+            opps = compute_revenue_opportunities(findings)
+        except Exception:  # pragma: no cover - defensive
+            opps = []
+    total_dollars = sum(
+        float(o.get("estimated_dollar") or 0.0) for o in opps
+    )
+    # External status: "done" → "complete" to match the rest of
+    # the v1 surface; "queued" / "running" / "failed" pass
+    # through unchanged so a Zap can branch on them.
+    status = "complete" if job.status == "done" else job.status
+    return {
+        "encounter_id": job.encounter_id,
+        "job_id": job.job_id,
+        "status": status,
+        "submitted_at": job.submitted_at,
+        "finished_at": job.finished_at,
+        "n_findings": int(n_findings),
+        "n_revenue_opportunities": len(opps),
+        "total_dollars": round(total_dollars, 2),
+    }
+
+
+def _resolve_job_for_zapier(
+    *,
+    encounter_id: str,
+    queue_resolver: Any,
+) -> Any | None:
+    """Find the most recent job for an encounter_id.
+
+    Reuses :meth:`JobQueue.find_by_encounter` with
+    ``status=None`` so a Zap can fetch a still-queued encounter
+    (e.g. immediately after the EHR POSTs an audit). Returns
+    ``None`` when the encounter was never audited.
+    """
+    q = queue_resolver()
+    if q is None:
+        return None
+    # find_by_encounter defaults to status="done"; we want any
+    # status so Zapier doesn't 404 on in-flight audits.
+    return q.find_by_encounter(encounter_id, status=None, most_recent=True)
+
+
 # ─── Synchronous audit runner (v1) ───────────────────────────────────────
 
 
@@ -690,6 +797,184 @@ def register_public_api(
             }
         )
         return JSONResponse(record, status_code=201)
+
+    # ── Zapier connector (t_cab76c0b) ────────────────────────────────
+    # Two list/get endpoints and the existing /v1/webhooks route
+    # (above) together form the no-code surface non-tech clinics
+    # use to plug Zorva into a billing service. A clinic admin
+    # creates a Zap with the "Zorva" trigger / action app, pastes
+    # their ``ZORVA_API_KEY``, and Zapier subscribes — the auth
+    # + payload shape is the same as the EHR integration, so a
+    # single key unlocks both surfaces.
+
+    @app.get("/v1/zapier/encounters")
+    async def v1_zapier_list_encounters(
+        request: Request,
+        days: str | None = None,
+        offset: str | None = None,
+    ) -> JSONResponse:
+        """List recent encounters with their Zapier-summary shape.
+
+        Query params:
+          * ``days`` (optional, default 30) — only include jobs
+            whose ``submitted_at`` is within the last ``days``
+            days. Capped at :data:`_ZAPIER_MAX_DAYS`.
+          * ``offset`` (optional, default 0) — pagination offset
+            for cursor-paged clients. Page size is
+            :data:`_ZAPIER_PAGE_SIZE`.
+
+        Response shape::
+
+            {
+              "encounters": [<summary>, ...],
+              "count": <int>,
+              "offset": <int>,
+              "limit": <int>,
+              "has_more": <bool>
+            }
+
+        Auth: same ``ZORVA_API_KEY`` flow as the rest of ``/v1/*``.
+        """
+        auth_err = _check_api_key(request)
+        if auth_err is not None:
+            _append_usage_log({
+                "ts": _now_iso(),
+                "endpoint": "GET /v1/zapier/encounters",
+                "status": auth_err.status_code,
+                "auth": _auth_kind(request),
+                "tenant_id": tenant_id,
+            })
+            return auth_err
+
+        # 1. Parse + clamp the look-back window.
+        try:
+            days_int = int(days) if days is not None else 30
+        except (TypeError, ValueError):
+            return JSONResponse(
+                {"detail": "days must be a positive integer", "code": "bad_request"},
+                status_code=400,
+            )
+        if days_int < 1:
+            days_int = 1
+        if days_int > _ZAPIER_MAX_DAYS:
+            days_int = _ZAPIER_MAX_DAYS
+
+        # 2. Parse the offset.
+        try:
+            offset_int = int(offset) if offset is not None else 0
+        except (TypeError, ValueError):
+            return JSONResponse(
+                {"detail": "offset must be a non-negative integer", "code": "bad_request"},
+                status_code=400,
+            )
+        if offset_int < 0:
+            offset_int = 0
+
+        # 3. Pull jobs from the queue, filter to the window, sort
+        #    newest-first so a Zap's "trigger: new encounter" hook
+        #    sees fresh items at the top.
+        queue = queue_resolver()
+        if queue is None:
+            # No queue → empty list. Don't 500 — Zapier would
+            # treat a 5xx as a transient error and retry
+            # forever; an empty list is a clean "no data yet".
+            return JSONResponse({
+                "encounters": [],
+                "count": 0,
+                "offset": offset_int,
+                "limit": _ZAPIER_PAGE_SIZE,
+                "has_more": False,
+            })
+        cutoff = time.time() - days_int * 86400.0
+        try:
+            all_jobs = list(queue.list_jobs())
+        except Exception:
+            all_jobs = []
+        in_window = [
+            j for j in all_jobs
+            if (j.submitted_at or 0.0) >= cutoff
+        ]
+        in_window.sort(
+            key=lambda j: j.submitted_at or 0.0,
+            reverse=True,
+        )
+
+        # 4. Page the slice.
+        page = in_window[offset_int: offset_int + _ZAPIER_PAGE_SIZE]
+        summaries = [_job_zapier_summary(j) for j in page]
+        has_more = (offset_int + len(page)) < len(in_window)
+
+        _append_usage_log({
+            "ts": _now_iso(),
+            "endpoint": "GET /v1/zapier/encounters",
+            "status": 200,
+            "auth": _auth_kind(request),
+            "tenant_id": tenant_id,
+            "count": len(summaries),
+            "days": days_int,
+            "offset": offset_int,
+        })
+        return JSONResponse({
+            "encounters": summaries,
+            "count": len(summaries),
+            "offset": offset_int,
+            "limit": _ZAPIER_PAGE_SIZE,
+            "has_more": has_more,
+        })
+
+    @app.get("/v1/zapier/encounters/{encounter_id}")
+    async def v1_zapier_get_encounter(
+        request: Request, encounter_id: str,
+    ) -> JSONResponse:
+        """Return a single encounter in the Zapier summary shape.
+
+        Returns **404** when the encounter has never been
+        audited (no job in the queue matches
+        ``encounter_id``). Auth is the same
+        ``ZORVA_API_KEY`` flow as the rest of the v1 surface.
+        """
+        auth_err = _check_api_key(request)
+        if auth_err is not None:
+            _append_usage_log({
+                "ts": _now_iso(),
+                "endpoint": "GET /v1/zapier/encounters/{id}",
+                "status": auth_err.status_code,
+                "auth": _auth_kind(request),
+                "tenant_id": tenant_id,
+            })
+            return auth_err
+
+        job = _resolve_job_for_zapier(
+            encounter_id=encounter_id,
+            queue_resolver=queue_resolver,
+        )
+        if job is None:
+            _append_usage_log({
+                "ts": _now_iso(),
+                "endpoint": "GET /v1/zapier/encounters/{id}",
+                "status": 404,
+                "auth": _auth_kind(request),
+                "tenant_id": tenant_id,
+                "encounter_id": encounter_id,
+            })
+            return JSONResponse(
+                {
+                    "detail": f"encounter {encounter_id!r} not found",
+                    "code": "not_found",
+                },
+                status_code=404,
+            )
+        summary = _job_zapier_summary(job)
+        _append_usage_log({
+            "ts": _now_iso(),
+            "endpoint": "GET /v1/zapier/encounters/{id}",
+            "status": 200,
+            "auth": _auth_kind(request),
+            "tenant_id": tenant_id,
+            "encounter_id": encounter_id,
+            "status_value": summary["status"],
+        })
+        return JSONResponse(summary)
 
 
 # ─── In-process deduplication for audit_complete ─────────────────────────

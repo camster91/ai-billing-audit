@@ -517,6 +517,23 @@ main.page {
   font-style: italic;
 }
 
+/* "Assigned to <biller>" badge — kanban t_54262d96. Renders on
+   the encounter detail page header per finding when the finding
+   has a current assignment in the assignments JSONL log.
+   Visually distinct from the model-confidence badge so the biller
+   can scan "is this owned?" at a glance. */
+.badge-assigned {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--color-accent-soft, #ede9fe);
+  color: #5b21b6;
+  border: 1px solid var(--color-accent, #8b5cf6);
+}
+
 /* Revenue opportunity badge — surfaces the total estimated uplift
    on the home page audit card so the biller can scan for
    highest-value encounters. Tier thresholds:

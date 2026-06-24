@@ -1362,6 +1362,23 @@ def create_app() -> FastAPI:
         snooze_store = SnoozeStore()
         active_snoozes = snooze_store.active_snoozes_for_encounter(encounter_id)
         n_snoozed = len(active_snoozes)
+        # Finding assignments (kanban t_54262d96): resolve the
+        # current assignee for every finding on this encounter
+        # so the template can render the "Assigned to <biller>"
+        # badge without an N+1 fetch. Best-effort: if the
+        # assignments store can't be loaded (older deploy,
+        # missing module), the template falls back to no badge
+        # and the page still renders.
+        assignment_map: dict[str, dict[str, Any]] = {}
+        try:
+            from .finding_assignments import FindingAssignmentStore
+            _fa_store = FindingAssignmentStore()
+            for fid, entry in _fa_store.current_assignees_for_encounter(
+                encounter_id
+            ).items():
+                assignment_map[fid] = entry.to_dict()
+        except Exception:
+            assignment_map = {}
         demo = get_demo_encounter(encounter_id)
         if demo is not None:
             record = load_encounter_record(encounter_id)
@@ -1443,6 +1460,7 @@ def create_app() -> FastAPI:
                     "total_opportunity_dollars": total_opportunity_dollars,
                     "n_snoozed": n_snoozed,
                     "include_snoozed": include_snoozed,
+                    "assignments": assignment_map,
                 },
             )
 
@@ -1523,6 +1541,7 @@ def create_app() -> FastAPI:
                 "total_opportunity_dollars": total_opportunity_dollars,
                 "n_snoozed": n_snoozed,
                 "include_snoozed": include_snoozed,
+                "assignments": assignment_map,
             },
         )
         real_audit = _latest_real_audit_for(encounter_id)
@@ -2301,6 +2320,213 @@ def create_app() -> FastAPI:
                 for fid, e in active.items()
             ],
             "count": len(active),
+        })
+
+    # ---- Finding assignments (kanban t_54262d96) ---------------------
+    # Mid-clinic tier processes ~2,000 audits/month and one biller
+    # can't own that queue. The office manager needs to distribute
+    # findings across billers and the dashboard needs to surface
+    # per-biller workload (assigned / completed / overdue).
+    #
+    # Endpoint shape:
+    #   POST /api/encounters/{id}/finding/{fid}/assign
+    #     body: {"assignee_id": "<biller>", "due_date": "<iso8601>"?}
+    #     → 200 {"ok": true, "assignment": {...}}
+    #   GET  /api/clinics/{clinic_id}/workload
+    #     → 200 {"clinic_id": ..., "workload": [{biller_id, n_assigned,
+    #                                              n_completed, n_overdue}, ...]}
+    #
+    # The /api/encounters/{id}/finding/{fid}/assign endpoint is
+    # **idempotent on re-assign**: posting the same assignee_id for
+    # the same finding writes NO new row (the current row is already
+    # that assignee) and returns 200 with the existing row. Posting
+    # a different assignee_id writes a NEW row — the most recent
+    # row wins, but the history is preserved for the activity view.
+    # Spec'd by t_54262d96 acceptance criteria.
+    @app.post("/api/encounters/{encounter_id}/finding/{finding_id}/assign")
+    async def api_finding_assign(
+        encounter_id: str,
+        finding_id: str,
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Assign (or re-assign) a finding to a specific biller.
+
+        Body shape: ``{"assignee_id": "<biller>", "due_date": "<iso8601>"?}``.
+
+        Returns the written (or existing) assignment row. Re-assigning
+        the same biller is a no-op write — the activity log doesn't
+        grow, but the response confirms the current state.
+        """
+        try:
+            from .finding_assignments import FindingAssignmentStore
+            from .audit_actions import append as audit_append
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="finding_assignments module unavailable",
+            )
+        if not finding_id:
+            raise HTTPException(
+                status_code=400, detail="finding_id required"
+            )
+        body: dict[str, Any] = {}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        assignee_id = (
+            str(body.get("assignee_id", "") or "").strip()
+        )
+        if not assignee_id:
+            raise HTTPException(
+                status_code=400,
+                detail="assignee_id required (non-empty string)",
+            )
+        due_date_raw = body.get("due_date")
+        due_date = ""
+        if due_date_raw:
+            if not isinstance(due_date_raw, str):
+                raise HTTPException(
+                    status_code=400,
+                    detail="due_date must be an ISO-8601 string when present",
+                )
+            # Validate parses; we don't reject past dates here
+            # (the biller may want to mark "I should have done
+            # this yesterday" for retrospective triage).
+            try:
+                from datetime import datetime
+                datetime.fromisoformat(
+                    due_date_raw.replace("Z", "+00:00")
+                )
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"invalid ISO-8601 timestamp: {due_date_raw!r}",
+                )
+            due_date = due_date_raw
+        store = FindingAssignmentStore()
+        # Idempotent re-assign: if the current assignee is already
+        # the requested biller, return the existing row without
+        # writing a new one. Different assignee → new row.
+        existing = store.current_assignee_for(encounter_id, finding_id)
+        if existing is not None and existing.assignee_id == assignee_id:
+            # Still allow updating the due_date (the biller may
+            # push the deadline without reassigning).
+            if due_date and due_date != existing.due_date:
+                entry = store.assign(
+                    encounter_id=encounter_id,
+                    finding_id=finding_id,
+                    assignee_id=assignee_id,
+                    assigned_by=user.user_identifier,
+                    due_date=due_date,
+                )
+            else:
+                entry = existing
+        else:
+            entry = store.assign(
+                encounter_id=encounter_id,
+                finding_id=finding_id,
+                assignee_id=assignee_id,
+                assigned_by=user.user_identifier,
+                due_date=due_date,
+            )
+            # Mirror to the audit chain so the privacy-officer view
+            # shows the manager's intent. Best-effort — the JSONL
+            # log is the source of truth for "who owns what".
+            try:
+                audit_append(
+                    action="assign",
+                    encounter_id=encounter_id,
+                    user_identifier=user.user_identifier,
+                    tenant_id=_TENANT_ID,
+                    findings=[{"finding_id": finding_id}],
+                    note=f"assigned to {assignee_id}",
+                    extra={
+                        "assignment_event_id": entry.event_id,
+                        "assignee_id": assignee_id,
+                        "due_date": due_date,
+                    },
+                    user_id=user.user_id,
+                    user_role=user.role,
+                )
+            except Exception:
+                pass
+        return JSONResponse({
+            "ok": True,
+            "finding_id": finding_id,
+            "assignment": entry.to_dict(),
+            "reassigned": (
+                existing is not None
+                and existing.assignee_id != assignee_id
+            ),
+        })
+
+    @app.get("/api/encounters/{encounter_id}/finding/assignments")
+    async def api_encounter_assignments(encounter_id: str) -> JSONResponse:
+        """Return the current assignment map for one encounter.
+
+        Response shape: ``{"assignments": {finding_id: FindingAssignment}}``
+        so the encounter detail page can render the per-finding
+        "Assigned to <biller>" badge without an N+1 fetch.
+        """
+        try:
+            from .finding_assignments import FindingAssignmentStore
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="finding_assignments module unavailable",
+            )
+        store = FindingAssignmentStore()
+        current = store.current_assignees_for_encounter(encounter_id)
+        return JSONResponse({
+            "encounter_id": encounter_id,
+            "assignments": {
+                fid: e.to_dict() for fid, e in current.items()
+            },
+            "count": len(current),
+        })
+
+    @app.get("/api/clinics/{clinic_id}/workload")
+    async def api_clinic_workload(clinic_id: str) -> JSONResponse:
+        """Return the current per-biller workload for one clinic.
+
+        Each row: ``{biller_id, n_assigned, n_completed, n_overdue}``.
+        Returns 404 if ``clinic_id`` is unknown (matches the
+        per-clinic F1 / clinic dashboard 404 contract so the UI
+        can treat both endpoints as "this clinic doesn't exist"
+        consistently).
+        """
+        try:
+            from .finding_assignments import FindingAssignmentStore
+            from .per_clinic_f1 import list_clinics
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="finding_assignments or per_clinic_f1 unavailable",
+            )
+        # Validate clinic exists (mirrors the clinic dashboard
+        # 404 contract). Always allow the active tenant AND the
+        # dev fallback ("default_biller") as known so the demo
+        # dashboard renders without a populated feedback log —
+        # matches the /api/dashboard/clinic fallback behaviour.
+        try:
+            known = {c["clinic_id"] for c in list_clinics()}
+        except Exception:
+            known = set()
+        known.add(_TENANT_ID or "default_biller")
+        known.add("default_biller")
+        if clinic_id not in known:
+            raise HTTPException(
+                status_code=404,
+                detail=f"clinic_id {clinic_id!r} not found",
+            )
+        store = FindingAssignmentStore()
+        rows = store.workload_for_clinic(clinic_id)
+        return JSONResponse({
+            "clinic_id": clinic_id,
+            "workload": rows,
+            "n_billers": len(rows),
         })
 
     # ---- CARC / RARC lookup (kanban t_7743e5d5) --------------------
@@ -4348,6 +4574,322 @@ def create_app() -> FastAPI:
             )
         return JSONResponse(payload)
 
+    # ──────────────────────── industry baseline benchmark ──────────────
+    # The clinic sees their own numbers; this endpoint positions
+    # them against the industry cohort so they can answer "is my
+    # 8% denial rate good or bad?" without a separate spreadsheet.
+    # Backed by the static ``industry_baseline`` table; the clinic
+    # value is computed live from the feedback log (denial rate)
+    # or the uploaded audit log (time-to-act).
+    def _window_for_days(days: int) -> tuple[float, float]:
+        """Return ``(start_ts, end_ts)`` covering the last ``days`` UTC."""
+        import time as _t
+        end_ts = _t.time()
+        start_ts = end_ts - (days * 86400)
+        return start_ts, end_ts
+
+    def _parse_iso_ts(s: str | None) -> float | None:
+        """Parse an ISO-8601 UTC string into a Unix timestamp.
+
+        Returns None on malformed input so the caller can skip
+        the row without aborting the whole aggregation. Mirrors
+        the helper in ``dashboard.py`` so behaviour stays
+        consistent across the two surfaces.
+        """
+        if not s:
+            return None
+        from datetime import datetime as _dt
+        try:
+            return _dt.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+        except (TypeError, ValueError):
+            return None
+
+    def _parse_feedback_ts(s: str | None) -> float | None:
+        """Parse a feedback-log timestamp (``YYYY-MM-DDTHH:MM:SSZ``).
+
+        Same semantics as ``dashboard._parse_feedback_ts``; duplicated
+        here to keep the benchmark endpoint self-contained without
+        re-importing the dashboard module (which itself depends on
+        parts of ``api``).
+        """
+        return _parse_iso_ts(s)
+
+    @app.get("/api/dashboard/clinic/{clinic_id}/benchmark")
+    def clinic_benchmark_route(
+        clinic_id: str,
+        metric: str | None = None,
+        window: str | None = None,
+    ) -> JSONResponse:
+        """Return the benchmark for ``clinic_id`` on one ``metric``.
+
+        Query params:
+          * ``metric`` (required) — one of ``denial_rate``,
+            ``time_to_act``, ``top_category``. Unknown values
+            return 400 (not 200 with garbage) so the UI can
+            distinguish "you typo'd the metric name" from "we
+            have no data yet".
+          * ``window`` (optional) — ``7d``, ``30d``, ``90d``.
+            Defaults to ``30d``. Mirrors the per-clinic dashboard
+            window contract so the UI can reuse its picker.
+
+        Response shape (success)::
+
+            {
+              "metric": "denial_rate",
+              "metric_label": "Denial rate",
+              "unit": "pct",
+              "source": "MGMA 2024",
+              "last_updated": "2024-Q4",
+              "clinic_value": 8.3,
+              "percentile_50": 6.5,
+              "percentile_75": 11.2,
+              "percentile_90": 18.4,
+              "position": "between p50 and p75",
+              "lower_is_better": true,
+              "disclaimer": "..."
+            }
+
+        Returns 404 if ``clinic_id`` is unknown (mirrors the
+        clinic dashboard 404 contract). Returns 400 if
+        ``metric`` is unknown.
+        """
+        try:
+            from .industry_baseline import (
+                INDUSTRY_DISCLAIMER,
+                benchmark_payload,
+                known_metrics,
+            )
+            from .per_clinic_f1 import list_clinics
+            from .per_clinic_f1 import _parse_window_param
+            from .per_clinic_f1 import (
+                ALLOWED_DASHBOARD_WINDOWS,
+                DEFAULT_DASHBOARD_WINDOW_DAYS,
+            )
+        except ImportError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"industry_baseline or per_clinic_f1 unavailable: {e}",
+            )
+
+        # Validate clinic exists (same 404 contract as the
+        # sibling /api/dashboard/clinic route). Always allow
+        # the active tenant AND the dev fallback ("default_biller")
+        # as known so the demo dashboard renders without a
+        # populated feedback log.
+        try:
+            known = {c["clinic_id"] for c in list_clinics()}
+        except Exception:
+            known = set()
+        known.add(_TENANT_ID or "default_biller")
+        known.add("default_biller")
+        if clinic_id not in known:
+            raise HTTPException(
+                status_code=404,
+                detail=f"clinic_id {clinic_id!r} not found",
+            )
+
+        # Metric is required and must be one we know about.
+        if not metric:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "metric required; known metrics: "
+                    + ", ".join(known_metrics())
+                ),
+            )
+        if metric not in known_metrics():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"unknown metric {metric!r}; known metrics: "
+                    + ", ".join(known_metrics())
+                ),
+            )
+
+        # Window: same clamp semantics as the clinic dashboard.
+        try:
+            days = _parse_window_param(window)
+        except Exception:
+            days = DEFAULT_DASHBOARD_WINDOW_DAYS
+        if days not in ALLOWED_DASHBOARD_WINDOWS:
+            days = DEFAULT_DASHBOARD_WINDOW_DAYS
+
+        # Compute the clinic_value for the metric. Each metric
+        # has its own derivation; failure to derive → 0.0
+        # rather than 500 (the dashboard renders "no data yet"
+        # on zero values, same as the existing clinic dashboard).
+        try:
+            clinic_value = _compute_clinic_metric(
+                clinic_id, metric, days
+            )
+        except Exception:
+            clinic_value = 0.0
+
+        payload = benchmark_payload(metric, clinic_value)
+        if payload is None:
+            # Defensive: shouldn't happen because we validated
+            # above, but guard the contract.
+            raise HTTPException(
+                status_code=400, detail=f"unknown metric {metric!r}"
+            )
+        payload["clinic_id"] = clinic_id
+        payload["window_days"] = days
+        return JSONResponse(payload)
+
+    def _compute_clinic_metric(
+        clinic_id: str, metric: str, days: int
+    ) -> float:
+        """Derive the clinic's value for one industry metric over ``days``.
+
+        Returns a float in the metric's native unit (percent for
+        ``denial_rate``, hours for ``time_to_act``). When the
+        underlying log is empty the function returns ``0.0`` so
+        the dashboard renders "no data yet" rather than crashing.
+        """
+        start_ts, end_ts = _window_for_days(days)
+        if metric == "denial_rate":
+            # Percent of submitted claims denied in the window.
+            # We compute it as: encounters with at least one
+            # 'flag' audit_actions row in the window / total
+            # encounters in the window × 100. The audit chain
+            # is the only place a "this was denied" signal is
+            # recorded in v0 (the appeal_outcomes log has won/
+            # lost but not the upstream denial-rate number).
+            try:
+                from .audit_actions import read_all
+                rows = read_all()
+            except Exception:
+                return 0.0
+            in_window_total: set[str] = set()
+            in_window_denied: set[str] = set()
+            for row in rows:
+                ts = _parse_iso_ts(row.get("timestamp", ""))
+                if ts is None or ts < start_ts or ts >= end_ts:
+                    continue
+                if row.get("tenant_id", "default") != _TENANT_ID:
+                    continue
+                eid = str(
+                    row.get("data_elements", {}).get("encounter_id", "")
+                )
+                if not eid:
+                    continue
+                in_window_total.add(eid)
+                if row.get("action") == "flag":
+                    in_window_denied.add(eid)
+            if not in_window_total:
+                return 0.0
+            return round(
+                100.0 * len(in_window_denied) / len(in_window_total), 2
+            )
+        if metric == "time_to_act":
+            # Median hours between audit_actions 'append' (finding
+            # surfaced) and the first feedback accept/dismiss/modify
+            # on the same (encounter, finding) pair. The 30-day
+            # window is inclusive of all rows on either side.
+            try:
+                from .audit_actions import read_all as read_audit
+                from .feedback import get_default_store
+            except Exception:
+                return 0.0
+            audit_rows = list(read_audit())
+            surfaced: dict[tuple[str, str], float] = {}
+            for row in audit_rows:
+                ts = _parse_iso_ts(row.get("timestamp", ""))
+                if ts is None:
+                    continue
+                eid = str(
+                    row.get("data_elements", {}).get("encounter_id", "")
+                )
+                fids = (
+                    row.get("data_elements", {}).get("finding_ids")
+                    or row.get("data_elements", {}).get("finding_id")
+                    and [row.get("data_elements", {}).get("finding_id")]
+                    or []
+                )
+                for fid in fids:
+                    if not eid or not fid:
+                        continue
+                    key = (eid, str(fid))
+                    # Take the earliest surfacing time (the first
+                    # time the biller saw this finding).
+                    if key not in surfaced or ts < surfaced[key]:
+                        surfaced[key] = ts
+            try:
+                store = get_default_store()
+                feedback_rows = store.read_all()
+            except Exception:
+                feedback_rows = []
+            gaps: list[float] = []
+            for fe in feedback_rows:
+                if fe.action not in ("accept", "dismiss", "modify"):
+                    continue
+                ts = _parse_feedback_ts(fe.timestamp)
+                if ts is None:
+                    continue
+                key = (fe.encounter_id, fe.finding_id)
+                surf = surfaced.get(key)
+                if surf is None:
+                    continue
+                gap_hours = (ts - surf) / 3600.0
+                if gap_hours < 0:
+                    continue
+                gaps.append(gap_hours)
+            if not gaps:
+                return 0.0
+            gaps.sort()
+            mid = len(gaps) // 2
+            if len(gaps) % 2 == 1:
+                return round(gaps[mid], 2)
+            return round((gaps[mid - 1] + gaps[mid]) / 2.0, 2)
+        if metric == "top_category":
+            # For the categorical metric the "value" the dashboard
+            # renders is the % of the clinic's top-flagged category
+            # in the industry breakdown. This lets the dashboard
+            # say "your top category is dx_linkage, which 62% of
+            # clinics also flag" without needing a separate
+            # endpoint to compute "what's your top category?".
+            try:
+                from .industry_baseline import INDUSTRY_BASELINES
+                breakdown = (
+                    INDUSTRY_BASELINES["top_category"]["category_breakdown"]
+                )
+            except Exception:
+                return 0.0
+            # Determine the clinic's top category by feedback / rule.
+            try:
+                from .feedback import get_default_store
+                store = get_default_store()
+                entries = store.read_all()
+            except Exception:
+                entries = []
+            by_cat: dict[str, int] = {}
+            for fe in entries:
+                cat = (fe.category or "").strip().lower()
+                if not cat:
+                    continue
+                by_cat[cat] = by_cat.get(cat, 0) + 1
+            if not by_cat:
+                return 0.0
+            top_cat = max(by_cat.items(), key=lambda kv: kv[1])[0]
+            # Map common names to the breakdown keys.
+            aliases = {
+                "dx_linkage": "dx_linkage",
+                "dx-linkage": "dx_linkage",
+                "diagnosis_linkage": "dx_linkage",
+                "modifier_25": "modifier_25",
+                "modifier-25": "modifier_25",
+                "mod_25": "modifier_25",
+                "em_level": "em_level",
+                "e/m_level": "em_level",
+                "em-level": "em_level",
+            }
+            key = aliases.get(top_cat, top_cat)
+            return float(breakdown.get(key, 0.0))
+        # Unknown metric — defensive. Validation above should
+        # have caught this; return 0 so the response is still
+        # 200 rather than 500.
+        return 0.0
+
     # ──────────────────────── monthly report (t_b15a1821) ──────────────
     # The deferred full report (calibration + recommended prompt
     # changes) lives in blocked task t_f98a799f, which is gated on
@@ -4471,6 +5013,106 @@ def create_app() -> FastAPI:
         payload["month"] = month
         payload.setdefault("clinic_id", clinic)
         return JSONResponse(payload)
+
+    # ──────────────────────── monthly report (PDF) (t_4c278e95) ───────
+    # Single-page PDF version of the monthly report. Uses the same
+    # data the JSON sibling aggregates (encounters + feedback +
+    # appeal outcomes) so a biller / clinic owner can hand a
+    # formatted artifact to a partner without ever opening a
+    # browser. The route is registered *next to* the JSON
+    # monthly_report_route so the two stay in sync — the JSON
+    # route carries the insufficient_data gate; the PDF route
+    # also honours it (no PDF for a clinic with < 3 months of
+    # data; we 404 instead of rendering a useless empty sheet).
+    @app.get("/api/reports/monthly.pdf")
+    def monthly_report_pdf_route(
+        request: Request,
+        clinic_id: str | None = None,
+        month: str | None = None,
+    ) -> Response:
+        # 1. Query param validation — same regex as the JSON route.
+        if not month:
+            raise HTTPException(
+                status_code=400,
+                detail="month query param is required (YYYY-MM)",
+            )
+        if not re.fullmatch(r"\d{4}-\d{2}", month):
+            raise HTTPException(
+                status_code=400,
+                detail=f"month must be in YYYY-MM format, got {month!r}",
+            )
+        if not clinic_id:
+            clinic_id = _TENANT_ID or "default_biller"
+
+        # 2. Gate on the same 3-month threshold the JSON route uses.
+        #    We re-read the feedback store here (rather than calling
+        #    the JSON route) so the PDF path doesn't depend on
+        #    ``monthly_report`` being importable — keeping the two
+        #    sibling endpoints independent means either can be
+        #    refactored without dragging the other along. The
+        #    threshold constant is imported locally so the PDF route
+        #    doesn't add another module-level import to ``api.py``.
+        try:
+            from .per_clinic_f1 import INSUFFICIENT_DATA_THRESHOLD
+        except Exception:
+            INSUFFICIENT_DATA_THRESHOLD = 3
+        try:
+            from .feedback import get_default_store
+            _store = get_default_store()
+            _entries = _store.read_all() or []
+        except Exception:
+            _entries = []
+        months_seen: set[tuple[int, int]] = set()
+        for e in _entries:
+            if e.biller_id != clinic_id:
+                continue
+            if e.finding_id.startswith("__") and e.finding_id.endswith("__"):
+                continue
+            try:
+                ts = e.timestamp.strip()
+                if ts.endswith("Z"):
+                    ts = ts[:-1] + "+00:00"
+                dt = datetime.fromisoformat(ts)
+            except Exception:
+                continue
+            months_seen.add((dt.year, dt.month))
+        if len(months_seen) < INSUFFICIENT_DATA_THRESHOLD:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"need {INSUFFICIENT_DATA_THRESHOLD}+ months of feedback "
+                    f"to render a PDF report for clinic {clinic_id!r} "
+                    f"(have {len(months_seen)})"
+                ),
+            )
+
+        # 3. Build the payload + render. The PDF module never
+        #    raises on a missing dependency (it falls back to a
+        #    plain-text "PDF" body); failures inside the
+        #    aggregation are swallowed inside the module and
+        #    surface as a document with zeros for that section.
+        try:
+            from .monthly_pdf import build_report_payload, render_monthly_pdf
+            payload = build_report_payload(
+                clinic_id=clinic_id,
+                clinic_name=_TENANT_NAME,
+                month=month,
+            )
+            pdf_bytes = render_monthly_pdf(payload)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"monthly_pdf render failed: {exc}",
+            )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": (
+                    f'inline; filename="zorva-monthly-{clinic_id}-{month}.pdf"'
+                ),
+            },
+        )
 
     # ──────────────────────── tenant data export / deletion ─────────────────
     #
