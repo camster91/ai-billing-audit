@@ -8,6 +8,7 @@ new dashboard widgets don't keep growing the index handler.
 
 from __future__ import annotations
 
+import datetime as _dt
 import time
 from typing import Any
 
@@ -126,7 +127,146 @@ def month_label(now: float | None = None) -> str:
     (e.g. ``"June 2026"``). Kept here so the template doesn't have to
     format timestamps itself.
     """
-    import datetime as _dt
-
     cur = _dt.datetime.fromtimestamp(now if now is not None else time.time())
     return cur.strftime("%B %Y")
+
+
+def _parse_feedback_ts(ts: str) -> float | None:
+    """Parse a feedback-log timestamp into a Unix timestamp.
+
+    Returns ``None`` if the string is malformed so the caller can skip
+    the row without aborting the whole aggregation. The feedback log
+    stores ISO-8601 UTC strings (``2026-06-18T14:23:01Z``).
+    """
+    if not ts:
+        return None
+    try:
+        # Python's fromisoformat in 3.11+ accepts the trailing 'Z'
+        return _dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def aggregate_monthly_revenue_kpi(
+    *,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Aggregate the monthly 'revenue recovered' KPI for the dashboard hero.
+
+    Returns a dict with:
+        - ``total_dollar``       sum of ``estimated_dollar`` for every
+                                 missed-revenue finding that surfaced
+                                 inside the current calendar month
+                                 (identified opportunities, accepted or not)
+        - ``recovered_dollar``   sum of estimated_dollar for findings the
+                                 biller marked *accepted* (actioned) in
+                                 the same window
+        - ``pending_dollar``     total_dollar − recovered_dollar, clipped
+                                 at zero (a positive `accept` that
+                                 outpaces identified only happens when
+                                 accepts span months; clip defensively)
+        - ``n_opportunities``    number of revenue findings in the window
+        - ``n_accepted``         number of accepts on those findings
+        - ``acceptance_ratio``   recovered / total, or 0.0 if total == 0
+        - ``month_label``        human label like ``"June 2026"``
+        - ``ready``              True iff at least one identified
+                                 opportunity exists for the month —
+                                 the template uses this to decide whether
+                                 to render the hero or fall back to the
+                                 empty-state copy.
+
+    Both halves of the KPI come from different sources:
+
+    - *Identified* opportunities are computed from the demo registry
+      (and uploaded encounters with real LLM audits) the same way the
+      per-rule aggregator does — see ``_finding_dicts`` and
+      ``compute_revenue_opportunities``.
+    - *Recovered* dollars are derived from the feedback log: every
+      ``accept`` action whose timestamp falls in the month contributes
+      the estimated_dollar of the finding it accepted.
+
+    The function never raises: missing feedback log → zero recovered,
+    no demo encounters → zero identified, and the template renders
+    an empty-state.
+    """
+    start_ts, end_ts = _month_window(now)
+
+    # ── Identified opportunities in window ──────────────────────────────
+    total_dollar = 0.0
+    n_opportunities = 0
+    # Map finding_id → estimated_dollar so the recovered pass can look
+    # up the dollar value of any finding the biller accepted this month.
+    # Keys are composite "(encounter_id|finding_id)" to handle the rare
+    # case where the same finding_id appears across multiple encounters.
+    finding_dollars: dict[str, float] = {}
+    for entry in list_demo_encounters():
+        record = load_encounter_record(entry.encounter_id)
+        if record is None:
+            continue
+        audited_at = (record or {}).get("audited_at")
+        if isinstance(audited_at, (int, float)):
+            if audited_at < start_ts or audited_at >= end_ts:
+                continue
+        # No timestamp → treat as a current-month seed (mirrors the
+        # behaviour of aggregate_missed_revenue_by_rule so the demo
+        # page is never permanently empty).
+        findings = _finding_dicts(record)
+        for opp in compute_revenue_opportunities(findings):
+            dol = float(opp.get("estimated_dollar") or 0.0)
+            if dol <= 0:
+                continue
+            total_dollar += dol
+            n_opportunities += 1
+            fid = opp.get("finding_id") or ""
+            key = f"{entry.encounter_id}|{fid}"
+            finding_dollars[key] = finding_dollars.get(key, 0.0) + dol
+
+    # ── Recovered dollars (accept actions in window) ────────────────────
+    recovered_dollar = 0.0
+    n_accepted = 0
+    try:
+        from .feedback import get_default_store
+        store = get_default_store()
+        for entry in store.read_all():
+            if entry.action != "accept":
+                continue
+            ts = _parse_feedback_ts(entry.timestamp)
+            if ts is None:
+                continue
+            if ts < start_ts or ts >= end_ts:
+                continue
+            key = f"{entry.encounter_id}|{entry.finding_id}"
+            dol = finding_dollars.get(key)
+            if dol is None:
+                # Accept happened this month for a finding whose
+                # identified opportunity is from a different month (or
+                # never priced). Fall back to the rule-level default
+                # estimate so the recovered number isn't understated.
+                meta = REVENUE_OPPORTUNITY_RULES.get(entry.rule_id or "")
+                if meta is None:
+                    dol = 0.0
+                else:
+                    dol = float(meta.get("estimated_dollar") or 0.0)
+            recovered_dollar += dol
+            n_accepted += 1
+    except Exception:
+        # Feedback module unavailable or log unreadable → leave
+        # recovered as zero. The hero still renders the identified
+        # total in that case.
+        recovered_dollar = 0.0
+        n_accepted = 0
+
+    pending_dollar = max(0.0, total_dollar - recovered_dollar)
+    acceptance_ratio = (
+        round(recovered_dollar / total_dollar, 4) if total_dollar > 0 else 0.0
+    )
+    return {
+        "total_dollar": round(total_dollar, 2),
+        "recovered_dollar": round(recovered_dollar, 2),
+        "pending_dollar": round(pending_dollar, 2),
+        "n_opportunities": n_opportunities,
+        "n_accepted": n_accepted,
+        "acceptance_ratio": acceptance_ratio,
+        "month_label": month_label(now),
+        "ready": total_dollar > 0,
+    }

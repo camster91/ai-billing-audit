@@ -10,6 +10,51 @@
   <a class="btn btn-primary" href="/encounters/upload">Upload 837P</a>
 </div>
 
+{# Monthly revenue recovered KPI tile — sits at the top of the
+   dashboard so the biller sees at a glance how much missed-revenue
+   opportunity has surfaced this month, how much has been actioned,
+   and how much is still pending review. The ratio between recovered
+   and pending is the trust signal. #}
+{% if monthly_revenue_kpi and monthly_revenue_kpi.ready %}
+<section class="revenue-kpi" aria-label="This month: revenue opportunities">
+  <div class="revenue-kpi__main">
+    <div class="revenue-kpi__label">{{ monthly_revenue_kpi.month_label }} &middot; identified</div>
+    <div class="revenue-kpi__big mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.total_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub">
+      in revenue opportunities
+      {% if monthly_revenue_kpi.n_opportunities %}
+        &middot; {{ monthly_revenue_kpi.n_opportunities }} finding{{ "" if monthly_revenue_kpi.n_opportunities == 1 else "s" }}
+      {% endif %}
+    </div>
+    {% set r = monthly_revenue_kpi.acceptance_ratio %}
+    <span class="revenue-kpi__ratio {% if r >= 0.66 %}is-high{% elif r >= 0.33 %}is-medium{% else %}is-low{% endif %}">
+      {{ (r * 100) | round(0) | int }}% actioned
+    </span>
+  </div>
+  <div class="revenue-kpi__sub-tile">
+    <div class="revenue-kpi__sub-label">Recovered</div>
+    <div class="revenue-kpi__sub-value is-recovered mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.recovered_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub-meta">
+      biller actioned
+      {% if monthly_revenue_kpi.n_accepted %}
+        ({{ monthly_revenue_kpi.n_accepted }} accept{{ "" if monthly_revenue_kpi.n_accepted == 1 else "s" }})
+      {% endif %}
+    </div>
+  </div>
+  <div class="revenue-kpi__sub-tile">
+    <div class="revenue-kpi__sub-label">Pending</div>
+    <div class="revenue-kpi__sub-value is-pending mono">
+      ${{ "{:,.0f}".format(monthly_revenue_kpi.pending_dollar) }}
+    </div>
+    <div class="revenue-kpi__sub-meta">awaiting review</div>
+  </div>
+</section>
+{% endif %}
+
 {% if metrics and metrics.ready %}
 <section class="clean-rate-hero" aria-label="This month at a glance">
   <div class="clean-rate-hero__main">
