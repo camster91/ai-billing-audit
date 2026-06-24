@@ -176,6 +176,48 @@ someone on your team better placed to look at it? Happy to send a one-pager.
 - Concrete ask (10-min call) and concrete offer (free 30-day pilot).
 - Single follow-up if no response in 7 business days, then stop. No sequences.
 
+### 4d. Model Improvement — the 90-day personalization pivot
+
+After the immediate-value paragraph in any of the templates above (4a / 4b / 4c),
+insert this short block. It reframes the pitch from "catches errors today" to
+"gets smarter about YOUR patterns over 90 days", which is the differentiator
+a competitor who only does static rule-checking cannot match.
+
+```
+Quick note on the longer arc: Zorva isn't just running the same
+ruleset on every clinic forever. Over the 90 days after the pilot,
+the auditor adapts to YOUR patterns — your coding style, your
+modifier conventions, the corrections your billers make most often,
+and the prior-authorization phrasing specific to your clinic. By
+day 90, the findings you see are tuned to your practice, not to a
+generic Alberta average.
+
+For an admin: this is the part that matters if you're thinking
+about year one, not just month one. The tool your billers use on
+day 1 is the same tool, but on day 90 it's been calibrated to your
+clinic's specific catch-and-correct patterns — so the false-positive
+rate drops and the high-value findings rise. We don't ship a
+finished product; we ship a product that finishes calibrating
+itself to your clinic inside the first quarter.
+```
+
+**Where to insert:** after the second paragraph of 4a / 4b (the one
+naming the 30-day pilot), and after the first paragraph of 4c. Keeps
+the immediate-value ask first, then pivots to the longer-term
+differentiator before the close. The "if this is the wrong person /
+15-minute window" close still ships verbatim.
+
+**Tone notes (additive — do not deviate):**
+- 100 words max for the inserted block; do not bloat the email.
+- No technical claims (training data, metrics, architecture) — this is a
+  sales message, not a spec.
+- No invented numbers (no "30% fewer false positives", no "60% better
+  calibration"). The 90-day window and "adapts to your patterns" are
+  the only claims.
+- "We don't ship a finished product; we ship a product that finishes
+  calibrating itself to your clinic inside the first quarter" is the
+  verbatim closer — keep it.
+
 ---
 
 ## 5. Common objections to anticipate (Alberta-specific)
