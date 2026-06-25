@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
+import { MobileMenu } from "@/components/MobileMenu";
 import "./globals.css";
 
 // Zorva brand typefaces (see docs/BRANDING_TYPOGRAPHY.md).
@@ -96,6 +97,30 @@ export default function RootLayout({
             dark on first paint and never flash white. See AGENTS.md
             "dark-only design choice" note. (kanban t_9bf46d09) */}
         <meta name="color-scheme" content="dark" />
+        {/* Privacy-friendly analytics (Plausible). Loaded only when
+            NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set at build time. We
+            deliberately do NOT use Google Analytics — clinic privacy
+            officers will flag it. See kanban t_54240aab.
+
+            Note on Subresource Integrity (SRI): we intentionally do
+            NOT pin a sha384 hash here. Plausible updates their
+            script.js in place for bug-fixes and feature rollouts
+            (event goals, revenue, etc.); pinning a hash would
+            silently break the analytics on every update and require
+            a code change + redeploy each time. The official
+            Plausible installation snippet (plausible.io/docs) also
+            omits SRI for exactly this reason. Risk is mitigated by
+            serving Plausible over HTTPS, by their CSP and by the
+            `data-domain` attribute which scopes events to our
+            domain only. */}
+        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ? (
+          <script
+            async
+            defer
+            data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
+            src="https://plausible.io/js/script.js"
+          />
+        ) : null}
       </head>
       <body className="body">
         <a className="skip-link" href="#main">
@@ -106,13 +131,14 @@ export default function RootLayout({
             <Link href="/" className="site-brand" aria-label="Zorva — home">
               Zorva
             </Link>
-            <nav aria-label="Primary" className="site-nav">
+            <nav aria-label="Primary" className="site-nav site-nav-desktop">
               {NAV.map((n) => (
                 <Link key={n.href} href={n.href} className="site-nav-link">
                   {n.label}
                 </Link>
               ))}
             </nav>
+            <MobileMenu links={NAV} />
           </div>
         </header>
         {children}
