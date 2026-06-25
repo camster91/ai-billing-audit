@@ -79,7 +79,7 @@ export default function PricingPage() {
               >
                 {recommended && (
                   <div className={styles.popularBadge} aria-hidden="true">
-                    Most popular
+                    Most clinics
                   </div>
                 )}
                 <h2>{tier.name}</h2>

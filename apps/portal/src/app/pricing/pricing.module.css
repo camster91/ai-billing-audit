@@ -119,8 +119,8 @@
   top: -14px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--accent-bg);
-  color: white;
+  background: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%);
+  color: #0b1220;
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12px;
@@ -128,7 +128,7 @@
   letter-spacing: 0.4px;
   text-transform: uppercase;
   white-space: nowrap;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.35);
 }
 
 .tier h2 {
