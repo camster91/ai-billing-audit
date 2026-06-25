@@ -135,17 +135,14 @@ services:
       retries: 5
 
   caddy:
-    # Custom build (Dockerfile.caddy) so the caddy-ratelimit module
-    # is compiled into /usr/bin/caddy. The stock caddy:2-alpine
-    # image doesn't ship http.handlers.rate_limit, which is why the
-    # `rate_limit` line in Caddyfile is the line that drove this
-    # rebuild (kanban t_0910e627, 2026-06-24). The custom image is
-    # tiny: same caddy:2.7.6-alpine base, with a Go-built binary
-    # layer on top.
-    build:
-      context: .
-      dockerfile: Dockerfile.caddy
-    image: ai-billing-audit-caddy:0.1.0
+    # Rate limit moved to Traefik (2026-06-25) — the caddy-ratelimit
+    # module is no longer needed in the caddy image. Reverted to
+    # stock caddy:2-alpine (which is what's been running anyway;
+    # Dockerfile.caddy was never deployable: caddy-ratelimit@v0.1.0
+    # requires Caddy v2.8.0+ but Dockerfile.caddy pinned v2.7.6,
+    # so the build always failed and compose fell back to stock).
+    # See /opt/traefik/dynamic/routers.yml for ai-billing-audit-ratelimit.
+    image: caddy:2-alpine
     container_name: ai-billing-audit-caddy
     restart: unless-stopped
     ports:

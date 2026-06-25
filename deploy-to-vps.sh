@@ -243,46 +243,128 @@ cp -a "$ROUTERS" "$BACKUP"
 # the new ones at the end of the existing routers: / services:
 # sections in the established pattern.
 python3 - <<'PYEOF'
-import re, pathlib, datetime
+import re, pathlib, os
+
+HOST_PORT = os.environ.get("HOST_PORT", "3018")
 
 p = pathlib.Path("/opt/traefik/dynamic/routers.yml")
 src = p.read_text()
 
-def strip_block(text, key, indent=4):
-    pat = re.compile(rf"^ {{{indent}}}{re.escape(key)}:\n(?: {{{indent+2}}}.*\n|\n)+", re.MULTILINE)
-    return pat.sub("", text)
+# Managed router fields — these are the canonical values the deploy
+# script owns. Any other top-level field on the ai-billing-audit router
+# (e.g. middlewares: [...], priority: ...) is treated as a user
+# addition and preserved across redeploys so the script doesn't
+# silently drop rate-limit / auth / future middleware.
+MANAGED_ROUTER = [
+    ("rule",        '      rule: "Host(`ai-billing-audit.ashbi.ca`)"'),
+    ("entryPoints", "      entryPoints: [websecure]"),
+    ("service",     "      service: ai-billing-audit"),
+]
+TLS_LINES = ["      tls:", "        certResolver: letsencrypt"]
+SERVICE_LINES = [
+    "      loadBalancer:",
+    "        servers:",
+    f"          - url: \"http://127.0.0.1:{HOST_PORT}\"",
+]
 
-src = strip_block(src, "ai-billing-audit", indent=4)
+def parse_router_block(body):
+    """Parse a router block body into ordered list of (key, [lines]).
+    Each group is one top-level field (indent=6) + its continuation lines
+    at any indent >= 6. Stops on blank lines."""
+    groups = []
+    current_key = None
+    current_lines = []
+    for line in body.split("\n"):
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent == 6:
+            m = re.match(r"^      (\w[\w-]*):", line)
+            if m:
+                if current_key is not None:
+                    groups.append((current_key, current_lines))
+                current_key = m.group(1)
+                current_lines = [line]
+                continue
+        if current_key is not None:
+            current_lines.append(line)
+    if current_key is not None:
+        groups.append((current_key, current_lines))
+    return groups
 
-ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-router_block = (
-    f"    ai-billing-audit:\n"
-    f"      rule: \"Host(`ai-billing-audit.ashbi.ca`)\"\n"
-    f"      entryPoints: [websecure]\n"
-    f"      service: ai-billing-audit\n"
-    f"      tls:\n"
-    f"        certResolver: letsencrypt\n"
+def render_router_block(groups):
+    """Render router block body. Preserves order from `groups`. Replaces
+    managed keys with canonical lines. Preserves unknown keys."""
+    canonical = {k: [v] for k, v in MANAGED_ROUTER}
+    canonical["tls"] = TLS_LINES
+    seen = set()
+    new_lines = []
+    for k, lines in groups:
+        if k in canonical:
+            new_lines.extend(canonical[k])
+            seen.add(k)
+        else:
+            new_lines.extend(lines)
+    for k in [mk for mk, _ in MANAGED_ROUTER] + ["tls"]:
+        if k not in seen:
+            if k == "tls":
+                new_lines.extend(TLS_LINES)
+            else:
+                v = next(v for mk, v in MANAGED_ROUTER if mk == k)
+                new_lines.append(v)
+    return new_lines
+
+# Locate the routers section (from "  routers:" up to next top-level key).
+# `.*?` is non-greedy; `(?=^  [a-z])` lookahead stops at the next top-level
+# 2-space-indented key. DOTALL is required so `.` matches newlines.
+routers_section_re = re.compile(
+    r"^(  routers:.*?)(?=^  [a-z])",
+    re.MULTILINE | re.DOTALL,
 )
-service_block = (
-    f"    ai-billing-audit:\n"
-    f"      loadBalancer:\n"
-    f"        servers:\n"
-    f"          - url: \"http://127.0.0.1:3018\"\n"
-)
-
-# Insert the router at the end of "  routers:".
-m = re.search(r"^(  routers:.*\n(?:    .*\n|\n)+)(?=  services:)", src, re.MULTILINE)
-if not m:
+m_routers = routers_section_re.search(src)
+if not m_routers:
     raise SystemExit("could not locate routers: block in live file")
-new_routers = m.group(1).rstrip("\n") + "\n" + router_block
-src = src[:m.start()] + new_routers + "\n" + src[m.end():]
+routers_section = m_routers.group(1)
 
-# Insert the service at the end of "  services:".
-m = re.search(r"^(  services:.*\n(?:    .*\n|\n)+)", src, re.MULTILINE)
-if not m:
+# Within the routers section, find the existing ai-billing-audit router
+# block. `    .*` matches 4+ space-indented lines (the leading 4 spaces
+# are anchored, `.*` swallows the rest including extra leading spaces
+# from 6+ space continuation lines).
+router_block_re = re.compile(
+    r"^    ai-billing-audit:(?:\n    .*|\n)*\n?",
+    re.MULTILINE,
+)
+m_block = router_block_re.search(routers_section)
+if m_block:
+    body = m_block.group(0).split("\n", 1)[1] if "\n" in m_block.group(0) else ""
+    body = body.rstrip("\n")
+    groups = parse_router_block(body)
+    new_router_lines = render_router_block(groups)
+else:
+    new_router_lines = render_router_block([])
+new_router_block = "    ai-billing-audit:\n" + "\n".join(new_router_lines) + "\n"
+
+new_routers_section = (
+    router_block_re.sub("", routers_section).rstrip("\n")
+    + "\n" + new_router_block + "\n"
+)
+src = src[:m_routers.start()] + new_routers_section + src[m_routers.end():]
+
+# Same for the services section.
+services_section_re = re.compile(
+    r"^(  services:.*?)(?=^  [a-z]|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+m_services = services_section_re.search(src)
+if not m_services:
     raise SystemExit("could not locate services: block in live file")
-new_services = m.group(1).rstrip("\n") + "\n" + service_block
-src = src[:m.start()] + new_services + src[m.end():]
+services_section = m_services.group(1)
+new_service_block = "    ai-billing-audit:\n" + "\n".join(SERVICE_LINES) + "\n"
+new_services_section = (
+    router_block_re.sub("", services_section).rstrip("\n")
+    + "\n" + new_service_block + "\n"
+)
+src = src[:m_services.start()] + new_services_section + src[m_services.end():]
 
 p.write_text(src)
 print("wrote", p)

@@ -42,11 +42,6 @@
 #                                 consumes our JSON /roi/results,
 #                                 not the HTML form)
 #
-# Rate-limit rationale:
-#   10 req/s, burst to 60/min per remote IP. Conservative default
-#   for an internal billing-audit API consumed by clinic staff and
-#   the Next.js portal. Bump if false positives appear in
-#   production traffic.
 
 :80 {
     # Forward every path to the FastAPI service. The Caddy container
@@ -58,13 +53,6 @@
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
-
-    # Per-IP token bucket: 10 req/s sustained, 60 req/min ceiling.
-    # The caddy-ratelimit module is compiled into the custom
-    # ai-billing-audit-caddy image (Dockerfile.caddy). If the
-    # directive ever fails validation, fall back to host Traefik
-    # rate-limit middleware as a defensive layer.
-    rate_limit ai_billing {remote_host} 10r/s 60r/m
 
     # Security response headers (audit task t_106739f0).
     header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
