@@ -365,10 +365,19 @@ def export_audit_log(fmt: str = "json") -> tuple[str, str, str]:
 # t_d9713083 — sticky notes per encounter
 # ---------------------------------------------------------------------------
 
-def sticky_note_get(encounter_id: str) -> str:
+def sticky_note_get(encounter_id: str, *, user_id: str | None = None) -> str:
+    """Return the most-recent sticky note for ``encounter_id``.
+
+    When ``user_id`` is provided, the note is filtered to ONLY
+    rows written by that user — sticky notes are private
+    annotations, never shared across billers (per the task body
+    for ``t_d9713083``).
+    """
     path = _log_path("sticky_notes")
     if not path.exists():
         return ""
+    latest: str = ""
+    latest_ts: float = 0.0
     try:
         with path.open("r", encoding="utf-8") as fh:
             for line in fh:
@@ -379,11 +388,17 @@ def sticky_note_get(encounter_id: str) -> str:
                     rec = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if rec.get("encounter_id") == encounter_id:
-                    return str(rec.get("note", ""))
+                if rec.get("encounter_id") != encounter_id:
+                    continue
+                if user_id is not None and rec.get("user_id") != user_id:
+                    continue
+                ts = float(rec.get("ts", 0))
+                if ts >= latest_ts:
+                    latest_ts = ts
+                    latest = str(rec.get("note", ""))
     except OSError:
         return ""
-    return ""
+    return latest
 
 
 def sticky_note_set(encounter_id: str, user_id: str, note: str) -> None:
@@ -459,11 +474,73 @@ def rule_tuning_set(clinic_id: str, enabled: list[str], suppressed: list[str]) -
 # ---------------------------------------------------------------------------
 
 def llm_choice_get(clinic_id: str) -> dict[str, str]:
-    return {
+    out: dict[str, str] = {
         "clinic_id": clinic_id,
         "provider": os.environ.get("TENANT_LLM_PROVIDER_DEFAULT", "ollama"),
         "model": os.environ.get("TENANT_LLM_MODEL_DEFAULT", "qwen2.5:7b"),
     }
+    # Most-recent row per clinic wins. Mirrors the audit_depth
+    # tenant-config JSONL pattern so the same audit-trail discipline
+    # applies to LLM selection (privacy officer can see who picked
+    # which model and when).
+    path = _log_path("llm_choice")
+    if path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("clinic_id") == clinic_id:
+                        p = str(rec.get("provider", "")).strip()
+                        m = str(rec.get("model", "")).strip()
+                        if p:
+                            out["provider"] = p
+                        if m:
+                            out["model"] = m
+        except OSError:
+            pass
+    return out
+
+
+def llm_choice_set(
+    clinic_id: str,
+    provider_name: str,
+    model: str,
+    *,
+    user_id: str = "dev_user",
+) -> dict[str, str]:
+    """Persist the clinic's LLM provider+model selection.
+
+    Append-only: every set writes a new row; ``llm_choice_get``
+    returns the most-recent. Allowed providers are a small whitelist
+    to prevent typos from quietly breaking audits (claude, ollama,
+    openai, openai-compatible).
+    """
+    p = str(provider_name or "").strip().lower()
+    m = str(model or "").strip()
+    if p not in {"claude", "ollama", "openai", "openai-compatible"}:
+        raise HTTPException(
+            status_code=400,
+            detail="provider must be one of: claude, ollama, openai, openai-compatible",
+        )
+    if not m:
+        raise HTTPException(status_code=400, detail="model must be a non-empty string")
+    _append_jsonl(
+        _log_path("llm_choice"),
+        {
+            "clinic_id": clinic_id,
+            "provider": p,
+            "model": m,
+            "user_id": user_id,
+            "ts": time.time(),
+        },
+    )
+    return llm_choice_get(clinic_id)
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +567,155 @@ def notification_feed(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
             rows = []
     rows.sort(key=lambda r: float(r.get("ts", 0)), reverse=True)
     return rows[:limit]
+
+
+def notification_record(
+    user_id: str,
+    *,
+    title: str,
+    body: str = "",
+    kind: str = "info",
+    link: str = "",
+) -> dict[str, Any]:
+    """Append a notification row for ``user_id``.
+
+    Used by the bell-icon dropdown so server-side actions (new
+    audits flagged, bulk-dismiss completed, etc) show up in the
+    feed without the biller needing to reload the page.
+    """
+    rec: dict[str, Any] = {
+        "event_id": uuid.uuid4().hex,
+        "user_id": user_id,
+        "title": str(title or "").strip()[:200],
+        "body": str(body or "").strip()[:1000],
+        "kind": str(kind or "info").strip()[:32] or "info",
+        "link": str(link or "").strip()[:500],
+        "ts": time.time(),
+        "read": False,
+    }
+    _append_jsonl(_log_path("notifications"), rec)
+    return rec
+
+
+def notification_mark_read(user_id: str, event_id: str) -> bool:
+    """Mark ``event_id`` as read for ``user_id``.
+
+    Append-only implementation: a new row with ``read=True`` is
+    written; ``notification_feed`` returns the most-recent per
+    ``event_id``. Returns True if a row was written, False if the
+    notification does not belong to this user.
+    """
+    path = _log_path("notifications")
+    if not path.exists():
+        return False
+    found = False
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if (
+                    rec.get("user_id") == user_id
+                    and rec.get("event_id") == event_id
+                ):
+                    found = True
+                    break
+    except OSError:
+        return False
+    if not found:
+        return False
+    _append_jsonl(
+        _log_path("notifications"),
+        {
+            "user_id": user_id,
+            "event_id": event_id,
+            "read": True,
+            "ts": time.time(),
+        },
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# t_77c0c140 — re-engagement email (7-day dormancy)
+# ---------------------------------------------------------------------------
+
+
+def re_engagement_status(user_id: str) -> dict[str, Any]:
+    """Return the re-engagement payload for ``user_id``.
+
+    Driven by a ``last_login.jsonl`` log where each successful
+    login writes a row. The email worker queries this once per day
+    per user and emits a single 7-day-dormant nudge (the
+    ``reengagement_7d`` email_pref must be True and the user must
+    not already have a ``re_engagement_sent`` row in the last 7
+    days — that prevents re-spamming).
+    """
+    last_login_ts: float | None = None
+    login_path = _log_path("last_login")
+    if login_path.exists():
+        try:
+            with login_path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("user_id") == user_id:
+                        ts = float(rec.get("ts", 0))
+                        if ts > (last_login_ts or 0):
+                            last_login_ts = ts
+        except OSError:
+            last_login_ts = None
+
+    now = time.time()
+    days_since: float | None = None
+    if last_login_ts is not None:
+        days_since = (now - last_login_ts) / 86400.0
+
+    # Have we already sent a re-engagement nudge in the last 7 days?
+    nudge_already_sent = False
+    sent_path = _log_path("re_engagement_sent")
+    if sent_path.exists():
+        try:
+            with sent_path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("user_id") == user_id:
+                        ts = float(rec.get("ts", 0))
+                        if (now - ts) <= 7 * 86400.0:
+                            nudge_already_sent = True
+                            break
+        except OSError:
+            nudge_already_sent = False
+
+    should_send = (
+        days_since is not None
+        and days_since >= 7.0
+        and not nudge_already_sent
+    )
+
+    return {
+        "user_id": user_id,
+        "last_login_ts": last_login_ts,
+        "days_since_login": days_since,
+        "should_send": should_send,
+        "nudge_already_sent": nudge_already_sent,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -533,7 +759,13 @@ def email_pref_set(user_id: str, **flags: bool) -> dict[str, bool]:
 # ---------------------------------------------------------------------------
 
 def bulk_confirm_validate(payload: dict[str, Any]) -> tuple[bool, str]:
-    """Return (ok, message). Used by the bulk-confirm modal."""
+    """Return (ok, message). Used by the bulk-confirm modal.
+
+    For ``dismiss`` and ``flag`` actions (and ``accept`` over 25
+    findings), the biller must type the literal ``confirm`` string —
+    mirrors the destructive-action UX pattern from the
+    ``confirmation`` field on the tenant-delete endpoint.
+    """
     action = str(payload.get("action", "")).strip()
     ids = payload.get("encounter_ids") or []
     if action not in {"accept", "dismiss", "flag"}:
@@ -542,6 +774,14 @@ def bulk_confirm_validate(payload: dict[str, Any]) -> tuple[bool, str]:
         return False, "encounter_ids must be a non-empty list"
     if len(ids) > 500:
         return False, "max 500 encounters per bulk action"
+    # Destructive actions (dismiss / flag) always require the
+    # confirm-string. ``accept`` is reversible via the undo-token
+    # so it does NOT require typing ``confirm`` — but a 25+ batch
+    # still does to prevent accidental mass-accepts.
+    if action in {"dismiss", "flag"} or len(ids) >= 25:
+        typed = str(payload.get("confirm_phrase", "")).strip().lower()
+        if typed != "confirm":
+            return False, "type 'confirm' to proceed"
     return True, f"will {action} {len(ids)} encounter(s)"
 
 
@@ -629,6 +869,32 @@ def register_routes(app: Any) -> None:
     def api_notifications(user_id: str = "dev_user") -> JSONResponse:
         return JSONResponse({"items": notification_feed(user_id)})
 
+    @app.post("/api/notifications", response_class=JSONResponse)
+    async def api_notifications_record(request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        rec = notification_record(
+            str(body.get("user_id", "dev_user")),
+            title=str(body.get("title", "")),
+            body=str(body.get("body", "")),
+            kind=str(body.get("kind", "info")),
+            link=str(body.get("link", "")),
+        )
+        return JSONResponse({"ok": True, "record": rec})
+
+    @app.post("/api/notifications/{event_id}/read", response_class=JSONResponse)
+    def api_notifications_mark_read(user_id: str, event_id: str) -> JSONResponse:
+        ok = notification_mark_read(user_id, event_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="notification not found")
+        return JSONResponse({"ok": True})
+
+    @app.get("/api/re-engagement", response_class=JSONResponse)
+    def api_re_engagement(user_id: str = "dev_user") -> JSONResponse:
+        return JSONResponse(re_engagement_status(user_id))
+
     @app.get("/api/email-prefs", response_class=JSONResponse)
     def api_email_prefs_get(user_id: str = "dev_user") -> JSONResponse:
         return JSONResponse(email_pref_get(user_id))
@@ -670,8 +936,16 @@ def register_routes(app: Any) -> None:
         )
 
     @app.get("/encounter/{encounter_id}/note", response_class=PlainTextResponse)
-    def api_sticky_note_get(encounter_id: str) -> PlainTextResponse:
-        return PlainTextResponse(sticky_note_get(encounter_id))
+    def api_sticky_note_get(
+        encounter_id: str, user_id: str = "dev_user"
+    ) -> PlainTextResponse:
+        # t_d9713083 — sticky notes are PRIVATE to the user who
+        # wrote them, so the read filters by ``user_id``. Pass
+        # ``user_id=*`` (literal star) to read across all users
+        # (admin debugging only — not exposed in the UI).
+        if user_id == "*":
+            return PlainTextResponse(sticky_note_get(encounter_id))
+        return PlainTextResponse(sticky_note_get(encounter_id, user_id=user_id))
 
     @app.post("/encounter/{encounter_id}/note", response_class=JSONResponse)
     async def api_sticky_note_set(encounter_id: str, request: Request) -> JSONResponse:
@@ -715,6 +989,20 @@ def register_routes(app: Any) -> None:
     @app.get("/api/clinic/{clinic_id}/llm", response_class=JSONResponse)
     def api_llm_choice_get(clinic_id: str) -> JSONResponse:
         return JSONResponse(llm_choice_get(clinic_id))
+
+    @app.post("/api/clinic/{clinic_id}/llm", response_class=JSONResponse)
+    async def api_llm_choice_set(clinic_id: str, request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        out = llm_choice_set(
+            clinic_id,
+            str(body.get("provider", "")),
+            str(body.get("model", "")),
+            user_id=str(body.get("user_id", "dev_user")),
+        )
+        return JSONResponse(out)
 
     @app.get("/api/wcag", response_class=JSONResponse)
     def api_wcag() -> JSONResponse:

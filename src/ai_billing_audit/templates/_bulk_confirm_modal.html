@@ -1,0 +1,182 @@
+{# Bulk action confirmation modal (kanban t_7e558a6a).
+
+Invoked from the dashboard when a biller clicks a destructive bulk
+control ("Dismiss 47 findings on rule MOD-25", "Flag 30 encounters",
+"Accept 25+ encounters"). The modal calls /api/bulk/confirm first;
+the backend's bulk_confirm_validate enforces:
+
+* action in {accept, dismiss, flag}
+* 1..500 encounter_ids
+* type "confirm" for dismiss/flag actions and for 25+ item accepts
+
+On success, the actual /encounters/bulk-{accept,dismiss,flag}
+endpoint is called. On failure, the modal stays open and shows the
+error message.
+
+The template is hidden by default; openBulkConfirmModal() in
+dashboard.js toggles [hidden]. Backdrop click and Esc close the
+modal (handled via [data-action="modal-close"] delegation in the
+existing modal handler).
+
+Destructive actions (dismiss / flag) require the user to type
+the literal "confirm" before the Confirm button enables — this
+mirrors the tenant-delete confirmation pattern. #}
+
+<div
+  id="bulk-confirm-modal"
+  class="modal"
+  hidden
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="bulk-confirm-modal__title"
+  data-bulk-confirm
+>
+  <div class="modal__backdrop" data-action="modal-close"></div>
+  <div class="modal__panel" role="document">
+    <header class="modal__header">
+      <h2 id="bulk-confirm-modal__title" class="modal__title">
+        Confirm bulk action
+      </h2>
+      <p class="modal__subtitle muted small">
+        <span data-bulk-confirm-summary></span>
+      </p>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        data-action="modal-close"
+        aria-label="Close"
+      >
+        ✕
+      </button>
+    </header>
+
+    <div class="modal__body">
+      <p data-bulk-confirm-warning>
+        You are about to <strong data-bulk-confirm-action>dismiss</strong>
+        <strong data-bulk-confirm-count>0</strong> finding(s). This will be
+        recorded in the audit log. Continue?
+      </p>
+
+      <label class="bulk-confirm__phrase">
+        Type <code>confirm</code> to proceed:
+        <input
+          type="text"
+          class="dismiss-form__input"
+          data-bulk-confirm-phrase
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="bulk-confirm-hint"
+        />
+        <span id="bulk-confirm-hint" class="muted small">
+          Required for dismiss/flag and 25+ item accepts.
+        </span>
+      </label>
+
+      <p
+        class="bulk-confirm__error"
+        data-bulk-confirm-error
+        role="alert"
+        hidden
+      ></p>
+    </div>
+
+    <footer class="modal__footer">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        data-action="modal-close"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-danger btn-sm"
+        data-bulk-confirm-submit
+        disabled
+      >
+        Confirm
+      </button>
+    </footer>
+  </div>
+</div>
+
+<style>
+  /* Bulk-confirm-specific styles. Reuses .modal / .btn classes
+     from dashboard.css so no new visual vocabulary is introduced. */
+  .bulk-confirm__phrase {
+    display: block;
+    margin: var(--space-3) 0 var(--space-2);
+    font-size: 0.95rem;
+  }
+  .bulk-confirm__phrase code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 0 0.25rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  .bulk-confirm__error {
+    margin-top: var(--space-2);
+    color: var(--color-danger, #b00020);
+    font-size: 0.9rem;
+  }
+</style>
+
+<script>
+  // Lightweight controller for the bulk-confirm modal. The dashboard's
+  // main upload.js already delegates [data-action="modal-close"], so we
+  // only need to wire up the phrase-input + submit button here.
+  (function () {
+    const modal = document.querySelector('[data-bulk-confirm]');
+    if (!modal) return;
+    const phraseInput = modal.querySelector('[data-bulk-confirm-phrase]');
+    const submitBtn = modal.querySelector('[data-bulk-confirm-submit]');
+    const errBox = modal.querySelector('[data-bulk-confirm-error]');
+    const summaryEl = modal.querySelector('[data-bulk-confirm-summary]');
+    const actionEl = modal.querySelector('[data-bulk-confirm-action]');
+    const countEl = modal.querySelector('[data-bulk-confirm-count]');
+
+    // Enable/disable the Confirm button as the user types.
+    phraseInput && phraseInput.addEventListener('input', function () {
+      const ok = phraseInput.value.trim().toLowerCase() === 'confirm';
+      if (submitBtn) submitBtn.disabled = !ok;
+    });
+
+    // Public API: window.openBulkConfirmModal({action, count, callback})
+    window.openBulkConfirmModal = function (opts) {
+      opts = opts || {};
+      const action = String(opts.action || 'dismiss');
+      const count = Number(opts.count || 0);
+      const requiresPhrase =
+        action === 'dismiss' || action === 'flag' || count >= 25;
+      if (actionEl) actionEl.textContent = action;
+      if (countEl) countEl.textContent = String(count);
+      if (summaryEl) {
+        summaryEl.textContent =
+          'Action: ' + action + ' • Items: ' + count;
+      }
+      if (phraseInput) {
+        phraseInput.value = '';
+        phraseInput.placeholder = requiresPhrase
+          ? "Type 'confirm' to enable"
+          : "(optional for small accepts)";
+      }
+      if (submitBtn) submitBtn.disabled = requiresPhrase;
+      if (errBox) {
+        errBox.hidden = true;
+        errBox.textContent = '';
+      }
+      modal._bulkCallback = typeof opts.callback === 'function'
+        ? opts.callback
+        : null;
+      modal.hidden = false;
+      if (requiresPhrase && phraseInput) phraseInput.focus();
+    };
+
+    submitBtn && submitBtn.addEventListener('click', function () {
+      const cb = modal._bulkCallback;
+      modal.hidden = true;
+      modal._bulkCallback = null;
+      if (cb) cb();
+    });
+  })();
+</script>

@@ -218,7 +218,9 @@ def test_audit_log_export_bad_fmt(client):
 def test_sticky_note_round_trip(client):
     r = client.post("/encounter/enc-9/note", json={"note": "follow-up Tue", "user_id": "u1"})
     assert r.status_code == 200
-    r2 = client.get("/encounter/enc-9/note")
+    # Sticky notes are private — the read filters by user_id. Pass
+    # the same user_id the note was written with.
+    r2 = client.get("/encounter/enc-9/note?user_id=u1")
     assert r2.status_code == 200
     assert "follow-up Tue" in r2.text
 
@@ -304,6 +306,180 @@ def test_bulk_confirm_rejects_too_many(client):
     assert r.json()["ok"] is False
 
 
+# t_7e558a6a — destructive actions require typing "confirm"
+def test_bulk_confirm_dismiss_requires_confirm_phrase(client):
+    r = client.post(
+        "/api/bulk/confirm",
+        json={"action": "dismiss", "encounter_ids": ["e1", "e2"]},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert "confirm" in body["message"].lower()
+
+
+def test_bulk_confirm_dismiss_accepts_with_confirm_phrase(client):
+    r = client.post(
+        "/api/bulk/confirm",
+        json={
+            "action": "dismiss",
+            "encounter_ids": ["e1", "e2"],
+            "confirm_phrase": "confirm",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert "2" in body["message"]
+
+
+def test_bulk_confirm_large_accept_requires_confirm(client):
+    # 25+ accept also requires the confirm phrase (mass-accept guard).
+    ids = [f"e{i}" for i in range(30)]
+    r = client.post(
+        "/api/bulk/confirm", json={"action": "accept", "encounter_ids": ids}
+    )
+    assert r.json()["ok"] is False
+    r2 = client.post(
+        "/api/bulk/confirm",
+        json={"action": "accept", "encounter_ids": ids, "confirm_phrase": "CONFIRM"},
+    )
+    assert r2.json()["ok"] is True
+
+
+def test_bulk_confirm_small_accept_does_not_require_confirm(client):
+    # 3-item accept is reversible via undo-token; no confirm phrase needed.
+    r = client.post(
+        "/api/bulk/confirm",
+        json={"action": "accept", "encounter_ids": ["a", "b", "c"]},
+    )
+    assert r.json()["ok"] is True
+
+
+# t_59fe7e05 — in-app notification record + mark-read
+def test_notifications_record_then_list(client):
+    rec = client.post(
+        "/api/notifications",
+        json={
+            "user_id": "u-notify",
+            "title": "Audit flagged",
+            "body": "Encounter enc-1 has 3 findings",
+            "link": "/encounter/enc-1",
+        },
+    )
+    assert rec.status_code == 200
+    event_id = rec.json()["record"]["event_id"]
+    listed = client.get("/api/notifications?user_id=u-notify").json()
+    assert any(it.get("event_id") == event_id for it in listed["items"])
+
+
+def test_notifications_mark_read(client):
+    rec = client.post(
+        "/api/notifications",
+        json={"user_id": "u-mr", "title": "hi"},
+    ).json()
+    eid = rec["record"]["event_id"]
+    r = client.post(f"/api/notifications/{eid}/read?user_id=u-mr")
+    assert r.status_code == 200
+    items = client.get("/api/notifications?user_id=u-mr").json()["items"]
+    latest = next(it for it in items if it.get("event_id") == eid)
+    assert latest.get("read") is True
+
+
+def test_notifications_mark_read_other_user_404(client):
+    rec = client.post(
+        "/api/notifications",
+        json={"user_id": "owner", "title": "hi"},
+    ).json()
+    eid = rec["record"]["event_id"]
+    r = client.post(f"/api/notifications/{eid}/read?user_id=stranger")
+    assert r.status_code == 404
+
+
+# t_77c0c140 — re-engagement status
+def test_re_engagement_no_login_yet(client):
+    # Fresh user — no last_login row → should_send False.
+    r = client.get("/api/re-engagement?user_id=brand-new-user-xyz")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["last_login_ts"] is None
+    assert body["days_since_login"] is None
+    assert body["should_send"] is False
+
+
+def test_re_engagement_recent_login_no_nudge(client):
+    # Recent login → should_send False.
+    from ai_billing_audit import ux_polish as up
+
+    up._append_jsonl(
+        up._log_path("last_login"),
+        {"user_id": "u-recent", "ts": time.time()},
+    )
+    r = client.get("/api/re-engagement?user_id=u-recent").json()
+    assert r["days_since_login"] < 7.0
+    assert r["should_send"] is False
+
+
+def test_re_engagement_old_login_should_send(client):
+    # 8-day-old login, no recent nudge → should_send True.
+    from ai_billing_audit import ux_polish as up
+
+    eight_days_ago = time.time() - 8 * 86400.0
+    up._append_jsonl(
+        up._log_path("last_login"),
+        {"user_id": "u-stale", "ts": eight_days_ago},
+    )
+    r = client.get("/api/re-engagement?user_id=u-stale").json()
+    assert r["days_since_login"] >= 7.0
+    assert r["should_send"] is True
+
+
+# t_24c99ece — per-tenant LLM choice persistence
+def test_llm_choice_set_and_get(client):
+    r = client.post(
+        "/api/clinic/clinic-llm-1/llm",
+        json={"provider": "claude", "model": "claude-3-5-sonnet", "user_id": "admin"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["provider"] == "claude"
+    assert body["model"] == "claude-3-5-sonnet"
+    r2 = client.get("/api/clinic/clinic-llm-1/llm").json()
+    assert r2["provider"] == "claude"
+    assert r2["model"] == "claude-3-5-sonnet"
+
+
+def test_llm_choice_set_rejects_bad_provider(client):
+    r = client.post(
+        "/api/clinic/clinic-llm-2/llm",
+        json={"provider": "gpt-99-unknown", "model": "x"},
+    )
+    assert r.status_code == 400
+
+
+# t_d9713083 — sticky notes are private (filter by user_id)
+def test_sticky_note_private_to_user(client):
+    # User u-A writes a note; user u-B should NOT see it.
+    client.post(
+        "/encounter/enc-priv/note",
+        json={"note": "A's private note", "user_id": "u-A"},
+    )
+    r_a = client.get("/encounter/enc-priv/note?user_id=u-A")
+    r_b = client.get("/encounter/enc-priv/note?user_id=u-B")
+    assert "A's private note" in r_a.text
+    assert r_b.text == ""
+
+
+def test_sticky_note_star_user_sees_all(client):
+    # Admin/debug ``user_id=*`` reads across users.
+    client.post(
+        "/encounter/enc-admin/note",
+        json={"note": "shared admin", "user_id": "u-X"},
+    )
+    r = client.get("/encounter/enc-admin/note?user_id=*")
+    assert "shared admin" in r.text
+
+
 # --- t_a5bd33af --------------------------------------------------------
 
 def test_wcag_status(client):
@@ -321,3 +497,21 @@ def test_print_view_returns_html(client):
     assert r.status_code == 200
     assert "<!doctype html>" in r.text.lower()
     assert "@media print" in r.text
+
+
+# t_7e558a6a — bulk confirm modal partial must ship the JS contract
+def test_bulk_confirm_modal_template_exists():
+    from pathlib import Path
+    template = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "ai_billing_audit"
+        / "templates"
+        / "_bulk_confirm_modal.html"
+    )
+    assert template.exists(), f"missing template: {template}"
+    text = template.read_text()
+    assert "data-bulk-confirm" in text
+    assert "data-bulk-confirm-phrase" in text
+    assert "data-bulk-confirm-submit" in text
+    assert "openBulkConfirmModal" in text
