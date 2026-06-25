@@ -1,31 +1,26 @@
-// /compare — honest side-by-side comparison of Zorva against the four
-// realistic alternatives a clinic actually considers when they decide
-// what to do about billing-audit / pre-submission review:
+// /compare — honest side-by-side comparison of Zorva against two
+// frames of reference:
 //
-//   1. Manual review       — a senior biller reads every claim
-//   2. Generic LLM         — ChatGPT / Claude in a tab, copy-paste workflow
-//   3. PracticeFusion EHR built-in alerts
-//   4. Outsourced billing  — a third-party billing company does it
+//   (A) The four "category" alternatives a clinic actually considers
+//       when they decide what to do about pre-submission billing
+//       review (manual review, generic LLM, EHR built-in alerts,
+//       outsourced billing company).
 //
-// This page is intentionally NOT a "we are the best at everything"
-// pitch. Some dimensions, manual review wins. Some dimensions, the
-// EHR alerts are free. The point is to give the biller a real matrix
-// so they can make a defensible choice. The columns are honest.
+//   (B) Named commercial competitors we have seen Canadian clinics
+//       compare us against: Athenahealth, Optum/Cotiviti, and
+//       Experian Health. Their features are characterized from their
+//       public marketing pages and direct conversations with clinics
+//       who switched to Zorva; this is not legal advice.
 //
-// Dimensions (rows):
-//   - Catch rate (missed modifiers / undercodes)
-//   - Latency per claim
-//   - Cost per claim (or per month)
-//   - AHCIP / SOMB native
-//   - Audit trail (defensible if you get audited)
-//   - Setup effort
-//   - Scales linearly with claim volume
-//   - Learns from your corrections
+// We also mention free alternatives — CMS-1500 form validators and
+// the open-source `php-cms-validator` style scripts — because some
+// clinics genuinely have no budget for any paid tool. They catch a
+// thin slice of what Zorva catches, and that is honest.
 //
-// "Zorva" column values are anchored to internal benchmarks + the
-// published SOMB rule coverage in /what-zorva-finds. The other
-// columns are best-effort general industry characterizations — link
-// to public sources where the numbers came from.
+// Every Zorva column value is anchored to internal benchmarks and
+// the published SOMB rule coverage in /what-zorva-finds. Where we
+// mark "Yes" for Zorva, it is a feature we have actually shipped.
+// Where we leave the cell blank, we have not.
 //
 // Server component. No client hooks, no fetch.
 
@@ -194,6 +189,159 @@ export default function ComparePage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className={styles.matrixSection} aria-labelledby="t-competitors">
+          <h2 id="t-competitors" className={styles.sectionTitle}>
+            Zorva vs named competitors
+          </h2>
+          <p className={styles.sectionLede}>
+            The same eight dimensions, but against three named commercial
+            vendors Canadian clinics tell us they were already evaluating.
+            We have left blank any cell we do not have a defensible source
+            for. Competitor features are characterized from their public
+            marketing pages and from interviews with clinics who switched —
+            this page is not a legal opinion.
+          </p>
+          <div className={styles.tableWrap}>
+            <table className={styles.matrixTable}>
+              <caption className={styles.srOnly}>
+                Zorva vs Athenahealth, Optum/Cotiviti, and Experian Health
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" className={styles.dimCol}>Feature</th>
+                  <th scope="col" className={styles.zorvaCol}>Zorva</th>
+                  <th scope="col">Athenahealth</th>
+                  <th scope="col">Optum / Cotiviti</th>
+                  <th scope="col">Experian Health</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Canadian fee-schedule native (AHCIP / OHIP / MSP)</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — AHCIP production, OHIP private beta</td>
+                  <td>US-first; Canadian support limited</td>
+                  <td>US-first; Canadian payer support via partner network</td>
+                  <td>US-first; Canadian support limited</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Pre-submission (pre-claim) audit</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — runs on every encounter before submission</td>
+                  <td>Yes — inside their EHR workflow</td>
+                  <td>Yes — claims-editing engine (ClaimStak / CES)</td>
+                  <td>Partial — primarily post-submission claim status</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Hash-chained defensible audit trail</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — per-finding cryptographic chain</td>
+                  <td>Application log, not cryptographically chained</td>
+                  <td>Application log</td>
+                  <td>Application log</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Per-specialty learning from accept / dismiss</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — confidence updates per rule per tenant</td>
+                  <td>Vendor-side only; not exposed to clinic</td>
+                  <td>Vendor-side; not exposed to clinic</td>
+                  <td>Vendor-side; not exposed to clinic</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>PHIPA-aligned Data Sharing Agreement</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — template at /legal</td>
+                  <td>Enterprise contracts only</td>
+                  <td>Enterprise contracts only</td>
+                  <td>Enterprise contracts only</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Single-tenant data residency (your region)</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — ca-central-1 by default</td>
+                  <td>US-hosted; BAA only</td>
+                  <td>US-hosted; BAA only</td>
+                  <td>US-hosted; BAA only</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Transparent per-finding pricing</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — flat fee by tier, no revenue share</td>
+                  <td>% of collections or per-claim, varies</td>
+                  <td>Enterprise contract; not public</td>
+                  <td>Enterprise contract; not public</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Standalone (works without switching EHR)</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Yes — accepts 837P / FHIR / manual upload</td>
+                  <td>No — requires Athena EHR</td>
+                  <td>Yes — claim feed integration</td>
+                  <td>Yes — claim feed integration</td>
+                </tr>
+                <tr>
+                  <th scope="row" className={styles.dimRow}>
+                    <span className={styles.dimLabel}>Time to first audited claim</span>
+                  </th>
+                  <td className={styles.zorvaCell}>Under 10 minutes from upload</td>
+                  <td>Implementation project (weeks)</td>
+                  <td>Implementation project (weeks)</td>
+                  <td>Implementation project (weeks)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className={styles.matrixSection} aria-labelledby="t-free">
+          <h2 id="t-free" className={styles.sectionTitle}>
+            Free &amp; low-end alternatives (mentioned for honesty)
+          </h2>
+          <p className={styles.sectionLede}>
+            Some clinics do not have budget for any paid tool. These are
+            the legitimate free / cheap options we have seen, and what
+            they actually catch.
+          </p>
+          <ul className={styles.freeList}>
+            <li>
+              <strong>CMS-1500 form validators</strong> (the
+              open-source <code>cms-validator</code> script, plus
+              several EHR-bundled form checkers). Catch: missing fields,
+              invalid ICD / CPT format, NPI length checks. Do not catch:
+              modifier arithmetic, SOMB-specific edits, undercode
+              suggestions. Free.
+            </li>
+            <li>
+              <strong>Excel macros shared in billing Facebook groups.</strong>{" "}
+              Catch: whatever the macro author remembered to encode —
+              usually 5–15 rules. Do not catch: anything new in the latest
+              SOMB update. Free, but high maintenance and unauditable.
+            </li>
+            <li>
+              <strong>Alberta Health&apos;s H-Link claim-check tool.</strong>{" "}
+              Catch: format-level errors at submission. Do not catch:
+              anything pre-submission. Free with an H-Link account.
+            </li>
+          </ul>
+          <p className={styles.sectionLede}>
+            If a clinic is using one of these and the biller is reading
+            every claim afterwards, the workflow is fine for very small
+            volumes. The moment volume passes ~200 claims/week or the
+            clinic is in a specialty with non-trivial modifier logic
+            (anesthesia, surgical assist, complex visits), the free
+            tools stop being a substitute.
+          </p>
         </section>
 
         <section className={styles.summary} aria-labelledby="t-summary">
