@@ -50,6 +50,7 @@ const PUBLIC_PREFIXES = [
   "/careers",       // careers landing page, public
   "/about",         // public about page (team + story), public (kanban t_df7045d8)
   "/blog",          // public blog / resources stub, public (kanban t_7492f223)
+  "/demo-request",  // demo-request landing page, public (kanban t_c091d2b5)
   "/press",         // press / in the news page, public
   "/technical",     // technical buyer (privacy officer, IT lead) page, public
   "/glossary",      // billing terms glossary for non-billers, public
