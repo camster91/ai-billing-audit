@@ -70,6 +70,16 @@ REQUIRED_FIELDS: tuple[str, ...] = (
 )
 
 
+# File-level X12 segments that describe the envelope / billing-provider /
+# subscriber loops and apply to every claim in the interchange. When we
+# group segments into per-claim buckets, we copy these into every group so
+# the 2010AA billing-provider NPI (and the 2000B subscriber) doesn't
+# silently disappear after claim 1 — kanban ``t_x12_parser_fixes`` issue #2.
+_FILE_LEVEL_SEGMENTS: frozenset[str] = frozenset(
+    {"ISA", "GS", "ST", "BHT", "NM1", "N1", "PER", "HL", "N3", "N4", "REF"}
+)
+
+
 class X12ParseError(ValueError):
     """Raised when the file is not even minimally X12-shaped.
 
@@ -233,6 +243,45 @@ def _cpt_codes_from_sv1(elements: list[str]) -> list[str]:
     return [code]
 
 
+def _diagnosis_codes_from_hi(elements: list[str]) -> list[str]:
+    """Extract diagnosis codes from an ``HI`` segment (2300 loop).
+
+    X12 5010 ``HI`` carries ICD-10-CM (qualifier ``ABK``/``ABF``/``ABJ``/
+    ``ABN``) or ICD-9-CM (qualifier ``BK``/``BF``/``BJ``/``BN``) codes:
+
+        HI*ABK:Z0000:Z0011:Z0100
+        HI*ABF:Z0011
+        HI*BK:250.00
+
+    The qualifier tells the receiver which code set the values are
+    drawn from; the upload form needs the raw codes in document
+    order so the audit grader can spot missing or out-of-order
+    diagnosis pointers. Kanban ``t_x12_parser_fixes`` issue #3.
+    """
+    if not elements or elements[0] != "HI":
+        return []
+    out: list[str] = []
+    for elem in elements[1:]:
+        elem = (elem or "").strip()
+        if not elem:
+            continue
+        # First colon component is the qualifier (ABK, ABF, BK, BF, ...);
+        # subsequent components are the actual codes. We surface every
+        # code in document order and let the caller decide what to do
+        # with qualifiers (the v1 upload form doesn't need them).
+        parts = elem.split(":")
+        if len(parts) < 2:
+            # No qualifier; the value itself is the code (rare but
+            # legal for single-element composites).
+            out.append(parts[0])
+            continue
+        for code in parts[1:]:
+            code = code.strip()
+            if code:
+                out.append(code)
+    return out
+
+
 # --- per-claim assembly ---------------------------------------------------
 
 
@@ -243,6 +292,7 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
     npi: str | None = None
     date_of_service: str | None = None
     cpt_codes: list[str] = []
+    diagnosis_codes: list[str] = []
     raw_segments: list[str] = []
 
     for seg in claim_segments:
@@ -275,11 +325,19 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
 
         elif tag == "DTP":
             d = _iso_date_from_dtp_472(seg)
-            if d:
+            # First-wins: X12 spec allows at most one DTP*472 per claim,
+            # so seeing two is malformed input. We pick the first
+            # deterministically rather than last-wins so the upload
+            # preview is stable across runs (kanban ``t_x12_parser_fixes``
+            # issue #1).
+            if d and not date_of_service:
                 date_of_service = d
 
         elif tag == "SV1":
             cpt_codes.extend(_cpt_codes_from_sv1(seg))
+
+        elif tag == "HI":
+            diagnosis_codes.extend(_diagnosis_codes_from_hi(seg))
 
     return {
         "encounter_id": encounter_id,
@@ -287,6 +345,7 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
         "NPI": npi,
         "date_of_service": date_of_service,
         "CPT_codes": cpt_codes,
+        "diagnosis_codes": diagnosis_codes,
         # "raw" is shown in the parse preview so the user can spot a
         # misparsed line at a glance. We omit the envelope segments
         # (ISA/GS/ST/SE/GE/IEA/BHT) so the preview is focused on the
@@ -300,30 +359,44 @@ def _group_into_claims(segments: list[list[str]]) -> list[list[list[str]]]:
 
     The 2000A / 2000B / 2300 loops are separated by ``CLM``. We
     bucket everything from one ``CLM`` (inclusive) to the next
-    ``CLM`` (exclusive) into a single claim group. Segments before
-    the first ``CLM`` (the envelope + any 2010AA billing-provider
-    info) are folded into the first claim; that mirrors how the
-    upload form needs to render "billing provider NPI applies to
-    every claim in the file".
+    ``CLM`` (exclusive) into a single claim group.
+
+    File-level segments (everything BEFORE the first ``CLM``: the
+    envelope, the 2010AA billing-provider loop, the 2000B subscriber
+    loop) describe properties of the interchange as a whole and
+    apply to every claim. We copy them into every claim group so
+    claim 2+ still sees the file-level billing-provider NPI and
+    subscriber ID (kanban ``t_x12_parser_fixes`` issue #2).
+
+    Segments after the last ``CLM`` (footer envelope: ``SE``, ``GE``,
+    ``IEA``) still end up in the last claim group; that's harmless
+    because the per-claim ``raw`` preview just joins them back into
+    the X12 string for display.
     """
+    pre_clm: list[list[str]] = []
     groups: list[list[list[str]]] = []
-    current: list[list[str]] = []
-    seen_clm = False
     for seg in segments:
-        if seg and seg[0] == "CLM":
-            if seen_clm:
-                groups.append(current)
-                current = [seg]
-            else:
-                current.append(seg)
-                seen_clm = True
-        else:
-            if seen_clm or seg and seg[0] in (
-                "ISA", "GS", "ST", "BHT", "NM1", "N1", "PER",
-            ):
-                current.append(seg)
-    if current:
-        groups.append(current)
+        if not seg:
+            continue
+        tag = seg[0]
+        if tag == "CLM":
+            # Every CLM gets a fresh copy of the file-level context
+            # BEFORE its own CLM segment. Using ``list(pre_clm)`` is
+            # important — if we reused the same list reference, the
+            # following segments would mutate every claim group at
+            # once.
+            groups.append(list(pre_clm) + [seg])
+        elif groups:
+            # After at least one CLM has been seen, append to the
+            # current (last) claim group.
+            groups[-1].append(seg)
+        elif tag in _FILE_LEVEL_SEGMENTS:
+            # Before any CLM: file-level context. Accumulate so we
+            # can prepend a copy to each claim group.
+            pre_clm.append(seg)
+        # else: drop unknown pre-CLM segments (parser is permissive on
+        # envelope shape; the validator surfaces real missing-required
+        # fields separately).
     return groups
 
 
