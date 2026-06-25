@@ -1,0 +1,44 @@
+[
+  {
+    "parent": "t_011fac36",
+    "title": "Fix AC maintenance location list (Daniella Jun 2) — stub: requires Elementor edit on live",
+    "body": "Stub-and-link. The actual fix is a one-line Elementor edit on the AC maintenance page on the live joesheating.ca WordPress (Daniella email said 'the AC maintenance page is showing in a different form'). Per her email, the location list should match other service pages. Sub-task ships the audit snapshot at ~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md (which page IDs are involved). Real fix needs Elementor admin access. Parent stays blocked.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_1a178670",
+    "title": "Fix blog tags not filtering on /resource-centre (Daniella Jun 2) — stub",
+    "body": "Stub-and-link. Two sub-issues per Daniella: (a) blog posts not appearing in the loop (likely filter-everything plugin or Elementor post-widget config), (b) tag filtering broken. Audit note in ~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md. Fix requires WP admin access.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_489d148d",
+    "title": "Fix furnace nav link (Daniella Jun 2) — stub: 1-line nav-menu fix",
+    "body": "Stub-and-link. The 'Furnaces' link in the global nav goes to /services/heating/ instead of /services/heating/furnaces/. Likely a single nav-menu item with the wrong URL. Audit confirms the target slug. Fix is a 1-line Elementor Template > Header edit. Parent stays blocked until WordPress admin access.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_d1837427",
+    "title": "Update UVP bar text on all pages (Daniella May 26) — stub",
+    "body": "Stub-and-link. Per Daniella: change the UVP bar's second part from 'licensed and insured technicians, certified professionals you can trust' to '50+ years in business, From heating to cooling, certified professionals you can trust'. The UVP bar likely lives in an Elementor global section used in the header. Audit note in ~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md. Fix needs WP admin access.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_984e5679",
+    "title": "Add /furnace/ → /furnaces/ redirect — stub: 1-line .htaccess or Redirection plugin",
+    "body": "Stub-and-link. Old /furnace/ slug needs a 301 redirect to /furnaces/. Two viable implementations: (a) Redirection plugin entry, (b) .htaccess RewriteRule. Recommended: Redirection plugin (already in use on the joesheating WP per the audit). Needs WP admin access.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_28ccdead",
+    "title": "Remove 'Durham' from city list on all pages (Daniella May 26) — stub",
+    "body": "Stub-and-link. Per Daniella: replace 'Durham' with the city list: Oshawa, Bowmanville, Pickering, Ajax, Whitby, Port Hope, Port Perry, Peterborough, Cobourg. The city list lives in an Elementor global widget (interactive map + address box). Audit note in ~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md. Fix needs WP admin access.",
+    "priority": 3,
+    "status": "ready"
+  }
+]

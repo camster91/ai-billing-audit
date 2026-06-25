@@ -1,0 +1,37 @@
+[
+  {
+    "parent": "t_0bf0333e",
+    "title": "4 SEO posts: ship 4 drafts (3 ready, 1 ~70%) — sub-tasks per post",
+    "body": "Shipped at ~/projects/local-seo-agency/content/posts/: post-01 (plumber-near-me intent, ~70% drafted, 2 sections TODO), post-02 (GBP optimization 20-factor checklist, complete), post-03 (citation building for plumbers, complete), post-04 (local SEO pricing 2026, complete). All targeting GTA residential plumbers. Posts 2/3/4 ready for edit + ship; post-1 needs ~2h more writing. Linked sub-tasks: 1 per post for granular claiming.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_27b3da76",
+    "title": "Stripe 3-tier setup: idempotent provisioning script",
+    "body": "Shipped at ~/projects/local-seo-agency/scripts/stripe-setup-tiers.sh. Idempotent: checks for existing products by lookup_key, creates only what's missing, prints final price IDs. Supports Starter ($500), Growth ($950 + 14d trial), Scale ($1900). Run with STRIPE_API_KEY=*** (no live flag = test mode, --live = confirm). E2E test (subscribe/cancel) referenced in the script's Next Steps.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_3eacac53",
+    "title": "1-page printable proposal: ship alongside existing 02-proposal-template.md",
+    "body": "Shipped at ~/projects/local-seo-agency/sales/02-proposal-1page-printable.md. Single-page printable version of the existing 116-line template. White-labeled with {{double_brace}} placeholders. Includes 90-day guarantee (free month 5 if GBP not in map pack top 10 within 120d). Sub-task: close parent after printing + sending first proposal.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_816cce16",
+    "title": "Sales motion audit: existing 01-discovery-call-script.md reviewed — calendly embed doc +27 lines",
+    "body": "Audit confirms sales/01-discovery-call-script.md already exists (125 lines, audit-led discovery format). Sub-task: ship a Calendly embed doc + the existing script's update note. Calendly config: book 30-min kickoff, redirect URL = /thanks, calendar sync = Google Calendar + Outlook. Existing script unchanged.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_b4477aaf",
+    "title": "MSA+SOW template: existing 03-contract-template.md audited — needs lawyer review only",
+    "body": "Audit confirms sales/03-contract-template.md already exists (192 lines, plain English, MSA+SOW combined). Not lawyer-reviewed (disclaimer in file). Sub-task: link to existing + add a 'lawyer-review checklist' as the new minimal work to ship.",
+    "priority": 3,
+    "status": "ready"
+  }
+]
