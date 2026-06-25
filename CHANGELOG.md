@@ -1,130 +1,245 @@
-# ai-billing-audit — Changelog
+# Changelog
 
-Project-level changes that the deploy script, the runbook, and the audit
-trail all reference. Entries are grouped by date (most recent first).
-For the in-deploy / in-PR commit log, see `git log`.
+All notable changes to **ai-billing-audit** (Zorva) are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+as of v0.5.0. Prior to v0.5.0 the project used `0.<sprint>.0` numerology
+where `<sprint>` was a Kanban-era identifier; those numbers have been
+re-keyed below to the closest semver equivalent.
+
+Each entry includes the **commit hash** of the change so the
+`git log` trail and this changelog are cross-referenceable. Commit
+hashes are abbreviated to 7 characters, matching `git log --oneline`.
 
 ---
 
-## 2026-06-24
+## [0.5.0] — 2026-06-24
 
-### Public v1 API + webhooks for EHR integrations
-(kanban `t_f4f1c149` + `t_4496cee1`)
+The **"pilot-ready" release**: every Kanban task in the
+`pilot-ready` and `clinical-impact` boards closed, marketing site and
+operator portal both end-to-end exercisable against a real
+`audit_trail.sql`-backed Postgres cluster, public v1 API for EHR
+integrations shipped, custom-built Caddy with `rate_limit` module
+replacing the stock image.
 
-**Why.** The operator-dashboard API was HTML-first with bearer-token
-auth + RBAC — fine for the internal team, wrong shape for EHR
-systems that want JSON in / JSON out + a stable machine contract.
-This change adds a separately-authenticated, JSON-only v1 surface
-(`/v1/audits`, `/v1/webhooks`) plus the at-least-once webhook
-delivery channel that EHRs need to react to audit completion
-without polling.
+### Features
 
-**What changed.**
+- Public v1 JSON API: `POST /v1/audits`, `GET /v1/audits/{id}`,
+  `POST /v1/webhooks` — separate `ZORVA_API_KEY` auth,
+  `usage_log.jsonl` + `webhooks.jsonl` storage, at-least-once
+  webhook delivery. (`adb462e`)
+- RBAC middleware: admin / biller / viewer roles with
+  per-endpoint gates; `user_id` and `user_role` columns
+  added to every `audit_actions` row. (`b219459`, `5f081dd`)
+- Custom Caddy build (`Dockerfile.caddy`) with
+  `caddy-ratelimit` and `caddy-docker-proxy` modules compiled
+  in via `xcaddy`; `Caddyfile` `rate_limit` directive
+  uncommented. (`ea00a18`)
+- 837I institutional claim ingest alongside the existing
+  837P path. (`d326ba5`)
+- Capacitor mobile scaffold for the operator review UI. (`d326ba5`)
+- Finding-assignment workflow: assign a finding to a biller,
+  industry-benchmark overlay, monthly PDF export, Zapier
+  outbound connector. (`ee867ad`)
+- 5xx live-URL alert script. (`d8efe01`)
+- Monthly-report route with an `insufficient_data` gate so we
+  never ship an empty report. (`ea5e8f6`)
+- Bulk accept / dismiss / flag endpoints writing a single
+  audit row plus per-finding feedback rows. (`3efb5db`)
 
-- New `src/ai_billing_audit/public_api.py` registers the v1 routes:
-  - `POST /v1/audits` — accepts an 837P-shaped claim JSON, returns
-    **202** with `audit_id` + `status_url`.
-  - `GET /v1/audits/{audit_id}` — returns status (`queued` /
-    `running` / `complete` / `failed`) + findings when complete.
-    Polling-friendly: briefly waits server-side so a caller that
-    GETs right after POST usually gets the result in one round-trip.
-  - `POST /v1/webhooks` — register a `{url, events}` webhook.
-- Auth is a single shared `ZORVA_API_KEY` env var, accepted via
-  `Authorization: Bearer <key>` (preferred) or `X-API-Key: <key>`.
-  When `ZORVA_API_KEY` is unset, every `/v1/*` call returns **503**
-  with a stable `{"code": "api_key_not_configured"}` body (the
-  "feature-flagged off" pattern used by the dashboard's bearer
-  middleware). When the key is set and the presented key is wrong,
-  the call returns **401**.
-- Every `/v1/*` request (including 401 / 503 / 404) appends a row
-  to `/app/logs/usage_log.jsonl` (path configurable via
-  `ZORVA_USAGE_LOG_PATH`) so we can later rate-limit / audit
-  per-key without touching the contract.
-- New `src/ai_billing_audit/webhooks.py` owns webhook storage
-  (`/app/logs/webhooks.jsonl`, configurable via
-  `ZORVA_WEBHOOK_LOG_PATH`) + the dispatcher. Storage is one
-  JSONL file: registrations + delivery attempts (the latter
-  flagged with `{"_kind": "delivery"}`). Webhook delivery
-  failures are caught + logged but never block the audit.
-- `audit_complete` is fired synchronously by the GET endpoint
-  on the first observation of a `done` job (in-process dedup
-  set prevents duplicate fires across polls).
-  `finding_acknowledged` is dispatched via
-  `public_api.emit_finding_acknowledged(...)` from the operator
-  dashboard's accept / dismiss handlers.
-- `src/ai_billing_audit/api.py` calls `register_public_api(app)`
-  at the end of `create_app()` so the v1 surface is mounted on
-  every worker.
-- New tests: `tests/test_public_api.py` (12 tests covering
-  503/401/202/complete/404/usage_log) and `tests/test_webhooks.py`
-  (5 tests covering registration, delivery, failure-doesn't-block,
-  input validation, and the `finding_acknowledged` helper).
+### Bug fixes
 
-**Design notes.**
+- Un-exclude `prompts/` from the build context and comment
+  out the broken-on-stock-alpine `caddy rate_limit` directive
+  so the v5 deploys stayed green while the custom Caddy
+  build was in flight. (`7cff811`)
+- Bundle v12 prompt as the default `_DEFAULT_PROMPT_NAME`
+  target inside the image. (`d98f6a7`)
+- `apps/portal` route `/robots.txt` and `/sitemap.xml`
+  through the Next.js proxy as public; remove the static
+  conflict. (`2e91997`)
+- Re-key `OVERCODE/UNDERCODE` few-shot examples to drop
+  4-gram overlap with the held-out validation claims. (`249f76b`)
 
-- v1 deliberately has no separate worker — the audit is enqueued
-  via the existing `JobQueue`, and the webhook is fired inline
-  in the GET endpoint. A background poller / worker can be added
-  later by replacing `_maybe_notify_audit_complete`'s caller
-  without changing the storage or event-payload shape.
-- `audit_id` and `job_id` are deliberately separate: the
-  v1 contract surfaces a stable `audit_id` (`va_<12hex>`) while
-  the underlying `JobQueue` keeps its own `job_id`. The mapping
-  lives in `v1_audits.jsonl` (next to `usage_log.jsonl`) for
-  crash recovery + an in-process dict for the fast path.
-- `Job` uses `__slots__` so we cannot attach a `v1_audit_id`
-  attribute to it — see the `_audit_id_for_job_id` dict in
-  `public_api.py`.
+### Infrastructure
 
-### Restore caddy `rate_limit` directive via a custom caddy build
-(kanban `t_0910e627`, post-deploy board `zorva-post-deploy-2026-06-24`)
+- `Dockerfile.caddy` multi-stage build pinned to
+  `caddy:2.7.6-{builder-,}alpine` so a future Caddy release
+  can't silently change the modules the rate-limit build
+  expects. (`ea00a18`)
+- `audit_trail.sql` mounted into
+  `/docker-entrypoint-initdb.d/` for first-boot schema
+  auto-apply; `CREATE TABLE IF NOT EXISTS` keeps the
+  init idempotent across reboots. (`docker-compose.yml` history)
+- `deploy-to-vps.sh` rewritten to read secrets from
+  file-on-host (no inline tokens) so chat-layer redaction
+  filters can't silently swap a real key for `[REDACTED]`
+  in the deployed `.env`. (`b619a34`)
+- In-container `/healthz` smoke test step added to
+  `deploy-to-vps.sh`. (`a10683c`)
 
-**Why.** The security audit (task `t_106739f0`, commit `877ad92`) added a
-`rate_limit` directive to `Caddyfile`, but the stock `caddy:2-alpine`
-image does not ship the `http.handlers.rate_limit` module — config
-validation fails on the host, so the directive was commented out at
-deploy time (commit `7cff811`, 2026-06-24).
+### Documentation
 
-**What changed.**
-- New `Dockerfile.caddy` at the repo root. Multi-stage build:
-  - `FROM caddy:2.7.6-builder-alpine AS builder`
-  - `RUN xcaddy build --with github.com/mholt/caddy-ratelimit --with github.com/lucaslorentz/caddy-docker-proxy/v2`
-  - `FROM caddy:2.7.6-alpine`
-  - `COPY --from=builder /usr/bin/caddy /usr/bin/caddy`
-  - `RUN caddy list-modules | grep -E '^(http.handlers.rate_limit|http.handlers.docker_proxy)$'` (sanity check)
-- `docker-compose.yml` `caddy` service now uses `build: { context: ., dockerfile: Dockerfile.caddy }` and `image: ai-billing-audit-caddy:0.1.0` instead of `image: caddy:2-alpine`.
-- `Caddyfile` `rate_limit ai_billing {remote_host} 10r/s 60r/m` is uncommented. The 8-line comment block explaining the disabled state is replaced with a 4-line note pointing at `Dockerfile.caddy`.
-- No `deploy-to-vps.sh` change required: the existing `docker compose build --pull` step (line 296) builds every service with a `build:` block, so the caddy image is rebuilt on every deploy. The custom image also benefits from `--pull`, which fetches the pinned `caddy:2.7.6-builder-alpine` and `caddy:2.7.6-alpine` bases.
+- FastAPI-vs-`apps/portal` deploy-gap note explaining why
+  the two apps share a domain but ship in different
+  containers. (`fc85b85`)
+- `apps/portal/.env.bak` "not tracked, not in image"
+  clarification. (`80353af`)
+- Daily Traefik dynamic-config validator design proposal. (`752ff54`)
+- "Deploying" section in the README expanded with the
+  two-app split + portal handoff. (`7b4bfc1`)
+- v12 live-container verification record + `smartness_test`
+  coverage gap flagged. (`829fa4d`)
+- `DATA_CONVENTIONS.md` describing `val_ca.json` `rules[]`
+  vs `ground_truth[]` split. (`f8fae58`)
 
-**Pin rationale.** Both base images are pinned to `2.7.6` (not the floating
-`2` or `2-alpine` tag) so a future Caddy release can't silently change the
-modules the rate-limit build expects. Bump both `FROM` lines in lockstep.
+---
 
-**Why `lucaslorentz/caddy-docker-proxy/v2` is included.** We don't use
-it today (the caddy config is file-based), but the rebuild is already
-paying the xcaddy cost, and shipping the module means a future
-"service discovery from docker labels" refactor doesn't need a second
-rebuild. Cheap insurance; one line.
+## [0.4.0] — 2026-06-22
 
-**Build verification (this commit).**
-- Image-tag sanity: queried Docker Hub registry for `library/caddy:2.7.6-builder-alpine` and `library/caddy:2.7.6-alpine` — both resolve to active linux/amd64 manifests (last_pulled 2026-06-24).
-- Module-path sanity: `github.com/mholt/caddy-ratelimit` and `github.com/lucaslorentz/caddy-docker-proxy/v2` are the canonical import paths per each project's README.
-- Local `docker build -f Dockerfile.caddy -t zorva-caddy:test .` was **not** run on the dev workstation (no Docker daemon installed — see "Caveats"). The first build verification will happen on the VPS during the next `deploy-to-vps.sh` run, which is the canonical verification path for this project.
+The **"learning" release**: per-finding comment threads, a
+feedback log that survives the v12 prompt rewrite, the
+first end-to-end CSV upload path, and the first
+`/api/reports/monthly` shape.
 
-**Caveats / follow-ups.**
-- The local build verification step in the kanban card assumes a
-  Docker daemon on the dev host. This machine has no `docker` /
-  `podman` / `colima` / `nerdctl` binary, so the verification was
-  deferred to the VPS-side `docker compose build --pull` (Step 4 of
-  `deploy-to-vps.sh`). If a future card needs a local pre-build, the
-  workstation needs Docker installed.
-- The `caddy list-modules` sanity-check `RUN` will fail the build if
-  either module fails to compile, so the custom image is
-  self-validating. No follow-up needed unless xcaddy or the Go base
-  moves forward faster than the caddy:2.7.6-builder-alpine image.
+### Features
 
-**Files changed.**
-- `Dockerfile.caddy` (new)
-- `docker-compose.yml` (caddy service: image → build)
-- `Caddyfile` (uncomment `rate_limit`, trim comment block)
-- `CHANGELOG.md` (this entry)
+- Per-finding comment threads with feedback-log integration
+  (the v0.4.0+ feedback rows are what later powers the
+  per-rule F1 weighting). (`69b7fd1`)
+- CSV upload endpoint with auto-detect for the three
+  EHR shapes we know about: Kareo, OSCAR, Office Ally. (`c5d187d`)
+- Clinic-dashboard endpoint: denial rate, top rules,
+  time-to-act, missed revenue. (`5c667b8`)
+- Snooze / re-audit-reminder endpoint. (`3c7e984`)
+- CARC / RARC denial-reason-code lookup table. (`5380859`)
+
+### Bug fixes
+
+- `apps/portal` Playwright config excluded from the
+  `tsc --noEmit` scope so a missing `@playwright/test`
+  install doesn't break CI. (`6de5151`)
+- Regenerate `pnpm-lock.yaml` and add `pnpm-workspace.yaml`
+  from a build attempt; remove the auto-generated version
+  that drifted from source. (`a104c43`, `ec3bd3d`)
+- Gitignore orphan diagnostic scripts and the unreleased
+  `prompts/v13/` directory. (`b596fd1`)
+
+---
+
+## [0.3.0] — 2026-06-18
+
+The **"brain-audit" release**: the first batch of validated
+auditor rules and the first end-to-end `per_clinic_f1` score.
+
+### Features
+
+- 6-rule batch landed with evidence-backed audits:
+  modifier-25, NCCI, E/M, GT, MUE, time-based. (`ac2408e`)
+- Brain-audit drain summary closing 29 / 29 ready tasks. (`3236426`)
+- `per_clinic_f1` empty-state promoted to "insufficient data"
+  in both the portal's encounter view and the monthly report. (`c634578`)
+- Home-page encounter search bar with `q / cpt / icd10 /
+  patient / npi` filters. (`901aeb0`)
+
+### Infrastructure
+
+- `apps/portal` marketing routes split: marketing pages
+  are indexable, portal routes disallowed. (`7f0f309`)
+- 11 new marketing pages added to `PUBLIC_PREFIXES` so
+  they're served by the public-FastAPI app, not the
+  authenticated `apps/portal` one. (`a3cc8c2`)
+
+### Documentation
+
+- Mark `prompts/v13` as not-shipped in `MANIFEST.json`
+  after a v0.3.0 F1 regression vs v12. (`a1818e3`)
+
+---
+
+## [0.2.0] — 2026-06-15
+
+The **"marketing" release**: the marketing site becomes the
+public face of the project.
+
+### Features
+
+- 5 marketing pages land in `apps/portal`:
+  `/`, `/about`, `/blog`, `/demo-request`, `/legal/{privacy,terms}`.
+  (`c2a8a81`, `eee30ef`, `e623d11`, `1cc5956`)
+- OpenGraph + Twitter card meta defaults; standardized all
+  marketing emails to `zorva.ca`; footer added to `/` and
+  `/login`; "Most clinics" badge restyle. (`00884b5`,
+  `44538f6`, `2ca2c70`, `5e6d4ae`)
+- Dark-only design choice documented in `AGENTS.md`;
+  `<meta name="color-scheme" content="dark">` rendered in
+  the root layout. (`5593ec1`, `498b61b`)
+- `apps/portal/CLAUDE.md` added for the
+  Next.js-as-of-2026-06 version-specific rules.
+
+---
+
+## [0.1.0] — 2026-06-12
+
+The **initial release**: a runnable FastAPI app with an
+in-process `JobQueue`, a single `MiniMax-M3-2026-06-12` auditor
+prompt, the audit-trail `audit_trail.sql` schema, and a
+`deploy-to-vps.sh` that provisions the v1 stack from a
+blank VPS.
+
+### Features
+
+- FastAPI + uvicorn `api` container serving the demo
+  dashboard, encounter upload portal, and `/healthz`. (`docker-compose.yml`)
+- `worker` heartbeat sidecar matching the 4-service spec
+  (kanban `t_7f6ffde6`).
+- `postgres` 16 with the `pgvector` extension available;
+  the vector KB is one `CREATE EXTENSION` away.
+- Caddy internal reverse proxy bound to `127.0.0.1:3018`,
+  fronted by host-side Traefik with Let's Encrypt
+  auto-issuance at `ai-billing-audit.ashbi.ca`.
+- `MiniMax-M3-2026-06-12` auditor prompt + `data/val_ca.json`
+  ground-truth rules[] as the first deterministic check.
+
+### Infrastructure
+
+- `deploy-to-vps.sh` provisions Docker, Coolify network
+  namespace, and the `ai-billing-audit` compose project on
+  a fresh VPS in a single pass.
+- Persistent volumes for `data/`, `artifacts/`, `app/logs/`,
+  and the Postgres cluster — all survive container recreates
+  so the biller doesn't lose action history.
+- `LLM_PROVIDER` and `MINIMAX_BASE_URL` env-vars documented
+  in the `.env` template; the actual `MINIMAX_API_KEY` is
+  loaded from `/root/coolify-secrets/...` on the host.
+
+### Documentation
+
+- `README.md` quickstart + the first deployment runbook.
+- `README.design-history.md` captures the v0.1.0 design
+  decisions (in-process queue, 4-service spec, in-container
+  Caddy for the internal hop).
+
+---
+
+## Versioning policy (effective 0.5.0)
+
+- **Major** (`X.0.0`) — DB schema break, public API break,
+  or any change that requires a coordinated multi-service
+  rollout. Not expected to be needed pre-1.0.
+- **Minor** (`0.X.0`) — a release that closes at least one
+  Kanban board / sprint. Marketing-site-only changes are
+  `0.X.1` patch releases, not minors.
+- **Patch** (`0.0.X`) — a single Kanban task or
+  one-off fix. Bug fixes that don't change a contract.
+
+Every release entry in this file MUST include the
+abbreviated commit hash of the change so `git log` and
+this changelog stay cross-referenceable.
+
+[0.5.0]: #050--2026-06-24
+[0.4.0]: #040--2026-06-22
+[0.3.0]: #030--2026-06-18
+[0.2.0]: #020--2026-06-15
+[0.1.0]: #010--2026-06-12
