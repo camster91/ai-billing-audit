@@ -1,0 +1,69 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.sheet {
+  background: #fff;
+  padding: 1.5rem 2rem;
+  border-radius: 0.75rem;
+  min-width: 20rem;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.list dt {
+  display: flex;
+  gap: 0.25rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.list dd {
+  margin: 0;
+  color: var(--text-muted, #4b5563);
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.closeButton {
+  align-self: flex-end;
+  padding: 0.5rem 1rem;
+  background: var(--accent, #111827);
+  color: var(--accent-foreground, #fff);
+  border: 0;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}

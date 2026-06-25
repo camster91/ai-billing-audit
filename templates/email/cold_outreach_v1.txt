@@ -1,0 +1,26 @@
+Subject: Free 30-day pilot — pre-submit claims audit for [Clinic]
+
+Hi [First Name],
+
+I'm Cameron Ashley, founder of Zorva — a pre-submit claims audit for clinics.
+We run every claim through an auditor before it goes to the payer, flag the
+ones that would otherwise come back underpaid or denied, and let your biller
+accept or dismiss each finding.
+
+We've been working with Ontario primary-care clinics on a 30-day no-cost
+pilot. The pitch is simple: send us your last 100 claims (837P, CSV, or
+FHIR), we run the auditor, and at the end of the month we sit down and
+walk through every finding. No fee, no contract.
+
+Three things we'd want to know on a 10-minute call:
+  1. What does your current pre-submit review look like — manual, software,
+     or nothing?
+  2. What are your top two denial reasons in the last quarter?
+  3. What's your EHR / billing system?
+
+If any of that resonates, here's my calendar: [calendly link]. If not, no
+worries — happy to send the one-pager instead.
+
+Cameron Ashley
+Founder, Zorva
+cameron@ashbi.ca · (647) 555-0142

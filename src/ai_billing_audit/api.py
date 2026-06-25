@@ -6045,6 +6045,14 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
         return JSONResponse(record, status_code=201)
 
+    # ── UX polish endpoints (kanban board: product-ux) ───────────────
+    # One module, ~20 small routes — see ux_polish.py for the
+    # per-task list. Registered before public_api so the dashboard
+    # HTML/JSON surface ships intact even if public_api changes.
+    from ai_billing_audit import ux_polish as _ux_polish
+
+    _ux_polish.register_routes(app)
+
     # ── Public v1 API (kanban t_f4f1c149) ────────────────────────────
     # The v1 surface is a separately-authenticated, JSON-only
     # contract for EHR integrations. It's mounted by a sibling
@@ -6057,6 +6065,16 @@ def create_app() -> FastAPI:
     from ai_billing_audit.public_api import register_public_api
 
     register_public_api(app)
+
+    # ── Clinical-impact doctor-facing surfaces (kanban: clinical-impact) ──
+    # Five small endpoints behind feature flags:
+    #   t_267a1ad6 doctor effectiveness metric
+    #   t_a26d25be rejected-fix teaching signal queue + verdict
+    #   t_f5ea3bf2 doctor 'fix-it' re-audit queue
+    #   t_17ec5fec per-tenant prompt version pinning
+    from ai_billing_audit.clinical_metrics import mount_clinical_metrics_routes
+
+    mount_clinical_metrics_routes(app)
 
     return app
 

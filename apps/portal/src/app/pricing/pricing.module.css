@@ -219,6 +219,13 @@
   line-height: 1.5;
 }
 
+@media (max-width: 640px) {
+  .features li {
+    line-height: 1.65;
+    padding: 9px 0 9px 26px;
+  }
+}
+
 .features li::before {
   content: "✓";
   position: absolute;
@@ -235,12 +242,14 @@
   text-decoration: none;
   border-radius: 10px;
   padding: 14px 18px;
+  min-height: 44px;
   font-weight: 700;
   font-size: 15px;
   font-family: inherit;
   border: 1px solid transparent;
   transition: background 0.15s, transform 0.1s;
   margin-top: auto;
+  box-sizing: border-box;
 }
 
 .cta:active {
@@ -331,6 +340,40 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
+}
+
+.whyTiers {
+  margin: 8px 0 24px;
+  padding: 28px 32px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.whyTiers h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: -0.2px;
+}
+
+.whyTiers p {
+  margin: 0 0 12px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.whyTiers ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0 0 12px;
+  display: block;
+  color: var(--text);
+}
+
+.whyTiers li {
+  padding: 4px 0;
+  line-height: 1.65;
 }
 
 .assurance h3 {

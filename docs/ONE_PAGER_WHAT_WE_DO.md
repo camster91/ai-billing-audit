@@ -14,4 +14,14 @@ A pre-submit claims audit for clinics. We run your claims through an auditor bef
 
 Contact: **cameron@ashbi.ca** · (647) 555-0142
 
-Pricing: **$X/month** flat. Final figure set during the pilot conversation.
+## Pricing
+
+Three flat monthly tiers, billed monthly in CAD. No per-claim charges, no surprise bills at the end of the month.
+
+| Tier      | Monthly fee (CAD) | Audits / month | Best for                                 |
+|-----------|-------------------|----------------|------------------------------------------|
+| Starter   | **$499**          | Up to 500      | Solo biller / single-clinic pilot        |
+| Growth    | **$1,499**        | 500 – 2,000    | Multi-physician clinic or small group    |
+| Scale     | **$2,999**        | 2,000 – 5,000  | Billing firm or hospital outpatient dept |
+
+Volume above 5,000 audits / month is custom-quoted. Annual contracts get two months free. The 30-day pilot remains free of charge regardless of tier.

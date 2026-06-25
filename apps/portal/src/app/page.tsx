@@ -138,6 +138,10 @@ export default function Home() {
           <Link href="/how-it-works">How it works</Link>
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/legal/privacy">Privacy</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/legal/terms">Terms</Link>
         </div>
         <p>Questions? Email us at hello@zorva.ca</p>
       </footer>

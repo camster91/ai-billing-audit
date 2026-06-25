@@ -1443,3 +1443,65 @@ main.page {
     min-height: 44px; /* WCAG 2.5.5 touch target */
   }
 }
+
+/* ── product-ux polish (kanban board: product-ux) ───────────────────
+ * These small additions cover the iPad / 44px / empty-state /
+ * print-friendly / side-by-side polish. The encounter detail page
+ * already opts in via classes (e.g. .ipad-layout, .split-review,
+ * .empty-state).
+ */
+
+/* t_86f286f1 — iPad-optimised encounter detail at 1024x768.
+   Center the column, slightly larger headings, larger touch
+   targets for finger taps. */
+@media (min-width: 768px) and (max-width: 1180px) {
+  .detail-grid.ipad-layout {
+    grid-template-columns: minmax(0, 720px);
+    gap: var(--space-5, 1.25rem);
+    padding: var(--space-4, 1rem) 0;
+  }
+  .detail-grid.ipad-layout h2 {
+    font-size: 1.4rem;
+  }
+  .detail-grid.ipad-layout .btn {
+    min-height: 48px;
+    padding: 12px 20px;
+    font-size: 1.05rem;
+  }
+}
+
+/* t_28b8dbfa — empty state on / when no encounters exist. The
+   index template wraps the empty body in .home-empty. */
+.home-empty {
+  text-align: center;
+  padding: var(--space-7, 3rem) var(--space-4, 1rem);
+  border: 1px dashed var(--color-border, #d4d4d8);
+  border-radius: 12px;
+  background: var(--color-surface-muted, #fafafa);
+}
+.home-empty__title {
+  font-size: 1.25rem;
+  margin-bottom: var(--space-2, 0.5rem);
+}
+.home-empty__copy {
+  color: var(--color-text-muted, #52525b);
+  max-width: 36rem;
+  margin: 0 auto var(--space-4, 1rem);
+}
+
+/* t_af49b29a — error states with actionable next steps. */
+.alert {
+  border-radius: 8px;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  margin: var(--space-4, 1rem) 0;
+}
+.alert--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+.alert--error .alert__next {
+  display: block;
+  margin-top: var(--space-2, 0.5rem);
+  color: #7f1d1d;
+}

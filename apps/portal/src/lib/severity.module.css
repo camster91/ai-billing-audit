@@ -1,0 +1,63 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+
+.sm {
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.75rem;
+}
+
+.icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.label {
+  letter-spacing: 0.01em;
+}
+
+/* Severity color tokens. All values come from a 6-shade ramp so the
+ * text + background combo always meets WCAG AA contrast (4.5:1). */
+
+.info {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-color: #93c5fd;
+}
+.info .icon { color: #1d4ed8; }
+
+.low {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
+}
+.low .icon { color: #15803d; }
+
+.medium {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #fcd34d;
+}
+.medium .icon { color: #b45309; }
+
+.high {
+  background: #ffedd5;
+  color: #7c2d12;
+  border-color: #fdba74;
+}
+.high .icon { color: #c2410c; }
+
+.critical {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
+}
+.critical .icon { color: #b91c1c; }
