@@ -140,6 +140,44 @@ export default function PricingPage() {
           </Link>
         </section>
 
+        <section className={styles.whyTiers} aria-label="Why three tiers">
+          <h3>Why three tiers (and not one flat fee)</h3>
+          <p>
+            Audit cost scales with claim volume, not with clinic revenue.
+            A solo physician doing 200 claims/month should not pay the
+            same as a 12-clinic group doing 4,000. The three tiers
+            bracket by <strong>claims/month</strong>:
+          </p>
+          <ul>
+            <li>
+              <strong>Small — under 1,000 claims/month.</strong> Solo
+              physicians, small specialty clinics, single-biller shops.
+              All the audit + appeal-letter features, email support.
+            </li>
+            <li>
+              <strong>Mid — 1,000 – 3,000 claims/month.</strong> Mid-size
+              groups, multi-physician clinics, billing services with a
+              handful of clients. Adds up to 5 biller seats and same-day
+              support.
+            </li>
+            <li>
+              <strong>Large — 3,000+ claims/month.</strong> Multi-clinic
+              groups, hospital-affiliated practices, enterprise billing
+              services. Unlimited seats, same-day SLA, quarterly
+              rules-tuning session.
+            </li>
+          </ul>
+          <p>
+            <strong>What is NOT in any tier (and what we charge for as
+            an add-on):</strong> PHIPA / HIPAA training ($2,500/yr,
+            optional), custom EHR integration beyond our standard FHIR
+            endpoint ($5,000 one-time per connector), custom billing
+            rules beyond quarterly tuning ($250/rule/mo). Everything
+            else — audit findings, appeal letters, monthly reports,
+            hash-chain audit trail — is included.
+          </p>
+        </section>
+
         <section className={styles.assurance}>
           <h3>What you always get, on every tier</h3>
           <ul>

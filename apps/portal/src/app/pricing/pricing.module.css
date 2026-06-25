@@ -342,6 +342,40 @@
   border-radius: 14px;
 }
 
+.whyTiers {
+  margin: 8px 0 24px;
+  padding: 28px 32px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.whyTiers h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: -0.2px;
+}
+
+.whyTiers p {
+  margin: 0 0 12px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.whyTiers ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0 0 12px;
+  display: block;
+  color: var(--text);
+}
+
+.whyTiers li {
+  padding: 4px 0;
+  line-height: 1.65;
+}
+
 .assurance h3 {
   margin: 0 0 12px;
   color: var(--text);
