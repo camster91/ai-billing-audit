@@ -1,0 +1,263 @@
+/* /calculator — minimal CSS, just functional.
+   Reuses the project's existing ink palette so the page drops into
+   the marketing site without re-skinning. */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  color: #0f172a;
+  line-height: 1.55;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #2563eb;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.h1 {
+  font-size: 2.25rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.lede {
+  font-size: 1.05rem;
+  color: #475569;
+  margin: 0;
+  max-width: 60ch;
+}
+
+.disclaimer {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.9rem;
+  margin: 1.5rem 0;
+  color: #7c2d12;
+}
+
+.disclaimer code {
+  background: rgba(124, 45, 18, 0.08);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.calc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 2rem;
+  margin: 1.5rem 0 2rem;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .calc {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.select,
+.input {
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f172a;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.select:focus,
+.input:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+
+.rangeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.range {
+  flex: 1;
+}
+
+.rangeVal {
+  min-width: 3.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.result {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem 1.4rem;
+}
+
+.resultLabel {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  font-weight: 600;
+}
+
+.resultLabel:first-child {
+  margin-top: 0;
+}
+
+.resultBig {
+  margin: 0 0 0.5rem;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.resultMedium {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #047857;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.breakdown td {
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown td:first-child {
+  color: #64748b;
+}
+
+.breakdown td:last-child {
+  text-align: right;
+  font-weight: 500;
+}
+
+.totalRow td {
+  border-top: 2px solid #0f172a;
+  border-bottom: none;
+  padding-top: 0.6rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.formula {
+  margin: 0.75rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+}
+
+.formula code {
+  display: block;
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.howItWorks {
+  margin: 2rem 0;
+}
+
+.howItWorks ol {
+  padding-left: 1.4rem;
+}
+
+.howItWorks li {
+  margin: 0.4rem 0;
+}
+
+.cta {
+  margin-top: 2.5rem;
+  padding: 1.75rem;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.cta .h2 {
+  color: #f1f5f9;
+  margin-top: 0;
+}
+
+.button {
+  display: inline-block;
+  background: #2563eb;
+  color: #fff;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.button:hover {
+  background: #1d4ed8;
+}
