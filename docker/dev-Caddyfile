@@ -1,0 +1,43 @@
+# dev-Caddyfile — dev-only Caddy config for docker-compose.dev.yml
+#
+# This is a DIFFERENT file from the production Caddyfile at
+# the repo root. Key differences:
+#
+#   * Plain HTTP, no TLS. Dev is on localhost; prod is
+#     fronted by Traefik with Let's Encrypt.
+#   * No rate_limit directive. The custom Dockerfile.caddy
+#     build (which ships http.handlers.rate_limit) is NOT
+#     used in dev — dev uses the stock caddy:2-alpine image.
+#     Rate limiting the local box is pointless; it just
+#     makes the dev loop slower.
+#   * 1-hour cache on /_next/static so Next.js asset hashes
+#     survive a Caddy restart. Static asset fingerprinting
+#     means a cache miss is harmless.
+#   * No security headers at the Caddy layer. The FastAPI
+#     app emits them in dev too; adding them here would
+#     double-emit and make a prod / dev diff harder to
+#     reason about.
+#
+# If you find yourself editing this file to "match what prod
+# does", you almost certainly want to edit the prod
+# Caddyfile instead and replicate the change in dev only
+# after the prod change has shipped.
+
+:80 {
+    # Forward everything to the api container on the
+    # ai_billing_audit_dev_net network. Caddy resolves the
+    # 'api' hostname via Docker's embedded DNS.
+    reverse_proxy api:8000
+
+    # Log to stdout (visible via `docker compose logs caddy`).
+    log {
+        output stdout
+        level INFO
+    }
+
+    # Larger upload body for CSV / 837P / 837I uploads —
+    # matches the prod Caddyfile.
+    request_body {
+        max_size 25MB
+    }
+}

@@ -1,0 +1,322 @@
+# ai-billing-audit — dev-only docker-compose
+#
+# ============================================================================
+# When to use this file vs docker-compose.yml (the production stack)
+# ============================================================================
+#
+#   Use docker-compose.dev.yml    Use docker-compose.yml (prod)
+#   --------------------------    --------------------------------
+#   Editing the FastAPI app       Public deploy via deploy-to-vps.sh
+#   Editing the auditor prompt    Verifying a release branch on a
+#   Iterating on a bug fix          staging VPS
+#   Running the full stack with   Smoke-testing a real LLM provider
+#     hot reload                    (MiniMax) end-to-end
+#   Offline dev (Ollama proxy)    Anything that must match the
+#   "I just want to run it"         public ai-billing-audit.ashbi.ca
+#                                   topology
+#
+#   The two files share NO volumes and NO networks. Pointing this
+#   dev shell at the production docker-compose.yml (or vice versa)
+#   will silently swap real-LLM keys for Ollama stubs (or vice
+#   versa), so please read the file header before you `docker
+#   compose up`.
+#
+# ============================================================================
+# Why each service is here
+# ============================================================================
+#
+#   postgres   pgvector/pgvector:pg16 — same image as prod so the
+#             dev /prod schema drift is zero. audit_trail.sql is
+#             mounted into /docker-entrypoint-initdb.d/ and
+#             auto-applied on first boot. Data lives in a
+#             *_dev_pgdata volume so wiping dev is one `docker
+#             compose -f docker-compose.dev.yml down -v` away.
+#
+#   api        ai-billing-audit:dev — built from the same
+#             Dockerfile as prod, with two differences:
+#               1. /app is bind-mounted from ./src so edits to
+#                  the Python source take effect on the next
+#                  uvicorn restart (or live, if you set
+#                  --reload; see the command: block below).
+#               2. The /app/logs volume is bind-mounted from
+#                  ./logs so you can tail JSONL files from the
+#                  host without docker exec.
+#             Exposed on 127.0.0.1:8000 (loopback only) so it
+#             can't accidentally answer for the prod domain.
+#
+#   worker     Same image as the api, same /app bind mount,
+#             command overridden to run the heartbeat loop.
+#             In dev, the worker often just sits idle — the
+#             in-process JobQueue runs inside the api
+#             container. The worker is here so the
+#             4-service topology matches prod and so a
+#             future "broker-backed worker" card can land
+#             without a stack-shape change.
+#
+#   caddy      STOCK caddy:2-alpine in dev (we do NOT use the
+#             custom Dockerfile.caddy build here). Why: the
+#             custom build exists to ship http.handlers.rate_limit
+#             for prod, but in dev you usually want the cache
+#             busted on every request and a 1s request timeout
+#             instead of a 10r/s rate limit. The dev Caddyfile
+#             (./docker/dev-Caddyfile) reflects that. Exposed
+#             on 127.0.0.1:3018 (loopback) so it's
+#             unambiguously "the dev one" — the prod Caddy
+#             is also on 3018, but the prod host is the
+#             remote VPS, not your laptop.
+#
+#   ollama     Local LLM proxy. Pulls a small model on first
+#             boot (default: llama3.2:3b-instruct-q5_K_M) and
+#             exposes an OpenAI-compatible /v1/chat/completions
+#             endpoint on 127.0.0.1:11434. The api/worker are
+#             pointed at OLLAMA_BASE_URL=http://ollama:11434/v1
+#             in the env block below, with LLM_PROVIDER=openai
+#             (LiteLLM's openai-compatible dialect matches
+#             Ollama). This is the OFFLINE path: no MiniMax
+#             key, no egress, no per-token cost. Flip
+#             LLM_PROVIDER / MINIMAX_BASE_URL / MINIMAX_API_KEY
+#             in the env block to point back at MiniMax if
+#             you need to.
+#
+# ============================================================================
+# Hot reload
+# ============================================================================
+#
+#   Edit files under ./src/ai_billing_audit/ — the api container
+#   picks them up on the next uvicorn restart. To get LIVE reload
+#   (no restart), uncomment the --reload flag in the api
+#   command: block. The downside of --reload is that watchgod
+#   walks the entire /app tree on every change, which can be
+#   janky on macOS where file-events are sometimes dropped; the
+#   default (manual restart) is the more reliable dev loop.
+#
+#   The /app bind mount is read-only by design EXCEPT for the
+#   pyc cache and any test artifacts — the api writes pyc files
+#   to /app on first start, and a read-only mount will fail
+#   with "Read-only file system" the first time the container
+#   imports a module. If you need a fully read-only mount, set
+#   PYTHONDONTWRITEBYTECODE=1 in the api environment.
+#
+# ============================================================================
+# Wiping dev state
+# ============================================================================
+#
+#   To nuke Postgres and the logs/ mount back to a clean state:
+#     docker compose -f docker-compose.dev.yml down -v
+#   This drops the *_dev_pgdata and *_dev_logs volumes. The
+#   ./src bind mount is your working tree and is NOT touched.
+#
+# ============================================================================
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-billing-audit-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_billing_audit
+      POSTGRES_USER: audit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-audit}
+    volumes:
+      - ai_billing_audit_dev_pgdata:/var/lib/postgresql/data
+      - ./audit_trail.sql:/docker-entrypoint-initdb.d/01-audit_trail.sql:ro
+    networks:
+      - ai_billing_audit_dev_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit -d ai_billing_audit"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    # Exposed to the host only as a courtesy for psql / pgcli
+    # users who want to poke the schema from a terminal. Bind
+    # is loopback-only so it doesn't compete with anything
+    # that might be on :5432 already.
+    ports:
+      - "127.0.0.1:55432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-billing-audit:dev
+    container_name: ai-billing-audit-dev-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # In dev, default to the local Ollama proxy. Flip these
+      # three to point back at MiniMax if you need to test
+      # against the real provider.
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434/v1}
+      # DATABASE_URL points at the dev Postgres (note the
+      # 'dev-' service hostname and the audit_trail DB).
+      DATABASE_URL: postgresql://audit:audit@postgres:5432/ai_billing_audit
+      AUDIT_TRAIL_DB: postgresql://audit:audit@postgres:5432/ai_billing_audit
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      # Hot-reload: bind-mount the source tree into the api.
+      # The /app prefix in the image's WORKDIR makes this a
+      # 1:1 mount. Edits here are visible to the api process
+      # on the next uvicorn restart.
+      - ./src:/app/src:rw
+      # Logs volume — bind-mounted to ./logs on the host so
+      # JSONL files (usage_log, webhooks, audit_trail) are
+      # tail-able from the host without docker exec.
+      - ./logs:/app/logs:rw
+    # Bound to loopback only — the dev Caddy is on :3018, so
+    # the dev api is never the public edge. If you want to
+    # hit the api directly (skipping the dev Caddy), use
+    # http://127.0.0.1:8000.
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - ai_billing_audit_dev_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    # Default: manual restart. Uncomment --reload for live
+    # reload on file changes (see header note about watchgod
+    # on macOS).
+    command:
+      - uvicorn
+      - ai_billing_audit.api:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      # - --reload
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-billing-audit:dev
+    container_name: ai-billing-audit-dev-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434/v1}
+      DATABASE_URL: postgresql://audit:audit@postgres:5432/ai_billing_audit
+      AUDIT_TRAIL_DB: postgresql://audit:audit@postgres:5432/ai_billing_audit
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./src:/app/src:rw
+      - ./logs:/app/logs:rw
+    networks:
+      - ai_billing_audit_dev_net
+    # Same worker entrypoint as prod (heartbeat loop). In dev
+    # this is mostly a no-op since the in-process JobQueue
+    # runs inside the api. The container is here so the
+    # 4-service shape matches prod.
+    command: ["python", "-m", "ai_billing_audit.worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    # STOCK caddy:2-alpine in dev (NOT the custom
+    # Dockerfile.caddy build — see the file header for why).
+    image: caddy:2-alpine
+    container_name: ai-billing-audit-dev-caddy
+    restart: unless-stopped
+    ports:
+      # Loopback only. The dev Caddy serves the api on
+      # http://127.0.0.1:3018 and forwards to http://api:8000
+      # on the dev network. No TLS in dev — the dev Caddyfile
+      # listens on plain HTTP and is meant to be hit from
+      # localhost.
+      - "127.0.0.1:3018:80"
+    volumes:
+      - ./docker/dev-Caddyfile:/etc/caddy/Caddyfile:ro
+      - ai_billing_audit_dev_caddy_data:/data
+      - ai_billing_audit_dev_caddy_config:/config
+    networks:
+      - ai_billing_audit_dev_net
+    depends_on:
+      - api
+
+  ollama:
+    # Local LLM proxy. Serves an OpenAI-compatible
+    # /v1/chat/completions endpoint on
+    # http://ollama:11434/v1 (and on the host at
+    # http://127.0.0.1:11434). First boot pulls a small
+    # instruction-tuned model; subsequent boots are
+    # instant because the model is in a named volume.
+    #
+    # To pull a different model, run:
+    #   docker compose -f docker-compose.dev.yml exec ollama \
+    #     ollama pull llama3.2:3b-instruct-q5_K_M
+    image: ollama/ollama:latest
+    container_name: ai-billing-audit-dev-ollama
+    restart: unless-stopped
+    ports:
+      # Bound to loopback so the host can hit the proxy
+      # directly (handy for `curl http://127.0.0.1:11434/v1/...`
+      # debugging). The api/worker reach it via the dev
+      # network as http://ollama:11434.
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ai_billing_audit_dev_ollama:/root/.ollama
+    networks:
+      - ai_billing_audit_dev_net
+    # Healthcheck: hit Ollama's /api/tags endpoint, which
+    # returns 200 once the server is up (it does NOT wait
+    # for a model to be pulled — that's the entrypoint's
+    # job). The `ollama pull` in the entrypoint blocks the
+    # container start until the first model is local, so
+    # by the time this returns 200 you can issue a real
+    # chat completion.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 6
+    # Pull the default model on first boot. The named volume
+    # caches it for subsequent boots, so this is a one-time
+    # ~2 GB download. Override the OLLAMA_DEFAULT_MODEL env
+    # var in the .env file to use a different model.
+    environment:
+      OLLAMA_KEEP_ALIVE: "10m"
+      OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2:3b-instruct-q5_K_M}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        OLLAMA_PID=$$!
+        # Wait for the server to be ready (max 30s).
+        for i in $$(seq 1 30); do
+          if wget -q -O - http://127.0.0.1:11434/api/tags > /dev/null 2>&1; then
+            break
+          fi
+          sleep 1
+        done
+        # Pull the default model. Idempotent — no-op if already present.
+        ollama pull "$$OLLAMA_DEFAULT_MODEL" || true
+        # Stay in the foreground so the container doesn't exit.
+        wait $$OLLAMA_PID
+
+volumes:
+  ai_billing_audit_dev_pgdata:
+  ai_billing_audit_dev_caddy_data:
+  ai_billing_audit_dev_caddy_config:
+  ai_billing_audit_dev_ollama:
+
+networks:
+  ai_billing_audit_dev_net:
+    driver: bridge
+    name: ai_billing_audit_dev_net
