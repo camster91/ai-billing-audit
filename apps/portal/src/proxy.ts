@@ -49,6 +49,7 @@ const PUBLIC_PREFIXES = [
   "/changelog",     // public release notes for privacy officers + admins
   "/careers",       // careers landing page, public
   "/about",         // public about page (team + story), public (kanban t_df7045d8)
+  "/blog",          // public blog / resources stub, public (kanban t_7492f223)
   "/press",         // press / in the news page, public
   "/technical",     // technical buyer (privacy officer, IT lead) page, public
   "/glossary",      // billing terms glossary for non-billers, public
