@@ -346,6 +346,14 @@ def export_audit_log(fmt: str = "json") -> tuple[str, str, str]:
             for r in rows:
                 w.writerow(r)
         return "audit-log.csv", "text/csv", buf.getvalue()
+    if fmt == "jsonl":
+        # t_d609557c — privacy officer prefers JSONL because it
+        # streams nicely into jq and won't balloon memory on large
+        # exports.
+        body = "".join(
+            json.dumps(r, sort_keys=True, default=str) + "\n" for r in rows
+        )
+        return "audit-log.jsonl", "application/x-ndjson", body
     return (
         "audit-log.json",
         "application/json",
@@ -600,6 +608,21 @@ def register_routes(app: Any) -> None:
         rec = consume_undo_token(token)
         if rec is None:
             raise HTTPException(status_code=410, detail="undo window expired")
+        # t_f9a8d929 — tamper-evident: when an undo fires, append a
+        # `reverted` row to the audit log so the privacy officer can
+        # still see the original action + its reversal. Reuses the
+        # same jsonl sink as the rest of the audit-trail writes.
+        _append_jsonl(
+            _log_path("audit_actions"),
+            {
+                "action": "undo",
+                "token": token,
+                "reverted_action": rec.get("action"),
+                "encounter_id": rec.get("encounter_id"),
+                "finding_id": rec.get("finding_id"),
+                "ts": time.time(),
+            },
+        )
         return JSONResponse({"ok": True, "record": rec})
 
     @app.get("/api/notifications", response_class=JSONResponse)
@@ -635,6 +658,10 @@ def register_routes(app: Any) -> None:
 
     @app.get("/api/audit-log/export")
     def api_audit_log_export(fmt: str = "json") -> Response:
+        if fmt not in {"json", "csv", "jsonl"}:
+            raise HTTPException(
+                status_code=400, detail="fmt must be json, csv, or jsonl"
+            )
         filename, content_type, body = export_audit_log(fmt)
         return Response(
             content=body,

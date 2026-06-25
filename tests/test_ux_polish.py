@@ -75,6 +75,29 @@ def test_undo_token_expired(ux_log_dir, client):
     assert r.status_code == 410
 
 
+def test_undo_token_consume_writes_audit_row(ux_log_dir, client):
+    from ai_billing_audit import ux_polish
+    # The ux_polish module captured _LOGS_DIR at import; rebind it
+    # to the fixture dir before either call so both writes land there.
+    ux_polish._LOGS_DIR = ux_log_dir
+    r = client.post("/api/undo-token", json={"action": "dismiss", "encounter_id": "e9", "finding_id": "f3"})
+    assert r.status_code == 200
+    token = r.json()["token"]
+    r2 = client.post(f"/api/undo-token/{token}")
+    assert r2.status_code == 200
+    actions_path = ux_log_dir / "audit_actions.jsonl"
+    assert actions_path.exists()
+    rows = [
+        json.loads(line)
+        for line in actions_path.read_text().splitlines()
+        if line.strip()
+    ]
+    undo_rows = [r for r in rows if r.get("action") == "undo"]
+    assert undo_rows, "consumed undo should write a tamper-evident row"
+    assert undo_rows[0]["reverted_action"] == "dismiss"
+    assert undo_rows[0]["encounter_id"] == "e9"
+
+
 # --- t_28b8dbfa + t_af49b29a -------------------------------------------
 
 def test_home_state_empty_when_no_encounters():
@@ -176,6 +199,18 @@ def test_audit_log_export_csv(client):
     r = client.get("/api/audit-log/export?fmt=csv")
     assert r.status_code == 200
     assert "text/csv" in r.headers["content-type"]
+
+
+def test_audit_log_export_jsonl(client):
+    r = client.get("/api/audit-log/export?fmt=jsonl")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/x-ndjson")
+    assert r.headers["content-disposition"].endswith('audit-log.jsonl"')
+
+
+def test_audit_log_export_bad_fmt(client):
+    r = client.get("/api/audit-log/export?fmt=xml")
+    assert r.status_code == 400
 
 
 # --- t_d9713083 --------------------------------------------------------
