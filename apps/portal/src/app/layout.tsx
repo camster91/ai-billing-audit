@@ -74,6 +74,12 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
     >
+      <head>
+        {/* Force the dark UA form so form controls + scrollbars render
+            dark on first paint and never flash white. See AGENTS.md
+            "dark-only design choice" note. (kanban t_9bf46d09) */}
+        <meta name="color-scheme" content="dark" />
+      </head>
       <body className="body">
         <a className="skip-link" href="#main">
           Skip to content
