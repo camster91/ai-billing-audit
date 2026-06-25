@@ -78,18 +78,6 @@ const ROWS: Row[] = [
     region: { text: "All regions" },
   },
   {
-    area: "Access controls",
-    control:
-      "Per-tenant isolation. Role-based access (admin, biller, viewer) with " +
-      "least-privilege defaults. Two-person approval for high-impact " +
-      "actions (export, bulk re-audit, billing changes). Every privileged " +
-      "action is written to the audit trail.",
-    status:
-      "Active. RBAC enforced; two-person approval on destructive / " +
-      "export actions; full session audit trail.",
-    region: { text: "All regions" },
-  },
-  {
     area: "Audit trail with hash chain",
     control:
       "Append-only audit_trail table. Every row carries a SHA-256 " +
@@ -106,6 +94,18 @@ const ROWS: Row[] = [
         "Implementations: src/audit_log.py (canonical) and " +
         "src/ai_billing_audit/audit_actions.py (parallel — see QA audit log).",
     },
+    region: { text: "All regions" },
+  },
+  {
+    area: "Access controls",
+    control:
+      "Per-tenant isolation. Role-based access (admin, biller, viewer) with " +
+      "least-privilege defaults. Two-person approval for high-impact " +
+      "actions (export, bulk re-audit, billing changes). Every privileged " +
+      "action is written to the audit trail.",
+    status:
+      "Active. RBAC enforced; two-person approval on destructive / " +
+      "export actions; full session audit trail.",
     region: { text: "All regions" },
   },
   {
