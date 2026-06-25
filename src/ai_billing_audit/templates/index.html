@@ -218,11 +218,87 @@
   {% endif %}
 </div>
 
+{# Encounter search bar (kanban t_171d24b3). Filters combine via
+   AND with the active chip above. URL params are preserved so the
+   biller can share a filtered view; the form is a GET against "/"
+   so the back button + bookmark workflow keeps working. Each input
+   is small and inline so the bar doesn't crowd the filter chips.
+   ``name="q"`` is the free-text encounter-id substring; the four
+   structured fields use prefix/exact matches server-side. #}
+<form class="encounter-search" method="get" action="/" role="search"
+      aria-label="Search encounters">
+  {# Preserve the active status chip across search submissions. The
+     hidden ``status`` field copies whatever was on the URL. #}
+  {% if filter and filter != 'all' %}
+    <input type="hidden" name="status" value="{{ filter }}">
+  {% endif %}
+  <label class="encounter-search__field">
+    <span class="encounter-search__label">Encounter ID</span>
+    <input type="search" name="q" value="{{ search.q or '' }}"
+           placeholder="enc_10032" autocomplete="off"
+           inputmode="search" enterkeyhint="search"
+           aria-label="Search by encounter id (substring)">
+  </label>
+  <label class="encounter-search__field">
+    <span class="encounter-search__label">CPT</span>
+    <input type="search" name="cpt" value="{{ search.cpt or '' }}"
+           placeholder="99214" autocomplete="off"
+           inputmode="numeric" maxlength="5"
+           aria-label="Search by CPT code prefix">
+  </label>
+  <label class="encounter-search__field">
+    <span class="encounter-search__label">ICD-10</span>
+    <input type="search" name="icd10" value="{{ search.icd10 or '' }}"
+           placeholder="I10" autocomplete="off"
+           inputmode="text" maxlength="8"
+           aria-label="Search by ICD-10 code prefix">
+  </label>
+  <label class="encounter-search__field">
+    <span class="encounter-search__label">Patient ID</span>
+    <input type="search" name="patient_id" value="{{ search.patient_id or '' }}"
+           placeholder="PT-001" autocomplete="off"
+           aria-label="Search by patient id (exact)">
+  </label>
+  <label class="encounter-search__field">
+    <span class="encounter-search__label">Provider NPI</span>
+    <input type="search" name="provider_npi" value="{{ search.provider_npi or '' }}"
+           placeholder="10-digit NPI" autocomplete="off"
+           inputmode="numeric" pattern="[0-9]*" maxlength="10"
+           aria-label="Search by provider NPI (exact)">
+  </label>
+  <button type="submit" class="btn btn-primary btn-sm encounter-search__submit">
+    Search
+  </button>
+  {% if search.active %}
+    <a href="/?status={{ filter if filter and filter != 'all' else 'all' }}"
+       class="btn btn-ghost btn-sm">Clear</a>
+  {% endif %}
+</form>
+{% if search.active %}
+<p class="muted small encounter-search__status" aria-live="polite">
+  Showing matches for
+  {%- set parts = [] -%}
+  {%- if search.q %}{%- set _ = parts.append('ID "' + search.q + '"') -%}{%- endif -%}
+  {%- if search.cpt %}{%- set _ = parts.append('CPT "' + search.cpt + '"') -%}{%- endif -%}
+  {%- if search.icd10 %}{%- set _ = parts.append('ICD-10 "' + search.icd10 + '"') -%}{%- endif -%}
+  {%- if search.patient_id %}{%- set _ = parts.append('patient "' + search.patient_id + '"') -%}{%- endif -%}
+  {%- if search.provider_npi %}{%- set _ = parts.append('NPI "' + search.provider_npi + '"') -%}{%- endif -%}
+  {{ parts | join(' · ') }} — {{ audits | length }} result{{ '' if audits | length == 1 else 's' }}.
+</p>
+{% endif %}
+
 {% if audits %}
   <div class="audit-grid">
     {% for card in audits %}
       {% include "_audit_card.html" %}
     {% endfor %}
+  </div>
+{% elif search.active %}
+  <div class="empty-state">
+    <h2>No encounters match your search</h2>
+    <p>Try removing one of the filters above, or
+       <a href="/?status={{ filter if filter and filter != 'all' else 'all' }}">clear all filters</a>
+       to see every encounter again.</p>
   </div>
 {% else %}
   <div class="empty-state">

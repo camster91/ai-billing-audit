@@ -1164,6 +1164,21 @@ def create_app() -> FastAPI:
                 opp_tier = "low"
             else:
                 opp_tier = None
+            # Pull claim-level fields the search filter uses (kanban
+            # t_171d24b3). The synthetic demo records expose CPT and
+            # ICD10 on ``record['claim']``; real uploads also carry
+            # ``patient_id`` and ``provider_npis`` so the same search
+            # bar works for both. Missing keys default to empty lists /
+            # strings so the filter never throws on a partial record.
+            _claim = (record or {}).get("claim", {}) or {}
+            _cpt_codes = _claim.get("cpt_codes", []) or []
+            _icd10_codes = _claim.get("icd10_codes", []) or []
+            _patient_id = (
+                _claim.get("patient_id")
+                or (record or {}).get("patient_id")
+                or ""
+            )
+            _provider_npis = _claim.get("provider_npis", []) or []
             cards.append(
                 {
                     "encounter_id": entry.encounter_id,
@@ -1176,6 +1191,10 @@ def create_app() -> FastAPI:
                     "revenue_opportunity_total": opp_total,
                     "revenue_opportunity_tier": opp_tier,
                     "revenue_opportunity_count": len(opp),
+                    "cpt_codes": _cpt_codes,
+                    "icd10_codes": _icd10_codes,
+                    "patient_id": _patient_id,
+                    "provider_npis": _provider_npis,
                 }
             )
         # Filter chips (counts) and clean-rate hero (metrics). Both
@@ -1207,6 +1226,57 @@ def create_app() -> FastAPI:
             ]
         else:
             visible_cards = list(cards)
+        # Encounter search (kanban t_171d24b3): the index page can
+        # carry ?q= (encounter_id substring) and ?cpt= / ?icd10=
+        # (prefix) filters via the search bar in the template. Filters
+        # combine via AND, are URL-preserved for shareable links, and
+        # run after the status filter so chip + search compose
+        # cleanly. Patient ID and provider NPI are accepted but only
+        # applied when the loaded record actually carries those fields
+        # (the synthetic demo data doesn't, but real uploads do).
+        # Original-case values are preserved for the form echo so the
+        # biller sees what they typed (e.g. "I10" stays "I10" instead
+        # of "i10"); the filter compares case-insensitively below.
+        search_q_raw = request.query_params.get("q", "").strip()
+        search_cpt_raw = request.query_params.get("cpt", "").strip()
+        search_icd10_raw = request.query_params.get("icd10", "").strip()
+        search_patient_raw = request.query_params.get(
+            "patient_id", ""
+        ).strip()
+        search_npi_raw = request.query_params.get(
+            "provider_npi", ""
+        ).strip()
+        search_q = search_q_raw.lower()
+        search_cpt = search_cpt_raw.lower()
+        search_icd10 = search_icd10_raw.lower()
+        search_patient = search_patient_raw.lower()
+        search_npi = search_npi_raw.lower()
+        search_active = any(
+            [search_q, search_cpt, search_icd10, search_patient, search_npi]
+        )
+        if search_active:
+            def _card_matches(card: dict[str, Any]) -> bool:
+                if search_q and search_q not in (card["encounter_id"] or "").lower():
+                    return False
+                if search_cpt:
+                    cpts = [str(c).lower() for c in card.get("cpt_codes", [])]
+                    if not any(c.startswith(search_cpt) for c in cpts):
+                        return False
+                if search_icd10:
+                    icds = [str(c).lower() for c in card.get("icd10_codes", [])]
+                    if not any(c.startswith(search_icd10) for c in icds):
+                        return False
+                if search_patient:
+                    pid = (card.get("patient_id") or "").lower()
+                    if pid != search_patient:
+                        return False
+                if search_npi:
+                    npis = [str(n).lower() for n in card.get("provider_npis", [])]
+                    if search_npi not in npis:
+                        return False
+                return True
+
+            visible_cards = [c for c in visible_cards if _card_matches(c)]
         # No real-audit running totals on the demo dashboard; the
         # metrics dict is the "no data" shape so the template's
         # `{% if metrics and metrics.ready %}` skips the hero. Once
@@ -1335,6 +1405,19 @@ def create_app() -> FastAPI:
                 "missed_revenue_month_label": missed_revenue_month_label,
                 "monthly_revenue_kpi": monthly_revenue_kpi,
                 "per_clinic_f1_widget": per_clinic_f1_widget,
+                # Encounter search (kanban t_171d24b3): the form
+                # values echo back into the inputs so a biller can
+                # refine a search without re-typing everything; the
+                # ``search_active`` flag drives the empty-state copy
+                # ("no matches" vs "no audits").
+                "search": {
+                    "q": search_q_raw,
+                    "cpt": search_cpt_raw,
+                    "icd10": search_icd10_raw,
+                    "patient_id": search_patient_raw,
+                    "provider_npi": search_npi_raw,
+                    "active": search_active,
+                },
             },
         )
 

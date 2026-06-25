@@ -1368,3 +1368,78 @@ main.page {
     gap: var(--space-1);
   }
 }
+
+/* Encounter search bar (kanban t_171d24b3).
+   Inline form with five labelled inputs and a submit button. The
+   bar lives below the filter chips on the home page. Designed to
+   wrap cleanly at 768px (tablet) and 390px (iPhone 14) so the
+   mobile-responsive tests for kanban t_7e91cc86 keep passing. */
+.encounter-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  margin: var(--space-4, 1rem) 0 var(--space-3, 0.75rem);
+  background: var(--color-surface, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+}
+.encounter-search__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+.encounter-search__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.encounter-search input[type="search"] {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: var(--radius-sm, 4px);
+  font: inherit;
+  background: var(--color-bg, #fff);
+  /* Touch target minimum 44px per Apple HIG / WCAG 2.5.5 —
+     the inputs expand on small viewports below. */
+  min-height: 38px;
+}
+.encounter-search input[type="search"]:focus {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 1px;
+  border-color: var(--color-primary, #2563eb);
+}
+.encounter-search__submit {
+  flex: 0 0 auto;
+  min-height: 38px;
+}
+.encounter-search__status {
+  margin: 0 0 var(--space-3, 0.75rem);
+  padding: 0 var(--space-4, 1rem);
+}
+/* Mobile (kanban t_7e91cc86) — at 390px (iPhone 14) the inputs
+   stack one-per-row and grow to the full width so each touch
+   target is comfortably above 44px. The button takes the full
+   row width too. */
+@media (max-width: 768px) {
+  .encounter-search {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2, 0.5rem);
+  }
+  .encounter-search__field {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .encounter-search__submit,
+  .encounter-search .btn-ghost {
+    width: 100%;
+    min-height: 44px; /* WCAG 2.5.5 touch target */
+  }
+}
