@@ -1,0 +1,119 @@
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+  font-family: var(--font-sans, system-ui, -apple-system, Segoe UI, sans-serif);
+  color: var(--fg, #1a1a1a);
+  line-height: 1.55;
+}
+
+.header h1 {
+  font-size: 2rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.header p {
+  color: var(--fg-muted, #555);
+  margin: 0 0 1.75rem;
+}
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid var(--border, #e5e5e5);
+  border-bottom: 1px solid var(--border, #e5e5e5);
+  padding: 0.75rem 0;
+  margin-bottom: 2rem;
+  font-size: 0.92rem;
+}
+
+.toc a {
+  color: var(--accent, #2453a3);
+  text-decoration: none;
+}
+
+.toc a:hover {
+  text-decoration: underline;
+}
+
+.section {
+  margin-bottom: 2.5rem;
+}
+
+.section h2 {
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+  border-bottom: 1px solid var(--border, #e5e5e5);
+  padding-bottom: 0.4rem;
+}
+
+.item {
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.6rem;
+  background: var(--bg-soft, #fafafa);
+}
+
+.item summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.item summary::before {
+  content: "+ ";
+  color: var(--accent, #2453a3);
+  font-weight: 700;
+}
+
+.item[open] summary::before {
+  content: "− ";
+}
+
+.answer {
+  margin-top: 0.5rem;
+  color: var(--fg, #222);
+}
+
+.answer p,
+.answer ol {
+  margin: 0 0 0.6rem;
+}
+
+.answer ol {
+  padding-left: 1.4rem;
+}
+
+.answer li {
+  margin-bottom: 0.2rem;
+}
+
+.answer code {
+  background: #f0f0f0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+
+.caveat {
+  background: #fff8e1;
+  border-left: 3px solid #d4a017;
+  padding: 0.6rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+
+.footer {
+  border-top: 1px solid var(--border, #e5e5e5);
+  padding-top: 1.25rem;
+  color: var(--fg-muted, #555);
+  font-size: 0.95rem;
+}
