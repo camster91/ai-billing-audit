@@ -1,0 +1,86 @@
+{
+  "board": "contractions",
+  "drain_date": "2026-06-25",
+  "drain_method": "claim+complete (existing probes shipped)",
+  "parent_tasks_remaining_blocked": 19,
+  "subtasks_completed": 10,
+  "subtasks": [
+    {
+      "task_id": "t_aec9d771",
+      "title": "T17 Maya persona: test plan + curl probe",
+      "deliverables_shipped": ["docs/gauntlet/plans/T17-maya.md", "docs/gauntlet/scripts/probe-maya.sh"],
+      "parent": "t_37a4fea9",
+      "parent_remains_blocked_because": "Probe not yet executed against live"
+    },
+    {
+      "task_id": "t_b1302d46",
+      "title": "T18 Tyler persona: test plan + tablet probe (KidHome)",
+      "deliverables_shipped": ["docs/gauntlet/plans/T18-tyler.md", "docs/gauntlet/scripts/probe-tyler.sh"],
+      "parent": "t_3110fc1b",
+      "parent_remains_blocked_because": "Tablet probe not yet run"
+    },
+    {
+      "task_id": "t_83a3f330",
+      "title": "T19 Grandma persona: iPhone SE probe (44px targets)",
+      "deliverables_shipped": ["docs/gauntlet/plans/T19-grandma.md", "docs/gauntlet/scripts/probe-grandma.sh"],
+      "parent": "t_d9b8df49",
+      "parent_remains_blocked_because": "iPhone SE probe not yet run"
+    },
+    {
+      "task_id": "t_0f69431a",
+      "title": "T20 Marcus persona: mobile probe (one-tap approve)",
+      "deliverables_shipped": ["docs/gauntlet/plans/T20-marcus.md", "docs/gauntlet/scripts/probe-marcus.sh"],
+      "parent": "t_c17583ad",
+      "parent_remains_blocked_because": "Mobile probe not yet run"
+    },
+    {
+      "task_id": "t_59e3cb75",
+      "title": "T21 Sam teen persona: non-KidHome probe",
+      "deliverables_shipped": ["docs/gauntlet/plans/T21-sam-teen.md", "docs/gauntlet/scripts/probe-sam-teen.sh"],
+      "parent": "t_dff71c8d",
+      "parent_remains_blocked_because": "Probe not yet run"
+    },
+    {
+      "task_id": "t_0cc329cc",
+      "title": "T22 Dr. Patel: Handoff probe (no auth)",
+      "deliverables_shipped": ["docs/gauntlet/plans/T22-dr-patel.md", "docs/gauntlet/scripts/probe-dr-patel.sh"],
+      "parent": "t_514a13fd",
+      "parent_remains_blocked_because": "Handoff probe not yet run"
+    },
+    {
+      "task_id": "t_5832fc72",
+      "title": "T23 Alex sitter: Handoff time-window probe",
+      "deliverables_shipped": ["docs/gauntlet/plans/T23-alex-sitter.md", "docs/gauntlet/scripts/probe-alex-sitter.sh"],
+      "parent": "t_428654db",
+      "parent_remains_blocked_because": "Sitter probe not yet run"
+    },
+    {
+      "task_id": "t_2edb81f5",
+      "title": "T24 Security tester: 7-attack probe matrix",
+      "deliverables_shipped": ["docs/gauntlet/plans/T24-security-tester.md", "docs/gauntlet/scripts/probe-security-tester.sh"],
+      "parent": "t_19047413",
+      "parent_remains_blocked_because": "Security probe not yet run against staging"
+    },
+    {
+      "task_id": "t_a44e7d62",
+      "title": "T25 A11y auditor: WCAG 2.1 AA + axe-core probe",
+      "deliverables_shipped": ["docs/gauntlet/plans/T25-a11y-auditor.md", "docs/gauntlet/scripts/probe-a11y-auditor.sh"],
+      "parent": "t_58aced83",
+      "parent_remains_blocked_because": "A11y probe not yet run"
+    },
+    {
+      "task_id": "t_7bf6dfbe",
+      "title": "T26 Visual/E2E click-through probe",
+      "deliverables_shipped": ["docs/gauntlet/plans/T26-visual-e2e.md", "docs/gauntlet/scripts/probe-visual-e2e.sh"],
+      "parent": "t_cc111a64",
+      "parent_remains_blocked_because": "Visual probe not yet run"
+    }
+  ],
+  "summary": {
+    "ready_subtasks_at_start": 10,
+    "ready_subtasks_completed": 10,
+    "blocked_parents_unchanged": 19,
+    "deliverable_files_total": 20,
+    "rationale": "All 10 ready sub-tasks already had shipped plan + probe scripts from previous sessions. Drain = comment with artifact references + complete. Parent tasks remain blocked because each requires a live probe run (which is what the sub-task ships)."
+  }
+}

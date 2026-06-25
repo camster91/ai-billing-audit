@@ -1,0 +1,70 @@
+{
+  "board": "niche-utility-apps",
+  "drain_date": "2026-06-25",
+  "drain_method": "stub-and-link",
+  "deliverables": [
+    {
+      "task_id": "t_7f2bd26d",
+      "title": "Confirm Hermes marketing channels & account permissions",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#channels-triage",
+      "decision": "Reddit approved, Product Hunt draft+submit split, niche forums/cold email needs creds, Buffer declined",
+      "status_after_drain": "blocked (business decision)"
+    },
+    {
+      "task_id": "t_a3929197",
+      "title": "Confirm any existing revenue from jw-video and data-broker-removal",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#8-blocked-tasks",
+      "decision": "Requires App Store Connect + Play Console + Stripe API access",
+      "status_after_drain": "blocked (needs API access)"
+    },
+    {
+      "task_id": "t_a76cdcd5",
+      "title": "Verify Apple/Google developer account setup",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#8-blocked-tasks",
+      "decision": "Requires Cam login to both consoles",
+      "status_after_drain": "blocked (needs Cam login)"
+    },
+    {
+      "task_id": "t_86db93bd",
+      "title": "Decide and spec JW RAG web UI vs. documented CLI",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#8-blocked-tasks",
+      "decision": "Product decision — Cam to choose",
+      "status_after_drain": "blocked (product decision)"
+    },
+    {
+      "task_id": "t_735b89f1",
+      "title": "Budget App: iOS submission + family-of-4 mode",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#recommended-next-session",
+      "decision": "Build family-of-4 first, then submit",
+      "status_after_drain": "blocked (M work)"
+    },
+    {
+      "task_id": "t_6ca3fde4",
+      "title": "LifeStreak: iOS submission + ASO",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#recommended-next-session",
+      "decision": "Generate assets + ASO copy, then submit",
+      "status_after_drain": "blocked (M work)"
+    },
+    {
+      "task_id": "t_09543648",
+      "title": "Luna Contractions: submit v56 to iOS + Google Play",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#recommended-next-session",
+      "decision": "Upload build + metadata",
+      "status_after_drain": "blocked (L work)"
+    },
+    {
+      "task_id": "t_9ebed017",
+      "title": "Migrate jw-video",
+      "stub_doc": "docs/niche-utility-apps-stubs/decision-matrix.md#recommended-next-session",
+      "decision": "Run export/import cycle, verify both stores",
+      "status_after_drain": "blocked (M work)"
+    }
+  ],
+  "summary": {
+    "tasks_touched": 8,
+    "tasks_completed": 0,
+    "tasks_still_blocked": 8,
+    "deliverables_shipped": 1,
+    "rationale": "All 8 are M/L work requiring Cam decision or Cam-controlled console/credentials. Single consolidated decision matrix doc gives Cam everything needed to clear them in one 60-min session. None fake-marked done."
+  }
+}

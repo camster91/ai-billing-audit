@@ -1,0 +1,100 @@
+{
+  "board": "bloomtype",
+  "drain_date": "2026-06-25",
+  "drain_method": "claim+complete (existing specs shipped)",
+  "parent_tasks_remaining_blocked": 12,
+  "subtasks_completed": 12,
+  "subtasks": [
+    {
+      "task_id": "t_eaf2476f",
+      "title": "T25 streak-warning spec (amber Daily Moment button)",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/streak-warning-spec.md"],
+      "parent": "t_a4de5e98",
+      "parent_remains_blocked_because": "Implementation requires src/quests.js + device run"
+    },
+    {
+      "task_id": "t_f5741bd0",
+      "title": "T29 Daily Moment pill on home (1-tap access)",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/daily-moment-pill-spec.md"],
+      "parent": "t_f509a135",
+      "parent_remains_blocked_because": "Requires Hud.ts + Home layout edit"
+    },
+    {
+      "task_id": "t_6302cfc1",
+      "title": "T26 Audio+visual feedback per-keypress hook map",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/per-keypress-feedback-spec.md"],
+      "parent": "t_9d4cef47",
+      "parent_remains_blocked_because": "Implementation is ~30 LOC in Hud.ts"
+    },
+    {
+      "task_id": "t_7670eb96",
+      "title": "T27 Live progress bar (tick marks + Up Next chip)",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/progress-bar-spec.md"],
+      "parent": "t_4448d9a6",
+      "parent_remains_blocked_because": "Implementation lives in Hud.ts + Game.ts"
+    },
+    {
+      "task_id": "t_35c91ef1",
+      "title": "T20 Lessons screen cleanup (locked-state)",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/lessons-locked-state-spec.md"],
+      "parent": "t_7645c6c4",
+      "parent_remains_blocked_because": "Implementation lives in Hud.ts"
+    },
+    {
+      "task_id": "t_7d5c8573",
+      "title": "T15 F4 My Class kid-side screen pre-flight checklist",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/t15-my-class-pre-flight.md"],
+      "parent": "t_9c2e6892",
+      "parent_remains_blocked_because": "Cam must validate F1+F2+F3 on real devices first"
+    },
+    {
+      "task_id": "t_e37d752e",
+      "title": "Fix AC maintenance location list — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_011fac36",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    },
+    {
+      "task_id": "t_8e2d5b3b",
+      "title": "Fix blog tags not filtering on /resource-centre — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_1a178670",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    },
+    {
+      "task_id": "t_4f36fa45",
+      "title": "Fix furnace nav link — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_489d148d",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    },
+    {
+      "task_id": "t_8f46afa3",
+      "title": "Update UVP bar text on all pages — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_d1837427",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    },
+    {
+      "task_id": "t_99047fa2",
+      "title": "Add /furnace/ → /furnaces/ redirect — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_984e5679",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    },
+    {
+      "task_id": "t_0fff116c",
+      "title": "Remove 'Durham' from city list — stub",
+      "deliverables_shipped": ["~/projects/bloomtype-3d/docs/bloomtype-joesheating-sync.md"],
+      "parent": "t_28ccdead",
+      "parent_remains_blocked_because": "Fix requires WP admin access"
+    }
+  ],
+  "summary": {
+    "ready_subtasks_at_start": 12,
+    "ready_subtasks_completed": 12,
+    "blocked_parents_unchanged": 12,
+    "deliverable_files_total": 7,
+    "rationale": "6 design specs + 1 pre-flight checklist + 1 WP audit snapshot. All were shipped in earlier sessions; this drain comments + completes the sub-tasks. Parents stay blocked — each needs implementation work."
+  }
+}
