@@ -2673,6 +2673,439 @@ def create_app() -> FastAPI:
             "count": len(current),
         })
 
+    # ---- Denial-risk + appeal-letter API (denial_risk.py + appeal_letter.py) -
+    # The denial-risk scorer and the appeal-letter generator are both
+    # implemented and unit-tested at the module level. The HTML
+    # encounter-detail page already renders the denial-risk score
+    # (computed inline). These JSON endpoints give the new Next.js
+    # portal (apps/portal) the same data without an HTML scrape, and
+    # let the biller trigger letter generation + outcome tracking
+    # without going through the legacy form POSTs.
+
+    @app.get("/api/encounters/{encounter_id}/denial-risk")
+    async def api_encounter_denial_risk(
+        encounter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Compute the per-claim denial risk from the encounter's findings.
+
+        Response shape:
+        ``{
+            "encounter_id": str,
+            "denial_probability": float,   # 0.0 .. 0.99
+            "tier": str,                  # low / medium / high / critical
+            "n_findings": int,
+            "n_findings_scored": int,
+            "n_findings_below_threshold": int,
+            "per_finding": [...],         # one entry per scored finding
+            "top_risk": {...} | None,
+            "min_severity": int,
+        }``
+
+        Returns 404 if the encounter isn't registered. The tenant's
+        ``min_severity`` threshold is honoured so the score matches
+        what the encounter-detail HTML page shows.
+        """
+        from .denial_risk import compute_denial_risk
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+        # The denial-risk scorer keys on the same finding shape the
+        # encounter-detail HTML page uses (_finding_dicts normalises
+        # ground_truth entries). We score against the FULL finding
+        # list — the page surfaces denial_risk from
+        # visible_findings after applying MIN_SEVERITY_TO_SHOW, but
+        # the API consumer is the portal which may want to apply its
+        # own threshold. We expose both the per-finding contributions
+        # AND the min_severity we used so the caller can re-filter.
+        record = load_encounter_record(encounter_id)
+        if record is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"{encounter_id!r} not registered",
+            )
+        findings = _finding_dicts(record)
+        min_sev = _min_severity_threshold()
+        scored = compute_denial_risk(findings, min_severity=min_sev)
+        scored["encounter_id"] = encounter_id
+        scored["min_severity"] = min_sev
+        return JSONResponse(scored)
+
+    @app.post("/api/encounters/{encounter_id}/appeal-letter")
+    async def api_encounter_appeal_letter(
+        request: Request,
+        encounter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Generate an appeal letter for a specific finding on this encounter.
+
+        Body (JSON): ``{
+            "finding_id"?: str,    # preferred; matches by exact id
+            "rule_id"?: str,       # fallback if finding_id is absent or
+                                    # the LLM didn't emit a stable id;
+                                    # supports fuzzy prefix/substring match
+            "denial_reason": str,   # required; what the payer said
+            "clinical_note"?: str,  # optional override; falls back to the
+                                    # finding's quote or the stored note
+        }``.
+
+        At least one of ``finding_id`` / ``rule_id`` is required, plus
+        ``denial_reason``. This mirrors the existing
+        ``/encounter/{id}/appeal`` route so the two endpoints stay
+        in lock-step.
+
+        Response (200): ``{
+            "ok": True,
+            "encounter_id": str,
+            "finding_id": str,
+            "letter": { ... see appeal_letter.generate_appeal_letter ... }
+        }``
+
+        Errors:
+          * 400 — missing finding_id/rule_id or denial_reason
+          * 404 — encounter not registered OR no real audit exists
+          * 404 — neither finding_id nor rule_id matches any finding
+          * 500 — LLM call failed AND the template-only fallback also
+                  couldn't produce a letter
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="body must be a JSON object",
+            )
+        finding_id = str(body.get("finding_id", "") or "").strip()
+        rule_id = str(body.get("rule_id", "") or "").strip()
+        if not finding_id and not rule_id:
+            raise HTTPException(
+                status_code=400,
+                detail="finding_id or rule_id is required",
+            )
+        denial_reason = str(body.get("denial_reason", "") or "").strip()
+        if not denial_reason:
+            raise HTTPException(
+                status_code=400,
+                detail="denial_reason is required",
+            )
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+
+        # Pull findings from the most recent REAL audit (the LLM's
+        # output), not the encounter record's ground_truth. Demo
+        # encounters use the encounter record, but for uploaded
+        # encounters the findings live in /app/logs/upload_jobs.jsonl.
+        real_audit = _latest_real_audit_for(encounter_id)
+        findings: list[dict[str, Any]] = []
+        if real_audit is not None:
+            findings = list(real_audit.get("findings", []) or [])
+        if not findings:
+            # Fall back to the encounter record's gold findings. This
+            # keeps demo encounters (no real audit) usable.
+            record = load_encounter_record(encounter_id)
+            if record is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"{encounter_id!r} not registered and no "
+                        "real audit on file; upload + audit first"
+                    ),
+                )
+            findings = _finding_dicts(record)
+
+        target_finding: dict[str, Any] | None = None
+        if finding_id:
+            for f in findings:
+                if str(f.get("finding_id", "")) == finding_id:
+                    target_finding = f
+                    break
+        if target_finding is None and rule_id:
+            # Exact match first (rule_id single key or rule_ids list).
+            for f in findings:
+                rid = f.get("rule_id") or (
+                    f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
+                )
+                if rid == rule_id:
+                    target_finding = f
+                    break
+            if target_finding is None:
+                # Fuzzy: same first 12 chars, OR substring match.
+                # Catches singular/plural ("DX_LINKAGE_REQUIRED" vs
+                # "DX_LINKAGE_REQUIREMENT") and underscore/dash
+                # variations. Same approach as the existing
+                # /encounter/{id}/appeal route.
+                rule_norm = (
+                    rule_id.upper().replace("_", "").replace("-", "")
+                )
+                for f in findings:
+                    rid = f.get("rule_id") or (
+                        f.get("rule_ids", [None])[0]
+                        if f.get("rule_ids") else None
+                    )
+                    if not rid:
+                        continue
+                    rid_norm = (
+                        rid.upper().replace("_", "").replace("-", "")
+                    )
+                    if (
+                        rule_norm[:12] == rid_norm[:12]
+                        or rule_norm in rid_norm
+                        or rid_norm in rule_norm
+                    ):
+                        target_finding = f
+                        break
+        if target_finding is None:
+            key = (
+                f"finding_id={finding_id!r}"
+                if finding_id
+                else f"rule_id={rule_id!r}"
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=f"{key} not present in the latest audit",
+            )
+
+        # Build the encounter dict the generator expects. The
+        # generator only reads a couple of fields (patient_id, claim,
+        # encounter_id) so we pass a minimal shape with what we have.
+        record = load_encounter_record(encounter_id) or {}
+        zctx = (
+            (real_audit or {}).get("zorva_context")
+            if isinstance(real_audit, dict) else None
+        ) or {}
+        clinical_note = body.get("clinical_note")
+        if not isinstance(clinical_note, str) or not clinical_note.strip():
+            # The finding's quote is a strong stand-in for the
+            # verbatim clinical note (the LLM only sees the quote
+            # at audit time anyway). For uploaded encounters, the
+            # real audit's full note isn't persisted to JSONL yet
+            # so we fall back to the quote.
+            clinical_note = (
+                target_finding.get("quote", "")
+                or record.get("clinical_note", "")
+            )
+        encounter_dict = {
+            "encounter_id": encounter_id,
+            "claim": record.get("claim", {}) or {},
+            "patient_id": record.get("patient_id", ""),
+        }
+
+        # LLM client wiring. Falls back to the template-only path
+        # when LLMClient can't be imported (dev smoke, tests). The
+        # template path always returns a valid letter, so 500 is
+        # truly exceptional.
+        try:
+            from .llm import LLMClient
+            llm_client = LLMClient()
+
+            def _llm_complete(prompt: str) -> str:
+                response = llm_client.complete(
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                if isinstance(response, dict):
+                    return (response.get("choices", [{}])[0]
+                                  .get("message", {})
+                                  .get("content", ""))
+                return str(response or "")
+
+            llm_complete = _llm_complete
+        except Exception:
+            llm_complete = None
+
+        try:
+            from .appeal_letter import (
+                generate_appeal_letter,
+                log_appeal_letter,
+            )
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="appeal_letter module unavailable",
+            )
+
+        try:
+            letter = generate_appeal_letter(
+                finding=target_finding,
+                encounter=encounter_dict,
+                clinical_note=clinical_note,
+                denial_reason=denial_reason,
+                zorva_context=zctx,
+                llm_complete=llm_complete,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"appeal-letter generation failed: {e}",
+            )
+        if letter is None:
+            raise HTTPException(
+                status_code=500,
+                detail="appeal-letter generation returned no result",
+            )
+        # Persist to the appeal-letters log so outcome tracking has
+        # something to attach to. ``log_appeal_letter`` handles
+        # PHI-scrubbing of the markdown body before writing.
+        resolved_finding_id = (
+            (target_finding or {}).get("finding_id")
+            if target_finding else finding_id
+        ) or None
+        try:
+            log_appeal_letter(
+                letter,
+                encounter_id,
+                tenant_id=_TENANT_ID,
+                finding_id=resolved_finding_id,
+            )
+        except Exception:
+            # Persisting is best-effort.
+            pass
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "finding_id": finding_id or (
+                target_finding.get("finding_id", "") if target_finding else ""
+            ),
+            "letter": letter,
+        })
+
+    @app.get("/api/encounters/{encounter_id}/appeal-letters")
+    async def api_encounter_appeal_letters(
+        encounter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """List every appeal letter generated for this encounter.
+
+        Response: ``{"encounter_id": str, "letters": [...], "count": int}``.
+        Ordered newest-first. The body field is PHI-scrubbed (the
+        unscrubbed text lives only in the response of
+        POST /appeal-letter).
+        """
+        try:
+            from .appeal_letter import read_appeal_letters
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="appeal_letter module unavailable",
+            )
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+        letters = read_appeal_letters(encounter_id=encounter_id)
+        # Newest-first ordering. read_appeal_letters returns the file
+        # in append order; reverse it for "most recent at top" UX.
+        letters = list(reversed(letters or []))
+        return JSONResponse({
+            "encounter_id": encounter_id,
+            "letters": letters,
+            "count": len(letters),
+        })
+
+    @app.post("/api/encounters/{encounter_id}/appeal-letter/{letter_id}/outcome")
+    async def api_encounter_appeal_letter_outcome(
+        request: Request,
+        encounter_id: str,
+        letter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Log the outcome of an appeal letter.
+
+        Body (JSON): ``{
+            "status": str,           # required; one of won / lost /
+                                       # withdrawn / pending / did_not_file
+                                       # (matches the legacy
+                                       # /encounter/{id}/appeal/{aid}/outcome
+                                       # route so the two endpoints stay in
+                                       # lock-step)
+            "notes"?: str,
+            "biller_id"?: str,        # optional override; defaults to the
+                                       # authenticated user
+        }``.
+
+        The outcome row joins with the letter row via ``appeal_id``
+        (== ``letter_id``) and ``encounter_id``. ``appeal_win_rate``
+        reads these rows for the ROI dashboard.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="body must be a JSON object",
+            )
+        status = str(body.get("status", "") or "").strip().lower()
+        allowed_statuses = {
+            "won", "lost", "withdrawn", "pending", "did_not_file",
+        }
+        if status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"status must be one of {sorted(allowed_statuses)}; "
+                    f"got {status!r}"
+                ),
+            )
+        notes = str(body.get("notes", "") or "").strip()
+        biller_id = body.get("biller_id")
+        if biller_id is not None:
+            biller_id = str(biller_id).strip() or user.user_identifier
+        else:
+            biller_id = user.user_identifier
+        if not encounter_id or not encounter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="encounter_id path param is empty",
+            )
+        if not letter_id or not letter_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="letter_id path param is empty",
+            )
+        encounter_id = encounter_id.strip()
+        letter_id = letter_id.strip()
+        try:
+            from .appeal_letter import (
+                AppealOutcome,
+                log_appeal_outcome,
+            )
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="appeal_letter module unavailable",
+            )
+        # Use AppealOutcome.now() for consistency with the legacy
+        # endpoint. The classmethod stamps the timestamp and tenant_id
+        # so the audit trail stays uniform.
+        outcome = AppealOutcome.now(
+            appeal_id=letter_id,
+            encounter_id=encounter_id,
+            status=status,
+            biller_id=biller_id,
+            notes=notes,
+        )
+        log_appeal_outcome(outcome)
+        return JSONResponse({
+            "ok": True,
+            "encounter_id": encounter_id,
+            "appeal_id": letter_id,
+            "status": status,
+            "notes": notes,
+            "timestamp": getattr(outcome, "timestamp", ""),
+        })
+
     @app.get("/api/clinics/{clinic_id}/workload")
     async def api_clinic_workload(clinic_id: str) -> JSONResponse:
         """Return the current per-biller workload for one clinic.
