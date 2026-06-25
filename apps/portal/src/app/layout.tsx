@@ -49,6 +49,23 @@ export const metadata: Metadata = {
       follow: true,
     },
   },
+  // OpenGraph + Twitter card defaults (kanban t_05e9b86a). Pages can
+  // override per-route via their own `export const metadata: Metadata`.
+  openGraph: {
+    type: "website",
+    siteName: "Zorva",
+    title: "Zorva — AI pre-bill audit for Alberta clinics",
+    description:
+      "Zorva reads every Alberta claim against AHCIP and the SOMB before " +
+      "submission, surfacing missed codes and underbilled modifiers that " +
+      "drain your monthly revenue. Human-reviewed.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Zorva — AI pre-bill audit for Alberta clinics",
+    description:
+      "Find the revenue your billers are leaving on the table.",
+  },
 };
 
 // Marketing-site header. Public-only pages (/, /pricing, /how-it-works,
