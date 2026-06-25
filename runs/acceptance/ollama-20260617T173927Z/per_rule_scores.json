@@ -1,0 +1,559 @@
+{
+  "n_encounters": 50,
+  "n_ok": 49,
+  "n_errors": 1,
+  "any_match_count": 17,
+  "zero_tp_count": 33,
+  "overall": {
+    "tp": 23,
+    "fp": 0,
+    "fn": 141,
+    "n": 50,
+    "precision": 1.0,
+    "recall": 0.1402439024390244,
+    "f1": 0.24598930481283426
+  },
+  "by_rule_family": {
+    "other": {
+      "tp": 23,
+      "fp": 0,
+      "fn": 141,
+      "n": 164,
+      "precision": 1.0,
+      "recall": 0.1402439024390244,
+      "f1": 0.24598930481283426
+    }
+  },
+  "by_modifier_subrule": {},
+  "by_code_level": {
+    "imaging": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 13,
+      "n": 13,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "lab": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 20,
+      "n": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "other": {
+      "tp": 23,
+      "fp": 0,
+      "fn": 108,
+      "n": 131,
+      "precision": 1.0,
+      "recall": 0.17557251908396945,
+      "f1": 0.2987012987012987
+    }
+  },
+  "per_encounter": [
+    {
+      "encounter_id": "enc_10000",
+      "gt_count": 4,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10001",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10002",
+      "gt_count": 2,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10003",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10004",
+      "gt_count": 3,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10005",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10006",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10007",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10008",
+      "gt_count": 3,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 1,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10009",
+      "gt_count": 3,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10010",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10011",
+      "gt_count": 4,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10012",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10013",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10014",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10015",
+      "gt_count": 4,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10016",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10017",
+      "gt_count": 2,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10018",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10019",
+      "gt_count": 2,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10020",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": false
+    },
+    {
+      "encounter_id": "enc_10021",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10022",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10023",
+      "gt_count": 3,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10024",
+      "gt_count": 3,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10025",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10026",
+      "gt_count": 4,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10027",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10028",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10029",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10030",
+      "gt_count": 4,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10031",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10032",
+      "gt_count": 1,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10033",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10034",
+      "gt_count": 2,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10035",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10036",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10037",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10038",
+      "gt_count": 3,
+      "pred_count": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 1,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10039",
+      "gt_count": 3,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10040",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10041",
+      "gt_count": 3,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10042",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10043",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10044",
+      "gt_count": 0,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "is_flagged": false,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10045",
+      "gt_count": 4,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10046",
+      "gt_count": 5,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 5,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10047",
+      "gt_count": 2,
+      "pred_count": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10048",
+      "gt_count": 4,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 4,
+      "is_flagged": true,
+      "ok": true
+    },
+    {
+      "encounter_id": "enc_10049",
+      "gt_count": 3,
+      "pred_count": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "is_flagged": true,
+      "ok": true
+    }
+  ]
+}
