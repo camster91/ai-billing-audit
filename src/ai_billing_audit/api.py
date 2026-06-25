@@ -6066,6 +6066,16 @@ def create_app() -> FastAPI:
 
     register_public_api(app)
 
+    # ── Clinical-impact doctor-facing surfaces (kanban: clinical-impact) ──
+    # Five small endpoints behind feature flags:
+    #   t_267a1ad6 doctor effectiveness metric
+    #   t_a26d25be rejected-fix teaching signal queue + verdict
+    #   t_f5ea3bf2 doctor 'fix-it' re-audit queue
+    #   t_17ec5fec per-tenant prompt version pinning
+    from ai_billing_audit.clinical_metrics import mount_clinical_metrics_routes
+
+    mount_clinical_metrics_routes(app)
+
     return app
 
 
