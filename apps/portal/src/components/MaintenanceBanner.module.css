@@ -1,0 +1,50 @@
+.banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid transparent;
+}
+
+.info {
+  background: var(--info-bg, #dbeafe);
+  color: var(--info-fg, #1e3a8a);
+  border-bottom-color: var(--info-border, #93c5fd);
+}
+
+.warn {
+  background: var(--warn-bg, #fef3c7);
+  color: var(--warn-fg, #78350f);
+  border-bottom-color: var(--warn-border, #fbbf24);
+}
+
+.critical {
+  background: var(--critical-bg, #fee2e2);
+  color: var(--critical-fg, #7f1d1d);
+  border-bottom-color: var(--critical-border, #f87171);
+}
+
+.message {
+  flex: 1;
+}
+
+.dismiss {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
+}
+
+.dismiss:hover,
+.dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
