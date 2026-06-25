@@ -131,6 +131,16 @@ export default function Home() {
           </p>
         </section>
       </main>
+      <footer className={styles.footer}>
+        <div className={styles.footerLinks}>
+          <Link href="/pricing">Pricing</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/how-it-works">How it works</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/security">Security</Link>
+        </div>
+        <p>Questions? Email us at hello@zorva.ca</p>
+      </footer>
     </div>
   );
 }

@@ -796,3 +796,33 @@
 }
 
 .impactTotalNegative { color: #f87171; }
+
+.footer {
+  width: 100%;
+  max-width: 720px;
+  margin: 48px auto 0;
+  padding: 24px 24px 48px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+  font-size: 14px;
+  color: #9aa3b2;
+}
+.footerLinks {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.footerLinks a {
+  color: #9aa3b2;
+  text-decoration: none;
+}
+.footerLinks a:hover,
+.footerLinks a:focus-visible {
+  color: #f5f7fa;
+  text-decoration: underline;
+}

@@ -22,6 +22,7 @@
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { signIn, auth } from "@/auth";
 import styles from "../shell.module.css";
 
@@ -97,6 +98,16 @@ export default async function LoginPage({ searchParams }: PageProps) {
           </button>
         </form>
       </div>
+      <footer className={styles.footer}>
+        <div className={styles.footerLinks}>
+          <Link href="/">Home</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/security">Security</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/contact">Contact</Link>
+        </div>
+        <p>Questions? Email us at hello@zorva.ca</p>
+      </footer>
     </main>
   );
 }
