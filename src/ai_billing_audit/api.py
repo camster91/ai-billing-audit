@@ -1113,6 +1113,94 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
         registered = list_demo_encounters()
+        # Saved-filter presets (kanban t_66b05d72). Resolve the
+        # current user from the RBAC layer so each biller sees their
+        # own presets. ``?preset=<name>`` deep-links to a stored
+        # preset; ``?set_default=1`` toggles the default flag for
+        # the biller; ``?delete_preset=1`` removes a preset.
+        from .saved_filters import SavedFilterStore
+
+        user = get_request_user(request)
+        user_id = user.user_id or "dev_user"
+        preset_store = SavedFilterStore()
+        user_presets = preset_store.list_for_user(user_id)
+        default_preset_name: str | None = None
+        for p in user_presets:
+            if p.is_default:
+                default_preset_name = p.preset_name
+                break
+        # Apply ?preset=<name> as a deep-link override. The URL
+        # becomes a shareable handle: a colleague can paste it in
+        # chat and the biller sees the same view on click.
+        preset_param = request.query_params.get("preset", "").strip()
+        if preset_param:
+            preset_obj = preset_store.get_preset(user_id, preset_param)
+            if preset_obj and preset_obj.filter:
+                # Build a redirect URL so the back button + share
+                # workflow stays canonical (the URL is the state).
+                params: list[tuple[str, str]] = []
+                for k, v in preset_obj.filter.items():
+                    params.append((k, v))
+                from urllib.parse import urlencode
+
+                redirect_url = "/?" + urlencode(params)
+                # FastAPI doesn't have a clean "redirect" from a
+                # template-rendering GET, so return a tiny HTML
+                # page with a meta-refresh + JS fallback. This
+                # keeps the route HTML-only as the task spec
+                # requires (no JSON contract change).
+                return HTMLResponse(
+                    f'<!doctype html><meta http-equiv="refresh" '
+                    f'content="0;url={redirect_url}">'
+                    f'<script>location.replace("{redirect_url}")</script>'
+                    f'<a href="{redirect_url}">Continue to '
+                    f"{preset_obj.preset_name}</a>",
+                    status_code=200,
+                )
+        # Compute the current-preset name (does the URL match a
+        # stored preset exactly?). Used by the template to render
+        # the "edit default / delete" controls next to the active
+        # filter bar.
+        current_filter_state: dict[str, str] = {}
+        if active_filter and active_filter != "all":
+            current_filter_state["status"] = active_filter
+        if search_active:
+            for raw_key, raw_val in (
+                ("q", search_q_raw),
+                ("cpt", search_cpt_raw),
+                ("icd10", search_icd10_raw),
+                ("patient_id", search_patient_raw),
+                ("provider_npi", search_npi_raw),
+            ):
+                if raw_val:
+                    current_filter_state[raw_key] = raw_val
+        current_preset_name: str | None = None
+        for p in user_presets:
+            if p.filter == current_filter_state:
+                current_preset_name = p.preset_name
+                break
+        # Handle ?set_default=1&name=<preset> — set a preset as the
+        # user's default. We render a redirect to the clean URL so
+        # the action is bookmarkable.
+        set_default_param = request.query_params.get("set_default", "").strip()
+        if set_default_param == "1":
+            name_param = request.query_params.get("name", "").strip()
+            if name_param:
+                target = preset_store.get_preset(user_id, name_param)
+                if target is not None and target.filter:
+                    preset_store.save_preset(
+                        user_id,
+                        name_param,
+                        target.filter,
+                        set_default=True,
+                    )
+                    return HTMLResponse(
+                        f'<!doctype html><meta http-equiv="refresh" '
+                        f'content="0;url=/?preset={name_param}">'
+                        f'<a href="/?preset={name_param}">'
+                        f"Continue</a>",
+                        status_code=200,
+                    )
         # Decorate each entry with the record's flag status (so the
         # index can show a green "CLEAN" badge vs an amber "FLAGGED" one)
         # and a count of findings, but keep the heavy fields off the
@@ -1418,6 +1506,16 @@ def create_app() -> FastAPI:
                     "provider_npi": search_npi_raw,
                     "active": search_active,
                 },
+                # Saved-filter presets (kanban t_66b05d72). The store
+                # is JSONL-backed so we tolerate a fresh install with
+                # no log file. ``current_preset`` is set when the URL
+                # matches a stored preset exactly; ``default_preset``
+                # is what we'd redirect to on a clean visit if the
+                # biller had marked one. The template renders the
+                # dropdown + "Save current" form.
+                "presets": user_presets,
+                "current_preset_name": current_preset_name,
+                "default_preset_name": default_preset_name,
             },
         )
 
