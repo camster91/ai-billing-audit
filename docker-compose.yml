@@ -103,6 +103,24 @@ services:
       - ai_billing_audit_net
     # Override CMD: the worker runs the heartbeat loop instead of uvicorn.
     command: ["python", "-m", "ai_billing_audit.worker"]
+    # Override the Dockerfile HEALTHCHECK (which curls :8000/healthz,
+    # appropriate for the api but not the worker — the worker doesn't
+    # bind any port, so the inherited check always fails and docker
+    # perpetually reports "unhealthy"). Compose-level healthcheck
+    # overrides Dockerfile-level, so we just need to verify the
+    # worker process is alive. Fixed 2026-06-25 (kanban t_worker_health).
+    #
+    # We check /proc/1/cmdline (not `pgrep`, which isn't in the
+    # python:3.12-slim image and would need an extra procps install).
+    # In this container PID 1 IS the worker process (no init shim),
+    # so verifying its cmdline contains the worker module name is
+    # the most direct liveness signal.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q 'ai_billing_audit.worker' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
