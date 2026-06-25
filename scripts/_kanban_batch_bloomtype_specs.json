@@ -1,0 +1,44 @@
+[
+  {
+    "parent": "t_a4de5e98",
+    "title": "T25 streak-warning spec: amber Daily Moment button at risk (ship design doc)",
+    "body": "Shipped a written spec at ~/projects/bloomtype-3d/docs/streak-warning-spec.md covering: amber CSS class, threshold logic (streak >= 2 AND lastDailyMoment > 20h), copy on the button, animation (pulse @ 1.2Hz, 3 cycles), and the unit-test table for the isStreakAtRisk() function. Parent stays blocked — implementation still requires src/quests.js to exist and a human run on a real device. Close parent only after the spec is reviewed AND the amber state ships.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_f509a135",
+    "title": "T29 Daily Moment pill on home: 1-tap access spec (ship design doc)",
+    "body": "Shipped a written spec at ~/projects/bloomtype-3d/docs/daily-moment-pill-spec.md covering: pill placement (under primary CTA, above 4-icon secondary nav), copy ('Daily Moment · 60s'), tap target (>=44x44), tap action (starts 60s timer + transitions to game scene), analytics event name. Parent stays blocked — implementation requires Hud.ts edit + Home layout change. Close parent only after the pill ships and a 5-tap smoke test passes.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_9d4cef47",
+    "title": "T26 Audio+visual feedback spec: per-keypress hook map",
+    "body": "Spec at ~/projects/bloomtype-3d/docs/per-keypress-feedback-spec.md. Maps every keypress hook in TouchKeyboard.ts -> AudioManager.play('correct'|'wrong'|'key') + a brief HUD hue pulse (60ms). Lists 4 sounds to fire, 3 fallback paths if audio context is suspended, and the visual config constants. Implementation is ~30 LOC in Hud.ts; close parent after the spec is reviewed.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_4448d9a6",
+    "title": "T27 Live progress bar spec: tick marks + Up Next chip",
+    "body": "Spec at ~/projects/bloomtype-3d/docs/progress-bar-spec.md. Covers: 10-tick progress bar, Up Next chip placement, copy ('Next: Short A · 3 left'), animation (fill on level advance), and responsive sizing (60% of card width on mobile, 80% on desktop). Implementation lives in Hud.ts + Game.ts. Close parent after spec review.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_9c2e6892",
+    "title": "T15 F4 My Class kid-side screen: pre-flight checklist (BLOCKED on T11 verdict)",
+    "body": "Per the parent task body, this is explicitly blocked until Cam validates that F1+F2+F3 feel competitive on real devices. Sub-task: write a 1-page pre-flight checklist doc at ~/projects/bloomtype-3d/docs/t15-my-class-pre-flight.md listing the 6 device-side checks Cam needs to run before T15 can dispatch. Parent stays blocked.",
+    "priority": 4,
+    "status": "ready"
+  },
+  {
+    "parent": "t_7645c6c4",
+    "title": "T20 Lessons screen cleanup: locked-state spec",
+    "body": "Spec at ~/projects/bloomtype-3d/docs/lessons-locked-state-spec.md. Covers: locked-card visual (50% opacity + padlock icon), active-card subtitle layout (2-line ellipsis with full text on hover), fallback art slot (gradient placeholder when asset 404s). Implementation lives in Hud.ts. Close parent after spec review.",
+    "priority": 3,
+    "status": "ready"
+  }
+]

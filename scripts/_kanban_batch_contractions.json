@@ -1,0 +1,72 @@
+[
+  {
+    "parent": "t_37a4fea9",
+    "title": "T17 Maya persona: test plan + curl probe (run probe-maya.sh against live)",
+    "body": "Shipped docs/gauntlet/plans/T17-maya.md and docs/gauntlet/scripts/probe-maya.sh. Test plan covers: login, Today page load, chore add, chore approve, family chat send, push notification. 6 pass criteria. Probe is read-only curl. Run it from ~/projects/contraction-tracker/; evidence lands in runs/gauntlet-maya-YYYYMMDD.json. Link the JSON path in the parent kanban comment to close t_37a4fea9. Parent stays blocked until probe passes.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_3110fc1b",
+    "title": "T18 Tyler persona: test plan + tablet probe (KidHome focus)",
+    "body": "Shipped docs/gauntlet/plans/T18-tyler.md and docs/gauntlet/scripts/probe-tyler.sh. Tests kid-mode enforcement: KidHome landing, points animation, no parent nav leaks, /today direct-URL block, clean logout. 5 pass criteria. Tablet viewport 768x1024. Probe checks DOM for parent nav leak and HTTP status on /today direct access.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_d9b8df49",
+    "title": "T19 Grandma persona: test plan + iPhone SE probe (44px targets, 16px text)",
+    "body": "Shipped docs/gauntlet/plans/T19-grandma.md and docs/gauntlet/scripts/probe-grandma.sh. 5 pass criteria: every interactive element >= 44x44 CSS px, body text >= 16px, all icon buttons have aria-label or caption, success messages are full sentences, no jargony labels. iPhone SE viewport 320x568.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_c17583ad",
+    "title": "T20 Marcus persona: test plan + mobile probe (one-tap approve/reject)",
+    "body": "Shipped docs/gauntlet/plans/T20-marcus.md and docs/gauntlet/scripts/probe-marcus.sh. Mobile 390x844. 5 pass criteria: 'Needs your review' above fold, single-tap approve, single-tap reject with quick-reason chips, bulk select 3+ items, back returns to Today. Probe scrapes the DOM for the section heading and the tap-target size.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_dff71c8d",
+    "title": "T21 Sam teen persona: test plan + non-KidHome probe",
+    "body": "Shipped docs/gauntlet/plans/T21-sam-teen.md and docs/gauntlet/scripts/probe-sam-teen.sh. 5 pass criteria: teen role does NOT land on KidHome, can post in Family Chat, leaderboard includes Sam, settings hidden or read-only, self-approval blocked at API (curl check).",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_514a13fd",
+    "title": "T22 Dr. Patel persona: test plan + Handoff probe (no auth)",
+    "body": "Shipped docs/gauntlet/plans/T22-dr-patel.md and docs/gauntlet/scripts/probe-dr-patel.sh. One-shot persona — uses Maya-created Handoff share link with no login. 5 pass criteria: public access to sick-day log + dosing + emergency contacts, no edit affordances, expired link returns 410 or 'expired' page, <1.5s on 3G (Lighthouse).",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_428654db",
+    "title": "T23 Alex sitter persona: test plan + Handoff time-window probe",
+    "body": "Shipped docs/gauntlet/plans/T23-alex-sitter.md and docs/gauntlet/scripts/probe-alex-sitter.sh. Babysitter 6pm-11pm Saturday window. 5 pass criteria: public auth-less access during window, rules + schedule + emergency contacts visible, 'I arrived' button (optional), after-window link rejected, PWA offline works after first load.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_19047413",
+    "title": "T24 Security tester: 7-attack probe matrix (kid-escalation, IDOR, CSRF)",
+    "body": "Shipped docs/gauntlet/plans/T24-security-tester.md and docs/gauntlet/scripts/probe-security-tester.sh. Tests as Tyler (child). 6 pass criteria: parent-only endpoints return 403, no IDOR across households, CSRF tokens single-use + short-lived, header injection rejected, sequential ID enumeration rate-limited, mass-assignment role=admin stripped. Probe is curl-only and safe to run against staging.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_58aced83",
+    "title": "T25 Accessibility auditor: WCAG 2.1 AA + axe-core probe",
+    "body": "Shipped docs/gauntlet/plans/T25-a11y-auditor.md and docs/gauntlet/scripts/probe-a11y-auditor.sh. 6 pass criteria: full keyboard nav, visible focus ring everywhere (>=2px, >=3:1 contrast), body text >=4.5:1, every form input labeled, axe-core 0 critical <=2 serious, screen-reader landmarks. Run via keyboard + browser devtools; the probe checks computed CSS for contrast and target sizes.",
+    "priority": 3,
+    "status": "ready"
+  },
+  {
+    "parent": "t_cc111a64",
+    "title": "T26 Visual / E2E: click-through probe across mobile + desktop",
+    "body": "Shipped docs/gauntlet/plans/T26-visual-e2e.md and docs/gauntlet/scripts/probe-visual-e2e.sh. 6 pass criteria: every nav route reachable on 390x844 + 1280x800, no horizontal scroll at 320/390/768/1024/1280/1920, 0 broken images, empty states have visual + copy, page transitions <300ms on 3G, all touch targets >=44x44.",
+    "priority": 3,
+    "status": "ready"
+  }
+]
