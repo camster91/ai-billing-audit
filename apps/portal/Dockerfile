@@ -21,7 +21,10 @@
 FROM node:22-slim AS deps
 
 # pnpm via corepack (Node 22 ships corepack). Faster + reproducible.
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+# Pin to the same version the lockfile was generated with (9.15.9 as
+# of 2026-06-26; the lockfile rejects frozen-lockfile installs when
+# the active pnpm's overrides-handling differs).
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 WORKDIR /app
 
@@ -40,7 +43,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 # ---- Stage 2: build -----------------------------------------------------
 FROM node:22-slim AS build
 
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 WORKDIR /app
 
@@ -53,11 +56,18 @@ COPY src ./src
 COPY prisma ./prisma
 COPY public ./public
 
+# Prisma client is generated into src/generated/prisma (per
+# prisma/schema.prisma `generator { output = "../src/generated/prisma" }`).
+# This MUST happen before `pnpm build` because src/lib/prisma.ts and
+# many route files import from `@/generated/prisma/client`; without
+# the generated client the bundler fails with "module not found."
+# Locally this happened implicitly from prior `pnpm dev` runs; the
+# Dockerfile build is a clean checkout so we must generate explicitly.
+RUN pnpm prisma generate
+
 # `next build` with `output: 'standalone'` in next.config.ts produces
 # `.next/standalone/` with the minimal server + .next/static with the
-# hashed asset bundles. Prisma generates the typed client into
-# src/generated/prisma as part of the build (schema.prisma generator
-# block).
+# hashed asset bundles.
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
@@ -103,7 +113,7 @@ EXPOSE 3020
 # Healthcheck: a noop that confirms the Node process is up. The portal
 # has no `/healthz` route today — a future card adds one. For now we
 # just verify the process is alive and listening on 3020.
-HEALTHCHECK --interval=30s --timeout=5s --start_period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://127.0.0.1:'+process.env.PORT+'/login', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "server.js"]

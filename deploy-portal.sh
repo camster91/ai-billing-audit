@@ -64,7 +64,7 @@ REMOTE_PORTAL_DIR="${REMOTE_DIR}/portal"
 REMOTE_ENV="${REMOTE_DIR}/portal.env"
 SECRETS_DIR="/root/ai-billing-audit-secrets"
 TRAEFIK_ROUTERS="/opt/traefik/dynamic/routers.yml"
-PORTAL_PORT="3020"
+PORTAL_PORT="3060"
 PORTAL_HOST="portal.ashbi.ca"
 PORTAL_SERVICE="zorva-portal"
 
@@ -159,11 +159,18 @@ PORTAL_POSTGRES_PASSWORD=${POSTGRES_PASSWORD_VAL}
 PORTAL_POSTGRES_DB=zorva_portal
 ENVEOF
 
-# Scp the env file in place with chmod 600. Using scp here (not ssh
-# cat) because `cat > file` over ssh requires shell-quoting the entire
-# content, which trips up chat-layer redaction on long Stripe keys.
-scp "$TMP_ENV" "${HOST}:${REMOTE_ENV}.tmp"
-ssh "${HOST}" "chmod 600 ${REMOTE_ENV}.tmp && mv ${REMOTE_ENV}.tmp ${REMOTE_ENV}"
+# Transfer the env file in place with chmod 600. Using `ssh base64 -d`
+# instead of `scp` because the Hostinger VPS image ships without
+# `sftp-server` (scp returns "Connection closed" with exit status 127
+# even though ssh itself works — confirmed 2026-06-26). The base64
+# round-trip is binary-safe, and we strip the trailing newline before
+# the `echo` so the file ends with exactly one `\n`.
+#
+# Why not `ssh "cat > file"`? A long Stripe key contains shell-special
+# chars (`/`, `+`, `=`) that need escaping; base64 sidesteps the quoting
+# problem entirely.
+ENV_B64="$(base64 < "$TMP_ENV" | tr -d '\n')"
+ssh "${HOST}" "echo '${ENV_B64}' | base64 -d > ${REMOTE_ENV}.tmp && chmod 600 ${REMOTE_ENV}.tmp && mv ${REMOTE_ENV}.tmp ${REMOTE_ENV}"
 echo "  ok (chmod 600)"
 
 # ---- Step 3: Traefik router block --------------------------------------
@@ -172,40 +179,61 @@ echo "[deploy-portal] step 3: Traefik router for ${PORTAL_HOST}"
 # Mirrors the same python-merge pattern that deploy-to-vps.sh uses for
 # the api's ratelimit middleware — preserves every existing field
 # exactly (no string-templating surprises).
-ssh "${HOST}" "python3 - <<'PY'
-import sys, pathlib
-p = pathlib.Path('${TRAEFIK_ROUTERS}')
-import yaml
+#
+# We do the merge LOCALLY (not via ssh heredoc) and ship the merged
+# file via base64 echo. Why: a heredoc inside `ssh '...'` is interpreted
+# by the LOCAL bash before the single quotes are processed, so any
+# `${VAR}` in the heredoc body triggers a local shell expansion that
+# the remote python3 then chokes on (we hit this on the first deploy
+# attempt 2026-06-26: `bash: line 1: + host + : command not found`).
+TMP_ROUTERS="$(mktemp)"
+trap 'rm -f "$TMP_ENV" "$TMP_ROUTERS"' EXIT
+ssh "${HOST}" "cat ${TRAEFIK_ROUTERS}" > "$TMP_ROUTERS"
+# IMPORTANT: no backticks in this heredoc. Bash sees backticks as
+# command substitution even inside `<<PY` (the unquoted heredoc
+# delimiter triggers parameter expansion AND command substitution).
+# We use double quotes around the Host() rule instead — Traefik
+# accepts both forms (single-quoted is the original style; double
+# works too).
+python3 - <<PY
+import pathlib, yaml
+host = "${PORTAL_HOST}"
+svc = "${PORTAL_SERVICE}"
+port = "${PORTAL_PORT}"
+
+p = pathlib.Path("${TMP_ROUTERS}")
 data = yaml.safe_load(p.read_text()) or {}
-data.setdefault('http', {})
-data['http'].setdefault('routers', {})
-data['http'].setdefault('services', {})
+data.setdefault("http", {})
+data["http"].setdefault("routers", {})
+data["http"].setdefault("services", {})
 
 # Router: Host(portal.ashbi.ca) -> zorva-portal service, no
 # middleware (the portal sets its own CSP + security headers in
-# next.config.ts; we don't double up at the edge). certResolver
+# next.config.ts; we do not double up at the edge). certResolver
 # letsencrypt re-uses the same Let's Encrypt account the rest of
 # the fleet uses, so adding portal.ashbi.ca requires no new DNS or
 # ACME registration beyond the existing *.ashbi.ca wildcard.
-data['http']['routers']['zorva-portal'] = {
-    'rule': 'Host(`${PORTAL_HOST}`)',
-    'entryPoints': ['websecure'],
-    'service': '${PORTAL_SERVICE}',
-    'tls': {'certResolver': 'letsencrypt'},
+data["http"]["routers"]["zorva-portal"] = {
+    "rule": 'Host("' + host + '")',
+    "entryPoints": ["websecure"],
+    "service": svc,
+    "tls": {"certResolver": "letsencrypt"},
 }
 
 # Service: loadBalancer to the portal container's loopback port.
 # 127.0.0.1 because Traefik runs on the host network and reaches
 # the docker-published port directly.
-data['http']['services']['${PORTAL_SERVICE}'] = {
-    'loadBalancer': {
-        'servers': [{'url': 'http://127.0.0.1:${PORTAL_PORT}'}],
+data["http"]["services"][svc] = {
+    "loadBalancer": {
+        "servers": [{"url": "http://127.0.0.1:" + port}],
     },
 }
 
-yaml.safe_dump(data, p.open('w'), default_flow_style=False, sort_keys=False)
-print('routers.yml updated: zorva-portal router + service added')
-PY"
+yaml.safe_dump(data, p.open("w"), default_flow_style=False, sort_keys=False)
+print("routers.yml merged locally")
+PY
+ROUTERS_B64="$(base64 < "$TMP_ROUTERS" | tr -d '\n')"
+ssh "${HOST}" "echo '${ROUTERS_B64}' | base64 -d > ${TRAEFIK_ROUTERS}.tmp && mv ${TRAEFIK_ROUTERS}.tmp ${TRAEFIK_ROUTERS} && echo 'routers.yml updated: zorva-portal router + service added'"
 echo "  ok"
 
 # ---- Step 4: docker compose up ----------------------------------------
@@ -213,10 +241,17 @@ echo "[deploy-portal] step 4: docker compose up -d --build portal portal-postgre
 cd "${REPO_ROOT}"
 # rsync the compose file (in case it changed since the last full deploy)
 rsync -az "${REPO_ROOT}/docker-compose.yml" "${HOST}:${REMOTE_DIR}/docker-compose.yml"
+# `docker compose up` defaults to looking for `.env` (not `portal.env`)
+# in the same dir as the compose file, but we keep the portal secrets
+# in their own file. The `--env-file` flag tells compose to interpolate
+# `${VAR:?...}` references from portal.env at compose-parse time.
+# Without this, the fail-closed `PORTAL_POSTGRES_PASSWORD:?` check in
+# docker-compose.yml trips immediately (interpolation happens BEFORE
+# env_file is loaded into the container).
 if [[ "$PORTAL_ONLY" -eq 1 ]]; then
-    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose up -d --no-deps --build portal"
+    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file portal.env up -d --no-deps --build portal"
 else
-    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose up -d --build portal portal-postgres"
+    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file portal.env up -d --build portal portal-postgres"
 fi
 echo "  ok"
 

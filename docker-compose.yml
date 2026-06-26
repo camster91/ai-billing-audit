@@ -190,12 +190,19 @@ services:
   # compiled server + static bundles, so the image is ~200MB instead of
   # pulling the full Next.js + React + Prisma + Stripe node_modules.
   #
-  # Bound to host loopback only (127.0.0.1:3020:3020) — Traefik on the host
+  # Bound to host loopback only (127.0.0.1:3060:3020) — Traefik on the host
   # reaches it via the host network. No public port exposure.
+  #
+  # The build context is `portal/` because deploy-portal.sh rsyncs
+  # apps/portal/ to that path on the VPS (NOT apps/portal/ on the VPS
+  # — the deploy script flattens the apps/ namespace so the compose
+  # context matches the rsync destination). The Dockerfile inside
+  # uses `WORKDIR /app` so relative COPY paths inside the Dockerfile
+  # are unaffected.
   # -------------------------------------------------------------------------
   portal:
     build:
-      context: apps/portal
+      context: portal
       dockerfile: Dockerfile
     image: zorva-portal:0.1.0
     container_name: zorva-portal
@@ -203,7 +210,7 @@ services:
     env_file:
       - ./portal.env
     ports:
-      - "127.0.0.1:3020:3020"
+      - "127.0.0.1:3060:3020"
     networks:
       - ai_billing_audit_net
     healthcheck:

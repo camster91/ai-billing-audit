@@ -37,10 +37,6 @@
     "tsx": "4.22.4",
     "typescript": "5.9.3"
   },
-  "overrides": {
-    "@hono/node-server": "1.19.14",
-    "postcss": "8.5.10"
-  },
   "pnpm": {
     "overrides": {
       "@hono/node-server": "1.19.14",
