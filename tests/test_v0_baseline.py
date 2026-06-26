@@ -298,17 +298,28 @@ def test_active_prompt_manifest_records_correct_hash(
 def test_active_prompt_manifest_paired_test_split_hash_matches(
     active_prompt_manifest: dict,
 ) -> None:
-    """The active prompt's MANIFEST.json records the correct val.json
-    hash under test_split_paired_with.val_json_sha256.
+    """The active prompt's MANIFEST.json records the correct
+    paired-test-split hash under test_split_paired_with.val_json_sha256.
+
+    Each per-version manifest declares which val split it was paired
+    with (v0 -> data/synth/val.json, v12 -> data/synth/val_ca.json),
+    so the test reads the paired path from the manifest rather than
+    hardcoding VAL_PATH.
 
     Skips when the active prompt has no per-version MANIFEST.json.
     """
     paired = active_prompt_manifest["test_split_paired_with"]
+    paired_val_relpath = paired.get("val_json", "data/synth/val.json")
+    paired_val_path = PROJECT_ROOT / paired_val_relpath
+    assert paired_val_path.is_file(), (
+        f"manifest declares paired split at {paired_val_relpath} but "
+        f"the file does not exist on disk."
+    )
     actual_val_hash = "sha256:" + hashlib.sha256(
-        VAL_PATH.read_bytes()
+        paired_val_path.read_bytes()
     ).hexdigest()
     assert paired["val_json_sha256"] == actual_val_hash, (
-        f"active prompt manifest pairs with val.json hash "
+        f"active prompt manifest pairs with {paired_val_relpath} hash "
         f"{paired['val_json_sha256']} but actual is {actual_val_hash}. "
         f"Regenerate the test split and update the manifest."
     )
