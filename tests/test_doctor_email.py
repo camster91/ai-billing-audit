@@ -1,4 +1,4 @@
-"""Tests for the doctor-summary email module.
+"""Tests for the doctor-summary module.
 
 The doctor summary is the highest-leverage feature in the product:
 it makes the doctor a user, not an invisible input. Within 3 months
@@ -14,7 +14,10 @@ What's pinned
 * Subject mentions severity.
 * No email sent if no doctor email is available.
 * Opt-out via env var works.
-* Dev mailbox fallback writes to /app/logs/doctor_emails.jsonl.
+* ``send_doctor_summary`` writes ONE JSONL record per call to the
+  operator outbox at ``_LOGS_DIR / doctor_emails.jsonl``. No auto-
+  send (no Mailgun, no SMTP, no HTTP). The biller reads the file
+  and dispatches via their own mail client.
 * NPI lookup: malformed NPI returns None without an API call.
 """
 from __future__ import annotations
@@ -22,7 +25,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -140,10 +142,13 @@ def test_subject_mentions_severity():
     assert "critical" in s.subject.lower()
 
 
-def test_send_no_mailgun_key_writes_to_dev_mailbox(tmp_path, monkeypatch):
-    """If MAILGUN_API_KEY is unset, the email is dropped to the dev mailbox."""
+def test_send_writes_to_operator_outbox_jsonl(tmp_path, monkeypatch):
+    """``send_doctor_summary`` appends ONE JSONL record to
+    ``_LOGS_DIR / doctor_emails.jsonl``. No network call, no SMTP,
+    no auto-send — the operator reads the file and dispatches via
+    their own mail client.
+    """
     monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
-    monkeypatch.delenv("MAILGUN_API_KEY", raising=False)
     monkeypatch.setattr(
         "ai_billing_audit.doctor_email._LOGS_DIR",
         tmp_path,
@@ -162,6 +167,58 @@ def test_send_no_mailgun_key_writes_to_dev_mailbox(tmp_path, monkeypatch):
     record = json.loads(mailbox.read_text().strip())
     assert record["to"] == "dr.lee@clinic.ca"
     assert record["encounter_id"] == "E-1"
+    # Every field is a JSON-serializable primitive — no nested
+    # dataclass or unserializable object leaks into the JSONL.
+    for k in ("to", "subject", "body", "encounter_id", "finding_id", "ts"):
+        assert k in record, f"missing field {k!r} in outbox record"
+        assert isinstance(record[k], (str, int, float))
+
+
+def test_send_appends_one_record_per_call(tmp_path, monkeypatch):
+    """Two calls produce two JSONL lines, not one overwritten line."""
+    monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
+    base = dict(
+        to_email="dr.lee@clinic.ca",
+        subject="test",
+        body_text="body",
+        encounter_id="E-1",
+    )
+    send_doctor_summary(DoctorSummary(finding_id="F-1", **base))
+    send_doctor_summary(DoctorSummary(finding_id="F-2", **base))
+    mailbox = tmp_path / "doctor_emails.jsonl"
+    lines = [ln for ln in mailbox.read_text().splitlines() if ln.strip()]
+    assert len(lines) == 2
+    records = [json.loads(ln) for ln in lines]
+    assert records[0]["finding_id"] == "F-1"
+    assert records[1]["finding_id"] == "F-2"
+
+
+def test_send_does_not_make_network_calls(tmp_path, monkeypatch):
+    """The post-Mailgun-removal invariant: send_doctor_summary
+    never imports or calls ``requests``, never POSTs anywhere.
+
+    We assert by importing ``ai_billing_audit.doctor_email`` fresh
+    and verifying the module's namespace has no `requests` symbol
+    AND no Mailgun-era helpers (``_send_via_mailgun`` /
+    ``_mailgun_configured``) are still attached to the module.
+    """
+    monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
+    import importlib
+
+    from ai_billing_audit import doctor_email as de
+
+    importlib.reload(de)
+    assert not hasattr(de, "_send_via_mailgun"), (
+        "_send_via_mailgun must not be present — auto-send was removed"
+    )
+    assert not hasattr(de, "_mailgun_configured"), (
+        "_mailgun_configured must not be present — auto-send was removed"
+    )
+    assert "requests" not in de.__dict__, (
+        "doctor_email must not import 'requests' — auto-send was removed"
+    )
 
 
 def test_send_opt_out_disables(monkeypatch):
@@ -176,83 +233,6 @@ def test_send_opt_out_disables(monkeypatch):
     )
     result = send_doctor_summary(summary)
     assert result is False
-
-
-def test_send_with_mailgun_calls_api(monkeypatch):
-    """If MAILGUN_API_KEY is set, the mailgun REST API is called."""
-    monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
-    monkeypatch.setenv("MAILGUN_API_KEY", "key-1234test")
-
-    # Mock requests.post to return a 200 with a Mailgun-shaped body.
-    mock_post = MagicMock()
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"id": "<msg-id@ashbi.ca>", "message": "Queued"}
-    mock_post.return_value = mock_response
-
-    mock_requests = MagicMock()
-    mock_requests.post = mock_post
-    mock_requests.RequestException = Exception
-
-    with patch.dict("sys.modules", {"requests": mock_requests}):
-        from ai_billing_audit import doctor_email
-        # Force re-import so the module picks up the mocked requests.
-        # The module imports requests inside _send_via_mailgun at call
-        # time, so a sys.modules entry is sufficient.
-        doctor_email._send_via_mailgun.__globals__["requests"] = mock_requests
-        summary = DoctorSummary(
-            to_email="dr.lee@clinic.ca",
-            subject="test",
-            body_text="body",
-            encounter_id="E-1",
-            finding_id="F-1",
-        )
-        result = doctor_email.send_doctor_summary(summary)
-        assert result is True
-        # Verify Mailgun was hit with the right URL and auth.
-        assert mock_post.called
-        call = mock_post.call_args
-        assert "api.mailgun.net/v3/ashbi.ca/messages" in call.args[0]
-        assert call.kwargs["auth"] == ("api", "key-1234test")
-        assert call.kwargs["data"]["to"] == "dr.lee@clinic.ca"
-        assert call.kwargs["data"]["from"] == "Zorva Audit <audit@ashbi.ca>"
-
-
-def test_send_with_mailgun_4xx_falls_back_to_dev_mailbox(monkeypatch, tmp_path):
-    """If Mailgun returns 4xx, the email is dropped to the dev mailbox."""
-    monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
-    monkeypatch.setenv("MAILGUN_API_KEY", "key-1234test")
-    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
-
-    mock_post = MagicMock()
-    mock_response = MagicMock()
-    mock_response.status_code = 401
-    mock_response.json.return_value = {"message": "Forbidden"}
-    mock_response.text = '{"message": "Forbidden"}'
-    mock_post.return_value = mock_response
-
-    mock_requests = MagicMock()
-    mock_requests.post = mock_post
-    mock_requests.RequestException = Exception
-
-    with patch.dict("sys.modules", {"requests": mock_requests}):
-        from ai_billing_audit import doctor_email
-        doctor_email._send_via_mailgun.__globals__["requests"] = mock_requests
-        summary = DoctorSummary(
-            to_email="dr.lee@clinic.ca",
-            subject="test",
-            body_text="body",
-            encounter_id="E-1",
-            finding_id="F-1",
-        )
-        result = doctor_email.send_doctor_summary(summary)
-        # Still returns True — the dev mailbox caught it
-        assert result is True
-        # Verify the dev mailbox was written
-        mailbox = tmp_path / "doctor_emails.jsonl"
-        assert mailbox.is_file()
-        record = json.loads(mailbox.read_text().strip())
-        assert record["to"] == "dr.lee@clinic.ca"
 
 
 def test_one_sentence_reason_known_rule():

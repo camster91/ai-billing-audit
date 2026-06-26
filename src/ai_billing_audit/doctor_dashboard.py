@@ -263,8 +263,9 @@ def doctor_weekly_digest(
     * Body: positive-first, then the 1-2 sentences per flagged note.
 
     Returns ``DoctorWeeklyDigest`` with all fields populated. The
-    caller (FastAPI or the worker) decides whether to actually
-    send via Mailgun.
+    caller (FastAPI or the worker) decides what to do with the
+    digest — append it to the operator outbox JSONL so a human
+    can review and forward at their own cadence.
     """
     encs = doctor_encounters_for(
         provider_npi,

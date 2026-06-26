@@ -25,12 +25,17 @@ Email format:
 
         — Zorva pre-bill audit
 
-The email is sent via Mailgun REST API (https://api.mailgun.net/v3).
-The api key and domain are read from the environment:
-    - MAILGUN_API_KEY : the API key for the ashbi.ca Mailgun account
-    - MAILGUN_DOMAIN  : the sending domain (default: ashbi.ca)
-If either is missing or Mailgun returns an error, the email is logged
-to /app/logs/doctor_emails.jsonl for manual delivery in dev.
+The summary is appended to ``/app/logs/doctor_emails.jsonl`` (one
+JSON record per line). A human (the biller or clinic admin) reviews
+the file and sends the email themselves. We deliberately do NOT
+auto-send — out of scope for v1, and it gives the clinic a chance
+to redact or skip a message before it leaves their inbox.
+
+The ``doctortools send-email`` CLI under ``scripts/`` reads the
+JSONL and lets the operator dispatch each message via their own
+mail client (paste-and-send workflow). Import + export of audit
+reports is the primary delivery surface; the JSONL is a paper
+trail for compliance review.
 
 Per-tenant config:
     - DOCTOR_SUMMARY_OPT_IN (env, default "1"): master switch
@@ -55,7 +60,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# Where we drop emails in dev when Mailgun is not configured.
+# Where we write the operator outbox JSONL. The biller reads this
+# file and dispatches each summary email through their own mail client.
 _LOGS_DIR = Path("/app/logs")
 
 
@@ -162,86 +168,6 @@ class DoctorSummary:
     body_text: str
     encounter_id: str
     finding_id: str
-
-
-def _mailgun_configured() -> tuple[str, str] | None:
-    """Return (api_key, domain) if Mailgun is configured, else None.
-
-    The api key is sourced from MAILGUN_API_KEY. The domain defaults
-    to ``ashbi.ca`` (the Cam-controlled domain that hosts the
-    Mailgun account) but can be overridden with MAILGUN_DOMAIN for
-    a per-tenant sender (e.g. mg.tenantclinic.ca).
-    """
-    api_key = os.environ.get("MAILGUN_API_KEY", "").strip()
-    domain = os.environ.get("MAILGUN_DOMAIN", "").strip() or "ashbi.ca"
-    if not api_key:
-        return None
-    return (api_key, domain)
-
-
-def _send_via_mailgun(
-    api_key: str,
-    domain: str,
-    summary: DoctorSummary,
-) -> tuple[bool, str]:
-    """POST the email to Mailgun's REST API.
-
-    Returns (ok, message_id_or_error). Uses basic auth (username=api,
-    password=key) per Mailgun's spec. ``requests`` is the only
-    third-party dep we add for this.
-
-    Why the REST API over SMTP:
-    - Synchronous: we get a 200/4xx response in <2s, not 30s+
-      of SMTP retries
-    - Clear error messages: "address invalid", "domain not
-      verified", "quota exceeded" — all surface in the response
-      body and we can log them for debugging
-    - DomainDKIM, SPF, return-path are all handled by Mailgun
-      once the domain is verified in their dashboard
-
-    Reference: https://documentation.mailgun.com/en/latest/api-sending.html
-    """
-    try:
-        import requests  # type: ignore
-    except ImportError:
-        return False, "requests package not installed"
-
-    sender = os.environ.get(
-        "DOCTOR_SUMMARY_FROM",
-        f"Zorva Audit <audit@{domain}>",
-    )
-    url = f"https://api.mailgun.net/v3/{domain}/messages"
-    try:
-        resp = requests.post(
-            url,
-            auth=("api", api_key),
-            data={
-                "from": sender,
-                "to": summary.to_email,
-                "subject": summary.subject,
-                "text": summary.body_text,
-            },
-            timeout=10,
-        )
-    except requests.RequestException as e:
-        return False, f"network error: {type(e).__name__}: {e}"
-
-    if 200 <= resp.status_code < 300:
-        # Mailgun returns JSON: {"id": "...", "message": "Queued..."}
-        try:
-            payload = resp.json()
-            message_id = payload.get("id", "")
-        except ValueError:
-            message_id = ""
-        return True, message_id
-
-    # Non-2xx. Mailgun returns JSON with ``message`` field on error.
-    try:
-        payload = resp.json()
-        err = payload.get("message", resp.text[:200])
-    except ValueError:
-        err = resp.text[:200]
-    return False, f"HTTP {resp.status_code}: {err}"
 
 
 # Specialty detection by CPT code prefix. A cardiologist and a
@@ -507,10 +433,15 @@ def _default_fix_suggestion(rule_id: str, suggested_code: str) -> str:
 
 
 def send_doctor_summary(summary: DoctorSummary) -> bool:
-    """Send a doctor-summary email via Mailgun (or log to dev mailbox).
+    """Persist a doctor-summary email to the operator's JSONL outbox.
 
-    Returns True if the email was sent (or queued for delivery),
-    False if it was dropped (no API key + no dev mailbox writable).
+    The summary is appended (one JSON record per line) to
+    ``/app/logs/doctor_emails.jsonl``. The clinic's biller or admin
+    reviews the file and dispatches the email through their own
+    mail client — we deliberately do NOT auto-send.
+
+    Returns True if the record was written, False if the doctor is
+    opted out or the master switch is disabled.
     """
     if os.environ.get("DOCTOR_SUMMARY_OPT_IN", "1") == "0":
         logger.info("doctor summary disabled via DOCTOR_SUMMARY_OPT_IN=0")
@@ -531,31 +462,9 @@ def send_doctor_summary(summary: DoctorSummary) -> bool:
         )
         return False
 
-    config = _mailgun_configured()
-    if config is not None:
-        api_key, domain = config
-        ok, message_or_error = _send_via_mailgun(api_key, domain, summary)
-        if ok:
-            logger.info(
-                "doctor summary sent via mailgun",
-                extra={
-                    "encounter_id": summary.encounter_id,
-                    "to": summary.to_email,
-                    "mailgun_id": message_or_error,
-                    "domain": domain,
-                },
-            )
-            return True
-        logger.warning(
-            "mailgun send failed: %s — falling back to dev mailbox",
-            message_or_error,
-        )
-        # Fall through to dev mailbox so we don't lose the email.
-
-    # Dev / fallback: append to /app/logs/doctor_emails.jsonl so a
-    # human can review what would have been sent. Better than silent
-    # loss. We still record the failure reason so the human knows
-    # why the live send didn't happen.
+    # Append to /app/logs/doctor_emails.jsonl so a human can review
+    # what would have been sent. The biller reads the file, edits if
+    # needed, and sends the email through their own mail client.
     _LOGS_DIR.mkdir(parents=True, exist_ok=True)
     record = {
         "to": summary.to_email,

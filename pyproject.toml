@@ -4,25 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-billing-audit"
-version = "0.1.0"
-description = "Audit LLM usage and billing across providers with a single, vendor-neutral interface."
+version = "0.4.0"
+description = "Pre-bill medical-claim auditor — flags dx-code, modifier, and global-window issues before submission."
 readme = "README.md"
-requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Cameron Ashley" },
 ]
-keywords = ["llm", "billing", "audit", "litellm", "dspy"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
+keywords = ["llm", "billing", "audit", "medical-claims", "dspy"]
 # Pinned to dated versions — see docs/SEC_REVIEW_deps.md (kanban t_c7d352a7)
 # Audit run: 2026-06-17 (CVE-2025-69872 diskcache open, no fix available)
 dependencies = [
@@ -32,7 +21,6 @@ dependencies = [
     "jinja2==3.1.6",
     "optuna==4.9.0",  # required by dspy.MIPROv2 at runtime
     "python-multipart==0.0.32",  # required by FastAPI File() / Form() parsing
-    "requests==2.32.3",  # Mailgun REST API for doctor-summary emails + monthly WIN email
 ]
 
 [project.optional-dependencies]
@@ -43,19 +31,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/camster91/ai-billing-audit"
+Homepage = "https://ai-billing-audit.ashbi.ca"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-"ai_billing_audit" = ["auditor_prompt.txt"]
-
 [tool.pytest.ini_options]
-minversion = "8.0"
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
-pythonpath = ["src"]
-markers = [
-    "integration: hits a real network endpoint (skipped automatically when the required API key is unset)",
-]
+addopts = "-ra"

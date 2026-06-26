@@ -156,7 +156,7 @@ The six Zorva capabilities and where they stand on 2026-06-23:
 1. **Auditor** (`src/ai_billing_audit/auditor.py` + `prompts/v12/`) — v12 AHCIP prompt, F1=0.690 on the cleaned AHCIP val set, 0 errors, 10/10 latency p95 ≈ 58s on `ollama/minimax-m3:cloud`. **Live.**
 2. **Denial-risk scorer** (`src/ai_billing_audit/denial_risk.py`) — severity × rule-family weighted heuristic, 0.0–1.0 per claim. **Implemented, not yet wired into the portal encounter-detail UI.**
 3. **Appeal-letter generator** (`src/ai_billing_audit/appeal_letter.py`) — markdown/HTML prose, PHI-scrubbed before logging. **Implemented, not yet wired into a portal route.**
-4. **Doctor summary email** (`src/ai_billing_audit/doctor_email.py`) — Mailgun REST send with a JSONL dev-fallback when `MAILGUN_API_KEY` is unset. **Implemented. Live sends currently dropping to `/app/logs/doctor_emails.jsonl` because the key is not yet set on the prod container.**
+4. **Doctor summary outbox** (`src/ai_billing_audit/doctor_email.py`) — builds the summary, then appends one JSONL record per summary to `/app/logs/doctor_emails.jsonl`. No auto-send: the biller reads the file and dispatches each email via their own mail client. Import + export of audit reports is the primary delivery surface; the JSONL is the paper trail. **Live.**
 5. **Hash-chained audit trail** (`src/ai_billing_audit/audit_actions.py`) — SHA-256 chain over reviewer actions, JSONL on dev, Postgres `audit_trail` on prod, both verifiable. **Live. A second parallel chain in `src/audit_log.py` should be consolidated.**
 6. **Self-improving loop** (`src/optimize.py` + `src/optimize_compile.py`) — DSPy-style optimization harness; the v12 prompt was a manual AHCIP rewrite, not an optimizer pass. **Harness live; not yet run on customer data.**
 
@@ -164,10 +164,9 @@ A **hallucination guardrail** (`tests/test_hallucination_guardrail.py`) wraps th
 
 ## Known issues (operator-blocked)
 
-The 2026-06-22 audit identified three open items that require operator action, not code:
+The 2026-06-22 audit identified open items that require operator action, not code:
 
 - **Ollama cloud key rotation.** The current Ollama key was shared in chat on 2026-06-17 and is treated as compromised; the live container still uses it. Rotate the key in the Ollama dashboard, update `~/.config/ai-billing/ollama-key`, and update the deploy script. ~15 min of operator work.
-- **MAILGUN_API_KEY on the prod container.** `docker-compose.yml` and `deploy-to-vps.sh` don't set the key, so all live doctor-summary emails silently fall back to the dev JSONL. Add the key to the host secret file + `.env` template + compose env block. ~30 min. Restores a primary product feature.
 - **Alberta HIA data agreement.** The HIA-specific data-sharing agreement that Alberta clinics will require before signing a pilot is not yet drafted. The Ontario PHIPA template on the portal still appears in 12 places (`apps/portal/src/`), 6 of them wrong for Alberta. Draft the HIA agreement and replace the PHIPA references in the OnboardingWizard and security page.
 
 Full risk inventory and fixes: `docs/PROJECT_AUDIT_2026-06-22.md`.

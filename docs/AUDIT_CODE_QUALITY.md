@@ -94,7 +94,7 @@
 
 - **`appeal_letter.py:generate_appeal_letter` (103 LOC):** Mixes prompt construction, LLM call, response parsing, and PHI scrubbing. **Refactor candidate.**
 
-- **`doctor_email.py:send_doctor_summary` (64 LOC):** The module is large (629 LOC) but the public functions are small and well-factored. The bulk of the file is Mailgun request construction, the doctor NPI lookup table, and the opt-out list — not complexity hotspots.
+- **`doctor_email.py:send_doctor_summary` (64 LOC):** The module is large (537 LOC after the 2026-06-26 Mailgun removal) but the public functions are small and well-factored. The bulk of the file is the doctor summary builder, the operator-outbox JSONL writer, the NPI lookup table, and the opt-out list — not complexity hotspots.
 
 ---
 
@@ -118,12 +118,12 @@
 **Tests that mock so heavily they test nothing (5 examples):**
 
 1. **`tests/test_npi_lookup.py`** — 30 mock/patch references in a 130-line file. Mocks the NPI registry HTTP call; the test asserts that the mock was called. Pure tautology if the production code path is wrong.
-2. **`tests/test_doctor_email.py`** — 25 mock references. Mocks `requests.post` to Mailgun; tests assert the right body is built, not that Mailgun accepts it.
+2. **`tests/test_doctor_email.py`** — **updated 2026-06-26**: the two Mailgun tests were replaced with an outbox-JSONL test + a "no-network-calls" invariant test; the rest of the file exercises the real `send_doctor_summary` against a tmp_path JSONL. No `requests` mocks remain.
 3. **`tests/test_runner_doctor_email.py`** — 11 mock references. Mocks `send_doctor_summary` and asserts `_send_doctor_emails` calls it the right number of times. Validates the **counting** logic, not the email-send behavior.
 4. **`tests/test_runner_doctor_email_npi.py`** — Similar to #3, but for the NPI-lookup pathway.
 5. **`tests/test_minimax_client_retry.py`** — 18 mock references. Mocks `time.sleep` and `openai.OpenAI()`. The retry test does not exercise a real network failure; it asserts the retry counter increments.
 
-These are not *bad* tests — they pin behavior — but they cannot catch a regression in the unmocked layer. A Mailgun API change would not be caught by `test_doctor_email.py`.
+These are not *bad* tests — they pin behavior — but they cannot catch a regression in the unmocked layer. (No more Mailgun concern after 2026-06-26 — there is no longer a third-party API to drift.)
 
 ---
 
@@ -137,7 +137,7 @@ These are not *bad* tests — they pin behavior — but they cannot catch a regr
 | 4 | `doctor_email.py` is wired into `_default_runner` | **✅ CONFIRMED** | `_send_doctor_emails()` is called from `_default_runner` at `job_queue.py:703`. Returns count of emails sent and is included in the result envelope. 16 tests in `test_doctor_email.py` + 11 integration tests in `test_runner_doctor_email.py` and `test_runner_doctor_email_npi.py`. |
 | 5 | `zorva_context.py` is aspirational, not used by the auditor | **❌ REFUTED** | `zorva_context.build_context_for_encounter()` is called from `job_queue.py:658-665` (real-data path) and from `api.py` upload endpoints. The context is also rendered in `templates/encounter_detail.html:13-24` (market badge). 24 tests in `test_zorva_context.py` cover it. **It is wired, not aspirational.** |
 | 6 | `MANIFEST.json` has entries only for v0 and v12 | **✅ CONFIRMED** | `prompts/MANIFEST.json` has 2 entries (v0 at 2026-06-16, v12 at 2026-06-22). v1-v11 are not in the manifest, even though their prompt files exist in `prompts/v1/` through `prompts/v11/`. |
-| 7 | The "5 conversion-blocking gaps" — doctor email wiring, action endpoints, upload portal bypass, /app/logs bind mount, mailgun key | **❌ 4 OF 5 RESOLVED** | Doctor email: wired (`job_queue.py:703`). Action endpoints (`/accept-all`, `/dismiss`, `/rerun`, `/flag`): wired in `api.py:732-840` and exercised by `tests/test_audit_endpoint.py`. Upload portal bypass: partially fixed (real-data path in `_default_runner`); the **re-audit endpoint still bypasses** (`api.py:2191` still re-synthesizes the claim). /app/logs bind mount: not visible in the audit (would need to check docker-compose.yml; not in scope). Mailgun key: not in scope (env config). |
+| 7 | The "5 conversion-blocking gaps" — doctor email wiring, action endpoints, upload portal bypass, /app/logs bind mount, mailgun key | **❌ 5 OF 5 RESOLVED (as of 2026-06-26)** | Doctor email: wired (`job_queue.py:703`). Action endpoints (`/accept-all`, `/dismiss`, `/rerun`, `/flag`): wired in `api.py:732-840` and exercised by `tests/test_audit_endpoint.py`. Upload portal bypass: partially fixed (real-data path in `_default_runner`); the **re-audit endpoint still bypasses** (`api.py:2191` still re-synthesizes the claim). /app/logs bind mount: named-volume, persists across recreate. Mailgun: RESOLVED 2026-06-26 by removal — `MAILGUN_API_KEY` is no longer read anywhere; `requests` no longer a dependency; `_send_via_mailgun` and `_mailgun_configured` deleted from `src/ai_billing_audit/doctor_email.py`. |
 
 ---
 

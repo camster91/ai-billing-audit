@@ -33,7 +33,7 @@ v0 scope
   evidence, regulatory citation, requested action, signoff
 - Letter is rendered to markdown (the biller pastes it into their
   own template; v2 will send it directly)
-- Mailgun is NOT used here; appeal letters go to a paper trail
+- Auto-send is NOT in scope; appeal letters go to a paper trail
   on disk so the biller can review before sending
 
 What's intentionally NOT in v0
@@ -62,8 +62,8 @@ from .zorva_context import (
 
 
 # Module-scope logs directory. The letter is written here so the
-# biller can review + edit before sending. v2: the biller will
-# also get a Mailgun copy at their work address.
+# biller can review + edit before sending. v2 may add an optional
+# in-app notification (in-product surface, not email).
 _LOGS_DIR = Path(os.environ.get("ZORVA_LOGS_DIR", "/app/logs"))
 _APPEAL_LOG = _LOGS_DIR / "appeal_letters.jsonl"
 _APPEAL_OUTCOMES_LOG = _LOGS_DIR / "appeal_outcomes.jsonl"

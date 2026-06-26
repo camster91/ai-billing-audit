@@ -24,7 +24,12 @@ moved/claimed/archived.
   (doctor summary wired, action endpoints wired, upload portal bypass
   partially fixed, `/app/logs` already a named volume) match actual code state
   and can be closed by retroactively marking the right tasks done. **Gap 5
-  (MAILGUN_API_KEY on live) is genuinely not done and is not tracked anywhere.**
+  (auto-send emails via Mailgun) was RESOLVED 2026-06-26 by removing
+  auto-send entirely** — the doctor-summary module now writes to an
+  operator-outbox JSONL only. The operator reads the file and dispatches
+  via their own mail client (Cameron: "we can import and export reports
+  and send emails ourselves"). `pyproject.toml` no longer pins `requests`;
+  `MAILGUN_API_KEY` is no longer read anywhere in `src/`.
   The Alberta-pivot re-audit endpoint **still re-synthesizes** the encounter
   (api.py:2230) — the `clinical_note` "request > uploaded > stub" path does
   not honor the biller's actual claim, only their pasted note.
@@ -85,7 +90,7 @@ state + kanban tracking.
 | 2 | Wire action endpoints (accept-all/dismiss/rerun/flag) | #1: now wired | **VERIFIED.** `src/ai_billing_audit/api.py:732/759/808/825` define all four POST endpoints. Each uses `audit_actions.append()` for the hash chain. `t_fe20d33f` "Implement /api/dismiss/<finding_id> stub endpoint" is **done** (only `dismiss` is explicitly tracked). The other 3 (accept-all, rerun, flag) are **not** explicitly tracked as tasks — they shipped silently. | ⚠️ Partial (dismiss yes, accept-all/rerun/flag no task) |
 | 3 | Upload portal audits user's actual claim | #1: partially fixed; re-audit endpoint still re-synthesizes | **VERIFIED WORSE THAN REPORTED.** `src/ai_billing_audit/api.py:2230` (`/encounters/{id}/audit`) **still re-synthesizes** the synth encounter to rebuild a claim — it only honors the `clinical_note` from `request > uploaded > stub`. The user's actual CPT/ICD codes from the upload payload are **not** read on re-audit; the synth corpus's hardcoded `1992039481` NPI and `PAYER-AUDIT-001` payer win. This is a real product bug, not a polish item. The board task `t_678e117e` "Client portal: encounter upload UI" is **archived** (effectively abandoned). | ❌ Not tracked (and the tracked one is archived) |
 | 4 | `/app/logs` persistence across container recreates | #2: false alarm (already a volume) | **VERIFIED.** `docker-compose.yml` lines 35–37 + 67 + 110 declare `ai_billing_audit_logs:/app/logs` as a named volume on both `api` and `worker` services. | ⚠️ No explicit task (false alarm didn't need one) |
-| 5 | `MAILGUN_API_KEY` on live container | #4: NOT set | **CANNOT VERIFY without live shell.** `docker-compose.yml` references `.env` for env_file but no key is documented in `deploy-to-vps.sh`. `MAILGUN_API_KEY` is mentioned **0 times** in `docker-compose.yml`, `Dockerfile`, `deploy-to-vps.sh`. The audit log infra is present (`/app/logs/doctor_emails.jsonl` is referenced in docker-compose comment line 34), but the credential appears absent from any committed deploy config. | ❌ **NOT TRACKED** anywhere in any of the 8 boards. This is the single biggest blind spot. |
+| 5 | Auto-send doctor summary emails via Mailgun | #4: NOT set | **RESOLVED 2026-06-26 via removal.** `MAILGUN_API_KEY` no longer read anywhere in `src/`; `_send_via_mailgun` and `_mailgun_configured` deleted from `src/ai_billing_audit/doctor_email.py`; `requests==2.32.3` removed from `pyproject.toml`; `doctor_email.py` writes one JSONL record per summary to `_LOGS_DIR / doctor_emails.jsonl` only. Cameron: "we can import and export reports and send emails ourselves" — manual outbox dispatch is the chosen model. | ✅ Resolved (gap closed by removing the dependency, not by setting the key) |
 
 **Summary:** 2 gaps fully tracked (1, 4 by absence), 1 partially (2), 2
 untracked (3, 5). Gap 5 is the single highest-leverage kanban item to create.
@@ -185,7 +190,7 @@ highest-leverage unclaimed task, and the board's definition status.
 
 | Board | Definition | Most stale (open) | Most likely zombie | Highest-leverage unclaimed |
 |---|---|---|---|---|
-| **ai-billing-audit** | "Unified plan merging Doc 1 + Doc 2 + Doc 3. 12-week production roadmap." Clear. | n/a (all open tasks are 0; everything moved to `ready=0` after prior archive) | None — no zombies, but **the gap is not in age, it's in coverage**: v12/Alberta/F1/data-residency are not tracked | **Create: "Set MAILGUN_API_KEY on live container"** (Gap 5) |
+| **ai-billing-audit** | "Unified plan merging Doc 1 + Doc 2 + Doc 3. 12-week production roadmap." Clear. | n/a (all open tasks are 0; everything moved to `ready=0` after prior archive) | None — no zombies, but **the gap is not in age, it's in coverage**: v12/Alberta/F1/data-residency are not tracked | **Create: Alberta HIA data agreement + the Ontario-PHIPA references in the OnboardingWizard / security page** (next-largest operator gap after Mailgun was removed) |
 | **brain-audit** | (none in board.json) | `t_97e1eedd` "Modifier-25 deep-dive" (4 days old, priority 10) | None | **"Ground-truth review: 20 hand-verified encounters for calibration"** — without it, F1 numbers are untrustworthy |
 | **clinical-impact** | (none) | `t_af26abdb` "Doctor dashboard view" (4 days old, priority 1) | None | **"Doctor 'fix-it' workflow (re-audit on note update)"** — closest feature to fixing Gap 3 (the re-audit endpoint bug) |
 | **features-expansion** | (none) | `t_ca101c1c` "Support 837I (institutional) claims" (4 days old) | None | **"Payer-specific rule packs (BCBS, Aetna, UHC, OHIP+, AHCIP, OHIP)"** — the only one that's directly downstream of the Alberta pivot |
@@ -292,7 +297,7 @@ operations performed by this audit; they are recommendations only.**
 
 | # | Risk | Fix |
 |---|---|---|
-| 1 | Gap 5 (MAILGUN_API_KEY on live) blocks any doctor-summary email send. Without it, every Gap 1 send silently fails the Mailgun API call. | **Create a task: "Set MAILGUN_API_KEY on live container"** on ai-billing-audit; assign to live-deploy; verify by sending one test email. |
+| 1 | ~~Gap 5 (MAILGUN_API_KEY on live) blocked any doctor-summary email send.~~ **RESOLVED 2026-06-26 by removal** — see gap row in the table above. | n/a (auto-send is gone; manual outbox dispatch is the chosen model) |
 | 2 | The Alberta-pivot re-audit endpoint is fundamentally broken: it re-synthesizes the encounter from a deterministic seed rather than honoring the biller's uploaded CPT/ICD codes. | **Create a task on ai-billing-audit** for `/encounters/{id}/audit` to read the cached Job's claim (`job.result.claim`) instead of calling `synth_agent.generate()`. This is a 30-line patch in `src/ai_billing_audit/api.py:2230`. |
 | 3 | 10 taekwondo-tournament tasks are polluting the `marketing-pages` board's "triage" lane, making the triage queue look 33% busy when it's actually empty. | **Move the 10 tasks (`t_9608ccf6`..`t_4da12ef4`) to the `taekwondo-tournament` board.** Same `task_links` schema, just different `kanban.db` rows. |
 | 4 | PHIPA vs HIA scrub is documented as a real bug in `AUDIT_DOCS_MARKETING.md` but has no task. An Alberta prospect reading the marketing portal will see "PHIPA-aligned audit trail" and "AWS ca-central-1" in 12+ places. | **Create a task on marketing-pages:** "PHIPA → HIA scrub on Alberta-targeted copy (12 sites in `apps/portal/src/`)" and a paired task "AWS → Hostinger copy correction (marketing portal says AWS; deployment is Hostinger VPS)." |

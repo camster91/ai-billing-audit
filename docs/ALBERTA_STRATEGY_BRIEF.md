@@ -173,7 +173,7 @@ The existing Zorva materials reference "PHIPA vs PIPEDA." For Alberta the correc
 3. **PHIPA → HIA cleanup:** Which marketing materials reference "PHIPA"? The AHCIP_RULE_REFERENCE.md and AHCIP_GOLD_AUDIT.md both flag this. Want me to grep the docs/ folder and fix every PHIPA reference that's actually about Alberta?
 4. **v2 deferred (Alberta H-Link full-service billing agent from the Zorva PDF):** Still deferred, right? The H-Link full-service agent is a much bigger build than pre-submit audit. The Alberta-first pilot is pre-submit audit, not the v2 plan.
 5. **Baa / HIA agreement template:** Do we have a HIA-compliant data agreement template, or do we need to draft one for the Alberta pilot? (PIPEDA is federal; HIA is provincial-Alberta; both apply.)
-6. **Mailgun key:** Still in compromised-on-send state. Rotate before any Alberta contact sees the live URL with real data.
+6. ~~**Mailgun key:** Still in compromised-on-send state. Rotate before any Alberta contact sees the live URL with real data.~~ **RESOLVED 2026-06-26 by removal** — Mailgun is no longer in the codebase. The doctor-summary module writes to the operator-outbox JSONL and the biller dispatches manually. No key to rotate.
 
 ---
 

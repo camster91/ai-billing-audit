@@ -20,7 +20,7 @@ The product is in better shape than the prior session memory said (791 pytest te
 5. **Two parallel hash-chain implementations** — `src/ai_billing_audit/audit_actions.py` (wired, 8 call sites) and `src/audit_log.py` (only used by tests + qa scripts). A bug fix in one won't propagate. (Agents #1, #5)
 6. **Dev val data ships to prod** — `Dockerfile:36` `COPY data ./data` bakes 13,758 lines of dev/holdout/Canadian validation data into the production image. (Agent #2)
 7. **PHIPA vs HIA confusion** — 12 PHIPA references in `apps/portal/src/`, 6 of them wrong for the Alberta pivot. The Alberta-prospect agent flagged this 6 hours ago and it's still unfixed. (Agents #3, #5, #6)
-8. **MAILGUN_API_KEY not set on live container** — all live doctor-summary emails are silently dropping to `/app/logs/doctor_emails.jsonl`. Per agent #4 this is the only conversion gap still open. (Agent #4)
+8. ~~**MAILGUN_API_KEY not set on live container** — all live doctor-summary emails are silently dropping to `/app/logs/doctor_emails.jsonl`. Per agent #4 this is the only conversion gap still open. (Agent #4)~~ **RESOLVED 2026-06-26 by removal**: the doctor-summary module no longer auto-sends and no longer reads this env var. The operator-outbox JSONL is now the ONLY delivery surface (manual outbox dispatch by the biller).
 
 **Plus 1 statistical finding (not a bug, but invalidates a number we just shipped):** The v12 F1=0.733 is over-stated because the prompt's few-shot examples were constructed from val encounters. The real number is probably somewhere between 0.50 and 0.65.
 
@@ -32,10 +32,10 @@ Before the risks, an honest accounting of what's solid:
 
 - **Test coverage is 10x what prior-session memory claimed** — 791 pytest tests pass, not 72. (Agent #1 confirmed via `pytest --collect-only`.)
 - **Backup / DR is unusually well-engineered** — `audit-backup.sh` (519 lines) does `pg_dump | age | rclone rcat` streaming, validates the `audit_trail` is in the dump, monthly restore-into-throwaway-DB verify, retention-tiered, idempotent, size-anomaly-detected. The only gap is no full-VPS DR runbook and no DR drill. (Agent #4)
-- **5 conversion-blocking gaps from 2026-06-20:** Gaps 1, 2, 4 are resolved in code. Gap 3 (upload portal bypass-synth) is fixed at the upload entry point but the re-audit endpoint (`api.py:2230`) still re-synthesizes. Gap 5 (MAILGUN_API_KEY) is genuinely not done. (Agent #1)
+- **5 conversion-blocking gaps from 2026-06-20:** Gaps 1, 2, 4 are resolved in code. Gap 3 (upload portal bypass-synth) is fixed at the upload entry point but the re-audit endpoint (`api.py:2230`) still re-synthesizes. **Gap 5 (MAILGUN_API_KEY) was RESOLVED 2026-06-26 by removal** — the doctor-summary module no longer auto-sends. (Agent #1; resolution noted 2026-06-26)
 - **The v12 prompt is structurally correct** — AHCIP-only, drops US -24 modifier, fixes 5 of 8 prior AHCIP rules. The val-set leakage is the only thing dragging the F1 number down (or, more accurately, the only thing that made the F1 number look as high as 0.733).
 - **App-store / portal Stripe is real** — `/api/billing/checkout/route.ts:57-174` is properly wired with subscription mode + idempotency + demo-mode fallback. The 3 tiers ($499/$1,499/$2,999 CAD) are real. (Agent #5)
-- **The doctor_email module has a clean dev fallback** — when `MAILGUN_API_KEY` is unset, it writes to `/app/logs/doctor_emails.jsonl`. This is correct behavior for the deploy-without-mailgun-key state, but it's also the reason nobody noticed the live key isn't set. (Agent #4)
+- **The doctor_email module is now an operator-outbox writer** — as of 2026-06-26, `send_doctor_summary` always writes to `/app/logs/doctor_emails.jsonl` (no Mailgun path). The JSONL is the ONLY delivery surface; the biller reads the file and dispatches via their own mail client. Cameron: "we can import and export reports and send emails ourselves."
 - **/app/logs is a named volume** — `ai_billing_audit_logs` on both api and worker. Persists across recreates. The prior-session "wiped on recreate" concern is incorrect. (Agent #2)
 
 ---
@@ -137,17 +137,19 @@ PHIPA is Ontario. Alberta uses the Health Information Act (HIA). Any clinic in A
 
 **Time:** ~1 hour.
 
-### 8. MAILGUN_API_KEY not set on live container
+### 8. ~~MAILGUN_API_KEY not set on live container~~ — RESOLVED 2026-06-26 by removal
 
-**Source:** Agents #4, #6.
+**Source:** Agents #4, #6 (original). Resolution: Mavis, 2026-06-26.
 
-`docker-compose.yml` has no `MAILGUN_API_KEY` env var. `deploy-to-vps.sh` doesn't set it. `backup.env.template` doesn't have it. All live doctor-summary emails are silently dropping to `/app/logs/doctor_emails.jsonl` on the prod container.
+The doctor-summary module was refactored to remove Mailgun auto-send entirely. The module no longer reads `MAILGUN_API_KEY` (or `MAILGUN_DOMAIN`) and no longer imports `requests`. `_send_via_mailgun()` and `_mailgun_configured()` were deleted from `src/ai_billing_audit/doctor_email.py`. `requests==2.32.3` was removed from `pyproject.toml`. The operator-outbox JSONL (`/app/logs/doctor_emails.jsonl`) is now the ONLY delivery surface — manual outbox dispatch by the biller is the chosen model (Cameron: "we can import and export reports and send emails ourselves").
 
-The doctor_email module handles this gracefully (writes to the dev fallback), so the user is "fine" — they're just not actually getting emails.
+This resolution is strictly better than the original "set the key" fix:
+- removes the third-party API dependency from the runtime
+- removes the secret-rotation requirement (no more `MAILGUN_API_KEY` to rotate)
+- the biller has direct visibility into every email before it leaves the clinic inbox
+- import + export of audit reports (already supported) is the primary delivery surface
 
-**Fix:** Set `MAILGUN_API_KEY` in the live container's `.env`, restart the api container, verify a test email goes through.
-
-**Time:** 5 min if you have the key, 30 min if you have to fetch it from Mailgun.
+**No follow-up needed.**
 
 ---
 
@@ -163,7 +165,7 @@ The doctor_email module handles this gracefully (writes to the dev fallback), so
 - **"synth-trap is fixed"** → **upload portal entry fixed; re-audit endpoint still re-synthesizes** (Agent #1, #6)
 - **"data-residency: ca-central-1, AWS"** → **live is Hostinger VPS, region unknown** (Agents #2, #5)
 - **"PHIPA-compliant"** → **PHIPA is Ontario, Alberta is HIA** (Agents #3, #5)
-- **"5 conversion-blocking gaps open"** → **4 of 5 resolved; only MAILGUN key + re-audit endpoint open** (Agent #1)
+- **"5 conversion-blocking gaps open"** → **4 of 5 resolved; only MAILGUN key + re-audit endpoint open** → **5 of 5 resolved (2026-06-26 by removing Mailgun entirely); only re-audit endpoint remains** (Agent #1; resolution 2026-06-26)
 
 ### Dead code (top 5)
 
@@ -190,7 +192,7 @@ Plus: two dead functions in `audit_actions.py` (`read_for_encounter`, `verify_ch
 - 423 tasks total across 8 Zorva boards
 - 0 in-progress, 0 claimed, 0 blocked (no live work in flight)
 - 10 taekwondo-tournament tasks (F1-F10) misfiled as "triage" on `marketing-pages` board (wrong project entirely)
-- Zero tasks track: v12 prompt, Alberta pivot, F1=0.733, MAILGUN_API_KEY, v12 deploy
+- Zero tasks track: v12 prompt, Alberta pivot, F1=0.733, ~~MAILGUN_API_KEY~~ (RESOLVED 2026-06-26 by removal), v12 deploy
 - 119 archived (not 46 as memory said)
 
 ---
@@ -207,7 +209,7 @@ Plus: two dead functions in `audit_actions.py` (`read_for_encounter`, `verify_ch
 | 1 | Delete `apps/portal/.env.bak` (or chmod 600 and gitignore) | 5 min | Hermes |
 | 1 | Rotate Ollama cloud key, update .env, redeploy | 30 min | Cameron + Hermes |
 | 2 | Investigate `deploy-to-vps.sh:5912` `***` literal, fix the password resolution | 1 hour | Hermes |
-| 2 | Set MAILGUN_API_KEY on live container, verify a test email | 30 min | Cameron + Hermes |
+| ~~2~~ | ~~Set MAILGUN_API_KEY on live container, verify a test email~~ | ~~30 min~~ | ~~Cameron + Hermes~~ — **RESOLVED 2026-06-26 by removal** |
 | 3 | Find/replace PHIPA → HIA in `apps/portal/src/` for Alberta context | 1 hour | Hermes |
 | 3 | Update marketing portal to remove AWS ca-central-1 claim, OR move to ca-central-1 | 30 min (option b) | Hermes |
 | 3 | Delete dead code: billing.py, audit.py, encounter_schema.py, demo_entries.py, worker.py, src/audit_log.py | 2 hours | Hermes |
