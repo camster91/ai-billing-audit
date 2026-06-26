@@ -256,7 +256,7 @@ export default function ComparePage() {
                 </tr>
                 <tr>
                   <th scope="row" className={styles.dimRow}>
-                    <span className={styles.dimLabel}>PHIPA-aligned Data Sharing Agreement</span>
+                    <span className={styles.dimLabel}>HIA / PHIPA Information Sharing Agreement</span>
                   </th>
                   <td className={styles.zorvaCell}>Yes — template at /legal</td>
                   <td>Enterprise contracts only</td>

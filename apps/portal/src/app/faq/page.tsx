@@ -42,12 +42,14 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         ),
       },
       {
-        q: "Is Zorva HIPAA / PHIPA compliant?",
+        q: "Is Zorva HIA / HIPAA / PHIPA compliant?",
         a: (
           <>
             <p>
-              Yes. We sign a BAA for US pilots and a PHIPA-aligned Data
-              Sharing Agreement for Canadian pilots. Templates are at{" "}
+              Yes. We sign a BAA for US pilots, an HIA Information Manager
+              Agreement for Alberta pilots (the default for our current
+              go-to-market), and a PHIPA HIC-Agent agreement for Ontario
+              pilots. Templates are at{" "}
               <Link href="/legal">/legal</Link>. SOC 2 Type I is on the Q3
               roadmap; contact <code>security@zorva.health</code> for the
               current attestation packet.
@@ -112,7 +114,7 @@ const sections: { id: string; title: string; items: QA[] }[] = [
               <strong>Tier 2 — Group / multi-specialty:</strong> up to
               25 users, 5,000 claims/mo, Slack channel + onboarding
               call. <strong>Tier 3 — Enterprise:</strong> SSO, custom
-              data-residency, BAA + PHIPA agreement, dedicated CSM.
+              data-residency, BAA / HIA / PHIPA agreement, dedicated CSM.
             </p>
             <p>
               Full pricing grid at <Link href="/pricing">/pricing</Link>.

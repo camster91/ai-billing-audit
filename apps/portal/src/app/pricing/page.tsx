@@ -169,7 +169,7 @@ export default function PricingPage() {
           </ul>
           <p>
             <strong>What is NOT in any tier (and what we charge for as
-            an add-on):</strong> PHIPA / HIPAA training ($2,500/yr,
+            an add-on):</strong> HIA / PHIPA / HIPAA training ($2,500/yr,
             optional), custom EHR integration beyond our standard FHIR
             endpoint ($5,000 one-time per connector), custom billing
             rules beyond quarterly tuning ($250/rule/mo). Everything

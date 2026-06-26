@@ -10,7 +10,8 @@
 >
 > The HIPAA Business Associate Agreement version of this agreement lives at
 > `docs/BAA_TEMPLATE_HIPAA.md`. The Alberta HIA version of this agreement
-> lives at `docs/BAA_TEMPLATE_HIC_AGENT.md`.
+> lives at `docs/BAA_TEMPLATE_HIA.md` (framed as an Information Manager
+> Agreement under HIA s. 65 — HIA does not use "agent" terminology).
 
 ---
 

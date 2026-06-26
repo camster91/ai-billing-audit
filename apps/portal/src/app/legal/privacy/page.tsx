@@ -2,8 +2,8 @@
 //
 // This is a template scaffold for the Zorva (ai-billing-audit) marketing
 // portal. It is NOT legal advice. Cam must have it reviewed by a real
-// lawyer (or his privacy officer, for PHIPA/PIPEDA/HIPAA-aware clinics)
-// before signing the BAA with any pilot clinic.
+// lawyer (or his privacy officer, for HIA/PHIPA/PIPEDA/HIPAA-aware clinics)
+// before signing the BAA / IMA with any pilot clinic.
 //
 // The route is intentionally short: it tells prospects what data we
 // collect, why, how long we keep it, and how to contact us. The full
@@ -16,7 +16,7 @@ import styles from "./privacy.module.css";
 export const metadata: Metadata = {
   title: "Privacy Policy — Zorva",
   description:
-    "How Zorva (ai-billing-audit) handles patient health information: PHIPA / PIPEDA / HIPAA-aware data handling for Alberta billing audits.",
+    "How Zorva (ai-billing-audit) handles patient health information: HIA / PIPEDA / HIPAA-aware data handling for Alberta billing audits.",
 };
 
 export default function PrivacyPage() {

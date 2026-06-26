@@ -243,7 +243,7 @@ F1        = 2 * precision * recall / (precision + recall)`}
 timestamp          (ISO 8601 UTC)
 user_identifier    (X-Forwarded-User or "demo")
 action             (accept | dismiss | flag | rerun | ...)
-patient_hash       (SHA-256[:12] of encounter_id, per PHIPA pseudonymization)
+patient_hash       (SHA-256[:12] of encounter_id, per HIA/PHIPA pseudonymization)
 data_elements      (canonical-JSON dict of action-specific fields)
 model_run_id       (the LLM call id that produced the audited finding)`}
           </pre>
@@ -333,7 +333,7 @@ model_run_id       (the LLM call id that produced the audited finding)`}
                 <td className={styles.yesCell}>YES</td>
                 <td>
                   First 12 chars of SHA-256(encounter_id); one-way,
-                  per-encounter pseudonym (PHIPA).
+                  per-encounter pseudonym (HIA / PHIPA).
                 </td>
               </tr>
               <tr>

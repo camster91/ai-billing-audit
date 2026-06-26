@@ -170,7 +170,7 @@ A **hallucination guardrail** (`tests/test_hallucination_guardrail.py`) wraps th
 The 2026-06-22 audit identified open items that require operator action, not code:
 
 - **Ollama cloud key rotation.** The current Ollama key was shared in chat on 2026-06-17 and is treated as compromised; the live container still uses it. Rotate the key in the Ollama dashboard, update `~/.config/ai-billing/ollama-key`, and update the deploy script. ~15 min of operator work.
-- **Alberta HIA data agreement.** The HIA-specific data-sharing agreement that Alberta clinics will require before signing a pilot is not yet drafted. The Ontario PHIPA template on the portal still appears in 12 places (`apps/portal/src/`), 6 of them wrong for Alberta. Draft the HIA agreement and replace the PHIPA references in the OnboardingWizard and security page.
+- **Alberta HIA data agreement — DRAFT READY, LEGAL REVIEW PENDING.** Template drafted 2026-06-26 at `docs/BAA_TEMPLATE_HIA.md` (framed as an Information Manager Agreement under HIA s. 65 — HIA does not use "agent" terminology). Cross-border disclosure (Hostinger VPS outside Canada, LLM provider outside Alberta) is flagged in section 4 and Appendix A. **Still requires lawyer review before any real Alberta pilot is signed.** Portal copy updated to reference HIA alongside PHIPA in the 8 places that previously implied Ontario-only compliance.
 
 Full risk inventory and fixes: `docs/PROJECT_AUDIT_2026-06-22.md`.
 
