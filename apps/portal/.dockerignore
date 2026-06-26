@@ -1,0 +1,48 @@
+# apps/portal/.dockerignore
+#
+# Mirrors apps/portal/.gitignore but excludes files we want to keep
+# tracked (.env.example, .gitignore itself, AGENTS.md, README.md, etc.)
+# while preventing them from bloating the Docker build context.
+#
+# The build context is apps/portal/ (set in docker-compose.yml).
+# Anything in this file is excluded from `docker build` COPY steps.
+
+# ---- dependencies -------------------------------------------------------
+node_modules
+.pnpm-store
+
+# ---- Next.js build outputs ---------------------------------------------
+.next
+out
+next-env.d.ts.bak
+
+# ---- env files (secrets must NOT end up in the image) ------------------
+.env
+.env.local
+.env.*.local
+.env.bak
+.env.production
+.env.development
+# .env.example is tracked and intentionally NOT excluded — the deploy
+# script reads it as the template for the production .env.
+
+# ---- test + audit + scratch --------------------------------------------
+tests
+playwright-report
+test-results
+coverage
+a11y-*.mjs
+a11y-*.png
+bg-*.mjs
+*.test.ts
+*.spec.ts
+
+# ---- editor + OS -------------------------------------------------------
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# ---- generated artifacts ----------------------------------------------
+artifacts
+src/generated

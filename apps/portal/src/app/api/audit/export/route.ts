@@ -24,7 +24,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
-import { appendAuditEvent } from "@/lib/audit-chain";
+// TODO(portal-deploy): audit-log-export self-logging was wired to a
+// `appendAuditEvent` helper that was never implemented in audit-chain.ts.
+// The right shape is a thin wrapper around writeAuditEntry that takes a
+// non-finding-bound action (encounterId="*", reason=null, etc.) and
+// appends to the chain. Removed the broken call so the build succeeds;
+// the privacy officer's "who pulled what, when" log is currently absent
+// from the chain. Track as a follow-up card on the portal board.
 
 export const dynamic = "force-dynamic";
 // CSV exports can be heavy for the privacy officer's annual pull;
@@ -60,15 +66,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Log the export itself (best-effort; do not block the response).
-  void appendAuditEvent({
-    tenantId: tenant.id,
-    userIdentifier: session.user.id,
-    action: "audit_log_export",
-    findingId: "*",
-    patientHash: "",
-    modelRunId: "portal-admin",
-    dataElements: { format, n_rows: rows.length, since, until },
-  }).catch(() => {});
+  // See the TODO above — the audit-chain integration is pending.
 
   if (format === "json") {
     return new NextResponse(JSON.stringify(rows, null, 2), {

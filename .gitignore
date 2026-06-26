@@ -34,6 +34,9 @@ htmlcov/
 .env
 .env.local
 .env.*.local
+# Portal runtime env (written by deploy-portal.sh with chmod 600 from
+# /root/ai-billing-audit-secrets/). Must never be committed.
+portal.env
 logs/*.jsonl
 artifacts/*_prog
 node_modules/

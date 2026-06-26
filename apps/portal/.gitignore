@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Track the production env TEMPLATE so deploy-portal.sh has a known
+# source. The populated .env.production must NEVER be committed — the
+# deploy script writes it with chmod 600 and ssh scp, never via git.
+!.env.example
+!.env.production.example
 
 # vercel
 .vercel

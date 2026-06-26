@@ -56,15 +56,15 @@ Backup/restore for the Postgres `audit_trail` table lives at
 `deploy/scripts/audit-backup.sh` (age-encrypted `pg_dump` → B2 via
 `rclone`, weekly cron, monthly restore-verify).
 
-### Side 2 — Next.js marketing portal (local dev only)
+### Side 2 — Next.js marketing portal (live as of 2026-06-26)
 
 | | |
 | --- | --- |
-| **What** | the user-facing marketing site — hero ("Find the revenue..."), `/pricing` (CAD $499 / $1,499 / $2,999 tiers), `/what-zorva-finds` (8 finding cards), `/security` controls matrix, `/robots.txt` split rules, plus `/contact`, `/pilot`, `/how-it-works` |
-| **Source** | `apps/portal/` (Next.js 15 + Tailwind + shadcn + Prisma/SQLite) |
-| **Deployed to** | **not deployed** — local dev only |
-| **Pipeline** | `pnpm install && pnpm dev` (port 3000) for local work |
-| **Status** | **Built and tested locally**; the `deploy-to-vps.sh` rsync step explicitly excludes `apps/` |
+| **What** | the user-facing marketing site — hero ("Find the revenue..."), `/pricing` (CAD $499 / $1,499 / $2,999 tiers), `/what-zorva-finds` (8 finding cards), `/security` controls matrix, `/robots.txt` split rules, plus `/contact`, `/pilot`, `/how-it-works`. Authenticated workspace (`/portal/*`) runs the OnboardingWizard, billing dashboard, encounters/findings/audit workspace. |
+| **Source** | `apps/portal/` (Next.js 16 + React 19 + Prisma/SQLite-dev/Postgres-prod + Stripe + Resend) |
+| **Deployed to** | **`https://portal.ashbi.ca`** — separate Traefik router, separate Postgres, separate Node 22-slim container, no shared process tree with the API |
+| **Pipeline** | `./deploy-portal.sh` → rsync → write `/opt/projects/ai-billing-audit/portal.env` from host secrets → add Traefik router block → `docker compose up -d --build portal portal-postgres` → healthcheck → verify HTTPS |
+| **Status** | **Live** as of 2026-06-26 |
 
 To run the marketing portal locally:
 
@@ -74,45 +74,48 @@ pnpm install
 pnpm dev                                 # http://localhost:3000
 ```
 
-The portal is intentionally not on the VPS: the FastAPI Caddy image
-doesn't ship Node.js, the rsync excludes `apps/`, and there is no
-second service in `docker-compose.yml` for it. Anyone landing on
-`https://ai-billing-audit.ashbi.ca` today sees the FastAPI-rendered
-demo dashboard, **not** the polished Next.js marketing pages.
+The portal and the API share no code at runtime — separate Postgres
+schemas, separate containers, separate Traefik routers. They share the
+host and the Traefik dynamic config file. The deploy script for each
+side is independent:
+
+- **API deploy:** `./deploy-to-vps.sh` (unchanged)
+- **Portal deploy:** `./deploy-portal.sh` (new, 2026-06-26)
+
+To re-ship the portal only (skip the rsync of `apps/portal/`):
+
+```bash
+./deploy-portal.sh --portal-only         # only restart the portal container
+```
+
+To rotate a portal secret (e.g. `STRIPE_SECRET_KEY`):
+
+```bash
+# 1. Write the new value to /root/ai-billing-audit-secrets/stripe_secret_key on the VPS
+# 2. Re-run the deploy script (it re-writes portal.env from the secret):
+./deploy-portal.sh --portal-only
+```
 
 ### When you're ready to deploy `apps/portal`
 
-The recommended path is a **static export** of the Next.js app
-served from a dedicated host, with the apex domain pointed at it
-either via a separate Traefik router or a third-party static host:
-
-```bash
-cd apps/portal
-pnpm install
-pnpm build                               # produces apps/portal/.next/ and apps/portal/out/ if exporting
-# Option A: static export (requires next.config.ts `output: 'export'`)
-rsync -avz --delete apps/portal/out/ vps:/var/www/zorva-portal/
-# Option B: stand-alone Node service on the VPS (port 3020)
-rsync -avz --exclude node_modules apps/portal/ vps:/opt/projects/zorva-portal/
-ssh vps "cd /opt/projects/zorva-portal && pnpm install --prod && pm2 start pnpm -- start"
-```
-
-Then point `zorva.ca` (or the apex of choice) at the new origin via
-either:
-
-- A second Traefik router block in `/etc/traefik/dynamic/routers.yml`
-  routing `Host(`ashbi.ca`)` → `zorva-portal@docker`, or
-- A Cloudflare Pages / Netlify / Vercel project with the apex
-  domain CNAME'd at the registrar (zero VPS resource cost).
+Already shipped — see **Side 2** above. The deploy script
+(`deploy-portal.sh`) is the canonical recipe; static-export and
+pm2-managed Node are no longer on the roadmap. If a future operator
+wants to migrate the portal off the VPS to Cloudflare Pages / Netlify
+/ Vercel (zero-VPS-resource path), the per-page output from
+`pnpm build` already produces static assets — only the API routes
+(`/api/*`, `/api/billing/*`, etc.) need a Node runtime, which those
+hosts support natively.
 
 Either choice keeps the FastAPI API on its own subdomain
 (`api.ashbi.ca` or `ai-billing-audit.ashbi.ca`) so the two stacks
 don't share a process tree.
 
-Full architecture diagram, trade-offs between the three approaches
-(add a second docker-compose service vs. static export vs. separate
-repo), and the current deploy status are in
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Full architecture diagram and current deploy status are in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). The static-export and
+pm2-managed alternatives discussed in earlier drafts of this README
+are no longer on the roadmap — `apps/portal` ships as a Docker
+container alongside the API.
 
 ## Project layout
 
