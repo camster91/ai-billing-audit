@@ -14,6 +14,13 @@
 > Agent" terminology that HIA does not) lives at
 > `docs/BAA_TEMPLATE_PHIPA.md`. The US HIPAA Business Associate
 > Agreement version lives at `docs/BAA_TEMPLATE_HIPAA.md`.
+>
+> **A 19-item lawyer-review checklist** (items the drafter could not
+> resolve without a lawyer: insurance, audit rights, survival, sub-
+> processor due diligence, statutory penalty acknowledgement, etc.)
+> lives at `docs/HIA_LAWYER_REVIEW_CHECKLIST.md`. Hand both this
+> template AND the checklist to Alberta counsel; the checklist lists
+> the specific HIA sections + the recommended review order.
 
 ---
 
