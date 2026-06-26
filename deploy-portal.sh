@@ -117,7 +117,11 @@ echo "[deploy-portal] step 2: write ${REMOTE_ENV}"
 # cat | ssh bash` to avoid heredoc-in-heredoc and shell-escape footguns.
 read_secret() {
     local name="$1"
-    ssh "${HOST}" "cat ${SECRETS_DIR}/${name} 2>/dev/null" || {
+    # `cat file` outputs the trailing newline too, which would embed
+    # `\n` inside the env value and break shell + YAML parsing. Strip
+    # with `tr -d '\n'` so we get the raw bytes only. If the file is
+    # missing or unreadable, fail loud (not silent default).
+    ssh "${HOST}" "tr -d '\n' < ${SECRETS_DIR}/${name}" 2>/dev/null || {
         echo "FATAL: cannot read ${SECRETS_DIR}/${name} on ${HOST}" >&2; exit 1; }
 }
 
