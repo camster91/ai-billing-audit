@@ -19,7 +19,9 @@ import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import { EmptyStateCTA, onboardingWizardHref } from "@/components/EmptyStateCTA";
 import { FPARTile } from "@/components/fpar-tile";
+import { CalibrationCard } from "@/components/calibration-card";
 import { computeFPAR } from "@/lib/fpar";
+import { computeCalibration } from "@/lib/calibration";
 import styles from "../shell.module.css";
 
 export const metadata: Metadata = {
@@ -91,6 +93,17 @@ export default async function DashboardPage() {
   const fpar = tenant
     ? await computeFPAR(tenant.id)
     : { auditsInWindow: 0, acceptedUnchangedCount: 0, rate: null, isStale: false };
+
+  // Per-clinic calibration (docs/SPECIALTY_TUNING.md §2 precondition
+  // for triggering a re-tune; FastAPI counterpart in
+  // src/ai_billing_audit/feedback.py:280). Reads from the
+  // CalibrationSignal Prisma table (scaffold migration
+  // 20260627110000_add_calibration_scaffold). Returns empty signals
+  // when the tenant has no signals yet — the card handles that
+  // gracefully.
+  const calibration = tenant
+    ? await computeCalibration(tenant.id)
+    : { tenantId: "", signals: [], bucketCounts: { calibrated: 0, reviewing: 0, overcalled: 0, uncalibrated: 0 } };
   const isFreshTenant =
     tenant !== null && encounterCount === 0 && findingCount === 0;
 
@@ -141,6 +154,8 @@ export default async function DashboardPage() {
            </section>
 
           <FPARTile tenantId={tenant.id} fpar={fpar} drillInHref="/findings" />
+
+          <CalibrationCard calibration={calibration} />
 
           {onboardingCompletedAt &&
           firstEncounterUploadMode === "uploaded" &&

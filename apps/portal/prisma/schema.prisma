@@ -448,6 +448,14 @@ model Finding {
   // is not yet acted on; accepted/dismissed is terminal — the portal
   // disallows undoing without writing a second audit row.
   status                   String   @default("pending")
+  // Canonical machine-readable rule identifier from the auditor output
+  // (e.g. "rule_ahcip_dx_linkage", "rule_modifier_25_missing"). Distinct
+  // from `billingRuleReference` which is the human-readable citation
+  // shown in the UI ("AMA CPT 2026 §99214"). ruleId is what
+  // per-clinic calibration aggregates on — see src/lib/calibration.ts.
+  // Nullable because older findings ingested before the 2026-06-27
+  // scaffold may not have the field populated.
+  ruleId                   String?
   // Set on dismiss with the chosen reason; null on accept. For
   // "other_with_text" the free-text body is in `dismissText` and must
   // be non-empty (enforced at the route layer with Zod).
@@ -464,6 +472,10 @@ model Finding {
 
   @@index([encounterId, status])
   @@index([encounterId, category])
+  // Composite for the per-clinic calibration aggregation
+  // (src/lib/calibration.ts). The query is "for this tenant, group
+  // findings by ruleId and count accept/dismiss".
+  @@index([ruleId])
 }
 
 // Append-only audit log. Every accept and dismiss writes exactly one
@@ -742,4 +754,50 @@ model Lead {
 
   @@index([email, createdAt])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Per-clinic calibration signal (read-path scaffold, 2026-06-27)
+//
+// Background: docs/SPECIALTY_TUNING.md §2 lists "per-clinic F1 dashboard"
+// as a precondition for triggering a re-tune. The FastAPI side has a
+// feedback.py with calibration buckets (high/medium/low/uncalibrated) but
+// those are computed on demand from the audit log. The portal needs its
+// own read path so the dashboard can render "this rule is overcalled at
+// your clinic" cards without a round-trip to the FastAPI.
+//
+// Design choice: this is a **read-side materialised view**, populated by
+// the biller-action routes (findings accept/dismiss) via a write hook
+// added in the same change. The schema is intentionally narrow — one
+// row per (tenantId, ruleId), carrying the counts needed to bucket the
+// rule for that clinic. We do NOT store free-text or per-finding detail
+// here; the source-of-truth is still the Finding + AuditTrail tables.
+//
+// Bucket semantics (mirrors src/ai_billing_audit/feedback.py:280):
+//   - acceptRate >= 0.70 → "calibrated"  (auditor's signal is trusted)
+//   - 0.40 <= acceptRate < 0.70 → "reviewing"  (mixed signal, surface in UI)
+//   - acceptRate < 0.40  → "overcalled" (auditor is firing this rule too
+//     often for this clinic; worth per-clinic tuning)
+//   - actedOn < MIN_ACTED_ON (5) → "uncalibrated" (not enough data yet)
+//
+// Last-updated column lets the dashboard flag stale signals (>30 days
+// since last action) so the UI doesn't mislead the biller with year-old
+// numbers. The FPAR tile already has the same staleness pattern.
+// ---------------------------------------------------------------------------
+model CalibrationSignal {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  ruleId             String
+  acceptCount        Int      @default(0)
+  dismissCount       Int      @default(0)
+  // Acts as the "last time we observed a biller decision on this rule at
+  // this clinic" timestamp. Drives the staleness check.
+  lastSignalAt       DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([tenantId, ruleId])
+  @@index([tenantId])
+  @@index([ruleId])
+  @@index([tenantId, lastSignalAt])
 }
