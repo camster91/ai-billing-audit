@@ -181,7 +181,7 @@ services:
 
   # -------------------------------------------------------------------------
   # Portal (Next.js 16, marketing site + Stripe-backed checkout). Added
-  # 2026-06-26. The portal's PUBLIC URL is portal.ashbi.ca (a separate
+  # 2026-06-26. The portal's PUBLIC URL is zorva.ashbi.ca (a separate
   # Traefik router block in /opt/traefik/dynamic/routers.yml) — the api
   # stays at ai-billing-audit.ashbi.ca, so the two don't share a process
   # tree. See README.md §"Deploying" for the full topology.

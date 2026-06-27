@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-portal.sh — deploy the Zorva marketing portal (apps/portal)
-# to the Hostinger VPS at portal.ashbi.ca.
+# to the Hostinger VPS at zorva.ashbi.ca.
 #
 # Idempotent: safe to re-run after a code change. Each step is
 # failure-stop: a failure in step N halts before step N+1 so the
@@ -18,7 +18,7 @@
 #      apps/portal/.env.production.example + host secrets.
 #      chmod 600 (so a misconfigured `docker compose config` won't
 #      print it to logs).
-#   3. Add a Traefik router block for portal.ashbi.ca ->
+#   3. Add a Traefik router block for zorva.ashbi.ca ->
 #      127.0.0.1:3020 (the portal container's loopback binding).
 #      Preserves all other routers in /opt/traefik/dynamic/routers.yml.
 #   4. docker compose up -d --build portal portal-postgres.
@@ -32,7 +32,7 @@
 #   - /root/ai-billing-audit-secrets/stripe_secret_key        (chmod 600)
 #   - /root/ai-billing-audit-secrets/stripe_publishable_key   (chmod 600)
 #   - /root/ai-billing-audit-secrets/stripe_webhook_secret    (chmod 600)
-#   - DNS A record: portal.ashbi.ca -> 187.77.26.99
+#   - DNS A record: zorva.ashbi.ca -> 187.77.26.99
 #     (Cloudflare wildcard *.ashbi.ca already resolves to this)
 #
 # The script sources the same SSH alias (`coolify`) and host path
@@ -65,7 +65,7 @@ REMOTE_ENV="${REMOTE_DIR}/portal.env"
 SECRETS_DIR="/root/ai-billing-audit-secrets"
 TRAEFIK_ROUTERS="/opt/traefik/dynamic/routers.yml"
 PORTAL_PORT="3060"
-PORTAL_HOST="portal.ashbi.ca"
+PORTAL_HOST="zorva.ashbi.ca"
 PORTAL_SERVICE="zorva-portal"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -207,11 +207,11 @@ data.setdefault("http", {})
 data["http"].setdefault("routers", {})
 data["http"].setdefault("services", {})
 
-# Router: Host(portal.ashbi.ca) -> zorva-portal service, no
+# Router: Host(zorva.ashbi.ca) -> zorva-portal service, no
 # middleware (the portal sets its own CSP + security headers in
 # next.config.ts; we do not double up at the edge). certResolver
 # letsencrypt re-uses the same Let's Encrypt account the rest of
-# the fleet uses, so adding portal.ashbi.ca requires no new DNS or
+# the fleet uses, so adding zorva.ashbi.ca requires no new DNS or
 # ACME registration beyond the existing *.ashbi.ca wildcard.
 data["http"]["routers"]["zorva-portal"] = {
     "rule": 'Host("' + host + '")',
