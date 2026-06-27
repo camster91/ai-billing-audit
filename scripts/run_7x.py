@@ -8,6 +8,29 @@ import os, json, time, hashlib, sys, importlib.util
 from pathlib import Path
 from datetime import datetime, timezone
 
+# Retry config — added 2026-06-27 after the production multi-run hit
+# ~80% error rate from transient Ollama Cloud issues (Timeout,
+# APIConnectionError, JSONDecodeError). Without retry every blip
+# became a permanent error, so 7-run variance estimates were
+# contaminated with backend noise rather than the model's true
+# variance. With retry, a transient 429 / Timeout / 5xx gets up
+# to MAX_RETRIES more attempts before being recorded as a failure.
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECONDS = [5, 15, 45]  # exponential: 5s, 15s, 45s
+
+# Exceptions we retry on. SchemaValidationError is NOT in this list —
+# it's a "model emitted wrong JSON shape" error that retrying won't
+# fix (the next attempt will hit the same model behaviour). Bare
+# json.JSONDecodeError IS in the list — that's a "transport returned
+# garbage" error where the next attempt may well succeed.
+import json as _json_mod
+try:
+    from litellm.exceptions import APIConnectionError as _APIConnectionError, Timeout as _Timeout
+except ImportError:
+    _APIConnectionError = Exception
+    _Timeout = Exception
+RETRYABLE_EXCEPTIONS = (_APIConnectionError, _Timeout, _json_mod.JSONDecodeError)
+
 # Pre-imports to avoid the litellm/typing_extensions import-order bug
 import inspect as _inspect_mod  # noqa: F401
 from pathlib import Path
@@ -156,30 +179,61 @@ for run_i in range(1, N_RUNS + 1):
         eid = enc['encounter_id']
         messages = build_messages(enc)
         enc_t0 = time.time()
-        try:
-            result = client.complete_json(messages, schema, max_tokens=4000)
-            wall = time.time() - enc_t0
+        # Retry loop: retryable exceptions (Timeout / APIConnectionError
+        # / JSONDecodeError) get up to MAX_RETRIES more attempts with
+        # exponential backoff (5s, 15s, 45s). Non-retryable errors
+        # (e.g. SchemaValidationError) fail fast. Records the final
+        # attempt's error_message / wall_clock_seconds in results.json.
+        attempt_errors = []
+        result = None
+        for attempt in range(1 + MAX_RETRIES):
+            try:
+                result = client.complete_json(messages, schema, max_tokens=4000)
+                if attempt > 0:
+                    print(f"  ✓ {eid} succeeded on attempt {attempt+1} after {attempt_errors[-1]['type']}", flush=True)
+                break
+            except RETRYABLE_EXCEPTIONS as e:
+                attempt_errors.append({'type': type(e).__name__, 'msg': str(e)[:200]})
+                if attempt < MAX_RETRIES:
+                    backoff = RETRY_BACKOFF_SECONDS[attempt]
+                    print(f"  ↻ {eid} attempt {attempt+1} failed: {type(e).__name__} — retrying in {backoff}s", flush=True)
+                    time.sleep(backoff)
+                    continue
+                # Out of retries — fall through to error recording below
+                result = None
+                break
+            except Exception as e:
+                # Non-retryable (e.g. SchemaValidationError) — record
+                # immediately, don't retry.
+                attempt_errors.append({'type': type(e).__name__, 'msg': str(e)[:200]})
+                result = None
+                break
+        wall = time.time() - enc_t0
+        if result is not None:
             results.append({
                 'encounter_id': eid, 'index': i,
                 'is_flagged': enc.get('is_flagged', False),
                 'ok': True, 'error_type': None, 'error_message': None,
                 'wall_clock_seconds': wall,
+                'attempts': len(attempt_errors) + 1,
                 'findings': result.get('findings', []),
                 'summary': result.get('summary', '')
             })
             ok_count += 1
-        except Exception as e:
-            wall = time.time() - enc_t0
+        else:
+            final_err = attempt_errors[-1] if attempt_errors else {'type': 'Unknown', 'msg': 'no error captured'}
             results.append({
                 'encounter_id': eid, 'index': i,
                 'is_flagged': enc.get('is_flagged', False),
-                'ok': False, 'error_type': type(e).__name__,
-                'error_message': str(e)[:500],
+                'ok': False,
+                'error_type': final_err['type'],
+                'error_message': final_err['msg'][:500],
+                'attempts': len(attempt_errors),
                 'wall_clock_seconds': wall,
                 'findings': [], 'summary': ''
             })
             err_count += 1
-            print(f"  ERR {eid}: {type(e).__name__}", flush=True)
+            print(f"  ERR {eid}: {final_err['type']} after {len(attempt_errors)} attempt(s)", flush=True)
     elapsed = time.time() - t0
 
     # Write per-run predictions
