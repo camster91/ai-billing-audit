@@ -51,6 +51,15 @@ os.environ['LLM_API_KEY'] = key
 # NB: model prefix must be `openai/` (not `ollama/`) so litellm routes to
 # /v1/chat/completions. The `ollama/` prefix makes litellm try the native
 # Ollama API at /v1/api/generate which Ollama Cloud does not expose.
+# TODO(2026-06-27): This script hits Ollama Cloud (ollama.com/v1) for
+# the minimax-m3:cloud model. PRODUCTION hits api.minimax.io/v1 instead
+# (see deploy-to-vps.sh:100, minimax_client.py:59, docker-compose.yml:61).
+# The same model name may resolve to different weights / version-pinning
+# on the two backends, so F1 measured here may not transfer to
+# production. research/04-llm-backends.md §2 catalogues the
+# discrepancy. Resolution path: add a --provider flag and default to
+# the canonical (api.minimax.io/v1) backend so the benchmark measures
+# what production serves.
 os.environ['LLM_BASE_URL'] = 'https://ollama.com/v1'
 os.environ['LLM_PROVIDER'] = 'ollama'
 os.environ['LLM_MODEL'] = 'openai/minimax-m3:cloud'

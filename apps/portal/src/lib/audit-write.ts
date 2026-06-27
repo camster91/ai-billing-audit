@@ -31,6 +31,7 @@ import {
   type AuditAction,
   type DismissReason,
 } from "@/lib/encounter-types";
+import { upsertCalibrationSignal } from "@/lib/calibration-write";
 
 /**
  * Inputs to the audit-trail writer. The Finding's own state is
@@ -290,6 +291,27 @@ export async function writeAuditBatch(
     }
   }
 
+  // Calibration signal write (bulk path) — same as the single-write
+  // path above, but iterated per affected finding. We read the
+  // findings' ruleIds here (the updateMany above changed status, not
+  // ruleId, so this is still the pre-action ruleId set). One upsert
+  // per finding so the per-(tenantId, ruleId) counter increments
+  // correctly even when the batch contains multiple findings on the
+  // same rule.
+  const findingsWithRule = await tx.finding.findMany({
+    where: { id: { in: affectedFindingIds } },
+    select: { id: true, ruleId: true },
+  });
+  for (const f of findingsWithRule) {
+    if (!f.ruleId) continue;
+    await upsertCalibrationSignal(tx, {
+      tenantId,
+      ruleId: f.ruleId,
+      action: newFindingStatus === "accepted" ? "accept" : "dismiss",
+      timestamp: baseTimestamp,
+    });
+  }
+
   return { bulkActionId, newFindingStatus, perItem };
 }
 
@@ -410,6 +432,19 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
       actionedByUserId: input.userIdentifier,
       actionedAt: timestamp,
     },
+  });
+
+  // Calibration signal write — keeps the per-clinic dashboard card
+  // (apps/portal/src/components/calibration-card.tsx) in sync with
+  // the biller's actual accept/dismiss decisions. Atomic with the
+  // chain + Finding write because we're inside the same transaction.
+  // No-op when finding.ruleId is null (legacy findings pre-2026-06-27
+  // scaffold migration).
+  await upsertCalibrationSignal(tx, {
+    tenantId,
+    ruleId: finding.ruleId,
+    action: action === "accept" ? "accept" : "dismiss",
+    timestamp,
   });
 
   return {

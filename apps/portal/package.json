@@ -15,7 +15,8 @@
     "test:leads-direct": "node --import tsx --test tests/leads-direct.test.ts",
     "test:contact-form": "node --import tsx --test tests/contact-form.test.ts",
     "test:fpar": "node --import tsx --test tests/fpar.test.ts",
-    "test:calibration": "node --import tsx --test tests/calibration.test.ts"
+    "test:calibration": "node --import tsx --test tests/calibration.test.ts",
+    "test:calibration-upsert": "node --import tsx --test tests/calibration.upsert.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.2",

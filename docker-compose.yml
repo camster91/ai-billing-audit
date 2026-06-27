@@ -58,7 +58,7 @@ services:
       - .env
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-minimax}
-      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.chat/v1}
+      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.io/v1}
       DATABASE_URL: ${DATABASE_URL}
       AUDIT_TRAIL_DB: ${AUDIT_TRAIL_DB}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -91,7 +91,7 @@ services:
       - .env
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-minimax}
-      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.chat/v1}
+      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.io/v1}
       DATABASE_URL: ${DATABASE_URL}
       AUDIT_TRAIL_DB: ${AUDIT_TRAIL_DB}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
