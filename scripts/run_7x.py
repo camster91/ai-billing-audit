@@ -18,9 +18,19 @@ with open(os.path.expanduser('~/.config/ai-billing/ollama-key')) as f:
     key = f.read().strip()
 os.environ['OLLAMA_API_KEY'] = key
 os.environ['LLM_API_KEY'] = key
-os.environ['LLM_BASE_URL'] = 'https://ollama.com'
+# NB: must include /v1 — litellm's openai-compat provider does NOT auto-append
+# the version segment for ollama.com, so a bare `https://ollama.com` resolves
+# to the ollama.com homepage (HTML) instead of /v1/chat/completions, which
+# is what produced the APIConnectionError / JSONDecodeError pair we saw on
+# the 2026-06-27 production run. The older run_ollama_audit.py already had
+# this right; the /v1 suffix was dropped when we forked run_7x.py for the
+# daily-report pivot on 2026-06-27 (commit 5db96e4).
+# NB: model prefix must be `openai/` (not `ollama/`) so litellm routes to
+# /v1/chat/completions. The `ollama/` prefix makes litellm try the native
+# Ollama API at /v1/api/generate which Ollama Cloud does not expose.
+os.environ['LLM_BASE_URL'] = 'https://ollama.com/v1'
 os.environ['LLM_PROVIDER'] = 'ollama'
-os.environ['LLM_MODEL'] = 'ollama/minimax-m3:cloud'
+os.environ['LLM_MODEL'] = 'openai/minimax-m3:cloud'
 
 # Force real inspect into sys.modules (defensive)
 _real = __import__('inspect')
