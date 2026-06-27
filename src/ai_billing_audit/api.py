@@ -1129,6 +1129,26 @@ def create_app() -> FastAPI:
             if p.is_default:
                 default_preset_name = p.preset_name
                 break
+
+        # Filter + search state. These are referenced at lines ~1165+
+        # (before they're assigned lower down in the function, around
+        # ~1306), so pre-initialize them to safe defaults here. Without
+        # this, requests that hit the early code paths before the
+        # assignment block runs raise UnboundLocalError and the
+        # dashboard returns HTTP 500 (the bug surfaced on 2026-06-26
+        # when the index endpoint first received a request with auth
+        # headers — the user-lookup code path hit the early
+        # `current_filter_state` write before reaching the assignment).
+        # The values are overwritten by the later query-param parsing
+        # block; these initializers are just there to guarantee a
+        # defined value at every read site.
+        active_filter: str = "all"
+        search_active: bool = False
+        search_q_raw: str = ""
+        search_cpt_raw: str = ""
+        search_icd10_raw: str = ""
+        search_patient_raw: str = ""
+        search_npi_raw: str = ""
         # Apply ?preset=<name> as a deep-link override. The URL
         # becomes a shareable handle: a colleague can paste it in
         # chat and the biller sees the same view on click.

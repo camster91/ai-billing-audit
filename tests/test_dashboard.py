@@ -449,3 +449,57 @@ def test_hard_detail_404_when_unregistered(
     monkeypatch.setattr(api_mod, "get_demo_encounter", demo_registry.get_demo_encounter)
     r = client.get(f"/encounter/{HARD_ID}")
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Regression: GET / with auth headers must not 500.
+# ---------------------------------------------------------------------------
+#
+# The dashboard's index endpoint (api.py:1113) reads a handful of
+# variables (`active_filter`, `search_active`, `search_q_raw`, etc.)
+# in two places: an early "compute current_filter_state" block at
+# line ~1165 and a later query-param parsing block at line ~1306+.
+# Before the fix on 2026-06-26, the early read could execute before
+# the later assignment when the request had auth headers (the auth
+# code path branched into the early block first), raising
+# UnboundLocalError and returning HTTP 500.
+#
+# test_index_lists_registered_encounter above exercises the same
+# endpoint WITHOUT auth headers — that path doesn't hit the bug.
+# This test exercises it WITH auth headers so the regression is
+# pinned.
+def test_index_with_auth_headers_does_not_500(client: TestClient) -> None:
+    """GET / with auth headers must not raise UnboundLocalError."""
+    r = client.get(
+        "/",
+        headers={
+            "X-User-Id": "test-biller-1",
+            "X-User-Role": "biller",
+        },
+    )
+    assert r.status_code == 200, (
+        f"GET / with auth headers returned {r.status_code}; body: {r.text[:500]}"
+    )
+    # And the early `current_filter_state` block ran without 500,
+    # so the response body should contain the registered encounter
+    # cards (the same content rendered without auth).
+    assert "enc_10032" in r.text
+
+
+def test_index_with_auth_headers_and_query_params(client: TestClient) -> None:
+    """GET /?status=flagged&q=chest with auth headers must not 500.
+
+    The query-param parsing block at line ~1306 is what overwrites
+    the initializers we set at the top of the function. If the
+    ordering or initial values regressed, this test catches it.
+    """
+    r = client.get(
+        "/?status=flagged&q=chest&cpt=99214",
+        headers={
+            "X-User-Id": "test-biller-2",
+            "X-User-Role": "biller",
+        },
+    )
+    assert r.status_code == 200, (
+        f"GET / with query params returned {r.status_code}; body: {r.text[:500]}"
+    )
