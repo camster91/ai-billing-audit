@@ -33,8 +33,16 @@ import {
   isFindingCategory,
   type EncounterStatus,
 } from "@/lib/encounter-types";
+import {
+  fetchDenialRisk,
+  fetchLatestAppealLetter,
+  fetchAppealLetters,
+  fastapiEncounterUrl,
+  FASTAPI_ORIGIN,
+} from "@/lib/fastapi";
 import { ClinicalNote } from "./_components/clinical-note";
 import { FindingCard } from "./_components/finding-card";
+import { DeepAuditPanel } from "./_components/deep-audit-panel";
 import styles from "./_components/split-review.module.css";
 
 interface PageProps {
@@ -78,6 +86,28 @@ export default async function EncounterDetailPage({ params }: PageProps) {
   for (const m of matches) {
     evidenceToCard[m.id] = `finding-${m.id}`;
   }
+
+  // Fetch the FastAPI's denial-risk + appeal-letter data in parallel.
+  // These are public-read endpoints (no bearer required) — see
+  // api.py:1049 (the OPTIONS+public-read bypass in _bearer_auth) and
+  // src/lib/fastapi.ts. Failures degrade gracefully: the DeepAuditPanel
+  // shows "deep audit unavailable" instead of breaking the page.
+  const [denialRiskRes, appealLetterRes, appealLettersRes] = await Promise.all([
+    fetchDenialRisk(encounter.id),
+    fetchLatestAppealLetter(encounter.id),
+    fetchAppealLetters(encounter.id),
+  ]);
+  const deepAudit = {
+    denialRisk:
+      denialRiskRes.kind === "ok" ? denialRiskRes.data : null,
+    denialRiskUnavailable: denialRiskRes.kind !== "ok",
+    appealLetter:
+      appealLetterRes.kind === "ok" ? appealLetterRes.data : null,
+    appealLetterUnavailable: appealLetterRes.kind !== "ok",
+    appealLetters:
+      appealLettersRes.kind === "ok" ? appealLettersRes.data : [],
+    appealLettersUnavailable: appealLettersRes.kind !== "ok",
+  };
 
   const status = encounter.status as EncounterStatus;
   const statusClass =
@@ -183,6 +213,18 @@ export default async function EncounterDetailPage({ params }: PageProps) {
             />
           ))
         )}
+
+        <DeepAuditPanel
+          encounterId={encounter.id}
+          denialRisk={deepAudit.denialRisk}
+          denialRiskUnavailable={deepAudit.denialRiskUnavailable}
+          appealLetter={deepAudit.appealLetter}
+          appealLetterUnavailable={deepAudit.appealLetterUnavailable}
+          appealLetters={deepAudit.appealLetters}
+          appealLettersUnavailable={deepAudit.appealLettersUnavailable}
+          fastapiEncounterUrl={fastapiEncounterUrl(encounter.id)}
+          fastapiOrigin={FASTAPI_ORIGIN}
+        />
       </section>
     </div>
   );

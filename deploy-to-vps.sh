@@ -152,8 +152,11 @@ rsync -az --delete \
     --exclude='artifacts/' \
     --exclude='rules/' \
     --exclude='*.md' \
-    --exclude='ai_billing_audit/' \
+    --exclude='*.egg-info/' \
+    --exclude='src/ai_billing_audit/__pycache__/' \
     --exclude='.DS_Store' \
+    --exclude='portal.env' \
+    --exclude='portal/' \
     "$PROJECT_DIR/" "$HOST:$REMOTE_DIR/"
 
 # --- Step 2: write .env on the host ---
@@ -388,10 +391,15 @@ REMOTE_TRAEFIK_EOF
 
 # --- Step 4: docker compose build + up ---
 log "docker compose build (api image)"
-ssh "$HOST" "cd $REMOTE_DIR && docker compose build --pull" || fail "docker compose build failed"
+# `--env-file portal.env` is required for compose-time interpolation:
+# portal-postgres uses `${PORTAL_POSTGRES_PASSWORD:?...}` (fail-closed)
+# and the api/worker env_file block reads from `.env` (the original
+# file written by this script). Passing both env files lets compose
+# parse every service block without rejecting on the portal's vars.
+ssh "$HOST" "cd $REMOTE_DIR && docker compose --env-file .env --env-file portal.env build --pull" || fail "docker compose build failed"
 
 log "docker compose up -d"
-ssh "$HOST" "cd $REMOTE_DIR && docker compose up -d" || fail "docker compose up failed"
+ssh "$HOST" "cd $REMOTE_DIR && docker compose --env-file .env --env-file portal.env up -d" || fail "docker compose up failed"
 
 # --- Step 4b: install logrotate config for the /app/logs named volume ---
 # /app/logs is a Docker named volume that grows unbounded unless rotated.

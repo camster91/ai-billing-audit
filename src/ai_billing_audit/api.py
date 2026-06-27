@@ -253,6 +253,39 @@ def get_request_user(request: Request) -> UserContext:
     return _resolve_user_from_request(request)
 
 
+def get_request_user_or_anonymous(request: Request) -> UserContext:
+    """FastAPI dependency: like ``get_request_user`` but returns a
+    default-anonymous :class:`UserContext` when no ``X-User-Id`` /
+    ``X-User-Role`` headers are present, instead of raising 401.
+
+    Used by the public-read endpoints (denial-risk, appeal-letter,
+    appeal-letters) that the marketing portal at zorva.ashbi.ca
+    fetches cross-origin without bearer credentials. The portal
+    *could* pass the signed-in user's ``X-User-Id`` headers, but
+    omitting them is simpler and matches the public-read posture:
+    anyone on the internet can fetch these endpoints, and the
+    data is the same regardless of who is asking (the
+    audit-trail POST endpoints that mutate state still require
+    real auth via ``require_biller_or_admin`` + the bearer
+    middleware).
+
+    The returned UserContext has ``user_id="anonymous"`` and
+    ``role="guest"`` so downstream code that branches on role
+    can detect "this is a public-read caller" if needed (no such
+    branching exists today; the dependency is purely for endpoints
+    that previously used ``require_biller_or_admin`` and now allow
+    public reads).
+    """
+    try:
+        return get_request_user(request)
+    except HTTPException:
+        return UserContext(
+            user_id="anonymous",
+            role="guest",
+            user_identifier="anonymous",
+        )
+
+
 def require_biller_or_admin(
     user: UserContext = Depends(get_request_user),
 ) -> UserContext:
@@ -1011,6 +1044,32 @@ def create_app() -> FastAPI:
         ),
     )
 
+    # CORS for the marketing portal at zorva.ashbi.ca. The portal
+    # fetches /api/encounters/{id}/denial-risk + /appeal-letter from
+    # this FastAPI to surface denial-risk + appeal-letter UI on the
+    # portal's encounter-detail page. Cross-origin fetch requires
+    # these CORS headers; the allow_origin regex covers the prod
+    # apex + the wildcard *.ashbi.ca subdomain (so any *.ashbi.ca
+    # preview / staging host also works without redeploy).
+    #
+    # The portal's fetch wrapper only sends the user's session
+    # cookie as `credentials: "include"`; we DON'T issue bearer
+    # tokens to the portal (which would let a malicious portal
+    # exfiltrate the FastAPI's auth context), so allow_credentials
+    # is False. The portal sends no auth header; the FastAPI
+    # requires its AUDIT_BEARER_TOKEN only for non-CORS endpoints.
+    from fastapi.middleware.cors import CORSMiddleware
+    import re as _re_cors
+    _CORS_ALLOW_ORIGIN_RE = _re_cors.compile(r"^https://([a-z0-9-]+\.)?ashbi\.ca$")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^https://([a-z0-9-]+\.)?ashbi\.ca$",
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-User-Id", "X-User-Role"],
+        allow_credentials=False,
+        max_age=3600,
+    )
+
     # Bearer-token auth middleware (F-3 fix from QA_API_HARDENING.md).
     # The /healthz endpoint is whitelisted for load balancer health
     # checks. All other routes require `Authorization: Bearer ***`
@@ -1025,17 +1084,63 @@ def create_app() -> FastAPI:
         # Whitelist: healthz + static
         if request.url.path in ("/healthz",) or request.url.path.startswith("/static"):
             return await call_next(request)
+        # CORS preflight from the portal at zorva.ashbi.ca must pass
+        # through without auth — the browser sends OPTIONS without
+        # credentials, and the actual GET/POST after preflight is what
+        # carries the real request. Without this whitelist the
+        # CORSMiddleware would still set the right headers on the
+        # OPTIONS response, but the bearer middleware would 401 the
+        # preflight first and the browser would never reach CORS.
+        if request.method == "OPTIONS":
+            return await call_next(request)
         # Public demo paths: the home page, the docs path, the upload
-        # portal HTML. These are read-only and don't expose data; the
-        # POST endpoints that mutate (upload/preview, upload/submit,
-        # upload/notes, upload/paste) still require auth.
+        # portal HTML, plus the JSON endpoints the portal fetches to
+        # surface denial-risk + appeal-letter UI on its encounter-
+        # detail page. All of these are GET-only and operate on the
+        # demo encounter registry (no PHI, no real claims). The
+        # mutation endpoints (upload/preview, upload/submit,
+        # upload/notes, upload/paste, /encounter/{id}/accept-all,
+        # /encounter/{id}/dismiss, etc.) still require auth.
+        _PUBLIC_READ_ENDPOINTS = (
+            "/api/encounters/{id}/denial-risk",
+            "/api/encounters/{id}/appeal-letter",
+            "/api/encounters/{id}/appeal-letters",
+        )
         if _ALLOW_NO_AUTH:
+            return await call_next(request)
+        # Public-read bypass (GET-only): the portal at zorva.ashbi.ca
+        # fetches denial-risk + appeal-letter to surface the audit
+        # results on the encounter-detail page. These endpoints are
+        # read-only, work on the demo encounter registry (no PHI, no
+        # real claims), and the data is the same the portal would
+        # compute locally. They are public-read **regardless of
+        # whether AUDIT_BEARER_TOKEN is configured** — so the bypass
+        # runs BEFORE the bearer-required branch.
+        #
+        # Without this bypass, the portal can never call these
+        # endpoints from the browser (it doesn't have the bearer
+        # token), and the CORS preflight succeeds only for the
+        # caller to then 401 on the actual GET.
+        if request.method == "GET" and request.url.path.startswith(
+            "/api/encounters/"
+        ) and any(
+            request.url.path.endswith(suffix)
+            for suffix in (
+                "/denial-risk",
+                "/appeal-letter",
+                "/appeal-letters",
+            )
+        ):
+            return await call_next(request)
+        # Legacy whitelists: /, /healthz, /static. GET-only on / + /healthz.
+        if request.url.path in ("/", "/healthz") or request.url.path.startswith(
+            "/static"
+        ):
             return await call_next(request)
         if not _BEARER:
             # Auth disabled because no token is configured. Refuse
-            # anything that isn't a GET on / or /healthz.
-            if request.method == "GET" and request.url.path in ("/", "/healthz"):
-                return await call_next(request)
+            # anything that isn't whitelisted above (POST endpoints,
+            # /api/upload/*, /encounter/{id}/accept-all, etc.).
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 {"detail": "server has no AUDIT_BEARER_TOKEN configured; POST endpoints disabled"},
@@ -2705,7 +2810,13 @@ def create_app() -> FastAPI:
     @app.get("/api/encounters/{encounter_id}/denial-risk")
     async def api_encounter_denial_risk(
         encounter_id: str,
-        user: UserContext = Depends(require_biller_or_admin),
+        # Public-read endpoint; the bearer middleware's
+        # _PUBLIC_READ_ENDPOINTS check passes the request through
+        # without auth, and get_request_user_or_anonymous returns
+        # an "anonymous" / "guest" UserContext instead of 401ing
+        # when the caller omits X-User-Id headers. See the comment
+        # on get_request_user_or_anonymous for the rationale.
+        user: UserContext = Depends(get_request_user_or_anonymous),
     ) -> JSONResponse:
         """Compute the per-claim denial risk from the encounter's findings.
 
@@ -3000,7 +3111,8 @@ def create_app() -> FastAPI:
     @app.get("/api/encounters/{encounter_id}/appeal-letters")
     async def api_encounter_appeal_letters(
         encounter_id: str,
-        user: UserContext = Depends(require_biller_or_admin),
+        # Public-read; see _PUBLIC_READ_ENDPOINTS for the rationale.
+        user: UserContext = Depends(get_request_user_or_anonymous),
     ) -> JSONResponse:
         """List every appeal letter generated for this encounter.
 

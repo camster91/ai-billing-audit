@@ -34,10 +34,12 @@ COPY src ./src
 # this, the home page lists registered encounters but /encounter/{id}
 # 404s because load_encounter_record() can't find the underlying data.
 #
-# Only data/synth/ is baked into the image. data/private/ (for real
-# PHI, empty today) is excluded via .dockerignore so production
-# deployments never ship real patient data in the image layer.
-COPY data/synth ./data
+# We copy the whole data/ tree so the synth/ subdirectory structure
+# is preserved (load_encounter_record() resolves paths relative to
+# `data/synth/`). The .dockerignore excludes data/private/ (real PHI,
+# empty today) so production deployments never ship real patient
+# data in the image layer.
+COPY data ./data
 # Overwrite the bundled v0 prompt with the current production prompt
 # (v12 as of 2026-06-24, F1=0.690 on the cleaned AHCIP val set). The
 # `_DEFAULT_PROMPT_NAME = "auditor_prompt.txt"` resolution in

@@ -1,0 +1,255 @@
+/* deep-audit-panel.module.css
+ *
+ * Compact side-panel style for the Deep Audit (denial-risk + appeal-letter)
+ * card on the encounter-detail page. Uses the dark-only Zorva palette so it
+ * matches the rest of the portal (per AGENTS.md).
+ */
+
+.panel {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.6) 0%,
+    rgba(15, 23, 42, 0.35) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.panelHeader h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.openInFastApi {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.openInFastApi:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  color: rgb(125, 211, 252);
+}
+
+.subpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.subpanel h4 {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.meta code {
+  font-size: 0.72rem;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+
+.tier {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.tierValue {
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tierLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.tier_low .tierValue {
+  color: rgb(134, 239, 172);
+}
+.tier_medium .tierValue {
+  color: rgb(252, 211, 77);
+}
+.tier_high .tierValue {
+  color: rgb(251, 146, 60);
+}
+.tier_critical .tierValue {
+  color: rgb(248, 113, 113);
+}
+
+.findingList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.severity {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.6);
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.weight {
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.letterDetails {
+  margin-top: 0.25rem;
+}
+
+.letterDetails summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: rgba(203, 213, 225, 0.95);
+  list-style: none;
+}
+
+.letterDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.letterDetails summary::before {
+  content: "▸ ";
+  color: rgba(148, 163, 184, 0.75);
+  font-size: 0.7rem;
+}
+
+.letterDetails[open] summary::before {
+  content: "▾ ";
+}
+
+.letterBody {
+  margin-top: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  white-space: pre-wrap;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(203, 213, 225, 0.85);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.history {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.history a {
+  color: rgb(125, 211, 252);
+  text-decoration: none;
+}
+
+.history a:hover {
+  text-decoration: underline;
+}
+
+.nextActions {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.nextActions em {
+  font-style: normal;
+  font-weight: 600;
+  color: rgba(125, 211, 252, 0.95);
+}
+
+.unavailable {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.85);
+  padding: 0.55rem 0.7rem;
+  background: rgba(15, 23, 42, 0.35);
+  border-left: 3px solid rgba(251, 146, 60, 0.55);
+  border-radius: 0 6px 6px 0;
+}
+
+.unavailable code {
+  font-size: 0.72rem;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+
+.unavailable a {
+  color: rgb(125, 211, 252);
+  text-decoration: none;
+}
+
+.unavailable a:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.panelFooter {
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.6);
+  text-align: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.panelFooter a {
+  color: rgba(125, 211, 252, 0.75);
+  text-decoration: none;
+}
+
+.panelFooter a:hover {
+  text-decoration: underline;
+}
