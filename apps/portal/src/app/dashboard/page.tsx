@@ -18,6 +18,8 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import { EmptyStateCTA, onboardingWizardHref } from "@/components/EmptyStateCTA";
+import { FPARTile } from "@/components/fpar-tile";
+import { computeFPAR } from "@/lib/fpar";
 import styles from "../shell.module.css";
 
 export const metadata: Metadata = {
@@ -79,6 +81,16 @@ export default async function DashboardPage() {
     encounterCount = eCount;
     findingCount = fCount;
   }
+
+  // FPAR (first-pass approval rate) — per docs/APPROVAL_RATE_KPI.md.
+  // Computed server-side from the same Prisma queries the audit log
+  // uses, so the portal's home dashboard always reflects the live
+  // biller decision count without round-tripping the FastAPI.
+  // Returns `rate: null` (and renders "Not enough data yet") when
+  // the tenant has < 10 acted-on audits.
+  const fpar = tenant
+    ? await computeFPAR(tenant.id)
+    : { auditsInWindow: 0, acceptedUnchangedCount: 0, rate: null, isStale: false };
   const isFreshTenant =
     tenant !== null && encounterCount === 0 && findingCount === 0;
 
@@ -125,8 +137,10 @@ export default async function DashboardPage() {
                   ? ` (${Math.round((quotaUsed / quotaLimit) * 100)}%)`
                   : ""}
               </p>
-            ) : null}
-          </section>
+) : null}
+           </section>
+
+          <FPARTile tenantId={tenant.id} fpar={fpar} drillInHref="/findings" />
 
           {onboardingCompletedAt &&
           firstEncounterUploadMode === "uploaded" &&

@@ -13,7 +13,8 @@
     "test:team-management": "node --import tsx --test tests/team-management.test.ts",
     "test:audit-quota": "node --import tsx --test tests/audit-quota.test.ts",
     "test:leads-direct": "node --import tsx --test tests/leads-direct.test.ts",
-    "test:contact-form": "node --import tsx --test tests/contact-form.test.ts"
+    "test:contact-form": "node --import tsx --test tests/contact-form.test.ts",
+    "test:fpar": "node --import tsx --test tests/fpar.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.2",
