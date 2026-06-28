@@ -752,8 +752,50 @@ model Lead {
   billingSetup String
   createdAt    DateTime @default(now())
 
+  // -----------------------------------------------------------------------------
+  // Pipeline state (added 2026-06-28 per research/P0-PRODUCT-ROADMAP.md W1.2)
+  //
+  // Pre-2026-06-28 rows have NULL for all four. The Q3 lead-gen track requires
+  // status + lastContactedAt to answer "how many leads, what's the conversion
+  // rate" — without these, every pipeline question is unanswerable.
+  //
+  // No FK today (research/P5-customer-signal.md §1.1 confirmed): the Lead model
+  // is intentionally user-scoped, not tenant-scoped, so adding these fields
+  // doesn't introduce any referential complexity. Backfill is a no-op (41 fixture
+  // rows already exist; their status defaults to 'new').
+  // -----------------------------------------------------------------------------
+
+  // Pipeline stage: "new" (just submitted, untouched) | "contacted"
+  // (first outreach email/call sent) | "engaged" (replied or booked
+  // a call) | "demo_scheduled" (demo on the calendar) | "pilot_signed"
+  // (BAA / pilot agreement countersigned) | "lost" (closed without a
+  // pilot — reason captured in `notes`). Strings (not a Prisma enum)
+  // so we can add states without a schema migration; portal code
+  // validates transitions.
+  status            String   @default("new")
+
+  // Origin channel — where this lead came from. "demo_request_form"
+  // (the public /demo-request page) | "outbound_email" (manual entry
+  // after a cold email gets a reply) | "channel_partner" (K&M
+  // Medical Billing etc.) | "referral" (existing user / clinic
+  // referred a colleague) | "imported" (CSV / spreadsheet import).
+  source            String?
+
+  // The user (if any) who owns this lead relationship. Null for unowned
+  // / system-generated leads. Same FK semantics as User.id elsewhere.
+  ownerUserId       String?
+
+  // The most recent outreach action against this lead — used by the
+  // pipeline dashboard's "X days since last contact" column.
+  lastContactedAt   DateTime?
+
   @@index([email, createdAt])
   @@index([createdAt])
+  // Used by the pipeline dashboard queries: filter by status + sort
+  // by lastContactedAt desc for "stale" alerts (Research/P0-PRODUCT-ROADMAP.md
+  // §6 decision log Q4 retrospective item).
+  @@index([status, lastContactedAt])
+  @@index([source])
 }
 
 // ---------------------------------------------------------------------------

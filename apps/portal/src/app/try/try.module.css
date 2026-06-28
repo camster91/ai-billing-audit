@@ -1,0 +1,394 @@
+/* /try — visual style sheet. Matches the dark blue gradient theme used
+   on /how-it-works, /pricing, /demo-request so a prospect navigating
+   the marketing funnel gets a consistent visual language. */
+
+.page {
+  --bg: #0b1020;
+  --panel: #131a2e;
+  --panel-2: #1a2340;
+  --line: #28324f;
+  --text: #e7ecf6;
+  --muted: #9aa3bd;
+  --accent: #60a5fa;
+  --accent-bg: #2563eb;
+  --accent-2: #2dd4bf;
+  --warn: #f59e0b;
+  --good: #22c55e;
+  --sev-info-bg: rgba(148, 163, 184, 0.12);
+  --sev-info-fg: rgb(203, 213, 225);
+  --sev-low-bg: rgba(132, 204, 22, 0.13);
+  --sev-low-fg: rgb(190, 242, 100);
+  --sev-medium-bg: rgba(234, 179, 8, 0.15);
+  --sev-medium-fg: rgb(253, 224, 71);
+  --sev-high-bg: rgba(239, 68, 68, 0.15);
+  --sev-high-fg: rgb(252, 165, 165);
+  --sev-critical-bg: rgba(190, 24, 93, 0.25);
+  --sev-critical-fg: rgb(252, 165, 215);
+  --synthetic-bg: rgba(45, 212, 191, 0.10);
+  --synthetic-fg: rgb(94, 234, 212);
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1428 100%);
+  color: var(--text);
+  font-family: var(--font-inter, -apple-system), BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.header {
+  padding: 64px 24px 32px;
+  text-align: center;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.header h1 {
+  margin: 0 0 16px;
+  font-size: 40px;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.header p {
+  margin: 0 auto;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 12px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.syntheticBanner {
+  display: inline-block;
+  margin: 16px auto 0;
+  padding: 10px 16px;
+  background: var(--synthetic-bg);
+  color: var(--synthetic-fg);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  max-width: 720px;
+}
+
+.syntheticBanner a {
+  color: var(--synthetic-fg);
+  text-decoration: underline;
+}
+
+.main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.sectionTitle {
+  margin: 0 0 16px;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+}
+
+/* ---------------- Encounter card ---------------- */
+
+.encounter {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.encounterMeta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.metaPill {
+  padding: 3px 10px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.noteBlock,
+.claimBlock,
+.quoteBlock {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.noteBlock summary,
+.claimBlock summary,
+.quoteBlock summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  list-style: none;
+}
+
+.noteBlock summary::-webkit-details-marker,
+.claimBlock summary::-webkit-details-marker,
+.quoteBlock summary::-webkit-details-marker {
+  display: none;
+}
+
+.noteBlock summary::before { content: "▸ "; color: var(--muted); }
+.noteBlock[open] summary::before { content: "▾ "; color: var(--muted); }
+.claimBlock summary::before { content: "▸ "; color: var(--muted); }
+.claimBlock[open] summary::before { content: "▾ "; color: var(--muted); }
+.quoteBlock summary::before { content: "▸ "; color: var(--muted); }
+.quoteBlock[open] summary::before { content: "▾ "; color: var(--muted); }
+
+.noteBlock p {
+  margin: 12px 0 0;
+  color: var(--text);
+  font-family: var(--font-jetbrains-mono, ui-monospace), "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.claimTable {
+  margin-top: 12px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.claimTable th,
+.claimTable td {
+  text-align: left;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(40, 50, 79, 0.5);
+}
+
+.claimTable th {
+  width: 35%;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.nullHint {
+  font-style: italic;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+/* ---------------- Findings list ---------------- */
+
+.findings {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.findingsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.finding {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  border-left: 3px solid var(--accent);
+}
+
+.findingHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.severityBadge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.severityInfo {
+  background: var(--sev-info-bg);
+  color: var(--sev-info-fg);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.severityLow {
+  background: var(--sev-low-bg);
+  color: var(--sev-low-fg);
+  border-color: rgba(132, 204, 22, 0.3);
+}
+
+.severityMedium {
+  background: var(--sev-medium-bg);
+  color: var(--sev-medium-fg);
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.severityHigh {
+  background: var(--sev-high-bg);
+  color: var(--sev-high-fg);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.severityCritical {
+  background: var(--sev-critical-bg);
+  color: var(--sev-critical-fg);
+  border-color: rgba(190, 24, 93, 0.5);
+}
+
+.ruleId {
+  font-family: var(--font-jetbrains-mono, ui-monospace), "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-size: 13px;
+  color: rgb(186, 230, 253);
+  background: rgba(15, 23, 42, 0.5);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.category {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.explanation {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.quoteBlock blockquote {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ---------------- Biller steps ---------------- */
+
+.summary {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.billerSteps {
+  margin: 0;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.billerSteps strong {
+  color: var(--accent);
+}
+
+/* ---------------- CTA ---------------- */
+
+.cta {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.cta h2 {
+  margin: 0 0 12px;
+  font-size: 26px;
+}
+
+.cta p {
+  margin: 0 auto 24px;
+  max-width: 540px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.ctaButton {
+  display: inline-block;
+  padding: 14px 28px;
+  background: var(--accent-bg);
+  color: #ffffff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease;
+}
+
+.ctaButton:hover {
+  background: #1d4ed8;
+}
+
+/* ---------------- Footer ---------------- */
+
+.footer {
+  max-width: 880px;
+  margin: 32px auto 0;
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.footerNav {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.footerNav a {
+  color: var(--muted);
+  text-decoration: none;
+  margin: 0 6px;
+}
+
+.footerNav a:hover {
+  color: var(--accent);
+}
