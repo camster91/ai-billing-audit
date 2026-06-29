@@ -1,8 +1,9 @@
-// Tenant-scoped proxy (formerly middleware.ts; Next.js 16 prefers proxy.ts
-// but this file is named middleware.ts to work around a Next.js 16.2.9
-// bug where proxy.ts is not detected as middleware — see the 2026-06-27
-// deploy log for the investigation. Migrating back to proxy.ts once
-// Next fixes the detection bug.
+// Tenant-scoped middleware. Pinned to Next.js 15.x (15.5.19) instead of
+// 16.x because Next 16 has a known bug where proxy.ts is not detected as
+// middleware (the new filename is preferred but the detection code does
+// not register it). At 15.x, this file's name (middleware.ts) is the
+// canonical convention. When the detection bug is fixed upstream we can
+// switch to 16.x and rename proxy.ts <-> middleware.ts in one move.
 //
 // Responsibilities:
 //
@@ -10,18 +11,18 @@
 //      unauthenticated users away from protected routes to /login.
 //      We deliberately do NOT call auth() here — that's a Node-runtime
 //      helper that pulls in Prisma + node:url imports, which can't run
-//      in the Edge Runtime where this proxy/middleware executes. Doing
-//      a cookie-presence check is the lowest-fidelity "is the user
+//      in the Edge Runtime where this middleware executes. A
+//      cookie-presence check is the lowest-fidelity "is the user
 //      authenticated" probe we can run Edge-side; downstream route
 //      handlers do the real auth() check before touching tenant data.
 //
 //   2. Tenant-attach header forwarding (skipped — see below): the
-//      original middleware forwarded `x-active-tenant-id` to route
-//      handlers so they could skip a second DB call. We skip this here
-//      because decoding the tenant ID requires the JWT / session,
-//      which doesn't work in Edge. Route handlers already call
-//      `getActiveTenant()` themselves; the optimization is lost but
-//      the auth gate works.
+//      earlier version of this file forwarded `x-active-tenant-id` to
+//      route handlers so they could skip a second DB call. We skip it
+//      here because decoding the tenant ID requires reading the JWT /
+//      session row, which doesn't work in Edge. Route handlers already
+//      call `getActiveTenant()` themselves; the optimization is lost
+//      but the auth gate works.
 //
 // Match everything except static assets and the favicon.
 
