@@ -1,27 +1,44 @@
-// Tenant-scoped proxy (renamed from middleware in Next.js 16).
+// Tenant-scoped proxy (formerly middleware.ts; Next.js 16 prefers proxy.ts
+// but this file is named middleware.ts to work around a Next.js 16.2.9
+// bug where proxy.ts is not detected as middleware — see the 2026-06-27
+// deploy log for the investigation. Migrating back to proxy.ts once
+// Next fixes the detection bug.
 //
-// Two responsibilities:
-//   1. Auth gate: redirect unauthenticated users away from protected
-//      routes to /login. Allow /api/auth/* through so the magic-link
-//      callback can complete and set the session cookie.
-//   2. Tenant attach: for authenticated requests to API routes, the
-//      session callback in src/auth.ts already populates
-//      `session.user.activeTenantId`. We pass that value downstream via
-//      a request header (x-tenant-id) so route handlers can read it
-//      without re-querying the DB.
+// Responsibilities:
 //
-// Why a header and not just `auth()` in the route: most route handlers
-// will still call `auth()` themselves to read the full user, but the
-// header makes tenant-scoped DB queries a one-liner and keeps the
-// tenant resolution consistent.
+//   1. Auth gate (COOKIE-PRESENCE ONLY, no auth() call): redirect
+//      unauthenticated users away from protected routes to /login.
+//      We deliberately do NOT call auth() here — that's a Node-runtime
+//      helper that pulls in Prisma + node:url imports, which can't run
+//      in the Edge Runtime where this proxy/middleware executes. Doing
+//      a cookie-presence check is the lowest-fidelity "is the user
+//      authenticated" probe we can run Edge-side; downstream route
+//      handlers do the real auth() check before touching tenant data.
+//
+//   2. Tenant-attach header forwarding (skipped — see below): the
+//      original middleware forwarded `x-active-tenant-id` to route
+//      handlers so they could skip a second DB call. We skip this here
+//      because decoding the tenant ID requires the JWT / session,
+//      which doesn't work in Edge. Route handlers already call
+//      `getActiveTenant()` themselves; the optimization is lost but
+//      the auth gate works.
+//
+// Match everything except static assets and the favicon.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/auth";
+
+// NextAuth.js (Auth.js v5) session cookie. Two variants: the
+// HTTPS-scoped version (`__Secure-`) on production (Cloudflare +
+// Traefik force HTTPS), the plain version on localhost dev. Edge-safe
+// to read from request.cookies — no Node import chain.
+const SESSION_COOKIE_SECURE = "__Secure-authjs.session-token";
+const SESSION_COOKIE_PLAIN = "authjs.session-token";
 
 // Routes that don't require auth — magic-link signin, the verification
-// callback, the session probe, CSRF, static assets. Everything else
-// under the matcher requires a valid session.
+// callback, the session probe, CSRF, static assets, public marketing
+// pages, public demo routes. Everything else under the matcher
+// requires a valid session.
 //
 // The pricing + billing surface is intentionally public: anonymous
 // clinic operators must be able to view /pricing, start a Stripe
@@ -51,6 +68,7 @@ const PUBLIC_PREFIXES = [
   "/about",         // public about page (team + story), public (kanban t_df7045d8)
   "/blog",          // public blog / resources stub, public (kanban t_7492f223)
   "/demo-request",  // demo-request landing page, public (kanban t_c091d2b5)
+  "/try",           // /try public demo page, public (P0 roadmap W1.1, gap G9) — synthetic-data demo, no PHI, no signup
   "/press",         // press / in the news page, public
   "/technical",     // technical buyer (privacy officer, IT lead) page, public
   "/glossary",      // billing terms glossary for non-billers, public
@@ -64,56 +82,46 @@ const PUBLIC_PREFIXES = [
 ];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname === p);
+  return PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/") || pathname === p,
+  );
 }
 
-export default async function proxy(request: NextRequest) {
+/** Edge-runtime-safe "is the user signed in?" probe. Returns true if
+ *  either cookie variant is present, false otherwise. Does NOT verify
+ *  JWT contents — that's deferred to route handlers via auth(). */
+function hasSessionCookie(request: NextRequest): boolean {
+  return (
+    request.cookies.has(SESSION_COOKIE_SECURE) ||
+    request.cookies.has(SESSION_COOKIE_PLAIN)
+  );
+}
+
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public path → no auth check, no redirects.
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    // API routes: respond 401 (not a redirect) so the client knows to
-    // refresh the session rather than chasing a redirect loop.
+  // No session cookie → redirect to /login (or 401 for API routes).
+  if (!hasSessionCookie(request)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "unauthenticated" },
         { status: 401 },
       );
     }
-
-    // Page routes: redirect to /login with a callbackUrl so we can come
-    // back here after the magic-link flow completes.
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Authenticated. If the user has memberships and an active tenant,
-  // forward that tenant id as a request header so downstream route
-  // handlers / server components can read it without a second DB call.
-  const requestHeaders = new Headers(request.headers);
-  const activeTenantId = session.user.activeTenantId;
-  if (activeTenantId) {
-    requestHeaders.set("x-tenant-id", activeTenantId);
-  }
-
-  // If the user is authenticated but has no memberships (e.g. just
-  // signed up via magic link, hasn't been invited to a clinic yet),
-  // routes that REQUIRE a tenant scope should fail. Pages render a
-  // "no tenant" empty state. API routes get 403.
-  if (!activeTenantId && pathname.startsWith("/api/") && !pathname.startsWith("/api/auth/")) {
-    return NextResponse.json(
-      { error: "no_tenant" },
-      { status: 403 },
-    );
-  }
-
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  // Cookie present → let through. Tenant forwarding is dropped from
+  // middleware (Edge-Runtime can't decode the session JWT); route
+  // handlers re-read activeTenantId via getActiveTenant().
+  return NextResponse.next();
 }
 
 // Match everything except static assets and the favicon. We DO match
