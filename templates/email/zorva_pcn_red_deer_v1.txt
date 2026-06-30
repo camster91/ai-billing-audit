@@ -1,0 +1,26 @@
+From: Cameron Ashley <cameron@ashbi.ca>
+To: <operations director — Red Deer PCN>
+Subject: 99-doctor PCN — pre-submit audit on 100 of your claims, no cost
+
+Hi <First Name>,
+
+I read the Red Deer PCN page this week — 99 doctors in the corridor, the MAPS consolidation into the Central Corridor RPHCN underway, 135,000 patients across 20 clinics. That's a real billing operation.
+
+I'm Cameron Ashley. I built Zorva — a pre-submit auditor for AHCIP claims. It reads every claim against the SOMB before it goes to H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
+
+Three patterns I see on real Alberta claims that probably show up in your 99-doctor network too:
+
+- **90-day post-op global window.** An 8-day post-cholecystectomy follow-up billed as 03.04A. AHCIP bundles that into the surgical fee per SOMB GR 3.2.1. The clinic gets paid once, then the post-payment audit recoups. About $50 per occurrence. Zorva catches it before submission.
+- **Annual physical billed as 03.04A.** Annual health maintenance visits are largely non-insured under AHCIP. Billing them as insured and getting denied is the worst of both worlds. Zorva flags the non-insured status so the biller can bill privately or to Blue Cross instead.
+- **Same-day 03.04A + 03.05A conflict.** A comprehensive + minor on the same date is a same-day conflict per SOMB. The 03.05A line is auto-denied. Zorva catches it and also surfaces the missed CMGP modifier on the chronic-disease patient (~$25 per visit left on the table).
+
+I ran Zorva against the cleaned AHCIP validation set (10 encounters, 13 audited gold findings, F1=0.690 micro, 0.69 vs 0.65 in the P/R decomposition). The findings are real SOMB codes, not US CPT — the validation set lives in the repo at `data/synth/val_ca.json` and the report at `runs/shadow/val_ca-20260630T193918.md`.
+
+If you want to see what the auditor would do on Red Deer PCN's actual claims, the offer is simple: send 100 de-identified claims (837P file or CSV), I run the auditor on them and send back a 1-page report. No fee, no follow-up unless the report is useful. The whole loop is under 30 minutes and the data is deleted on one email when the pilot ends.
+
+If that's the wrong moment — MAPS transition has a lot of moving pieces — happy to circle back in Q4 after the Central Corridor RPHCN is up. Either way, no hard ask.
+
+Cameron Ashley
+Founder, Zorva (built by Ashbi Design)
+cameron@ashbi.ca · (647) 555-0142
+P.S. The privacy officer's one-pager I send alongside any pilot: `docs/PRIVACY_OFFICER_BRIEF.md` in the repo. One page, plain English, the five questions to ask before signing.
