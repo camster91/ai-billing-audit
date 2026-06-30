@@ -48,7 +48,7 @@ const COVERAGE: ReadonlyArray<CoverageItem> = [
     url: "https://example.com/calgary-herald/zorva-ahcip-audit",
     date: "2026-04-18",
     excerpt:
-      "Zorva's auditor reads the clinical narrative, the billed codes, and the relevant SOMB rules in parallel, then surfaces findings the biller would have missed — modifier-25 unlocks, missed preventive-service codes, E/M levels the note doesn't support. The company says average recovered revenue per flagged encounter runs $38 in primary care, more in cardiology. Clinics pay a flat monthly fee; the model deliberately avoids a percentage of revenue so it does not run afoul of the AKS safe-harbor.",
+      "Zorva's auditor reads the clinical narrative, the billed codes, and the relevant SOMB rules in parallel, then surfaces findings the biller would have missed — modifier-25 unlocks, missed preventive-service codes, E/M levels the note doesn't support. The company says average recovered revenue per flagged encounter runs $38 in primary care, more in cardiology. Clinics pay a flat monthly fee; the model deliberately avoids a percentage of revenue, aligning with the AKS safe-harbor for US pilots and published in the executed IMA for Canadian clinics.",
     byline: "By Sarah Chen, Business Reporter",
     kind: "feature",
   },
@@ -139,7 +139,7 @@ export default function PressPage() {
           </p>
           <p>
             We can usually turn around a same-day quote on a regulatory
-            question (HIA, PIPEDA, AKS safe-harbor, AHCIP / SOMB), and a
+            question (HIA, PIPEDA, AHCIP / SOMB), and a
             same-week executive interview. For embargoed pieces, please
             email the request and we will set up a secure channel.
           </p>

@@ -1,0 +1,577 @@
+{
+  "input_file": "data/synth/val_ca.json",
+  "generated_at": "2026-06-30T19:39:18.343723+00:00",
+  "provider": "stub",
+  "summary": {
+    "n_encounters": 19,
+    "n_findings": 25,
+    "n_estimated_dollars": 602,
+    "by_rule": {
+      "STUB_NO_DATA": 9,
+      "rule_ahcip_em_level": 5,
+      "rule_ahcip_cmgp": 2,
+      "rule_ahcip_em_level_upcode": 2,
+      "rule_ahcip_referring_npi": 1,
+      "rule_ahcip_same_day_conflict": 1,
+      "rule_ahcip_global_window": 1,
+      "rule_ahcip_telehealth": 1,
+      "rule_ahcip_psychotherapy_time": 1,
+      "rule_ahcip_dx_linkage": 1,
+      "rule_ahcip_non_insured_service": 1
+    },
+    "by_severity": {
+      "critical": 1,
+      "high": 6,
+      "medium": 4,
+      "low": 0,
+      "info": 14
+    }
+  },
+  "encounters": [
+    {
+      "encounter_id": "ca_ahcip_001",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "E11.9",
+          "I10"
+        ],
+        "modifier": "CMGP",
+        "patient_health_number": "123456789",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-15"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "comprehensive assessment for diabetes follow-up",
+          "explanation": "The clinical note explicitly documents a 'comprehensive assessment', and the claim bills 03.04A (comprehensive assessment) per SOMB. The E/M level matches the documentation \u2014 no level change required.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_002",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "I10"
+        ],
+        "modifier": null,
+        "patient_health_number": "987654321",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-18"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "New patient consultation, referred by Dr. Smith for hypertension management. BP 168/102, HR 84. No end-organ damage. Started amlodipine 5mg daily. Follow-up in 4 weeks.",
+          "explanation": "The note documents a new patient encounter with a single chronic problem (hypertension), focused exam, medication initiation, and a follow-up plan. The note does not use brief/minor/limited/quick language, so 03.04A comprehensive assessment is consistent with the documentation. No change to the E/M level is required.",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_referring_npi",
+          "severity": "medium",
+          "category": "consultation",
+          "suggested_code": "",
+          "quote": "referred by Dr. Smith for hypertension management",
+          "explanation": "The clinical note explicitly documents a referral from Dr. Smith, but the claim has referring_provider_practitioner_id = null. Because the visit is described as a 'consultation' for a referred new patient, this is both a data-population issue and a possible code-choice opportunity: if the visit is intended as a formal specialist consultation, it should be billed as 03.03A (which requires the referring provider's practitioner ID on the claim) rather than 03.04A. Populate Dr. Smith's Alberta practitioner ID on the claim, and confirm with the physician whether the service was a one-time consultation opinion (03.03A) or an assumption-of-care comprehensive assessment (03.04A).",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_cmgp",
+          "severity": "medium",
+          "category": "modifier",
+          "suggested_code": "",
+          "quote": "referred by Dr. Smith for hypertension management. BP 168/102, HR 84. No end-organ damage. Started amlodipine 5mg daily.",
+          "explanation": "The patient has documented essential hypertension (I10), a qualifying chronic condition for the CMGP (chronic disease management general premium), with active medication management (amlodipine 5mg daily initiated at this visit). 03.04A is billed and the modifier field is null. Append the CMGP modifier to the 03.04A claim to capture the chronic disease management premium.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_003",
+      "claim": {
+        "som_b_codes": [
+          "03.04A",
+          "03.05A"
+        ],
+        "diagnosis_codes": [
+          "E11.9",
+          "I10",
+          "E78.5",
+          "M17.9"
+        ],
+        "modifier": null,
+        "patient_health_number": "111222333",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-04-22"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_same_day_conflict",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "Established patient annual comprehensive assessment",
+          "explanation": "",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_cmgp",
+          "severity": "medium",
+          "category": "modifier",
+          "suggested_code": "",
+          "quote": "Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees",
+          "explanation": "",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_004",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "J06.9"
+        ],
+        "modifier": null,
+        "patient_health_number": "444555666",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-03-08"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "brief assessment",
+          "explanation": "Clinical note explicitly states 'brief assessment' for an acute upper respiratory tract infection (cough x 5 days, lungs clear, supportive care advised), but the claim bills 03.04A (comprehensive assessment). The verb in the note ('brief') does not match the billed code. Drop the claim to 03.01A (brief assessment) or 03.05A (minor assessment) to align documentation with billing.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_005",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "Z48.815"
+        ],
+        "modifier": null,
+        "patient_health_number": "555666777",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-01"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_global_window",
+          "severity": "high",
+          "category": "procedure",
+          "suggested_code": "",
+          "quote": "Post-op follow-up, cholecystectomy 8 days ago",
+          "explanation": "E/M billed (03.04A) within the 90-day global period following cholecystectomy (8 days post-op). Per SOMB GR 3.2.1, routine post-operative care is included in the surgical fee and should not be billed separately. The note describes routine post-op assessment (incision check, no infection, mild fatigue, discharged from surgical care) \u2014 this is included post-op care, not an unrelated service. Suggested fix: do not submit this claim to AHCIP. If the visit were for a genuinely unrelated condition, attach explanatory text to the claim \u2014 but do NOT recommend a -24 modifier, as Alberta has no such modifier.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_006",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "F32.1"
+        ],
+        "modifier": null,
+        "patient_health_number": "666777888",
+        "date_of_service": "2026-04-15",
+        "referring_provider_npi": null
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_telehealth",
+          "severity": "medium",
+          "category": "telehealth",
+          "suggested_code": "",
+          "quote": "Telehealth follow-up",
+          "explanation": "The clinical note explicitly documents a telehealth follow-up, but the claim has no telehealth indicator or premium modifier attached. Per current SOMB, the appropriate telehealth premium/indicator should be appended to the claim for this encounter.",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_em_level_upcode",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "Telehealth follow-up for stable depression",
+          "explanation": "The clinical note describes a brief telehealth follow-up for stable depression \u2014 single PHQ-9 score (6, down from 12), single medication continuation (sertraline 100mg), no side effects. The depth of this visit is consistent with a brief (03.01A) or minor (03.05A) assessment, not a comprehensive assessment. The claim bills 03.04A (comprehensive), which appears over-coded for the documented work. Recommend downgrading to 03.01A or 03.05A.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_007",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "F41.1"
+        ],
+        "modifier": null,
+        "patient_health_number": "777888999",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-20"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_psychotherapy_time",
+          "severity": "high",
+          "category": "psychotherapy",
+          "suggested_code": "",
+          "quote": "Mental health counselling, 45-minute session",
+          "explanation": "Documentation supports a physician-delivered 45-minute psychotherapy session for F41.1 (GAD). The claim bills 03.04A (comprehensive assessment), but the SOMB requires 08.19A for a 45-minute physician-delivered psychotherapy session. Recode to 08.19A.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_008",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "J18.9"
+        ],
+        "modifier": null,
+        "patient_health_number": "888999000",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-03-22"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "brief assessment for cough",
+          "explanation": "The clinical note documents a 'brief assessment' and the claim bills 03.01A (brief assessment). The E/M level is consistent with the documentation; no upcode or downcode required.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_009",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [],
+        "modifier": null,
+        "patient_health_number": "123123123",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-02-10"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_dx_linkage",
+          "severity": "critical",
+          "category": "diagnosis",
+          "suggested_code": "",
+          "quote": "Annual health maintenance visit",
+          "explanation": "diagnosis_codes is empty while SOMB code 03.04A is billed. The note documents specific billable services (mammogram order, Pap smear, cardiovascular risk review, dietary counseling) that require a diagnostic indication on the claim. Per AHCIP rule A, an empty diagnosis_codes field with a SOMB code billed is the most-frequent auto-denial and fires regardless of the visit type.",
+          "finding_id": ""
+        },
+        {
+          "rule_id": "rule_ahcip_non_insured_service",
+          "severity": "high",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "Annual health maintenance visit",
+          "explanation": "The note is a routine 'Annual health maintenance visit' with no specific presenting complaint, complaint-directed history, or active problem being managed \u2014 only screening updates and lifestyle counseling. Alberta does not insure 'annual physical', 'health maintenance visit', 'wellness exam', 'preventive exam', or 'AWV' as separately billable SOMB services. This claim should not be submitted to AHCIP at all; the patient pays out-of-pocket or via private insurance.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_010",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "R53.83"
+        ],
+        "modifier": null,
+        "patient_health_number": "321321321",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-25"
+      },
+      "findings": [
+        {
+          "rule_id": "rule_ahcip_em_level",
+          "severity": "info",
+          "category": "evaluation",
+          "suggested_code": "",
+          "quote": "complex assessment for new patient with multiple concerns",
+          "explanation": "The clinical note documents a 'complex assessment' for a new patient, which matches the comprehensive 03.04A SOMB code billed. Per SOMB E/M level distinction rules, when the note uses 'complex'/'comprehensive' language and 03.04A is billed, the level is appropriate \u2014 INFO only, no action required.",
+          "finding_id": ""
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_011",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "E11.9",
+          "E78.5"
+        ],
+        "modifier": "CMGP",
+        "patient_health_number": "234234234",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-02"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_011'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_012",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "R00.2"
+        ],
+        "modifier": null,
+        "patient_health_number": "345345345",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-05"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_012'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_013",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "M17.9",
+          "M17.11"
+        ],
+        "modifier": null,
+        "patient_health_number": "456456456",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-10"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_013'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_014",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "E11.9",
+          "I10"
+        ],
+        "modifier": null,
+        "patient_health_number": "567567567",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-10"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_014'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_015",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "R07.9"
+        ],
+        "modifier": null,
+        "patient_health_number": "678678678",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-05-22"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_015'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_016",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "I48.91"
+        ],
+        "modifier": null,
+        "patient_health_number": "789789789",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-12"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_016'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_017",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "I10"
+        ],
+        "modifier": "CMGP",
+        "patient_health_number": "567567567",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-08"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_017'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_018",
+      "claim": {
+        "som_b_codes": [
+          "03.04A"
+        ],
+        "diagnosis_codes": [
+          "F32.1"
+        ],
+        "modifier": null,
+        "patient_health_number": "678678678",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-15"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_018'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    },
+    {
+      "encounter_id": "ca_ahcip_019",
+      "claim": {
+        "som_b_codes": [
+          "03.01A"
+        ],
+        "diagnosis_codes": [
+          "J06.9"
+        ],
+        "modifier": null,
+        "patient_health_number": "890890890",
+        "referring_provider_npi": null,
+        "date_of_service": "2026-06-18"
+      },
+      "findings": [
+        {
+          "rule_id": "STUB_NO_DATA",
+          "severity": "info",
+          "category": "system",
+          "suggested_code": "",
+          "quote": "",
+          "explanation": "No v12 recall data for encounter_id='ca_ahcip_019'. Pass --provider ollama to run a real audit, or use a file with encounter_ids that match data/synth/val_ca.json."
+        }
+      ]
+    }
+  ]
+}

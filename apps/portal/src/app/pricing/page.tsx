@@ -200,9 +200,15 @@ export default function PricingPage() {
               by default.
             </li>
             <li>
-              <strong>No percentage-of-revenue pricing.</strong> Flat fee
-              only — AKS / Stark safe-harbor clean. Compliance details on
-              the security page.
+              <strong>No percentage-of-revenue pricing.</strong> Flat
+              monthly fee only — never per-claim, never per-recovery.
+              AKS safe-harbor-aligned for any US pilots (federal
+              Anti-Kickback Statute recognizes flat-fee structures
+              that do not vary with claim volume or value). The HIA
+              in Alberta and PIPEDA federally do not regulate
+              pricing structure directly; we publish the flat-fee
+              model in every executed IMA so counsel can sign off
+              without further review.
             </li>
           </ul>
         </section>

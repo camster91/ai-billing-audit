@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   description:
     "AI pre-bill audit catches what your billing team misses. Region-pinned " +
-    "data, hash-chain audit log, AKS-safe-harbor flat-fee pricing.",
+    "data, hash-chain audit log, flat-fee pricing published in the IMA.",
   // Marketing pages are indexable so search engines can surface them.
   // Authenticated portal routes (/encounters, /findings, /billing,
   // /dashboard, /settings, /portal/*) each override this in their own

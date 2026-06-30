@@ -104,12 +104,13 @@ export default function Home() {
             </p>
           </article>
           <article className={styles.pillar}>
-            <h2>Flat monthly fee, AKS safe-harbor clean</h2>
+            <h2>Flat monthly fee, no recovery share</h2>
             <p>
               No percentage of revenue, no per-claim charge, no
               recovery-linked fee. Three tiers bracketed by audit
-              volume. Sales can walk you through the fit in twenty
-              minutes.
+              volume. AKS safe-harbor-aligned for any US pilots;
+              published in the executed IMA for Canadian clinics so
+              counsel can sign off without further review.
             </p>
           </article>
         </section>

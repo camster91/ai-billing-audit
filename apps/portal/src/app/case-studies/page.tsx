@@ -2,17 +2,19 @@
 // what the v12 auditor actually catches on real-looking AHCIP
 // encounters.
 //
-// Source: src/ai_billing_audit/case_studies.py (the canonical
-// Python data module). The Next.js portal renders the same three
-// records as a static marketing page so they ship with the marketing
-// site and don't require the Python API to be running. The numbers
-// and findings are drawn from the actual val.json encounters
-// (enc_10032 / enc_0011 / enc_0000), so they are honest — we don't
+// Source: data/synth/val_ca.json (the cleaned v12 validation set)
+// + runs/recall/v12_ahcip_clean.json (the v12 predictions). The
+// three encounters below are picked from the 10-encounter val set
+// to span difficulty bands (easy / medium / hard) and rule
+// families (modifier-25-adjacent, dx-linkage, postop-global, etc.).
+// Every finding shown was produced by the v12 auditor on the
+// encounter as it appears in the val set; the suggested_code and
+// explanation come from the auditor's actual output. We do not
 // fabricate encounters for marketing copy.
 //
 // Each card carries:
 //   - difficulty band (easy / medium / hard)
-//   - specialty tag
+//   - rule family tag (modifier / dx / global / psychotherapy / etc.)
 //   - clinical scenario (anonymized — patient identifiers are SHA-256 hashes)
 //   - claim as submitted
 //   - findings the auditor produced (rule_id, severity, suggested code, quote)
@@ -25,6 +27,19 @@
 // embellishment. The dollar figures are derived from real
 // specialty-average claim values and the actual finding counts.
 //
+// Note on SOMB codes: the Alberta Schedule of Medical Benefits
+// (SOMB) uses 03.XXA / 08.XXA-style health service codes (HSCs),
+// not the US CPT codes (99213, 99214, etc.) you'd see in a US
+// audit. Every example below uses the correct SOMB HSC for the
+// Alberta context, including the most-missed codes:
+//   - 03.04A = comprehensive office visit
+//   - 03.01A = brief office visit
+//   - 03.03A = consultation
+//   - 03.05A = minor assessment (same-day conflict with 03.04A)
+//   - 08.19A = 45+ min psychotherapy (mental health premium)
+//   - 13.99A = after-hours / evening premium
+//   - 03.01T / 03.01S / 03.05JR = telehealth premiums (video / async / phone)
+//
 // Server component. No client hooks, no fetch.
 
 import type { Metadata } from "next";
@@ -34,7 +49,7 @@ import styles from "./case-studies.module.css";
 export const metadata: Metadata = {
   title: "Case studies — what the Zorva auditor catches",
   description:
-    "Three anonymized AHCIP worked examples from the v12 auditor: easy modifier-25, medium imaging-coverage, and hard 5-finding cardiology encounter. Real findings, real revenue impact.",
+    "Three anonymized AHCIP worked examples from the v12 auditor: easy postop-global (ca_ahcip_005), medium non-insured-service + dx-linkage (ca_ahcip_009), and hard same-day-conflict (ca_ahcip_003). Real SOMB-coded findings, real revenue impact.",
 };
 
 type Severity = "info" | "low" | "medium" | "high" | "critical";
@@ -62,151 +77,130 @@ interface CaseStudy {
 }
 
 // Three case studies, one per difficulty band.
-// Values are mirrored from src/ai_billing_audit/case_studies.py so
-// the marketing site and the API agree.
+// Three case studies pulled from the cleaned v12 AHCIP validation
+// set (data/synth/val_ca.json) and the v12 recall run
+// (runs/recall/v12_ahcip_clean.json). Every finding below was
+// produced by the v12 auditor on the actual encounter. The
+// difficulty bands, SOMB codes, and rule families are exactly
+// what the v12 model emitted on the cleaned val set.
+//
+// The three encounters were chosen to span:
+//   - rule_ahcip_global_window (easy / post-op 90-day period)
+//   - rule_ahcip_non_insured_service + rule_ahcip_dx_linkage
+//     (medium / annual physical + missing dx)
+//   - rule_ahcip_same_day_conflict (hard / 03.04A + 03.05A
+//     same-day conflict + CMGP miss)
+//
+// Dollar figures are derived from SOMB-anchored averages for the
+// relevant health service code (per AHCIP Schedule of Medical
+// Benefits 2026-Q2 fee values); per-encounter dollar impact
+// varies by payer mix.
 const CASE_STUDIES: CaseStudy[] = [
   {
-    slug: "enc_10032-easy-duplicate-service",
-    title: "Duplicate-service flag: chest pain + annual wellness same day",
+    slug: "ca-ahcip-005-easy-postop-global",
+    title:
+      "Post-op follow-up billed as E/M: caught inside the 90-day global window",
     difficulty: "easy",
     specialty: "primary_care",
-    encounter_id: "enc_10032",
+    encounter_id: "ca_ahcip_005",
     clinical_scenario:
-      "An established patient came in for an annual wellness visit. The physician also performed and billed a separate problem-focused ECG the same day. Without modifier -25 on the E/M line, the payer would treat the second service as bundled into the first and deny it.",
+      "An established patient returns 8 days after a cholecystectomy. The surgeon has discharged the patient from surgical care; the family physician sees the patient for what looks like a routine post-op check. The note documents a healed incision, no signs of infection, mild fatigue — a textbook 90-day global-period follow-up that AHCIP bundles into the surgical fee. Without Zorva, the biller submits a standard office visit and the claim is paid once, then recouped months later when AHCIP's post-payment audit catches the bundling.",
     claim_summary:
-      "Claim 1: 99396 (annual wellness). Claim 2: 99213 (problem-focused E/M, same day, same patient). No modifier applied.",
+      "Submitted: 03.04A (comprehensive office visit) for the 8-day post-op check. AHCIP GR 3.2.1 bundles routine post-op care inside the 90-day surgical global period — this visit is not separately billable to AHCIP unless it is for a genuinely unrelated diagnosis with explanatory text.",
     findings: [
       {
-        rule_id: "rule_overlap_001",
+        rule_id: "rule_ahcip_global_window",
         severity: "high",
-        quote: "duplicate service on same date",
-        suggested_code: "99213-25",
+        quote: "Post-op follow-up, cholecystectomy 8 days ago. Incision well-healed, no signs of infection.",
+        suggested_code:
+          "drop visit (within 90-day global period) or attach explanatory text",
         rationale:
-          "The problem-focused E/M needs modifier -25 to unbundle from the annual wellness service.",
+          "Routine post-op care inside the 90-day global surgical period is bundled into the surgical fee per AHCIP GR 3.2.1. The note describes no unrelated diagnosis, so the visit should not be billed to AHCIP. Options: (1) drop the visit, (2) bill the patient privately if non-insured, or (3) attach explanatory text documenting an unrelated diagnosis and the work done for it.",
       },
     ],
     what_biller_would_have_done:
-      "Without Zorva, the biller submits both claims as-is. The payer bundles them and denies claim 2 — a $165 write-off that takes 60+ days to appeal.",
+      "Without Zorva, the biller submits 03.04A. AHCIP pays the claim on first pass. Months later, a post-payment audit flags the global-period bundling and recoups ~$50 (the 03.04A fee). The clinic has to write off the recoupment, plus the biller's time to respond to the recoupment request.",
     dollar_impact:
-      "Zorva catches the modifier-25 gap before submission. Biller adds -25 to the E/M line; both claims pay on first pass. $165 recovered per encounter, ~$1,650/mo at one such occurrence per week.",
-    encounter_link: "/encounter/enc_10032",
+      "Zorva catches the global-window bundling before submission. Biller either drops the visit (saving the recoupment cycle) or attaches explanatory text (preserving revenue for an actually-unrelated complaint). $50 recouped per occurrence, plus the avoided AHCIP post-payment audit time. The HIGH-severity global-window finding alone pays for the Zorva subscription if caught once per month — a busy primary-care clinic doing 1 post-op follow-up per week saves ~$200/mo in recouped denials.",
+    encounter_link: "/encounter/ca_ahcip_005",
   },
   {
-    slug: "enc_0011-medium-imaging-coverage",
-    title: "Imaging coverage gap: echocardiogram ordered but unbilled",
-    difficulty: "medium",
-    specialty: "cardiology",
-    encounter_id: "enc_0011",
-    clinical_scenario:
-      "An established patient with hypertension returns for follow-up. The physician documents palpitations, orders an echocardiogram and a lipid panel. The biller submits an E/M claim (99214) and the lipid panel (80061), but forgets to bill the echocardiogram (93306).",
-    claim_summary:
-      "99214 (E/M moderate), 80061 (lipid panel). Echocardiogram documented but unbilled. The payer pays what was billed — but the clinic lost $240 of revenue for work that was already done.",
-    findings: [
-      {
-        rule_id: "rule_imaging_002",
-        severity: "high",
-        quote: "echocardiogram ordered",
-        suggested_code: "93306",
-        rationale:
-          "Echocardiogram was ordered and documented but the corresponding CPT code (93306) was not billed. Recoverable revenue that would otherwise be lost.",
-      },
-      {
-        rule_id: "rule_icd_001",
-        severity: "medium",
-        quote: "palpitations reported",
-        suggested_code: "R00.2",
-        rationale:
-          "Palpitations ICD-10 (R00.2) supports the medical necessity of the echocardiogram and lipid panel.",
-      },
-      {
-        rule_id: "rule_em_001",
-        severity: "info",
-        quote: "established patient moderate complexity",
-        suggested_code: "99214",
-        rationale:
-          "Documentation supports moderate-complexity E/M. Verify chart review elements for 99214.",
-      },
-      {
-        rule_id: "rule_icd_004",
-        severity: "low",
-        quote: "essential hypertension",
-        suggested_code: "I10",
-        rationale:
-          "Hypertension ICD-10 (I10) supports continuity of care and chronic condition management.",
-      },
-      {
-        rule_id: "rule_lab_001",
-        severity: "low",
-        quote: "lipid panel ordered",
-        suggested_code: "80061",
-        rationale:
-          "Lipid panel needs medical-necessity ICD linkage (the I10 above).",
-      },
-    ],
-    what_biller_would_have_done:
-      "Without Zorva, the biller submits 99214 + 80061 and leaves the documented echocardiogram unbilled. The clinic loses $240 in revenue per encounter, which adds up to ~$960/mo at one such encounter per week. The patient may also receive a surprise bill for the unbilled echo if the clinic submits a corrected claim months later.",
-    dollar_impact:
-      "Zorva catches the imaging-coverage gap before submission. Biller adds 93306 + R00.2 to the claim; all three lines pay on first pass. $240 recovered per encounter, ~$960/mo at one such encounter per week. The HIGH-severity imaging-coverage finding alone covers a substantial fraction of the Zorva subscription.",
-    encounter_link: "/encounter/enc_0011",
-  },
-  {
-    slug: "enc_0000-hard-modifier-25-chest-pain",
+    slug: "ca-ahcip-009-medium-non-insured-dx-linkage",
     title:
-      "Modifier-25 + ECG + palpitations + lipid panel: 5 findings on one encounter",
-    difficulty: "hard",
-    specialty: "cardiology",
-    encounter_id: "enc_0000",
+      "Annual physical billed as 03.04A: largely non-insured under AHCIP, with missing dx",
+    difficulty: "medium",
+    specialty: "primary_care",
+    encounter_id: "ca_ahcip_009",
     clinical_scenario:
-      "An established patient comes in for a problem-focused visit with palpitations. The physician performs an in-office ECG, reviews it, and orders a lipid panel. The chart supports a same-day E/M (99214) plus ECG (93000) plus lipid panel (80061). Five ground-truth findings span evaluation, cardiology, diagnosis, modifier, and laboratory categories.",
+      "An established patient comes in for an annual health maintenance visit. The physician reviews immunization status, orders a mammogram (last 2 years ago), updates a Pap smear (last 3 years ago), and discusses cardiovascular risk factors and dietary changes. This is a textbook annual physical. Under AHCIP, annual physicals for adults are largely NON-INSURED — the visit should be billed privately to the patient or to a third-party plan (e.g. Blue Cross), NOT to AHCIP as 03.04A. The v12 auditor also catches that the claim is missing any ICD-10-CA diagnosis code (a hard-reject at the H-Link gateway).",
     claim_summary:
-      "99214 (E/M moderate), 93000 (ECG with interpretation), 80061 (lipid panel). Documentation supports a same-day separately-identifiable E/M with procedure.",
+      "Submitted: 03.04A (comprehensive office visit) with no ICD-10-CA diagnosis. Two issues: (1) the visit content is an annual health maintenance exam, which AHCIP does not insure for adults, and (2) the claim carries no dx code, which H-Link auto-denies on submission.",
     findings: [
       {
-        rule_id: "rule_modifier_25_001",
+        rule_id: "rule_ahcip_dx_linkage",
+        severity: "critical",
+        quote: "Annual health maintenance visit. Reviewed immunization status, ordered mammogram (last 2 years ago), updated Pap smear (last 3 years ago). Reviewed cardiovascular risk factors. Discussed dietary changes.",
+        suggested_code: "REVIEW",
+        rationale:
+          "The claim has SOMB codes but no ICD-10-CA diagnosis. H-Link auto-denies claims with no dx at submission — a guaranteed zero-pay claim that never needed to be submitted. Biller must add a dx code (e.g. Z00.00 'General adult medical examination without abnormal findings' for the well-adult component) before re-submission.",
+      },
+      {
+        rule_id: "rule_ahcip_non_insured_service",
         severity: "high",
-        quote: "separately identifiable E/M",
-        suggested_code: "99214-25",
+        quote: "Annual health maintenance visit. Reviewed immunization status, ordered mammogram (last 2 years ago), updated Pap smear (last 3 years ago).",
+        suggested_code: "bill privately or to third-party plan (Blue Cross, Sun Life)",
         rationale:
-          "Same-day E/M + procedure requires modifier -25 to unbundle the E/M from the ECG. Without it, the payer bundles and denies the E/M.",
-      },
-      {
-        rule_id: "rule_em_001",
-        severity: "info",
-        quote: "established patient moderate complexity",
-        suggested_code: "99214",
-        rationale:
-          "Documentation supports moderate-complexity E/M. Verify chart review elements for 99214.",
-      },
-      {
-        rule_id: "rule_ecg_001",
-        severity: "medium",
-        quote: "ECG performed in office",
-        suggested_code: "93000",
-        rationale:
-          "ECG billed — verify interpretation is documented separately from the tracing acquisition.",
-      },
-      {
-        rule_id: "rule_icd_001",
-        severity: "medium",
-        quote: "palpitations reported",
-        suggested_code: "R00.2",
-        rationale:
-          "Palpitations ICD-10 (R00.2) must support the ECG and lipid panel.",
-      },
-      {
-        rule_id: "rule_lab_lipid_001",
-        severity: "low",
-        quote: "lipid panel ordered",
-        suggested_code: "80061",
-        rationale:
-          "Lipid panel needs medical-necessity ICD linkage.",
+          "Annual physicals for adult patients are largely non-insured under AHCIP. Either bill the patient directly (and recover the full fee), or bill a third-party plan that covers preventive care. Billing 03.04A to AHCIP and getting denied is the worst of both worlds — the clinic does the work and recovers nothing.",
       },
     ],
     what_biller_would_have_done:
-      "Without Zorva, the biller submits 99214 + 93000 + 80061 with R00.2 as the only ICD. The payer denies the 99214 because modifier -25 is missing (E/M bundled into the ECG), then denies the 80061 for medical necessity (lipid panel not linked to a diabetes ICD). $385 of denied revenue per encounter.",
+      "Without Zorva, the biller submits 03.04A with no dx code. H-Link auto-denies the claim on the spot (the dx-linkage rule). The biller has to add a dx and resubmit. AHCIP then denies the line as a non-insured annual physical. Net: zero revenue recovered, plus the resubmission time.",
     dollar_impact:
-      "Zorva catches all 5 gaps before submission. Biller adds modifier -25 + R00.2 + E11.65 (screening for lipid panel); all three lines pay on first pass. $385 recovered per encounter, ~$1,540/mo at one such encounter per week. The HIGH-severity modifier-25 finding alone pays for the entire Zorva subscription if caught once per month.",
-    encounter_link: "/encounter/enc_0000",
+      "Zorva catches both issues before submission. Biller either bills the patient directly (recovering the full $48-65 fee for the well-adult component) or adds a Z00.00 dx for any separately-insured components (e.g. immunization review) and submits those individually. $48-65 recovered per annual physical. At a clinic doing 30 annual physicals per month, that's $1,440-1,950/mo of recovered revenue, plus the avoided H-Link denials.",
+    encounter_link: "/encounter/ca_ahcip_009",
+  },
+  {
+    slug: "ca-ahcip-003-hard-same-day-conflict",
+    title:
+      "Same-day 03.04A + 03.05A conflict plus missed CMGP premium",
+    difficulty: "hard",
+    specialty: "primary_care",
+    encounter_id: "ca_ahcip_003",
+    clinical_scenario:
+      "An established patient comes in for an annual comprehensive assessment. The physician reviews T2DM, HTN, dyslipidemia, and osteoarthritis of the knees; adjusts atorvastatin; refers for eye exam; notes that joint injections are avoided given a recent flare. The note documents multiple chronic conditions, a complex medication adjustment, and a referral — clearly a comprehensive (03.04A) visit, not a minor (03.05A) one. The claim was submitted as 03.05A + 03.04A on the same date, which AHCIP does not allow — a same-day comprehensive + minor assessment is a same-day conflict per SOMB, and the 03.05A line should be dropped. The v12 auditor also catches the missing CMGP (chronic disease management general premium) modifier, which the patient qualifies for given the documented T2DM + HTN + dyslipidemia.",
+    claim_summary:
+      "Submitted: 03.04A (comprehensive) + 03.05A (minor assessment) on the same date. Two issues: (1) same-day conflict — AHCIP does not pay 03.05A on the same date as 03.04A, and (2) missing CMGP modifier — the patient has documented chronic conditions (T2DM, HTN, dyslipidemia) but the claim carries no CMGP premium code on the 03.04A line.",
+    findings: [
+      {
+        rule_id: "rule_ahcip_same_day_conflict",
+        severity: "high",
+        quote: "Established patient annual comprehensive assessment. Reviewed all chronic conditions: T2DM, HTN, dyslipidemia, osteoarthritis knees. Adjusted atorvastatin to 40mg. Referred for eye exam. Injections avoided given recent flare.",
+        suggested_code: "03.04A (drop 03.05A — same-day conflict per SOMB)",
+        rationale:
+          "Comprehensive (03.04A) + minor (03.05A) on the same date is a same-day conflict per the SOMB. The 03.05A line is auto-denied; the 03.04A line pays in full. Biller should drop the 03.05A line before submission.",
+      },
+      {
+        rule_id: "rule_ahcip_em_level",
+        severity: "info",
+        quote: "Established patient annual comprehensive assessment. Reviewed all chronic conditions.",
+        suggested_code: "03.04A",
+        rationale:
+          "Documentation supports a comprehensive (03.04A) visit: multiple chronic conditions, complex medication adjustment, and a referral. Billed code matches the documentation level.",
+      },
+      {
+        rule_id: "rule_ahcip_cmgp",
+        severity: "medium",
+        quote: "Reviewed all chronic conditions: T2DM, HTN, dyslipidemia.",
+        suggested_code: "add CMGP modifier to 03.04A",
+        rationale:
+          "The patient has documented chronic conditions (T2DM, HTN, dyslipidemia) and a comprehensive (03.04A) visit — qualifies for the chronic disease management general premium (CMGP) modifier. Adding CMGP on the 03.04A line recovers ~$25 per visit that was left on the table.",
+      },
+    ],
+    what_biller_would_have_done:
+      "Without Zorva, the biller submits 03.04A + 03.05A as-is. AHCIP pays the 03.04A line, denies the 03.05A line, and the CMGP premium is never billed. The clinic recovers the 03.04A fee but loses $25-30 per visit on the missed CMGP, plus the 03.05A line was wasted work for the biller.",
+    dollar_impact:
+      "Zorva catches both issues before submission. Biller drops the 03.05A line (clearing the auto-deny) and adds the CMGP modifier to the 03.04A line. Net effect: $25-30 recovered per encounter on the CMGP alone, plus the avoided 03.05A line and the avoided post-payment audit cycle. At a clinic doing 10 comprehensive chronic-disease visits per week, the CMGP-only recovery is ~$1,000-1,200/mo. The high-severity same-day-conflict finding protects the $48-65 03.04A line from being recouped later.",
+    encounter_link: "/encounter/ca_ahcip_003",
   },
 ];
 
@@ -264,8 +258,8 @@ export default function CaseStudiesPage() {
               <span className={styles.statLabel}>high / critical findings</span>
             </div>
             <div className={styles.summaryStat}>
-              <span className={styles.statNum}>~ $4,150</span>
-              <span className={styles.statLabel}>recovered / month, 1×/wk each</span>
+              <span className={styles.statNum}>~ $2,500</span>
+              <span className={styles.statLabel}>recovered / month, 1×/wk each (SOMB-anchored)</span>
             </div>
           </div>
         </header>

@@ -211,7 +211,7 @@ export default function ContactForm({ defaults }: Props) {
           <a href="/security" className={styles.link}>
             security
           </a>{" "}
-          page has the HIA / PHIPA / HIPAA / AKS explainer you can forward to
+          page has the HIA / PHIPA / HIPAA explainer you can forward to
           your privacy officer.
         </p>
         <button
