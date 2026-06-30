@@ -13,6 +13,21 @@ import os
 
 def pytest_configure(config):
     os.environ.setdefault("AUDIT_ALLOW_NO_AUTH", "1")
+    # Set a long-enough test pepper for the salted patient_hash so
+    # the test runner inherits a working PATIENT_HASH_PEPPER value
+    # regardless of what other env vars the test runner's parent
+    # process may have leaked (some test runners carry APP_ENV or
+    # NODE_ENV=production that would otherwise trigger the
+    # production fail-fast). The pepper here is a 64-char constant
+    # so the resolve_pepper length check passes. Individual tests
+    # that need to assert production-mode behaviour monkeypatch
+    # APP_ENV to "production" — the conftest value is just a
+    # non-empty default so the test suite as a whole doesn't trip
+    # the production fail-fast.
+    os.environ.setdefault(
+        "PATIENT_HASH_PEPPER",
+        "test-pepper-do-not-use-in-production-1234567890",
+    )
     # Default the ux_polish log dir to a temp location so tests don't
     # try to write to /app/logs. The test fixtures override this per-test
     # via monkeypatch for isolation.

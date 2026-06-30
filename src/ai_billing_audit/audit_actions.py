@@ -40,6 +40,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .patient_hash import hash_patient_id
+
 _LOG_PATH = Path(os.environ.get("AUDIT_TRAIL_LOG", "/app/logs/audit_trail.jsonl"))
 _GENESIS_SIG = "0" * 64
 
@@ -188,8 +190,16 @@ def append(
     _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     findings = findings or []
-    # patient_hash is SHA-256 of encounter_id (PHIPA pseudonymization)
-    patient_hash = hashlib.sha256(encounter_id.encode("utf-8")).hexdigest()
+    # patient_hash is a salted SHA-256 of the encounter identifier,
+    # using PATIENT_HASH_PEPPER for the secret. This is the FastAPI
+    # equivalent of apps/portal/src/lib/patient-hash.ts so the audit
+    # chain written by the FastAPI service and the audit chain
+    # written by the portal produce comparable patient_hashes.
+    # See src/ai_billing_audit/patient_hash.py for the threat model
+    # and the migration note (old unsalted rows in the chain still
+    # verify because the signature is computed from each row's own
+    # patient_hash field).
+    patient_hash = hash_patient_id(encounter_id)
 
     # data_elements must be canonical JSON for hashing
     data_elements: dict[str, Any] = {

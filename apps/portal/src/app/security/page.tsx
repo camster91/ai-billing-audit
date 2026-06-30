@@ -122,14 +122,14 @@ const ROWS: Row[] = [
       "within 30 days of pilot termination. Minimum-necessary " +
       "access: only the fields the auditor needs are passed in.",
     status:
-      "Active. Salted SHA-256 patient_hash on the portal path — " +
-      "backed by PATIENT_HASH_PEPPER env var with a hex CHECK " +
-      "constraint on the audit_trail SQL schema. The FastAPI " +
-      "audit-log path uses an unsalted SHA-256(encounter_id) " +
-      "internally; consolidation to a single canonical salted hash " +
-      "is on the Q3 2026 roadmap. Raw patient identifiers are " +
-      "stored only in the encrypted encounter table, never in the " +
-      "audit log.",
+      "Active. Salted SHA-256 patient_hash on both the portal and " +
+      "FastAPI paths, using the same patient-hash:v1 domain format " +
+      "and PATIENT_HASH_PEPPER env var. Backed by a hex CHECK " +
+      "constraint on the audit_trail SQL schema. The FastAPI service " +
+      "fails fast at startup if PATIENT_HASH_PEPPER is unset or " +
+      "shorter than 16 characters in production. Raw patient " +
+      "identifiers are stored only in the encrypted encounter " +
+      "table, never in the audit log.",
     region: { text: "All regions" },
   },
   {

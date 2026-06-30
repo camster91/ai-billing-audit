@@ -227,21 +227,31 @@ def _format_billed_codes(claim: dict[str, Any] | None) -> str:
 
 
 def _pseudonymize_patient(claim: dict[str, Any] | None, encounter: dict[str, Any]) -> str:
-    """Return a SHA-256 pseudonym for the patient identifier.
+    """Return the salted SHA-256 pseudonym for the patient identifier.
 
     Mirrors the audit_actions.patient_hash logic so the letter
     references the same pseudonym the audit trail uses. The letter
     itself does NOT include the real patient name or provincial
     health number — the biller fills those in on the printed
     version after scrubbing the appeal letter's body for PHI.
+
+    Returns the first 12 hex chars of the full 64-char digest to
+    keep the letter header readable. The full 64-char digest is
+    written to the audit_trail row by ``audit_actions.append``;
+    the appeal letter carries a truncated form for human-readable
+    formatting only. Both forms are derived from the same seed +
+    pepper, so a privacy officer can re-derive the full hash from
+    the letter's 12-char prefix + the pepper to confirm the letter
+    references the same patient as the audit row.
     """
-    import hashlib
+    from .patient_hash import hash_patient_id
+
     seed = (
         (claim or {}).get("encounter_id")
         or encounter.get("encounter_id")
         or ""
     )
-    return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+    return hash_patient_id(seed)[:12]
 
 
 def _scrub_phi(letter_markdown: str) -> str:
