@@ -1,8 +1,8 @@
-# Free 30-Day Pilot — AI Claims Audit
+# 60-Day No-Cost Pilot — AI Claims Audit
 
 **No cost. No commitment. Real numbers, on your real claims.**
 
-We're offering a 30-day pilot of our claims-audit product. No fee. No contract. You can walk away at the end of the month, and we delete everything you shared with us. This page is what we'd hand to your billing lead.
+We're offering a 60-day pilot of our claims-audit product. No fee. No contract. You can walk away at the end, and we delete everything you shared with us. This page is what we'd hand to your billing lead.
 
 ---
 
@@ -25,12 +25,11 @@ We're offering a 30-day pilot of our claims-audit product. No fee. No contract. 
 - **Deleted on request** — at the end of the pilot, on one email from your billing lead, we delete every claim, every finding, and every audit log entry within 7 business days. We send a written confirmation.
 - **Never shared with third parties** — no subcontractors, no analytics resale, no model-training data sales. Your data stays in your tenant.
 
-## 4. Timeline
+## 4. Timeline (60 days)
 
-- **Week 1 — Connect.** We sign the BAA, get a read-only data feed or sample file from your billing system, and stand up your dashboard.
-- **Week 2 — Shadow run.** The auditor runs silently alongside your normal process. We collect findings, you collect results. Nobody on your billing team has to change how they work yet.
-- **Week 3 — Review together.** We sit down (or call in) with your billing lead and walk through every finding. You tell us which ones your team would have caught, which ones are new, and which ones we'd have to re-classify.
-- **Week 4 — Convert or walk away.** If the pilot is worth continuing, we hand you a paid plan. If it isn't, we delete your data per the commitment in section 3 and part as friends.
+- **Weeks 1–2 — Connect.** We sign the HIA IMA / BAA, get a read-only data feed or sample file from your billing system, and stand up your dashboard.
+- **Weeks 3–6 — Shadow run + weekly review.** The auditor runs alongside your normal process. We collect findings, you collect results, and we meet weekly to walk through what the system caught and missed.
+- **Weeks 7–8 — Measure and decide.** We measure the lift against your day-30 baseline, write up the ROI, and you decide whether to roll Zorva out to the rest of the practice. If you don't continue, we delete your data per the commitment in section 3 and part as friends.
 
 ## 5. The only ask
 

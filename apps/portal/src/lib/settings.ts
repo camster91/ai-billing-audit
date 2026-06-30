@@ -43,8 +43,28 @@ import { z } from "zod";
  * to the database. The customer-facing label was updated on the
  * OnboardingWizard — the enum strings themselves stay for backwards
  * compatibility with existing tenant rows. */
-export const RESIDENCY_REGIONS = ["ca-central-1", "us-east-1"] as const;
+// The region codes are INTERNAL labels for the residency picker. They
+// are not AWS regions — the production deployment runs on a single
+// Hostinger VPS (no per-tenant region isolation yet). When we have
+// real per-tenant region isolation, the codes will resolve to actual
+// facility IDs (e.g. AWS ca-central-1, AWS us-east-1, or a Canadian
+// colo facility). For now, the codes represent the region the tenant
+// has AGREED their data lives in; the IMA documents the actual
+// facility.
+export const RESIDENCY_REGIONS = [
+  "ca-central-1",
+  "us-east-1",
+] as const;
 export type ResidencyRegion = (typeof RESIDENCY_REGIONS)[number];
+
+// Human-readable region labels for the picker UI. Keep these honest:
+// the production deployment is a single Hostinger VPS, not a per-region
+// multi-cloud setup. Once per-tenant region isolation ships, the labels
+// will point at real facilities.
+export const RESIDENCY_REGION_LABELS: Record<ResidencyRegion, string> = {
+  "ca-central-1": "Canada (Canadian-region facility, documented in IMA)",
+  "us-east-1": "United States (US-region facility, documented in BAA)",
+};
 
 /** Loose IANA tz shape — same regex as the wizard. The portal doesn't
  * gate on a full IANA list server-side. */

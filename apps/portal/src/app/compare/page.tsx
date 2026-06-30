@@ -222,7 +222,7 @@ export default function ComparePage() {
                   <th scope="row" className={styles.dimRow}>
                     <span className={styles.dimLabel}>Canadian fee-schedule native (AHCIP / OHIP / MSP)</span>
                   </th>
-                  <td className={styles.zorvaCell}>Yes — AHCIP production, OHIP private beta</td>
+                  <td className={styles.zorvaCell}>AHCIP production; OHIP and MSP on 2027 roadmap</td>
                   <td>US-first; Canadian support limited</td>
                   <td>US-first; Canadian payer support via partner network</td>
                   <td>US-first; Canadian support limited</td>
@@ -258,7 +258,7 @@ export default function ComparePage() {
                   <th scope="row" className={styles.dimRow}>
                     <span className={styles.dimLabel}>HIA / PHIPA Information Sharing Agreement</span>
                   </th>
-                  <td className={styles.zorvaCell}>Yes — template at /legal</td>
+                  <td className={styles.zorvaCell}>HIA template in DRAFT (lawyer review); PHIPA template on request</td>
                   <td>Enterprise contracts only</td>
                   <td>Enterprise contracts only</td>
                   <td>Enterprise contracts only</td>
@@ -267,7 +267,7 @@ export default function ComparePage() {
                   <th scope="row" className={styles.dimRow}>
                     <span className={styles.dimLabel}>Single-tenant data residency (your region)</span>
                   </th>
-                  <td className={styles.zorvaCell}>Yes — ca-central-1 by default</td>
+                  <td className={styles.zorvaCell}>Yes — Canadian-region facility (documented in the executed IMA)</td>
                   <td>US-hosted; BAA only</td>
                   <td>US-hosted; BAA only</td>
                   <td>US-hosted; BAA only</td>
@@ -395,7 +395,7 @@ export default function ComparePage() {
           </p>
           <div className={styles.ctaRow}>
             <Link href="/pilot" className={styles.ctaButton}>
-              Start a 30-day pilot
+              Start a 60-day pilot
             </Link>
             <Link href="/contact" className={styles.ctaSecondary}>
               Talk to us first →

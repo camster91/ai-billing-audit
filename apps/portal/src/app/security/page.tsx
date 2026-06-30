@@ -46,17 +46,19 @@ const ROWS: Row[] = [
   {
     area: "Data residency",
     control:
-      "Customer data stored in a Canadian data centre for Canadian customers " +
-      "and a US-hosted HIPAA-aligned region for US customers. Region is " +
-      "pinned at sign-up and confirmed in the executed BAA / affiliate " +
-      "agreement. No cross-region replication, no movement out of the " +
-      "chosen region without written notice.",
+      "Customer data is stored in a single, region-pinned facility " +
+      "documented in the executed IMA / BAA. Canadian customers are " +
+      "served from a Canadian-region facility; US customers from a " +
+      "US-region facility. Region is locked at sign-up and confirmed " +
+      "in the executed agreement. No cross-region replication, no " +
+      "movement out of the chosen region without written notice.",
     status: {
       text:
-        "Active. Region locked per tenant at sign-up. SOC 2 Type II and " +
-        "ISO 27001 are on our certification roadmap (not currently held); " +
-        "we publish the provider, region, and any third-party attestations " +
-        "actually held by the provider in the executed BAA.",
+        "Active. Region locked per tenant at sign-up. The actual " +
+        "hosting provider, facility, and any third-party attestations " +
+        "they currently hold (where they exist) are documented in the " +
+        "executed IMA / BAA. SOC 2 Type II and ISO 27001 are on our " +
+        "certification roadmap (not currently held).",
     },
     region: { text: "CA / US" },
   },
@@ -111,31 +113,44 @@ const ROWS: Row[] = [
   {
     area: "PII handling",
     control:
-      "Patient-identifying fields (PHN, MRN, name, DOB) are hashed " +
-      "(salted SHA-256) before they reach long-term storage. The " +
-      "human-readable form is never written to disk; the salted hash is " +
-      "the only patient identifier that flows through the audit trail, " +
-      "the encounter table, and the model prompt. Minimum-necessary " +
+      "An internal encounter identifier is hashed (salted SHA-256) " +
+      "before it reaches the audit log; that salted hash is the only " +
+      "patient-shaped value that flows through audit_trail, the " +
+      "feedback log, and the model prompt. Raw patient identifiers " +
+      "(PHN, MRN, name, DOB) live only in the encrypted encounter " +
+      "table for the duration of the audit lifecycle and are purged " +
+      "within 30 days of pilot termination. Minimum-necessary " +
       "access: only the fields the auditor needs are passed in.",
     status:
-      "Active. Salted SHA-256 patient hashing; minimum-necessary field " +
-      "pass-through; no plaintext PII in logs, audit table, or model prompts.",
+      "Active. Salted SHA-256 patient_hash on the portal path — " +
+      "backed by PATIENT_HASH_PEPPER env var with a hex CHECK " +
+      "constraint on the audit_trail SQL schema. The FastAPI " +
+      "audit-log path uses an unsalted SHA-256(encounter_id) " +
+      "internally; consolidation to a single canonical salted hash " +
+      "is on the Q3 2026 roadmap. Raw patient identifiers are " +
+      "stored only in the encrypted encounter table, never in the " +
+      "audit log.",
     region: { text: "All regions" },
   },
   {
     area: "Compliance posture",
     control:
-      "Day-one frameworks: HIA + PIPEDA (Alberta / Canada), HIPAA (US), " +
-      "NOM-024 (Mexico). Contract artefact per region: affiliate " +
-      "agreement under HIA for Alberta, HIC-Agent agreement under PHIPA " +
-      "for Ontario (extended framework), BAA under HIPAA for the US, and " +
-      "a NOM-024-aligned data-handling addendum for Mexico. All are " +
-      "countersigned before any customer data — including test claims — " +
-      "is uploaded or processed.",
+      "Frameworks we currently operate under, with the contract " +
+      "artefact per region. Canadian clinics are covered today " +
+      "(HIA + PIPEDA). US (HIPAA) and Ontario (PHIPA) pilots are " +
+      "supported via the BAA / HIC-Agent template on request — " +
+      "the templates exist but are not pre-signed for " +
+      "jurisdictions where we do not currently have a customer. " +
+      "Mexico (NOM-024) and other jurisdictions are on the 2027 " +
+      "roadmap. All agreements are countersigned before any " +
+      "customer data — including test claims — is uploaded or " +
+      "processed.",
     status: {
       text:
-        "Active. HIA + PIPEDA (Alberta / Canada), HIPAA (US), NOM-024 " +
-        "(Mexico). Contracts countersigned before any data is accepted.",
+        "Active. HIA + PIPEDA (Alberta / Canada) covered today. " +
+        "HIPAA (US) and PHIPA (Ontario) supported on request via " +
+        "template. NOM-024 (Mexico) on 2027 roadmap. All " +
+        "agreements countersigned before any data is accepted.",
     },
     region: { text: "CA / US / MX" },
   },
@@ -147,7 +162,10 @@ const COMPLIANCE: { framework: string; jurisdiction: string; what: string }[] = 
     jurisdiction: "Alberta, Canada",
     what:
       "Health Information Act. Custodianship, affiliate agreements, and " +
-      "safeguards for individually identifying health information.",
+      "safeguards for individually identifying health information. " +
+      "Covered today — Information Manager Agreement template in DRAFT, " +
+      "lawyer review in progress, available for signing before any " +
+      "Alberta customer data is uploaded.",
   },
   {
     framework: "PIPEDA",
@@ -155,7 +173,8 @@ const COMPLIANCE: { framework: string; jurisdiction: string; what: string }[] = 
     what:
       "Personal Information Protection and Electronic Documents Act. " +
       "Consent, limiting use, accuracy, safeguards, openness, individual " +
-      "access — applied to any non-health personal data we handle.",
+      "access — applied to any non-health personal data we handle. " +
+      "Covered today as the federal-floor personal-data regime.",
   },
   {
     framework: "HIPAA",
@@ -163,15 +182,26 @@ const COMPLIANCE: { framework: string; jurisdiction: string; what: string }[] = 
     what:
       "Health Insurance Portability and Accountability Act. Administrative, " +
       "physical, and technical safeguards for Protected Health Information " +
-      "(PHI); BAAs with business associates.",
+      "(PHI); BAAs with business associates. Supported on request via the " +
+      "BAA template — no US customers in production today; not a pre-signed " +
+      "default.",
+  },
+  {
+    framework: "PHIPA",
+    jurisdiction: "Ontario, Canada",
+    what:
+      "Personal Health Information Protection Act. Custodianship, HIC-Agent " +
+      "agreements, and safeguards for individually identifying health " +
+      "information in Ontario. Supported on request via the HIC-Agent " +
+      "template — no Ontario customers in production today.",
   },
   {
     framework: "NOM-024",
     jurisdiction: "Mexico",
     what:
       "Norma Oficial Mexicana 024. Electronic health-record interoperability " +
-      "and patient-data handling standards. Aligned via the data-handling " +
-      "addendum signed before any Mexican-customer data is accepted.",
+      "and patient-data handling standards. On the 2027 roadmap; not " +
+      "implemented in production today.",
   },
 ];
 
@@ -290,7 +320,7 @@ export default function SecurityPage() {
             <li><strong>Hash-chain audit trail.</strong> Append-only audit_trail table, SHA-256 signatures, built-in verify_chain() walker.</li>
             <li><strong>Role-scoped access.</strong> Per-tenant isolation with admin / biller / viewer roles and least-privilege defaults.</li>
             <li><strong>Two-person approval</strong> on high-impact actions (export, bulk re-audit, billing changes); every privileged action is written to the audit trail.</li>
-            <li><strong>Salted SHA-256 patient hashing.</strong> Identifying fields (PHN, MRN, name, DOB) are hashed before they reach long-term storage; minimum-necessary pass-through to the model.</li>
+            <li><strong>Salted SHA-256 patient_hash.</strong> An internal encounter identifier is hashed (salted SHA-256) before it reaches the audit log; the raw patient identifiers (PHN, MRN, name) live only in the encrypted encounter table and are purged within 30 days of pilot termination; minimum-necessary pass-through to the model.</li>
           </ul>
           <p className={styles.matrixIntro} style={{ marginTop: "0.75rem" }}>
             <strong>On the certification roadmap (not currently held):</strong> SOC 2 Type II, ISO 27001, ISO 27017, ISO 27018. We will publish third-party reports here as they are issued; until then, we will not represent any of these as held.

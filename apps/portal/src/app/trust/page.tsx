@@ -34,8 +34,8 @@ const SECTIONS: { id: string; title: string; body: string[]; cta?: string }[] = 
     id: "where",
     title: "Where your data lives",
     body: [
-      "Your claims, your clinical notes, and your audit results live in a single region that you choose at sign-up. Canadian clinics go to a Canadian data centre; US clinics go to a US region that meets HIPAA. We do not silently copy your data to a second region, and we do not move it after you sign up without writing to you first.",
-      "The data centre is a real, professionally operated building — not a closet. It provides physical security, redundant power and cooling, and network connectivity at scale. The exact provider, region, and any third-party attestations they currently hold are written into the contract your lawyer signs.",
+      "Your claims, your clinical notes, and your audit results live in a single region that you choose at sign-up. Canadian clinics go to a Canadian-region facility; US clinics go to a US-region facility. We do not silently copy your data to a second region, and we do not move it after you sign up without writing to you first.",
+      "The facility is a real, professionally operated building — not a closet. It provides physical security, redundant power and cooling, and network connectivity at scale. The exact provider, facility, and any third-party attestations they currently hold are written into the executed IMA / BAA your lawyer signs.",
       "Backups live in the same region as the live data. They are encrypted, and only a small number of named operators can read them — and only when there is a written reason on a ticket.",
     ],
   },

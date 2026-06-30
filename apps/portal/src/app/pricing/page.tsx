@@ -187,9 +187,12 @@ export default function PricingPage() {
               for any real appeal defence.
             </li>
             <li>
-              <strong>Region-pinned data.</strong> Canadian data centre,
-              region confirmed in the BAA. No cross-region replication, no
-              analytics egress, no sale of customer data.
+              <strong>Region-pinned data.</strong> Canadian-region
+              facility by default for Canadian clinics; US-region
+              facility for US pilots. Hosting provider and facility
+              are documented in the executed IMA / BAA. No
+              cross-region replication, no analytics egress, no sale
+              of customer data.
             </li>
             <li>
               <strong>Hash-chain audit trail.</strong> Every finding is

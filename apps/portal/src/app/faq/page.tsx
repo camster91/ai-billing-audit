@@ -27,16 +27,17 @@ const sections: { id: string; title: string; items: QA[] }[] = [
           <>
             <p>
               In a single-tenant PostgreSQL database provisioned in the
-              Canadian region you select at signup (currently <code>ca-central-1</code>{" "}
-              for Ontario / Alberta customers; additional regions on request for
-              enterprise pilots).
+              Canadian-region facility you select at signup. The
+              actual hosting provider, facility, and any third-party
+              attestations they currently hold are documented in the
+              executed IMA / BAA before any customer data is uploaded.
             </p>
             <p>
-              Data does not leave that region. PHI is never written to logs,
-              never sent to an LLM provider for training, and never used to
-              train any model. See{" "}
-              <Link href="/security">/security</Link> for the full residency
-              commitment and sub-processor list.
+              Data does not leave that region. PHI is never written to
+              logs, never sent to an LLM provider for training, and
+              never used to train any model. See{" "}
+              <Link href="/security">/security</Link> for the full
+              residency commitment and sub-processor list.
             </p>
           </>
         ),
@@ -46,13 +47,22 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         a: (
           <>
             <p>
-              Yes. We sign a BAA for US pilots, an HIA Information Manager
-              Agreement for Alberta pilots (the default for our current
-              go-to-market), and a PHIPA HIC-Agent agreement for Ontario
-              pilots. Templates are at{" "}
-              <Link href="/legal">/legal</Link>. SOC 2 Type I is on the Q3
-              roadmap; contact <code>security@zorva.health</code> for the
-              current attestation packet.
+              For Alberta clinics (our current go-to-market), we sign
+              an HIA Information Manager Agreement (template at{" "}
+              <Link href="/legal">/legal</Link>, currently in lawyer
+              review). We also support BAA / HIC-Agent / affiliate
+              agreements for US HIPAA and Ontario PHIPA pilots on
+              request — the templates exist but are not pre-signed
+              for jurisdictions where we don&apos;t currently have a
+              customer. SOC 2 Type II and ISO 27001 are on the
+              certification roadmap, not currently held; we publish
+              that on the security page.
+            </p>
+            <p>
+              For the current attestation packet (data center
+              details, sub-processor list, hosting-provider
+              third-party reports), email{" "}
+              <code>security@zorva.ca</code>.
             </p>
           </>
         ),
@@ -91,30 +101,34 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         a: (
           <>
             <p>
-              Nothing for the first 100 audited encounters on Tier 2
-              (multi-specialty) or Tier 3 (full enterprise) clinics.
-              Beyond that, pilot pricing is a flat $490/mo for up to 1,000
-              audited encounters, no per-claim surcharge.
+              The 60-day pilot is no-cost, no-commitment. Run Zorva
+              against your own historical claims and live claims for
+              two months, walk through every finding with our team,
+              and at the end decide whether to continue on a paid tier
+              or walk away (we delete your data within 30 days).
             </p>
             <p>
-              The pilot is 30 days. There is no auto-conversion to a
-              paid tier at the end. Full terms in{" "}
+              There is no auto-conversion to a paid tier at the end of
+              the pilot. Full terms in{" "}
               <Link href="/pilot">/pilot</Link>.
             </p>
           </>
         ),
       },
       {
-        q: "What's the difference between Tier 1, 2, and 3?",
+        q: "What are the paid tiers?",
         a: (
           <>
             <p>
-              <strong>Tier 1 — Solo / small clinic:</strong> single
-              tenant, 1,000 claims/mo, email support.{" "}
-              <strong>Tier 2 — Group / multi-specialty:</strong> up to
-              25 users, 5,000 claims/mo, Slack channel + onboarding
-              call. <strong>Tier 3 — Enterprise:</strong> SSO, custom
-              data-residency, BAA / HIA / PHIPA agreement, dedicated CSM.
+              <strong>Small (Starter) — $499 CAD/mo:</strong> up to
+              1,000 claims/month, single tenant, email support.{" "}
+              <strong>Mid (Growth) — $1,499 CAD/mo:</strong> 1,000 –
+              3,000 claims/month, up to 5 biller seats, same-day
+              support. <strong>Large (Scale) — $2,999 CAD/mo:</strong>{" "}
+              3,000+ claims/month, unlimited biller seats, same-day
+              SLA, quarterly rules-tuning session. Enterprise (above
+              3,000 claims/month or custom data-residency) is
+              custom-quoted.
             </p>
             <p>
               Full pricing grid at <Link href="/pricing">/pricing</Link>.
@@ -153,21 +167,24 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         a: (
           <>
             <p>
-              On our held-out 2025 AHCIP benchmark (n=500 synthetic + 50
-              real de-identified encounters), Zorva achieves{" "}
-              <strong>F1 = 0.91 on modifier suggestions</strong> and{" "}
-              <strong>F1 = 0.84 on undercode detection</strong>.
+              On the v12 cleaned AHCIP validation set (10 encounters,
+              13 audited gold findings, micro-averaged), Zorva
+              achieves <strong>P = 0.647, R = 0.846, F1 = 0.690</strong>.
+              That&apos;s 11 of 13 gold findings caught. For clinic
+              conversations we round this to{" "}
+              <em>&ldquo;catches 6–7 of 10 real billing errors before
+              submission&rdquo;</em>, which is the lower bound of the
+              0.60–0.69 range and stays defensible.
             </p>
             <p className={styles.caveat}>
-              <strong>Important caveat:</strong> these numbers are on
-              the <em>synthetic</em> portion of the benchmark and on a
-              de-identified real-encounter subset where ground truth
-              was set by a single expert reviewer. Real-world F1 will
-              vary by specialty, encounter complexity, and how the
-              upstream EHR documents the visit. We publish the full
-              benchmark methodology and the per-rule precision /
-              recall breakdown at <Link href="/technical">/technical</Link>
-              {" "}so you can decide what to trust for your own clinic.
+              <strong>Important caveat:</strong> the val set is small
+              (n=10) and the gold was reviewed by a single expert.
+              Real-world F1 will vary by specialty, encounter
+              complexity, and how the upstream EHR documents the
+              visit. We publish the full benchmark methodology and
+              the per-finding rubric at{" "}
+              <Link href="/technical">/technical</Link>{" "}
+              so you can decide what to trust for your own clinic.
             </p>
           </>
         ),
@@ -192,8 +209,9 @@ const sections: { id: string; title: string; items: QA[] }[] = [
               REST + bearer token. <code>POST /api/audit/run</code> with
               an encounter payload returns findings + per-finding
               confidence. Webhooks fire on{" "}
-              <code>audit.completed</code> and{" "}
-              <code>billing.invoice.paid</code>. Full reference at{" "}
+              <code>audit.completed</code>,{" "}
+              <code>finding.created</code>, and{" "}
+              <code>encounter.uploaded</code>. Full reference at{" "}
               <Link href="/api/REFERENCE.md">docs/api/REFERENCE.md</Link>.
             </p>
           </>
@@ -203,10 +221,13 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         q: "Which health-plan fee schedules are supported?",
         a: (
           <p>
-            AHCIP (Alberta SOMB) is the production-supported schedule.
-            OHIP (Ontario) is in private beta. BC MSP and Saskatchewan
-            are on the roadmap for Q4. Contact us for other Canadian
-            provinces.
+            AHCIP (Alberta SOMB) is the production-supported schedule,
+            with 16 v12 rules tuned to Alberta primary-care and
+            specialist billing. OHIP (Ontario), BC MSP, Saskatchewan,
+            and other Canadian provinces are on the 2027 roadmap —
+            none of them have working rules today. US payers
+            (Medicare, Medicaid, commercial) are not in scope for the
+            current product.
           </p>
         ),
       },
@@ -252,12 +273,24 @@ const sections: { id: string; title: string; items: QA[] }[] = [
       {
         q: "Do you integrate with my EHR?",
         a: (
-          <p>
-            Yes — we have working integrations with TELUS Health
-            PS Suite, OSCAR McMaster, QHR Accuro, and AdvancedMD.
-            Custom HL7v2 / FHIR connectors are available for Tier 3.
-            See <Link href="/integrations">/integrations</Link>.
-          </p>
+          <>
+            <p>
+              We work with your billing system&apos;s 837P export or a
+              scheduled SFTP drop — no EHR switch required, and no
+              live EHR connector needed. CSV uploads and manual
+              single-encounter entry are also supported for low
+              volume or one-off audits.
+            </p>
+            <p>
+              Custom HL7v2 / FHIR connectors are available on the
+              Enterprise tier ($5,000 one-time per connector) when a
+              clinic has a specific integration requirement. The
+              existing pilot integrations are 837P file ingest + SFTP
+              pull, which covers the standard Alberta clinic billing
+              pipeline (Accuro, OSCAR, TELUS PS Suite, Med Access,
+              Healthquest, etc.).
+            </p>
+          </>
         ),
       },
       {
@@ -327,7 +360,7 @@ export default function FAQPage() {
       <footer className={styles.footer}>
         <p>
           Didn&apos;t find your question? Email{" "}
-          <a href="mailto:hello@zorva.health">hello@zorva.health</a> and
+          <a href="mailto:hello@zorva.ca">hello@zorva.ca</a> and
           we&apos;ll add it.
         </p>
       </footer>

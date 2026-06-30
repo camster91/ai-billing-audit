@@ -20,9 +20,10 @@ export default function HowItWorksPage() {
         <span className={styles.eyebrow}>How it works</span>
         <h1>Three steps. Your claims, checked before they go out.</h1>
         <p>
-          We sit between your billing system and the payer. Every claim is
-          read by an AI auditor first; your team reviews what it finds.
-          Nothing ships until a human signs off.
+          We sit alongside your billing system. Every claim is read by
+          an AI auditor first; your team reviews what it finds; your
+          biller submits. Nothing ships to the payer until a human
+          signs off.
         </p>
       </header>
 
@@ -86,8 +87,10 @@ export default function HowItWorksPage() {
             <p className={styles.stepDesc}>
               Findings show up side-by-side with the claim. Your biller
               accepts the good catches and dismisses the false alarms,
-              then submits the corrected claim. Zorva learns from every
-              decision your team makes.
+              then submits the corrected claim. Zorva tracks every
+              accept / dismiss / modify so the dashboard can show
+              whether the auditor is getting better at YOUR patterns
+              over time.
             </p>
           </article>
         </section>

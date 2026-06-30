@@ -106,13 +106,15 @@ export default function CalculatorPage() {
       <section className={styles.cta}>
         <h2 className={styles.h2}>Ready to find out for real?</h2>
         <p>
-          The first 100-claim audit is no-cost. We send you a written
-          finding-by-finding summary and a 30-minute review call.
-          You own the data — we delete it on one email.
+          The 60-day pilot is no-cost, no-commitment. We run Zorva
+          against a sample of your historical claims and live claims
+          for two months, you walk through every finding with our
+          team, and at the end you decide whether to continue. You
+          own the data — we delete it on one email.
         </p>
         <p>
-          <a className={styles.button} href="/demo-request">
-            Book the 100-claim pilot →
+          <a className={styles.button} href="/pilot">
+            Start the 60-day pilot →
           </a>
         </p>
       </section>
