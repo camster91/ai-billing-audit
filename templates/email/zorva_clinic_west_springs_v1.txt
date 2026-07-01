@@ -1,20 +1,20 @@
 From: Cameron Ashley <cameron@ashbi.ca>
 To: <office manager — West Springs Medical, SW Calgary>
-Subject: Active locum posting on physiciancareers — pre-submit audit, no cost
+Subject: SW Calgary family practice — three AHCIP patterns your biller is probably losing money on
 
 Hi <First Name>,
 
-I saw West Springs Medical has an active locum posting on physiciancareers.ca (Feb 9 2026, family medicine, 2-2.5 days/week, March 26 start). An active hiring signal is usually a billing signal too — a new provider means new claim volume that the biller is suddenly responsible for.
-
 I'm Cameron Ashley. I built Zorva — a pre-submit AHCIP claims auditor. It reads every claim against the SOMB before it hits H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
 
-Three patterns I see on real Alberta family-medicine claims that probably show up in a 6-10 physician SW Calgary practice too:
+Three patterns I see on real Alberta family-medicine claims that probably show up in a 6-10 physician SW Calgary practice with a walk-in component:
 
 - **Modifier-25 missing on E/M + procedure same day.** Cryo / biopsy / IUD insertion / joint injection billed the same day as an office visit without a -25 on the 03.04A line. AHCIP bundles the visit into the procedure. About $50 per miss, easily several per week in a busy walk-in component. Zorva catches it before submission.
 - **EM undercode on comprehensive visits.** A complex annual physical with multiple chronic conditions, medication adjustment, and a referral — billed as 03.01A (brief) because the day-sheet template defaulted to it. The work was comprehensive; the code should match. About $30 per visit, again several per week. Zorva flags the mismatch.
 - **CMGP modifier missed on chronic-disease visits.** T2DM / HTN / dyslipidemia / CKD / COPD / CHF patients on a 03.04A without the chronic disease management general premium modifier. About $25 per visit. Zorva fires only when the note documents a qualifying chronic condition.
 
-The v12 auditor scores F1=0.690 on the cleaned AHCIP validation set (10 encounters, 13 gold findings). P=0.647 (about 2 of 3 flags are real findings), R=0.846 (catches 11 of 13). The set lives in the repo at `data/synth/val_ca.json`; the report at `runs/shadow/val_ca-20260630T193918.md`. Both are public.
+I see West Springs has an active locum posting on physiciancareers.ca (Feb 9 2026, family medicine, 2-2.5 days/week, March 26 start) — a new provider means new claim volume that the biller is suddenly responsible for, so the timing of this offer is the part that matters.
+
+The v12 auditor scores F1=0.690 on the cleaned AHCIP validation set (10 encounters, 13 gold findings). P=0.647 (about 2 of 3 flags are real findings), R=0.846 (catches 11 of 13). The set lives at the repo at `data/synth/val_ca.json`; the report at `runs/shadow/val_ca-20260630T193918.md`. Both are public.
 
 If you want to see what the auditor does on West Springs' actual claims, the offer is: send 100 de-identified claims (837P file or CSV — TELUS PS Suite / Med Access export both work), I run Zorva on them and send back a 1-page finding-by-finding report. No fee, no follow-up unless the report is useful. The whole loop is under 30 minutes; the data is deleted on one email at the end.
 
