@@ -81,9 +81,16 @@ export function RoiCalculator() {
   return (
     <div className={styles.calc}>
       <div className={styles.inputs}>
-        <label className={styles.field}>
+        {/* P11 round-2 (2026-07-01): added explicit id/htmlFor on every
+            control. Pre-fix the <label> was implicit-only (wrapped
+            the input but had no htmlFor, and the input had no id).
+            Voice Control, NVDA, JAWS, and Dragon look up the input by
+            id to announce — implicit-only association is unreliable
+            and WCAG SC 1.3.1 / 4.1.2 fail on this pattern. */}
+        <label className={styles.field} htmlFor="roi-specialty">
           <span className={styles.label}>Specialty</span>
           <select
+            id="roi-specialty"
             className={styles.select}
             value={specialty}
             onChange={(e) => setSpecialty(e.target.value as Specialty)}
@@ -96,7 +103,7 @@ export function RoiCalculator() {
           </select>
         </label>
 
-        <label className={styles.field}>
+        <label className={styles.field} htmlFor="roi-claims">
           <span className={styles.label}>
             Claims per month
             <span className={styles.hint}>
@@ -104,6 +111,7 @@ export function RoiCalculator() {
             </span>
           </span>
           <input
+            id="roi-claims"
             className={styles.input}
             type="number"
             min={50}
@@ -114,7 +122,7 @@ export function RoiCalculator() {
           />
         </label>
 
-        <label className={styles.field}>
+        <label className={styles.field} htmlFor="roi-denial">
           <span className={styles.label}>
             Current denial / undercode rate
             <span className={styles.hint}>
@@ -123,6 +131,7 @@ export function RoiCalculator() {
           </span>
           <div className={styles.rangeRow}>
             <input
+              id="roi-denial"
               className={styles.range}
               type="range"
               min={0}
@@ -136,7 +145,15 @@ export function RoiCalculator() {
         </label>
       </div>
 
-      <aside className={styles.result} aria-live="polite">
+      {/* P11 round-2 (2026-07-01): added aria-atomic="true" so screen
+          readers announce the recalculated dollar amount on every
+          input change, not only on initial render. */}
+      <aside
+        className={styles.result}
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label="Calculation results"
+      >
         <p className={styles.resultLabel}>Estimated annual missed revenue</p>
         <p className={styles.resultBig}>{fmt(result.missedBase)}</p>
 

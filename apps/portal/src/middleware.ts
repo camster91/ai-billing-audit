@@ -115,6 +115,40 @@ function hasSessionCookie(request: NextRequest): boolean {
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // P11 round-2 fix 2026-07-01: friendlier 404 handling. Without this
+  // any unknown URL gets the auth-redirect → /login treatment, which
+  // is hostile to (a) users who mistype a URL, (b) SEO crawlers, and
+  // (c) anyone sharing a screenshot of a deep link. Next.js' built-in
+  // not-found.tsx only renders when a route doesn't exist AND the
+  // request isn't redirected first, so we have to short-circuit the
+  // auth flow for any path that doesn't match a known public OR
+  // known-private prefix.
+  //
+  // Strategy: detect "looks like an authed portal route" by checking
+  // the /portal/ + /encounters/ + /findings/ + /billing/ + /dashboard/
+  // + /settings/ + /team/ + /onboarding/ prefixes. Anything else falls
+  // through to Next's not-found handler. The portal/encounters/etc.
+  // list mirrors the per-page robots: { index: false } set.
+  const AUTHED_PREFIXES = [
+    "/portal",
+    "/encounters",
+    "/findings",
+    "/billing",
+    "/dashboard",
+    "/settings",
+    "/team",
+    "/onboarding",
+  ];
+  const looksAuthed = AUTHED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+  if (!looksAuthed && !isPublicPath(pathname)) {
+    // Unknown path → let it through to Next's not-found handler.
+    // The handler will render app/not-found.tsx (or framework's
+    // default 404) instead of redirecting to /login.
+    return NextResponse.next();
+  }
+
   // Public path → no auth check, no redirects.
   if (isPublicPath(pathname)) {
     return NextResponse.next();

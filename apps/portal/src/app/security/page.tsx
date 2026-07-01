@@ -362,7 +362,14 @@ export default function SecurityPage() {
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
         </div>
-        <p>Questions? Email us at hello@ashbi.ca</p>
+        <p>
+          Questions? Email{" "}
+          <a href="mailto:hello@ashbi.ca">hello@ashbi.ca</a>. Security
+          disclosure (vulnerability report, coordinated disclosure,
+          encryption-key inquiry)? Email{" "}
+          <a href="mailto:security@ashbi.ca">security@ashbi.ca</a> —
+          PGP key on request.
+        </p>
       </footer>
     </div>
   );

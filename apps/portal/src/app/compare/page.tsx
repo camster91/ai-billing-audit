@@ -350,8 +350,7 @@ export default function ComparePage() {
             <li>
               <strong>Zorva</strong> is a pre-submission auditor that runs in
               seconds, costs pennies per claim, and is the only column that
-              combines SOMB-native rules, a defensible audit trail, and a
-              per-specialty learning loop.
+              combines SOMB-native rules and a defensible audit trail.
             </li>
             <li>
               <strong>Manual review</strong> is still the gold standard on the

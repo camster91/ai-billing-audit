@@ -52,18 +52,32 @@ export interface PatientHashOptions {
 
 function resolvePepper(opts?: PatientHashOptions): string {
   const fromEnv = process.env.PATIENT_HASH_PEPPER;
-  if (fromEnv && fromEnv.length >= 16) return fromEnv;
-  if (opts?.pepper && opts.pepper.length >= 16) return opts.pepper;
+  // P11 round-2 (2026-07-01): minimum bumped 16 → 32 chars. SHA-256's
+  // security is independent of pepper length, but a 16-char pepper is
+  // brute-forceable against a known-format dictionary of ~10^9 payer
+  // IDs in days on a single GPU. 32 chars (256 bits if hex-derived)
+  // matches the hash output width and removes that attack class.
+  if (fromEnv && fromEnv.length >= 32) return fromEnv;
+  if (opts?.pepper && opts.pepper.length >= 32) return opts.pepper;
   if (process.env.NODE_ENV === "production") {
     // Fail fast: an unset / too-short pepper in production means
     // every patient hash is attackable. We throw rather than fall
     // back so the misconfiguration is loud, not silent.
     throw new Error(
-      "PATIENT_HASH_PEPPER must be set to a 16+ char secret in production",
+      "PATIENT_HASH_PEPPER must be set to a 32+ char secret in production",
     );
   }
   return DEV_FALLBACK_PEPPER;
 }
+
+// P11 round-2 (2026-07-01): cap input length. Real patient identifiers
+// (PHN, MRN, ULI) are 9-12 chars; encounter IDs are short slugs. A
+// 1024-char cap defends the JSONL log + Postgres row + audit-trail
+// chain against accidental / malicious large inputs. The DB column
+// has a shape check (`~ '^[0-9a-f]{64}$'`) so a bad input would be
+// rejected downstream — but better to fail at the helper boundary
+// than persist 1MB to the audit log.
+const MAX_PATIENT_ID_LENGTH = 1024;
 
 /**
  * Compute the peppered SHA-256 hex digest of a patient identifier.
@@ -78,6 +92,11 @@ export function hashPatientId(
 ): string {
   if (typeof patientId !== "string" || !patientId) {
     throw new TypeError("patientId must be a non-empty string");
+  }
+  if (patientId.length > MAX_PATIENT_ID_LENGTH) {
+    throw new RangeError(
+      `patientId must be <= ${MAX_PATIENT_ID_LENGTH} chars (got ${patientId.length})`,
+    );
   }
   const pepper = resolvePepper(opts);
   // Domain-separate the input from the pepper so an attacker who
@@ -96,9 +115,9 @@ export function hashPatientId(
 export function assertProductionPepper(): void {
   if (process.env.NODE_ENV !== "production") return;
   const fromEnv = process.env.PATIENT_HASH_PEPPER ?? "";
-  if (fromEnv.length < 16) {
+  if (fromEnv.length < 32) {
     throw new Error(
-      "PATIENT_HASH_PEPPER must be set to a 16+ char secret in production",
+      "PATIENT_HASH_PEPPER must be set to a 32+ char secret in production",
     );
   }
 }

@@ -65,15 +65,20 @@ export default function PricingPage() {
         </p>
       </header>
 
-      <main className={styles.main}>
-        <div className={styles.tiers} role="list" aria-label="Pricing tiers">
+      <main id="main" className={styles.main}>
+        {/* P11 round-2 (2026-07-01): fixed list semantic. Pre-fix this
+            used <div role="list"> + <article role="listitem">, which
+            Safari + VoiceOver strip on render. Now real <ul>/<li> so the
+            list semantics are native. <article> inside <li> preserves
+            the per-tier article semantics for screen readers that
+            announce article landmarks. */}
+        <ul className={styles.tiers} aria-label="Pricing tiers">
           {tiers.map((tier) => {
             const recommended = isRecommended(tier);
             const claimVolumeLabel = claimVolumeFor(tier.id);
             return (
-              <article
+              <li
                 key={tier.id}
-                role="listitem"
                 className={`${styles.tier} ${recommended ? styles.recommended : ""}`}
                 aria-label={`${tier.name} tier, ${formatCurrency(tier.priceCAD, currency.primary)} per month`}
               >
@@ -110,14 +115,13 @@ export default function PricingPage() {
                 <Link
                   href="/contact"
                   className={`${styles.cta} ${recommended ? styles.ctaPrimary : styles.ctaSecondary}`}
-                  aria-label={`Start the ${tier.name} tier — 60-day no-cost pilot. After that, $499/mo. Cancel any time.`}
                 >
                   60-day no-cost pilot. After that, $499/mo. Cancel any time.
                 </Link>
-              </article>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
         <section className={styles.enterprise} aria-label="Enterprise tier">
           <div>

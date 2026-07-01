@@ -205,18 +205,39 @@ export default function StatusPage() {
                     </div>
                   </div>
                   <p className={styles.systemDesc}>{s.description}</p>
-                  <div
+                  {/* P11 round-2 (2026-07-01): collapsed 90 inline <span>
+                      elements per system to a single <svg> with 90
+                      <rect> children. The previous markup rendered 450
+                      DOM nodes per page (5 systems × 90 days) — this
+                      version renders 5 <svg> elements (~5 DOM nodes)
+                      with 90 <rect> children inside each. Same
+                      visual result, ~10× smaller HTML, much faster
+                      first-paint, and the SVG is a single declarative
+                      shape that's friendlier to screen readers than
+                      a flat list of unlabelled <span>s. */}
+                  <svg
                     className={styles.history}
-                    aria-label={`Last 90 days uptime history for ${s.name}`}
+                    role="img"
+                    aria-label={`Last 90 days uptime history for ${s.name}: ${upCount} of 90 days at full capacity`}
+                    viewBox="0 0 90 8"
+                    preserveAspectRatio="none"
+                    width="100%"
+                    height="8"
                   >
                     {hist.map((d, i) => (
-                      <span
+                      <rect
                         key={i}
-                        className={`${styles.dayBar} ${stateClass(d.state)}`}
-                        title={`Day ${i + 1}: ${d.state}`}
-                      />
+                        x={i}
+                        y={0}
+                        width={0.9}
+                        height={8}
+                        className={stateClass(d.state)}
+                        data-state={d.state}
+                      >
+                        <title>{`Day ${i + 1}: ${d.state}`}</title>
+                      </rect>
                     ))}
-                  </div>
+                  </svg>
                   <p className={styles.systemFootnote}>
                     {upCount} of 90 days at full capacity ·{" "}
                     computed {formatPercent(computed)} from this history

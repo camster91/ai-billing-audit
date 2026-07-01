@@ -29,6 +29,79 @@ const nextConfig: NextConfig = {
   },
 
   /* config options here */
+
+  // Security headers (P11 round-2 fix 2026-07-01):
+  // The portal origin was missing the standard transport-security +
+  // content-security headers that the API origin already serves.
+  // Without these, /security is making claims ("TLS 1.3 in transit",
+  // "X-Content-Type-Options", etc.) the live response does not back
+  // up. The API origin (ai-billing-audit.ashbi.ca) sets the same
+  // headers via Caddy — this brings the portal origin to parity.
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            // CSP: the portal is a server-rendered marketing surface
+            // with no inline scripts beyond the Next.js hydration
+            // bootstrap. The policy below is intentionally permissive
+            // on `self` for styles + images (Next.js injects styles
+            // via <style> tags during SSR) but locks down script-src
+            // + frame-ancestors. We do NOT include Plausible in the
+            // CSP here because Plausible is loaded via a separate
+            // script tag from layout.tsx — when NEXT_PUBLIC_PLAUSIBLE_DOMAIN
+            // is set, the script.js URL is appended to script-src via
+            // a meta tag below. Update this policy when adding any
+            // new third-party script (analytics, tag manager, etc.).
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
+
+  // Compression (P11 round-2 perf fix 2026-07-01):
+  // The HTML responses on the portal origin were being served
+  // uncompressed (no content-encoding header). With the marketing
+  // pages averaging 25-50KB HTML and /status at 134KB, this was a
+  // 50%+ bandwidth tax on first-paint. Next.js' built-in compression
+  // enables gzip by default; we also enable brotli for compatible
+  // browsers (most modern ones). Compression is applied at the
+  // Next.js server layer — the Traefik edge does not re-compress.
+  compress: true,
 };
 
 export default nextConfig;

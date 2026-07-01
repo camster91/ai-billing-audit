@@ -1,13 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
 import "./globals.css";
 
 // Zorva brand typefaces (see docs/BRANDING_TYPOGRAPHY.md).
 // Inter is the default body + heading face; JetBrains Mono handles code.
-// Geist is kept on --font-geist-sans / --font-geist-mono for any existing
-// component that already references it — no functional removal here.
+// Geist + Geist_Mono were declared here for backward compat with
+// any component referencing --font-geist-* — but the P11 round-2
+// perf sweep confirmed zero CSS consumers (grep -rE "var\(--font-geist"
+// returns 0 hits). Dropped to save ~88KB of web-font payload on every
+// page. If a future component needs Geist, add it back with an
+// explicit consumer reference.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -18,16 +22,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -103,7 +97,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         {/* Force the dark UA form so form controls + scrollbars render

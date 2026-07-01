@@ -73,9 +73,13 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </p>
 
         {error === "missing_email" ? (
-          <div role="status" aria-live="polite" className={styles.flash}>Please enter your email address.</div>
+          // P11 round-2 (2026-07-01): role="alert" for error conditions.
+          // Pre-fix was role="status" which is for advisory messages —
+          // errors should be assertive so SR users hear them
+          // immediately, not after the next polite-region sweep.
+          <div role="alert" className={styles.flash}>Please enter your email address.</div>
         ) : error ? (
-          <div role="status" aria-live="polite" className={styles.flash}>
+          <div role="alert" className={styles.flash}>
             Couldn&rsquo;t send the link: {error}. Check the email address
             and try again.
           </div>

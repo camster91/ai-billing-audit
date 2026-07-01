@@ -325,7 +325,7 @@ const sections: { id: string; title: string; items: QA[] }[] = [
 
 export default function FAQPage() {
   return (
-    <main className={styles.page}>
+    <main id="main" className={styles.page}>
       <header className={styles.header}>
         <h1>Frequently Asked Questions</h1>
         <p>

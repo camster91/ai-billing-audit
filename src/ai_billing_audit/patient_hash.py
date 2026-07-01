@@ -105,7 +105,7 @@ DEV_FALLBACK_PEPPER: str = (
 
 # Minimum length of an acceptable pepper. The portal side uses
 # the same threshold; keep them in sync.
-MIN_PEPPER_LENGTH: int = 16
+MIN_PEPPER_LENGTH: int = 32
 
 
 def _is_production() -> bool:

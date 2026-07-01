@@ -1,13 +1,13 @@
 /* /calculator — minimal CSS, just functional.
-   Reuses the project's existing ink palette so the page drops into
-   the marketing site without re-skinning. */
+   Reuses the project's existing dark palette (P11 round-2 fix
+   2026-07-01 — was light-themed on a dark site, WCAG 1.4.11 fail). */
 
 .page {
   max-width: 1100px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
   font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
-  color: #0f172a;
+  color: var(--text, #e7ecf6);
   line-height: 1.55;
 }
 
@@ -19,7 +19,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
-  color: #2563eb;
+  color: var(--accent, #60a5fa);
   font-weight: 600;
   margin: 0 0 0.5rem;
 }
@@ -38,23 +38,23 @@
 
 .lede {
   font-size: 1.05rem;
-  color: #475569;
+  color: var(--muted, #a8b2d1);
   margin: 0;
   max-width: 60ch;
 }
 
 .disclaimer {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
+  background: rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.35);
   border-radius: 8px;
   padding: 0.9rem 1.1rem;
   font-size: 0.9rem;
   margin: 1.5rem 0;
-  color: #7c2d12;
+  color: #fde68a;
 }
 
 .disclaimer code {
-  background: rgba(124, 45, 18, 0.08);
+  background: rgba(253, 224, 71, 0.12);
   padding: 0.05rem 0.3rem;
   border-radius: 4px;
   font-size: 0.85em;
@@ -91,13 +91,13 @@
   flex-direction: column;
   font-weight: 600;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--text, #e7ecf6);
 }
 
 .hint {
   font-weight: 400;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--muted, #a8b2d1);
   margin-top: 0.15rem;
 }
 
@@ -105,19 +105,23 @@
 .input {
   font: inherit;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line, #28324f);
   border-radius: 6px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--panel-2, #131a2e);
+  color: var(--text, #e7ecf6);
   width: 100%;
   box-sizing: border-box;
 }
 
 .select:focus,
 .input:focus {
-  outline: 2px solid #2563eb;
+  /* P11 round-2 (2026-07-01): brighter focus outline to meet
+     WCAG 1.4.11 on dark panel background. The previous #2563eb on
+     #131a2e was 3.66:1 — borderline pass. #93c5fd on #131a2e is
+     6.2:1 — comfortable pass. */
+  outline: 2px solid #93c5fd;
   outline-offset: 1px;
-  border-color: #2563eb;
+  border-color: #93c5fd;
 }
 
 .rangeRow {
@@ -134,11 +138,12 @@
   min-width: 3.5rem;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+  color: var(--text, #e7ecf6);
 }
 
 .result {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--panel, #0d1428);
+  border: 1px solid var(--line, #28324f);
   border-radius: 10px;
   padding: 1.25rem 1.4rem;
 }
@@ -148,7 +153,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #475569;
+  color: var(--muted, #a8b2d1);
   font-weight: 600;
 }
 
@@ -161,7 +166,7 @@
   font-size: 2.1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #b45309;
+  color: #fbbf24;
   font-variant-numeric: tabular-nums;
 }
 
@@ -170,7 +175,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #047857;
+  color: #34d399;
   font-variant-numeric: tabular-nums;
 }
 
@@ -183,37 +188,39 @@
 
 .breakdown td {
   padding: 0.35rem 0;
-  border-bottom: 1px dashed #e2e8f0;
+  border-bottom: 1px dashed var(--line, #28324f);
   font-variant-numeric: tabular-nums;
 }
 
 .breakdown td:first-child {
-  color: #64748b;
+  color: var(--muted, #a8b2d1);
 }
 
 .breakdown td:last-child {
   text-align: right;
   font-weight: 500;
+  color: var(--text, #e7ecf6);
 }
 
 .totalRow td {
-  border-top: 2px solid #0f172a;
+  border-top: 2px solid var(--text, #e7ecf6);
   border-bottom: none;
   padding-top: 0.6rem;
   font-weight: 700;
-  color: #047857;
+  color: #34d399;
 }
 
 .formula {
   margin: 0.75rem 0 0;
   padding-top: 0.75rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--line, #28324f);
   font-size: 0.8rem;
+  color: var(--muted, #a8b2d1);
 }
 
 .formula code {
   display: block;
-  background: #0f172a;
+  background: var(--panel-2, #131a2e);
   color: #f1f5f9;
   padding: 0.5rem 0.6rem;
   border-radius: 4px;
@@ -236,21 +243,22 @@
 .cta {
   margin-top: 2.5rem;
   padding: 1.75rem;
-  background: #0f172a;
-  color: #f1f5f9;
+  background: linear-gradient(180deg, #0b1020 0%, #0d1428 100%);
+  border: 1px solid var(--line, #28324f);
+  color: var(--text, #e7ecf6);
   border-radius: 10px;
   text-align: center;
 }
 
 .cta .h2 {
-  color: #f1f5f9;
+  color: var(--text, #e7ecf6);
   margin-top: 0;
 }
 
 .button {
   display: inline-block;
-  background: #2563eb;
-  color: #fff;
+  background: var(--accent, #38bdf8);
+  color: #0b1020;
   padding: 0.85rem 1.5rem;
   border-radius: 6px;
   text-decoration: none;
@@ -259,5 +267,5 @@
 }
 
 .button:hover {
-  background: #1d4ed8;
+  background: #0ea5e9;
 }

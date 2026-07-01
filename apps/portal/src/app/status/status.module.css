@@ -205,13 +205,18 @@
 }
 
 .history {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
+  display: block;
+  width: 100%;
+  height: 8px;
   margin-bottom: 8px;
+  /* The SVG preserves its aspect ratio at preserveAspectRatio="none";
+     the viewBox=0 0 90 8 maps 1 day = 1 unit wide. */
 }
 
 .dayBar {
+  /* Legacy class — kept for any pre-P11 cached HTML that may still
+     reference the inline-<span> variant. New markup uses an <svg>
+     with <rect className="dayUp|dayDegraded|dayDown|dayNoData">. */
   width: 8px;
   height: 24px;
   border-radius: 2px;
@@ -220,19 +225,19 @@
 }
 
 .dayUp {
-  background: var(--good);
+  fill: var(--good);
 }
 
 .dayDegraded {
-  background: var(--warn);
+  fill: var(--warn);
 }
 
 .dayDown {
-  background: var(--bad);
+  fill: var(--bad);
 }
 
 .dayNoData {
-  background: var(--line);
+  fill: var(--line);
 }
 
 .systemFootnote {

@@ -3,7 +3,7 @@
 // a client component (`RoiCalculator` below) so the inputs and live
 // numbers update on every keystroke without a server round-trip.
 //
-// Model (see docs/research/ROI-FORMULA.md for the derivation):
+// Model (see runs/recall/v12_ahcip_clean.json for the derivation):
 //   monthly_claims      = user input
 //   current_denial_rate = user input (% of claims that initially deny)
 //   avg_claim_value     = by specialty (blended Alberta averages)
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function CalculatorPage() {
   return (
-    <main className={styles.page}>
+    <main id="main" className={styles.page}>
       <header className={styles.header}>
         <p className={styles.eyebrow}>Zorva ROI Calculator</p>
         <h1 className={styles.h1}>
@@ -70,8 +70,8 @@ export default function CalculatorPage() {
         <p>
           The full derivation (with the SOMB-anchored per-rule dollar
           rates and the v12 recall baseline) is in our internal{" "}
-          <a href="https://github.com/camster91/ai-billing-audit/blob/main/docs/research/ROI-FORMULA.md">
-            ROI formula research note
+          <a href="https://github.com/camster91/ai-billing-audit/blob/main/runs/recall/v12_ahcip_clean.json">
+            v12 AHCIP validation report
           </a>{" "}
           on GitHub. The short version:
         </p>

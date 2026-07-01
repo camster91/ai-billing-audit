@@ -73,7 +73,7 @@ export default function TryPage() {
         </p>
       </header>
 
-      <main className={styles.main}>
+      <main id="main" className={styles.main}>
         <section className={styles.encounter} aria-label="Synthetic encounter">
           <h2 className={styles.sectionTitle}>The encounter</h2>
 

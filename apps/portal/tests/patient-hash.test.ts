@@ -62,6 +62,18 @@ test("hashPatientId rejects an empty / non-string input", () => {
   );
 });
 
+test("hashPatientId rejects input over 1024 chars (P11 round-2 length cap)", () => {
+  const tooLong = "a".repeat(1025);
+  assert.throws(
+    () => hashPatientId(tooLong, { pepper: "p".repeat(32) }),
+    /patientId must be <= 1024 chars/,
+  );
+  // The boundary (exactly 1024) still works.
+  const justRight = "a".repeat(1024);
+  const h = hashPatientId(justRight, { pepper: "p".repeat(32) });
+  assert.equal(h.length, 64);
+});
+
 test("hashPatientId falls back to the dev pepper in non-production when no pepper is given", () => {
   const previousNodeEnv = process.env.NODE_ENV;
   try {

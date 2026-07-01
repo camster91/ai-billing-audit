@@ -280,12 +280,17 @@ export default async function BillingPage() {
           // the same (encounters-list.module.css:184 `.tableScroller`).
           <div className={styles.invoiceTableScroller}>
             <table className={styles.invoiceTable}>
+              {/* P11 round-2 (2026-07-01): added <caption> + scope="col".
+                  Pre-fix a screen-reader user heard "Date, Amount, Status,
+                  Receipt" as a column list but couldn't tell which column
+                  a given cell belonged to. */}
+              <caption className={styles.srOnly}>Invoices for this billing account</caption>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Receipt</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Amount</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Receipt</th>
                 </tr>
               </thead>
             <tbody>
