@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
@@ -69,6 +69,19 @@ export const metadata: Metadata = {
   },
 };
 
+// P11 UX sweep 2026-07-01: viewport meta tag. In Next.js 13+ the
+// canonical pattern is to export `viewport` from the layout, NOT
+// to put a <meta name="viewport"> in <head>. The latter results in
+// a DUPLICATE viewport meta tag in the rendered HTML (Next.js
+// auto-generates one and yours stacks on top of it), which is a
+// spec violation. The viewportFit=cover bit lets the iPhone notch
+// area be used for the sticky header without a white bar.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 // Marketing-site header. Public-only pages (/, /pricing, /how-it-works,
 // /security) are linked from here so the security page is reachable from
 // the main nav. Authenticated portal pages render their own chrome and
@@ -93,15 +106,6 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
-        {/* Viewport meta tag (P11 bug-sweep fix 2026-07-01):
-            without this, mobile browsers render at ~980px desktop
-            width and the site is broken on phones. We also set
-            viewportFit=cover so the iPhone notch area can be used
-            for the sticky header without a white bar. */}
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
         {/* Force the dark UA form so form controls + scrollbars render
             dark on first paint and never flash white. See AGENTS.md
             "dark-only design choice" note. (kanban t_9bf46d09) */}
