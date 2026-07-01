@@ -28,6 +28,7 @@ import {
   EmptyStateCTA,
   onboardingWizardHref,
 } from "@/components/EmptyStateCTA";
+import { EncounterListSkeleton } from "@/components/Skeleton";
 import styles from "../shell.module.css";
 
 export const metadata: Metadata = {
@@ -70,7 +71,7 @@ export default async function EncountersListPage({ searchParams }: PageProps) {
 
   if (!tenant) {
     return (
-      <main className={styles.shell}>
+      <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Encounters</h1>
         <p className={styles.subheading}>Tenant scope required to view encounters.</p>
         <section className={styles.empty}>
@@ -105,7 +106,7 @@ export default async function EncountersListPage({ searchParams }: PageProps) {
   }));
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       <PortalNav current="/encounters" tenant={tenant} />
 
       <h1 className={styles.heading}>Encounters</h1>
@@ -138,7 +139,7 @@ export default async function EncountersListPage({ searchParams }: PageProps) {
         />
       ) : null}
 
-      <Suspense fallback={<div className={styles.muted}>Loading…</div>}>
+      <Suspense fallback={<EncounterListSkeleton rows={5} />}>
         <EncounterListClient
           rows={rows}
           facets={facets}

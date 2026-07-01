@@ -30,7 +30,7 @@ import styles from "./technical.module.css";
 // Bump this constant whenever a referenced source file or the F1
 // number changes. The page footer renders it so reviewers know how
 // stale the explainer might be.
-const LAST_REVIEWED = "2026-06-24";
+const LAST_REVIEWED = "2026-07-01";
 
 export const metadata: Metadata = {
   title: "Technical — how Zorva audits your claims",
@@ -243,23 +243,33 @@ F1        = 2 * precision * recall / (precision + recall)`}
 timestamp          (ISO 8601 UTC)
 user_identifier    (X-Forwarded-User or "demo")
 action             (accept | dismiss | flag | rerun | ...)
-patient_hash       (SHA-256[:12] of encounter_id, per HIA/PHIPA pseudonymization)
+patient_hash       (salted SHA-256 of encounter_id; 64 hex chars, full digest)
 data_elements      (canonical-JSON dict of action-specific fields)
 model_run_id       (the LLM call id that produced the audited finding)`}
           </pre>
-          <p>The signature formula:</p>
+          <p>The signature formula (post-P11 consolidation, July 2026):</p>
           <pre className={styles.codeBlock}>
 {`signature_n = SHA-256(
-    signature_{n-1}           # previous row's signature, or 64 zeros for genesis
-  | event_id
-  | timestamp
-  | user_identifier
-  | action
-  | patient_hash
-  | data_elements              # canonical JSON, sort_keys, no spaces
-  | model_run_id
+    signature_{n-1}             # previous row's signature, or 64 zeros for genesis
+    event_id
+    timestamp
+    user_identifier
+    action
+    patient_hash
+    data_elements               # canonical JSON, sort_keys, no spaces
+    model_run_id
 )`}
           </pre>
+          <p>
+            Earlier versions of this page showed a &ldquo;|&rdquo; byte
+            between fields. That separator was specific to{" "}
+            <code>audit_actions.compute_signature</code>; the canonical
+            <code>src/audit_log.py</code> chain shape concatenates
+            fields directly. After the P11 round-1 fix (commit
+            <code>6804454</code>) both implementations match
+            byte-for-byte, so rows written by either one verify
+            cleanly with the canonical <code>verify_chain</code>.
+          </p>
           <p>
             Genesis is 64 zeros; the first row in a tenant&apos;s log
             chains off the genesis signature. Production storage is
@@ -332,8 +342,14 @@ model_run_id       (the LLM call id that produced the audited finding)`}
                 <td><code>patient_hash</code></td>
                 <td className={styles.yesCell}>YES</td>
                 <td>
-                  First 12 chars of SHA-256(encounter_id); one-way,
-                  per-encounter pseudonym (HIA / PHIPA).
+                  Salted SHA-256 of encounter_id with the
+                  per-tenant <code>PATIENT_HASH_PEPPER</code>; full
+                  64-hex-char digest (post-2026-06-30 migration).
+                  One-way, per-encounter pseudonym. Portal and
+                  FastAPI paths share the same hash so the audit
+                  chain is interoperable. See{" "}
+                  <code>src/ai_billing_audit/patient_hash.py</code>{" "}
+                  for the threat model.
                 </td>
               </tr>
               <tr>

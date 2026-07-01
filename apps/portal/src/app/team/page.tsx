@@ -35,7 +35,7 @@ export default async function TeamPage() {
 
   if (!tenant) {
     return (
-      <main className={styles.shell}>
+      <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Team</h1>
         <section className={styles.empty}>
           <h2>No clinic connected</h2>
@@ -72,7 +72,7 @@ export default async function TeamPage() {
     : false;
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       <PortalNav current="/team" tenant={tenant} />
 
       <h1 className={styles.heading}>Team</h1>

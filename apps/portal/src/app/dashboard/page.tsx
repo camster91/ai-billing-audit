@@ -108,7 +108,7 @@ export default async function DashboardPage() {
     tenant !== null && encounterCount === 0 && findingCount === 0;
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       {tenant ? <PortalNav current="/dashboard" tenant={tenant} /> : null}
 
       <h1 className={styles.heading}>Dashboard</h1>

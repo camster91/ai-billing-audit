@@ -65,7 +65,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className={styles.loginPage}>
+    <main id="main" className={styles.loginPage}>
       <div className={styles.loginCard}>
         <h1>Sign in</h1>
         <p>

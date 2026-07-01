@@ -93,6 +93,15 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
+        {/* Viewport meta tag (P11 bug-sweep fix 2026-07-01):
+            without this, mobile browsers render at ~980px desktop
+            width and the site is broken on phones. We also set
+            viewportFit=cover so the iPhone notch area can be used
+            for the sticky header without a white bar. */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         {/* Force the dark UA form so form controls + scrollbars render
             dark on first paint and never flash white. See AGENTS.md
             "dark-only design choice" note. (kanban t_9bf46d09) */}

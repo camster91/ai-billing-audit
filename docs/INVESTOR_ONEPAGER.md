@@ -84,15 +84,31 @@ seconds of looking at the page.
 A single horizontal bar chart, three rows, light grey background,
 no gridlines. Source for each number cited in a 6pt footnote.
 
-| Tier   | Value          | Definition                                        | Source            |
-|--------|----------------|---------------------------------------------------|-------------------|
-| TAM    | $4.8B ARR      | US + Canadian primary-care billing software spend | KLAS / HIMSS 2025 |
-| SAM    | $620M ARR      | Canada primary-care billing software              | Canada Health Infoway 2025 |
-| SOM    | $42M ARR       | Alberta primary-care clinics (5,800 clinics × ~$7.2k avg) | Alberta Health practitioner registry 2026 |
+P11 reality-check (Cameron, 2026-07-01): the previous numbers
+(TAM=$4.8B, SAM=$620M, SOM=$42M ARR) were taken from KLAS / HIMSS
+2025 and Canada Health Infoway 2025 estimates cited in the
+original draft of this doc, but neither source URL was captured
+and neither number was re-verified against the live dataset. The
+Alberta practitioner registry figure (5,800 clinics × ~$7.2k avg)
+was a back-of-envelope calculation, not a registry extract.
 
-The TAM number is large and probably optimistic. The SOM number is
-the one we underwrite — a single-region, single-modality start.
-Investors will look at SOM, not TAM.
+Until those sources are verified AND the registry count is
+re-pulled, the section reads:
+
+| Tier   | Value (PLACEHOLDER) | Definition                                        | Source            |
+|--------|---------------------|---------------------------------------------------|-------------------|
+| TAM    | TBD                 | US + Canadian primary-care billing software spend | NEEDS SOURCE — KLAS / HIMSS 2025 cite unverified |
+| SAM    | TBD                 | Canada primary-care billing software              | NEEDS SOURCE — Canada Health Infoway 2025 cite unverified |
+| SOM    | TBD                 | Alberta primary-care clinics (N clinics × ~$Xk avg) | NEEDS SOURCE — Alberta Health practitioner registry extract |
+
+If sending the PDF before these are sourced, replace the row with
+a single line: "Pre-revenue; market sizing deferred until first
+pilot completes and the validated SOM is grounded in actual
+pricing × confirmed pipeline."
+
+The SOM number, once sourced, is the one we underwrite — a
+single-region, single-modality start. Investors will look at SOM,
+not TAM.
 
 ## 5. Row 4 — Revenue model
 
@@ -133,35 +149,52 @@ CFOs because it maps to their existing SaaS line item.
 
 **Right (50%):**
 
-> **Current traction (as of 2026-06-22).**
+> **Current traction (as of 2026-07-01).**
 >
-> - **8 clinics** in 60-day pilots (3 Alberta family medicine, 2
->   Alberta cardiology, 1 Alberta dermatology, 2 BC internal
->   medicine).
-> - **$172k ARR** committed across the pilots (1 Practice tier,
->   4 Solo tiers, 3 Group tiers).
-> - **38% modifier-25 capture rate lift** on average across the
->   8 pilots vs the 90-day pre-pilot baseline.
-> - **<1% false-positive rate** on HIGH-severity findings in the
->   v12 auditor (measured against a held-out AHCIP validation set
->   of 240 encounters).
-> - **NPS**: not yet measured (pilot cohort is too small).
+> P11 reality-check (Cameron, 2026-07-01): the previous version
+> of this section contained fabricated numbers — "8 clinics in
+> 60-day pilots," "$172k ARR committed," "38% modifier-25 lift,"
+> and a "<1% false-positive rate on 240 encounters" that did not
+> match the actual v12 benchmark (P=0.647, R=0.846, F1=0.690
+> on a 10-encounter / 13-finding validation set, see
+> `runs/recall/v12_ahcip_clean.json`). The founder also was
+> listed as `maya@zorva.health` — a placeholder name from an
+> earlier draft, never a real person.
+>
+> Honest current state as of 2026-07-01:
+>
+> - **0 clinics in pilot** — the first 60-day no-cost pilot is
+>   scoped (privacy-officer brief at `docs/PRIVACY_OFFICER_BRIEF.md`,
+>   cold-outreach queue ready) but has not yet started.
+> - **v12 auditor benchmark**: F1=0.690 micro on the cleaned
+>   AHCIP validation set (10 encounters, 13 gold findings;
+>   P=0.647, R=0.846). The shadow runner on the full 19-encounter
+>   / 31-finding val set is at `runs/shadow/val_ca-20260630T193918.md`
+>   and finds ~$602 SOMB-anchored impact on a single shadow run.
+> - **NPS**: not yet measured.
+> - **Total ARR**: $0 committed. Pre-revenue.
+>
+> Treat this section as a placeholder to populate only after the
+> first pilot signs. Do NOT send the PDF with the placeholder text
+> below — the "Founder, Zorva" line at the bottom is the only
+> named person, and the contact email is the founder's real
+> address, not the placeholder used in earlier drafts.
 
 ## 7. Row 6 — The ask + contact
 
-**For investors:** "We are raising a $3.5M seed to (a) ship the
-self-serve Solo tier, (b) expand from AHCIP to two additional
-provincial fee schedules, (c) hire a head of security to take us
-to SOC 2 Type II. Lead introduction: maya@zorva.health."
+**For investors:** "Pre-revenue. Currently raising a friends-and-
+family round to fund the first 60-day pilot cycle (lawyer review
+of the HIA IMA template, one full-time founder, infrastructure).
+Lead introduction: cameron@ashbi.ca."
 
 **For partners:** "We work with two channels today — independent
 billing services (reseller) and clinic-management software vendors
 (embedded integration). If you are either, we'd like to talk.
-Partner introduction: maya@zorva.health."
+Partner introduction: cameron@ashbi.ca."
 
 A single email address on the page — not two. The reader should
 not have to choose between "press@" and "partners@" and "investors@".
-All three route to the founder; she triages.
+All three route to the founder; he triages.
 
 ## 8. Production checklist
 

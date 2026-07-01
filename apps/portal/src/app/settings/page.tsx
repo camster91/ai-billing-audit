@@ -54,7 +54,7 @@ export default async function SettingsPage() {
 
   if (!tenant) {
     return (
-      <main className={styles.shell}>
+      <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Settings</h1>
         <section className={styles.empty}>
           <h2>No clinic connected</h2>
@@ -98,7 +98,7 @@ export default async function SettingsPage() {
 
   if (!row) {
     return (
-      <main className={styles.shell}>
+      <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Settings</h1>
         <section className={styles.empty}>
           <h2>Tenant not found</h2>
@@ -116,7 +116,7 @@ export default async function SettingsPage() {
   });
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       <PortalNav current="/settings" tenant={tenant} />
 
       <h1 className={styles.heading}>Settings</h1>

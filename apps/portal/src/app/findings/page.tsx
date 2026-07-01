@@ -184,7 +184,7 @@ export default async function FindingsPage({ searchParams }: PageProps) {
   }));
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       {tenant ? <PortalNav current="/findings" tenant={tenant} /> : null}
 
       <h1 className={styles.heading}>Findings</h1>

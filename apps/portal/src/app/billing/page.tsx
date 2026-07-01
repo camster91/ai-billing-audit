@@ -69,7 +69,7 @@ export default async function BillingPage() {
 
   if (!tenant) {
     return (
-      <main className={styles.shell}>
+      <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Billing</h1>
         <section className={styles.empty}>
           <h2>No clinic connected</h2>
@@ -116,7 +116,7 @@ export default async function BillingPage() {
     : null;
 
   return (
-    <main className={styles.shell}>
+    <main id="main" className={styles.shell}>
       <PortalNav current="/billing" tenant={tenant} />
 
       <h1 className={styles.heading}>Billing</h1>
