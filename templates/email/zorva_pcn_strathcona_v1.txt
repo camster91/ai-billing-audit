@@ -1,26 +1,24 @@
 From: Cameron Ashley <cameron@ashbi.ca>
 To: <operations lead — Strathcona (Sherwood Park) PCN>
-Subject: 60-doctor PCN on TELUS Med Access — pre-submit audit, no cost
+Subject: Three SOMB patterns your 60–80-doctor PCN is probably losing money on
 
 Hi <First Name>,
 
-I read the Sherwood Park / Strathcona PCN careers page this week — actively hiring across admin and clinical roles, MAPS transition in motion, affiliated clinics on TELUS Med Access. Your network is the right size for a pre-submit auditor to pay for itself in a 30-day pilot.
+Three patterns the v12 Zorva auditor catches on real Alberta claims that almost certainly show up across the Strathcona / Sherwood Park PCN network:
+
+- **Modifier-25 missing on E/M + procedure same day.** A 03.04A billed the same day as a cryo or joint injection without a -25 on the E/M line. AHCIP bundles the visit into the procedure and pays the lower of the two. About $50 per miss, easily several per week in a 60-to-80-physician network.
+- **CMGP modifier missed on chronic-disease visits.** Established T2DM, HTN, or dyslipidemia patients on a 03.04A without the chronic disease management general premium modifier. About $25 per visit left on the table. The rule fires only when the note documents a qualifying chronic condition (so it's not over-called) — this is the part v11 got wrong and v12 fixed.
+- **Annual physical billed as insured.** Annual health maintenance visits for adults are largely non-insured under AHCIP. Catching it lets the biller route to Blue Cross or private billing and recover the full visit fee instead of getting denied.
 
 I'm Cameron Ashley. I built Zorva — a pre-submit AHCIP claims auditor. It reads every claim against the SOMB before it hits H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
 
-Three patterns I see on real Alberta claims that probably show up in a TELUS Med Access workflow too:
+The v12 auditor scores F1=0.690 on the cleaned AHCIP validation set (10 encounters, 13 audited gold findings, post EXAMPLE 6/7 leak-fix). P=0.647 (about 2 of 3 flags are real findings), R=0.846 (catches 11 of 13). Set lives at `data/synth/val_ca.json`; report at `runs/shadow/val_ca-20260630T193918.md`. Both public.
 
-- **Modifier-25 missing on E/M + procedure same day.** A 03.04A billed on the same day as a cryo or joint injection without a -25 on the E/M line. AHCIP bundles the visit into the procedure and pays the lower of the two. About $50 per miss, easily 5-10/week in a 60-physician network. Zorva catches it before submission.
-- **CMGP modifier missed on chronic-disease visits.** Established T2DM / HTN / dyslipidemia patients on a 03.04A without the chronic disease management general premium modifier. About $25 per visit left on the table. Zorva fires only when the note documents a qualifying chronic condition (so it's not over-called), which is the part v11 got wrong and v12 fixed.
-- **Annual physical billed as insured.** Annual health maintenance visits for adults are largely non-insured under AHCIP. Zorva flags the non-insured status so the biller can bill privately or to Blue Cross — recovers the full fee instead of getting denied.
-
-The v12 auditor scores F1=0.690 on the cleaned AHCIP validation set (10 encounters, 13 gold findings, post EXAMPLE 6/7 leak-fix). P=0.647 (about 2 of 3 flags are real findings), R=0.846 (catches 11 of 13). The set lives at `data/synth/val_ca.json`; the report at `runs/shadow/val_ca-20260630T193918.md`. Both are public.
+If the MAPS-to-RPHCN transition has the network sideways for the next quarter, happy to circle back in Q1 2027 once the RPHCN consolidation is settled. No hard ask.
 
 If you want to see what the auditor does on Strathcona's actual claims, the offer is: send 100 de-identified claims (837P file or CSV), I run Zorva on them and send back a 1-page finding-by-finding report. No fee, no follow-up unless the report is useful. The whole loop is under 30 minutes; the data is deleted on one email at the end.
 
-If MAPS transition has the network sideways for the next quarter, happy to circle back in Q1 2027 once the RPHCN consolidation is settled. No hard ask either way.
-
 Cameron Ashley
-Founder, Zorva (built by Ashbi Design)
+Founder, Zorva (built by Ashbi Design) — Top Rated on Upwork, 80+ projects, $100K+ earned
 cameron@ashbi.ca · (647) 555-0142
-P.S. The privacy officer's one-pager I send alongside any pilot: `docs/PRIVACY_OFFICER_BRIEF.md`. One page, plain English, the five questions to ask before signing. If the Strathcona privacy officer has feedback, I want to hear it before any contract goes out.
+P.S. The privacy officer's one-pager I send alongside any pilot: `docs/PRIVACY_OFFICER_BRIEF.md`. One page in plain English, with the five questions a privacy officer should ask before signing. If the Strathcona privacy officer has feedback, I want to hear it before any contract goes out.
