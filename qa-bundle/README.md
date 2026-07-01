@@ -105,3 +105,17 @@ The `qa-bundle/` folder is self-contained. Options:
 4. **Direct message** — share the files one at a time as text attachments.
 
 If your friend wants to leave feedback inline, ask them to use the `01-`/`02-`/`03-` file names so it's clear which draft the comment is on.
+---
+
+## Update 2026-07-01 — P11 round-2 refresh
+
+Round-2 of the swarm audit caught Rule 1 violations in all 3
+cold emails (they opened with "I'm Cameron Ashley" before any
+audit content). The drafts in this bundle are **rewritten** to
+lead with 3 SOMB-pattern findings, with the self-intro on line 2.
+The P11 round-2 changelog (file `07-`) documents what changed.
+
+If your friend already saw the round-1 versions, ask them to
+focus on file `01-`/`02-`/`03-` again — the structural change is
+significant (findings-first, sender-second instead of the
+reverse).
