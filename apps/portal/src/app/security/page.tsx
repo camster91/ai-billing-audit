@@ -345,7 +345,7 @@ export default function SecurityPage() {
               Download /security.pdf
             </a>
             <a
-              href="mailto:legal@zorva.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request"
+              href="mailto:legal@ashbi.ca?subject=BAA%20%2F%20HIC-Agent%20agreement%20request"
               className={styles.ctaSecondary}
             >
               Request the BAA / HIC-Agent agreement
@@ -362,7 +362,7 @@ export default function SecurityPage() {
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

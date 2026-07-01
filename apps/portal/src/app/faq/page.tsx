@@ -62,7 +62,7 @@ const sections: { id: string; title: string; items: QA[] }[] = [
               For the current attestation packet (data center
               details, sub-processor list, hosting-provider
               third-party reports), email{" "}
-              <code>security@zorva.ca</code>.
+              <code>security@ashbi.ca</code>.
             </p>
           </>
         ),
@@ -150,9 +150,12 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         q: "Can I refer a colleague and get rewarded?",
         a: (
           <p>
-            Yes — see <Link href="/referral">/referral</Link>. $200
-            Amazon card per Tier 2/3 signup, or 1 month free on your
-            tier per signup. Tracked via referral codes in the URL.
+            Yes — email <a href="mailto:hello@ashbi.ca">hello@ashbi.ca</a>{" "}
+            with the colleague&rsquo;s clinic name and we&rsquo;ll set up a
+            referral code. $200 Amazon card per Tier 2/3 signup, or 1
+            month free on your tier per signup. (We&rsquo;re building a
+            self-serve /referral page for Q4 2026; in the meantime the
+            email-driven flow is the only path.)
           </p>
         ),
       },
@@ -360,7 +363,7 @@ export default function FAQPage() {
       <footer className={styles.footer}>
         <p>
           Didn&apos;t find your question? Email{" "}
-          <a href="mailto:hello@zorva.ca">hello@zorva.ca</a> and
+          <a href="mailto:hello@ashbi.ca">hello@ashbi.ca</a> and
           we&apos;ll add it.
         </p>
       </footer>

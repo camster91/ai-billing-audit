@@ -8,7 +8,7 @@
 >
 > **Cost:** free. We pay nothing; you pay nothing. The only ask is
 > the acknowledgment at the bottom of this page, signed and returned
-> to `audit@zorva.ca` before access is granted.
+> to `audit@ashbi.ca` before access is granted.
 
 ---
 
@@ -169,7 +169,7 @@ different conversation, with a different contract and a price tag).
 
 If any of the above is something you genuinely need (for example,
 a regulator investigating a specific incident), please contact
-`audit@zorva.ca` and we'll discuss the right channel — typically a
+`audit@ashbi.ca` and we'll discuss the right channel — typically a
 subpoena, an information request under PHIPA / HIA / PIPEDA, or
 a mutual assistance arrangement with your office.
 
@@ -208,7 +208,7 @@ What we ask in return:
 
 ## How to start
 
-Email `audit@zorva.ca` with:
+Email `audit@ashbi.ca` with:
 
 1. Your name, role, and organisation.
 2. The framework you're auditing against (PHIPA / HIPAA / SOC 2 /
@@ -234,7 +234,7 @@ organisations do), we have a short mutual NDA at
 
 ## Acknowledgment template
 
-> The auditor returns this signed to `audit@zorva.ca` before
+> The auditor returns this signed to `audit@ashbi.ca` before
 > access is granted.
 
 ```

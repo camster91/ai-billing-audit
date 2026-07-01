@@ -139,7 +139,7 @@ export default function AboutPage() {
           <span aria-hidden="true">·</span>
           <Link href="/careers">Careers</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

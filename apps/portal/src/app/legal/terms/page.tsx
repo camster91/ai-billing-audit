@@ -103,7 +103,7 @@ export default function TermsPage() {
         <section>
           <h2>8. Contact</h2>
           <p>
-            <a href="mailto:legal@zorva.ca">legal@zorva.ca</a> for
+            <a href="mailto:legal@ashbi.ca">legal@ashbi.ca</a> for
             BAA / HIC-Agent agreements, MSA redlines, or DPA requests.
           </p>
         </section>

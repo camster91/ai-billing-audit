@@ -58,6 +58,6 @@ export default function robots(): MetadataRoute.Robots {
     // Sitemap route doesn't exist yet (see audit task for adding it).
     // Pointing at the canonical URL lets search engines 404 cleanly
     // today and pick it up automatically once we add the route.
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://zorva.ca"}/sitemap.xml`,
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://ashbi.ca"}/sitemap.xml`,
   };
 }

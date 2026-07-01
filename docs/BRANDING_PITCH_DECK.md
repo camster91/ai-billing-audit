@@ -145,7 +145,7 @@ audit in 2026 will compound the gains."
     - Free during pilot; standard pricing kicks in at month 3
     - You own the data; we delete it within 30 days of pilot end
   - **Right:** the contact
-    - `hello@zorva.ca` / `zorva.ca/book`
+    - `hello@ashbi.ca` / `ashbi.ca/book`
     - Calendar QR code (links to Cal.com 10-min slot)
 - Background: `primary-700`.
 
@@ -154,7 +154,7 @@ audit in 2026 will compound the gains."
 - **Big:** "Thank you."
 - **Three small lines:**
   - "We follow up within 24 hours."
-  - "Email hello@zorva.ca with any question, any time."
+  - "Email hello@ashbi.ca with any question, any time."
   - "Backup slides on the next pages."
 - Background: `primary-700`.
 - Append **3 backup slides** (FAQ, security deep-dive, pricing detail)

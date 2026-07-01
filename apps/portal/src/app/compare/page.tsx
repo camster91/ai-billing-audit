@@ -118,7 +118,7 @@ const DIMS: Dim[] = [
   {
     id: "learns",
     label: "Learns from your corrections",
-    zorva: "Yes. Every accept / dismiss / modify feeds a per-specialty confidence update. The auditor's false-positive rate drops over the pilot.",
+    zorva: "Yes. Every accept / dismiss / modify is logged against the encounter, with the biller's user_id and timestamp. The full history is exportable from /api/audit/export so you can re-train your own internal model offline, but Zorva does not adjust its own confidence weights in real time during the pilot — calibration work is a quarterly service in the Large tier.",
     manual: "Yes, but only for the biller doing the work. Quits, retires, and PTO lose it.",
     llm: "No. Each chat session starts fresh. The biller is the memory.",
     ehr: "No. The rule set is what the vendor shipped.",
@@ -247,12 +247,12 @@ export default function ComparePage() {
                 </tr>
                 <tr>
                   <th scope="row" className={styles.dimRow}>
-                    <span className={styles.dimLabel}>Per-specialty learning from accept / dismiss</span>
+                    <span className={styles.dimLabel}>Accept / dismiss history export</span>
                   </th>
-                  <td className={styles.zorvaCell}>Yes — confidence updates per rule per tenant</td>
-                  <td>Vendor-side only; not exposed to clinic</td>
-                  <td>Vendor-side; not exposed to clinic</td>
-                  <td>Vendor-side; not exposed to clinic</td>
+                  <td className={styles.zorvaCell}>Yes — JSON + CSV, per-finding, per-user, hash-chained</td>
+                  <td>Application log, not exportable</td>
+                  <td>Application log, not exportable</td>
+                  <td>Application log, not exportable</td>
                 </tr>
                 <tr>
                   <th scope="row" className={styles.dimRow}>
@@ -412,7 +412,7 @@ export default function ComparePage() {
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

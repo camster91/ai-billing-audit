@@ -175,7 +175,7 @@ export default function WhatZorvaFindsPage() {
       </main>
 
       <footer className={styles.footer}>
-        Questions? Email us at hello@zorva.ca
+        Questions? Email us at hello@ashbi.ca
       </footer>
     </div>
   );

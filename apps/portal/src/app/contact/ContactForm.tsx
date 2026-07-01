@@ -174,7 +174,7 @@ export default function ContactForm({ defaults }: Props) {
       }
 
       setTopError(
-        "Something went wrong submitting the form. Please try again, or email us directly at sales@zorva.ca.",
+        "Something went wrong submitting the form. Please try again, or email us directly at sales@ashbi.ca.",
       );
       setStatus("idle");
     } catch {

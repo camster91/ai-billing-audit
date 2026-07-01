@@ -174,8 +174,8 @@ export default function CareersPage() {
           <h2 className={styles.sectionTitle}>How to reach us</h2>
           <p>
             Send a short intro to{" "}
-            <a className={styles.emailLink} href="mailto:careers@zorva.ca">
-              careers@zorva.ca
+            <a className={styles.emailLink} href="mailto:careers@ashbi.ca">
+              careers@ashbi.ca
             </a>
             . Two or three paragraphs is the sweet spot — what you do
             now, what part of the list above excites you, and one link

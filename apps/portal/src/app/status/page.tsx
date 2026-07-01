@@ -23,11 +23,11 @@ import Link from "next/link";
 import styles from "./status.module.css";
 
 export const metadata: Metadata = {
-  title: "Status & uptime — AI billing audit",
+  title: "Status & uptime — Zorva",
   description:
-    "Live system status, 90-day uptime, and the real known incidents. " +
-    "If a clinic cannot submit a claim because we are down, it shows up " +
-    "here within five minutes.",
+    "Zorva system status, 90-day uptime, and the real known incidents. " +
+    "Static snapshot per deploy; the on-call phone line is the " +
+    "authoritative source during an incident.",
 };
 
 // Hardcoded system list. When a real monitoring feed (Prometheus /
@@ -252,9 +252,13 @@ export default function StatusPage() {
               </div>
               <p className={styles.incidentBody}>
                 Our transactional-email provider had a multi-region outage
-                that delayed the daily digest email by ~6 hours. The
-                provider's status page has the public postmortem. We have
-                since added a second provider as a fallback.
+                that delayed the welcome email for new clinic
+                onboardings by ~6 hours (we do not auto-send daily
+                digests — billers review findings in the portal — so the
+                customer-visible blast radius was a queue of welcome
+                emails that drained within an hour of recovery). The
+                provider&rsquo;s status page has the public postmortem.
+                We have since added a second provider as a fallback.
               </p>
             </li>
           </ul>
@@ -295,9 +299,13 @@ export default function StatusPage() {
         <section className={styles.ctaSection} aria-labelledby="t-cta">
           <h2 id="t-cta">Subscribe to incident notifications</h2>
           <p>
-            We will email you within five minutes of any SEV-1 or
-            SEV-2 incident, and post a public postmortem within 48
-            hours of resolution. No marketing, no digests.
+            We email a small subscriber list when a SEV-1 or SEV-2
+            incident opens and when it closes. SLA is &ldquo;best
+            effort, on-call phone line is the authoritative source&rdquo;
+            — there is no contracted 5-minute ack time on the
+            notification itself, only on the on-call phone pickup. We
+            post a public postmortem within 48 hours of resolution. No
+            marketing, no digests.
           </p>
           <div className={styles.ctaRow}>
             <Link href="/contact" className={styles.ctaButton}>
@@ -318,7 +326,7 @@ export default function StatusPage() {
           <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

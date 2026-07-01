@@ -52,6 +52,16 @@ const PUBLIC_PREFIXES = [
   "/api/leads",     // public contact-form endpoint (t_fa2149e1) — pre-account visitors only
   "/api/onboarding", // first-run wizard — Stripe success_url lands here, must work w/o auth
   "/api/team/accept", // invite magic-link — works pre-session; the token IS the auth (t_23bfd49c)
+  // P11 bug-sweep 2026-06-30: Resend event webhook (delivery / bounce /
+  // spam / unsubscribe tracking) and the RFC 8058 unsubscribe handler
+  // were previously gated by the auth middleware and were 307-ing to
+  // /login for every Resend callback. Resend requires the webhook to
+  // respond 2xx within seconds, otherwise it retries and eventually
+  // disables the sender. RFC 8058 unsubscribe requires a public POST
+  // endpoint reachable from mail clients — failing it is a CAN-SPAM
+  // violation.
+  "/api/email/webhook",     // Resend event webhook (Svix-signed)
+  "/api/email/unsubscribe", // RFC 8058 one-click unsubscribe handler
   "/login",
   "/",              // marketing landing page, public (t_fa2149e1)
   "/pricing",       // marketing page, public

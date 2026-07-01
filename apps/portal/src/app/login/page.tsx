@@ -106,7 +106,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
           <span aria-hidden="true">·</span>
           <Link href="/contact">Contact</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </main>
   );

@@ -129,7 +129,7 @@ export default function DemoRequestForm() {
           <strong>{submittedEmail}</strong> within one business day with
           a Calendly link to pick a 20-minute slot. In the meantime, the{" "}
           <a
-            href="https://docs.zorva.ca/security"
+            href="https://docs.ashbi.ca/security"
             className={styles.link}
             rel="noopener"
           >

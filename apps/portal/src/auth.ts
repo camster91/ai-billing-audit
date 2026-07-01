@@ -65,11 +65,57 @@ async function loadUserTenants(userId: string, activeTenantId: string | null) {
 const useResendMock =
   !process.env.AUTH_RESEND_KEY || process.env.AUTH_RESEND_KEY.length === 0;
 
-// TEMP DEBUG: log the body that arrives at /api/auth/signin/<provider>
+// P11 bug-sweep fix (2026-06-30): the previous version of this module
+// had three critical security issues:
+//   1. ``debugNormalizer`` logged the raw email bytes (PII) and a
+//      hex-encoded copy to stdout — every signin attempt printed the
+//      user's email to logs. PHI / PII leak.
+//   2. ``sendVerificationRequest`` in the dev-mock branch printed the
+//      FULL MAGIC-LINK URL to stdout — anyone with log access (CI
+//      runner, accidental stdout dump, log aggregator without
+//      scrubbing) gets a one-shot account-takeover token. CRITICAL.
+//   3. ``signIn`` callback logged the full user object (including id,
+//      email, name) on every signin.
+//
+// All three are now gated behind ``NODE_ENV !== "production"`` AND
+// the magic-link URL is NEVER logged — only the (non-PII) presence of
+// a pending signin is recorded in dev, and only the email's sha256
+// prefix (first 8 hex chars, not the address) is shown so multiple
+// devs can correlate logs without leaking the address itself.
+
+function isDev(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+// Dev-only identifier redactor: emit the first 8 hex chars of a
+// sha256 of the email so logs can still correlate "is this the same
+// person retrying?" without printing the address. Production returns
+// "[redacted]" because dev-redaction isn't appropriate in prod logs
+// either — those should go to a structured logger, not console.log.
+function devRedactEmail(email: string | null | undefined): string {
+  if (!isDev()) return "[redacted]";
+  if (!email) return "(none)";
+  try {
+    // Lazy import so this never lands in the production bundle's
+    // module-resolution graph.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createHash } = require("node:crypto") as typeof import("node:crypto");
+    return "sha256:" + createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 8);
+  } catch {
+    return "(unparseable)";
+  }
+}
+
+// Normalize the email the way Resend's defaultNormalizer does. The
+// dev-only debug log uses devRedactEmail so we never print the raw
+// address in any environment.
 function debugNormalizer(email: string): string {
-  console.log(
-    "[auth-debug] debugNormalizer called with email=>>>" + email + "<<< typeof=" + typeof email + " length=" + (email ? email.length : "null") + " bytes=" + (email ? Buffer.from(email).toString("hex") : "null") + " useResendMock=" + useResendMock + " key_set=" + (process.env.AUTH_RESEND_KEY ? "yes(" + process.env.AUTH_RESEND_KEY.length + ")" : "no"),
-  );
+  if (isDev()) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[auth-debug] normalize identifier=${devRedactEmail(email)} useResendMock=${useResendMock}`,
+    );
+  }
   // Replicate defaultNormalizer
   if (!email) throw new Error("Missing email from request body.");
   const trimmedEmail = email.toLowerCase().trim();
@@ -78,7 +124,7 @@ function debugNormalizer(email: string): string {
   }
   let [local, domain] = trimmedEmail.split("@");
   if (!local || !domain || trimmedEmail.split("@").length !== 2) {
-    throw new Error("Invalid email address format. (local=" + JSON.stringify(local) + " domain=" + JSON.stringify(domain) + " splitLen=" + trimmedEmail.split("@").length + ")");
+    throw new Error("Invalid email address format.");
   }
   domain = domain.split(",")[0];
   if (!domain) throw new Error("Invalid email address format.");
@@ -97,13 +143,16 @@ export const authConfig: NextAuthConfig = {
       normalizeIdentifier: debugNormalizer,
       ...(useResendMock
         ? {
-            async sendVerificationRequest({ identifier, url }) {
-              console.log(
-                "[auth-debug] sendVerificationRequest called identifier=" + JSON.stringify(identifier) + " useResendMock=" + useResendMock + " key_set=" + (process.env.AUTH_RESEND_KEY ? "yes" : "no"),
-              );
-              console.log(
-                "\n[auth] magic link for " + identifier + ":\n  " + url + "\n",
-              );
+            async sendVerificationRequest({ identifier }) {
+              // CRITICAL: never log the magic-link URL — it contains the
+              // one-shot token. We log only the redacted identifier
+              // (sha256 prefix) and the fact that a link was generated.
+              if (isDev()) {
+                // eslint-disable-next-line no-console
+                console.log(
+                  `[auth-debug] sendVerificationRequest identifier=${devRedactEmail(identifier)} useResendMock=${useResendMock} (link suppressed — paste the URL from the request handler's return to test signin in dev)`,
+                );
+              }
             },
           }
         : {}),
@@ -116,7 +165,14 @@ export const authConfig: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user }) {
-      console.log("[auth-debug] signIn callback user=", JSON.stringify(user));
+      // Dev-only log: redacted identifier + user id presence. Never
+      // log the full user object (it carries email, name, image).
+      if (isDev()) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[auth-debug] signIn callback identifier=${devRedactEmail(user?.email ?? null)} hasUserId=${Boolean(user?.id)}`,
+        );
+      }
       return true;
     },
     // With PrismaAdapter (database session strategy), the `user` parameter

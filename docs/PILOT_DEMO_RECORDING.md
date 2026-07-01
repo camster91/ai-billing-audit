@@ -2,8 +2,11 @@
 
 **Run timestamp (UTC):** 2026-06-18T20:51:26Z
 **Live URL:** https://ai-billing-audit.ashbi.ca
-**Bearer token:** `pilot-bearer-token-2026-06-17-ashbi` (rotated post-pilot; see
-`/root/.ai_billing_bearer.txt` for the current value on the VPS)
+**Bearer token:** rotated post-pilot; the active value lives only at
+`/root/.ai_billing_bearer.txt` on the VPS (never committed to the repo).
+P11 bug-sweep: the literal "pilot-bearer-token-2026-06-17-ashbi" string was
+removed from this doc on 2026-06-30 — the value it had pointed to is no
+longer the live token.
 **Source of truth:** `docs/SALES_DEMO.md` (the runbook the sales rep follows)
 **Run by:** kanban worker dispatched for `t_ea5b7b03` (task archived
 mid-flight; this runbook is the deliverable).

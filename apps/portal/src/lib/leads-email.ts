@@ -32,7 +32,7 @@ const RESEND_KEY = process.env[
 ];
 
 const LEADS_SALES_EMAIL =
-  process.env["LEADS_SALES_EMAIL"] ?? "sales@zorva.ca";
+  process.env["LEADS_SALES_EMAIL"] ?? "sales@ashbi.ca";
 
 const LEADS_FROM =
   process.env["LEADS_FROM"] ??

@@ -16,6 +16,17 @@
 // can be tuned without a redeploy.
 //
 // Out of scope (per task body): tax, coupons, proration, real-time FX.
+//
+// P11 reality-check alignment (2026-06-30): the audit caps here MUST match
+// the marketing copy on /pricing and /faq. Three sources of truth must
+// agree:
+//   - this file (canonical code cap, enforced by /api/billing/tiers)
+//   - apps/portal/src/app/pricing/page.tsx (claimVolumeFor())
+//   - apps/portal/src/app/faq/page.tsx (pricing FAQ bullet)
+// All three use 1,000 / 3,000 / 3,000+ for small / mid / large. The
+// previous 500 / 2,000 / 5,000 numbers here drifted from the marketing
+// copy after the df9bf0f reality-check commit and were a P11 swarm
+// finding. Keeping them in lockstep.
 
 export type TierId = "small" | "mid" | "large";
 export type CurrencyCode = "CAD" | "USD";
@@ -44,22 +55,22 @@ export interface PricingConfig {
 
 const FEATURES: Record<TierId, string[]> = {
   small: [
-    "Up to 500 encounter audits / month",
+    "Up to 1,000 encounter audits / month",
     "LLM-agnostic audit engine (any provider, your keys)",
     "Deterministic runs: seed pinned, temperature=0",
     "HIA/PHIPA-aligned audit trail with hash-chain",
     "Email support, weekly digest",
   ],
   mid: [
-    "Up to 2,000 encounter audits / month",
+    "Up to 3,000 encounter audits / month",
     "LLM-agnostic audit engine (any provider, your keys)",
     "Deterministic runs: seed pinned, temperature=0",
     "HIA/PHIPA-aligned audit trail with hash-chain",
-    "Priority email support, daily digest",
+    "Priority email support, same-day response",
     "Multi-user access (up to 5 seats)",
   ],
   large: [
-    "Up to 5,000 encounter audits / month",
+    "3,000+ encounter audits / month (custom volume)",
     "LLM-agnostic audit engine (any provider, your keys)",
     "Deterministic runs: seed pinned, temperature=0",
     "HIA/PHIPA-aligned audit trail with hash-chain",
@@ -76,9 +87,9 @@ const TIER_NAMES: Record<TierId, string> = {
 };
 
 const TIER_CAPS: Record<TierId, number> = {
-  small: 500,
-  mid: 2_000,
-  large: 5_000,
+  small: 1_000,
+  mid: 3_000,
+  large: 3_000,
 };
 
 function envInt(name: string, fallback: number): number {

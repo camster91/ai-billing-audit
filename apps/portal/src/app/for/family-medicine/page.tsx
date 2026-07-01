@@ -447,11 +447,18 @@ export default function FamilyMedicinePage() {
             Book a 60-day no-cost pilot →
           </Link>
           <p className={styles.muted}>
-            Prefer to read the pilot agreement first?{" "}
-            <Link href="/legal/HIA-DPA-TEMPLATE.md" className={styles.inlineLink}>
-              HIA-compliant DPA template
+            Prefer to read the pilot agreement first? The{" "}
+            <Link href="/legal/privacy" className={styles.inlineLink}>
+              privacy policy
             </Link>{" "}
-            is one page, plain English, signable by a privacy officer.
+            and the{" "}
+            <Link href="/legal/terms" className={styles.inlineLink}>
+              terms of service
+            </Link>{" "}
+            are short, plain-English drafts (lawyer review in progress);
+            the HIA-compliant IMA template is one page and sent on
+            request from{" "}
+            <a href="mailto:legal@ashbi.ca">legal@ashbi.ca</a>.
           </p>
         </section>
       </section>

@@ -218,7 +218,7 @@ Rules:
   2. What's blocked: "New audits will pause in {{days}} days."
   3. What's not blocked: "Existing audit history is still accessible."
   4. CTA: "Update your card" → Stripe billing portal
-  5. Support: "Reply to this email or chat with us at zorva.ca."
+  5. Support: "Reply to this email or chat with us at ashbi.ca."
 - **Kind:** transactional (operational, not marketing). **Do not**
   include `List-Unsubscribe` — this is a billing-critical message.
 
@@ -233,7 +233,7 @@ Every email has a plain-text version. Rules:
   clients that don't).
 - Use `formatMoney` and `formatNumber` for currency and numbers — no
   raw floats.
-- URLs in angle brackets: `<https://zorva.ca/...>` so mail clients
+- URLs in angle brackets: `<https://ashbi.ca/...>` so mail clients
   don't chop them.
 
 ---

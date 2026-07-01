@@ -88,7 +88,7 @@ export default function GlossaryPage() {
 
         <p className={styles.footer}>
           Missing a term? Email{" "}
-          <a href="mailto:hello@zorva.ca">hello@zorva.ca</a> and we&apos;ll
+          <a href="mailto:hello@ashbi.ca">hello@ashbi.ca</a> and we&apos;ll
           add it. For the F1 formula and the audit_trail hash chain
           schema, see <Link href="/technical">/technical</Link>.
         </p>

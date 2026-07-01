@@ -65,9 +65,12 @@ export default function PrivacyPage() {
         <section>
           <h2>4. Sub-processors</h2>
           <p>
-            Anthropic (model inference — zero-retention endpoint),
-            Hostinger (hosting — Canadian region), and Resend
-            (transactional email). A current list lives at{" "}
+            MiniMax (model inference — zero-retention endpoint),
+            Hostinger (hosting — Canadian-region facility, documented in
+            the executed IMA / BAA before any customer data is
+            uploaded), and Resend (transactional email — magic-link
+            authentication only, not used for any patient-data
+            correspondence). A current list of sub-processors lives at{" "}
             <Link href="/security">/security</Link>.
           </p>
         </section>
@@ -76,7 +79,7 @@ export default function PrivacyPage() {
           <h2>5. Your rights</h2>
           <p>
             Access, correction, and deletion requests go to{" "}
-            <a href="mailto:privacy@zorva.ca">privacy@zorva.ca</a>. We
+            <a href="mailto:privacy@ashbi.ca">privacy@ashbi.ca</a>. We
             respond within 30 days. For Alberta custodians, this satisfies
             the HIA s.61 individual&apos;s right of access.
           </p>
@@ -86,11 +89,11 @@ export default function PrivacyPage() {
           <h2>6. Contact</h2>
           <p>
             Privacy Officer:{" "}
-            <a href="mailto:privacy@zorva.ca">privacy@zorva.ca</a>.
+            <a href="mailto:privacy@ashbi.ca">privacy@ashbi.ca</a>.
             <br />
             BAA / HIC-Agent agreement requests:{" "}
-            <a href="mailto:legal@zorva.ca?subject=BAA%20request">
-              legal@zorva.ca
+            <a href="mailto:legal@ashbi.ca?subject=BAA%20request">
+              legal@ashbi.ca
             </a>
             .
           </p>

@@ -72,7 +72,7 @@ If the answers above are not enough, the following artifacts back every claim in
 4. **`docs/HIA_LAWYER_HANDOFF.md`** — a 4-page cover note for the IMA review engagement (what is in the package, the 8 items where Ashbi made a unilateral drafting call, the 6 items where counsel should verify).
 5. **`docs/AUDIT_SECURITY.md`** — an internal security audit from 2026-06-23. Includes the 4 severe issues found and the mitigations applied since (most recently: FastAPI patient_hash now uses the same salted SHA-256 as the portal, deployed 2026-06-30).
 
-If the privacy officer's review surfaces something this brief doesn't answer, email `security@zorva.ca` — the response is within one business day.
+If the privacy officer's review surfaces something this brief doesn't answer, email `security@ashbi.ca` — the response is within one business day.
 
 ---
 

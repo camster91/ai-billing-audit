@@ -4,14 +4,20 @@
 // a fact-check on a claim. Also read by clinic operators who want
 // to see third-party coverage before booking a call.
 //
-// The page deliberately keeps coverage entries hand-curated — we
-// only list outlets that have actually run a piece (a placeholder
-// list would erode the trust signal we want this page to carry).
-// Each card carries the outlet, headline, publish date, and a 2-3
-// sentence excerpt. The full piece is linked, never re-printed in
-// full (rights / paywall).
+// P11 reality-check fix (2026-06-30): the previous version of this
+// page listed two fabricated coverage items — including a fictional
+// founder name (Maya Okafor) attached to a quoted round in a
+// non-existent HIStalk article. Cameron has not actually appeared in
+// HIStalk, the Calgary Herald, or any other outlet as of this write,
+// so listing those as "coverage" was an integrity violation.
 //
-// Press contact: press@zorva.ca. The footer email is a
+// The page is now honest: it has the press contact and a short
+// "no coverage yet" note rather than fake entries. When actual
+// coverage lands, swap the empty `COVERAGE` array for real
+// {outlet, title, url, date, excerpt, byline, kind} entries — each
+// tied to a real URL on a real outlet's domain, never example.com.
+//
+// Press contact: press@ashbi.ca. The footer email is a
 // mailto: link so it works even if no contact-form route is wired.
 
 import type { Metadata } from "next";
@@ -21,8 +27,10 @@ import styles from "./press.module.css";
 export const metadata: Metadata = {
   title: "Press — Zorva in the news",
   description:
-    "Third-party coverage of Zorva's pre-submit audit for Alberta clinics. " +
-    "Reports, interviews, and product reviews for reporters and editors.",
+    "Press contact for Zorva (ai-billing-audit): quotes, interviews, " +
+    "and fact-checks on Alberta pre-bill audit, AHCIP / SOMB, and " +
+    "HIA / PIPEDA-aware data handling. Coverage list is empty until " +
+    "real third-party pieces land.",
 };
 
 interface CoverageItem {
@@ -39,32 +47,7 @@ interface CoverageItem {
   kind: "feature" | "interview" | "mention";
 }
 
-const COVERAGE: ReadonlyArray<CoverageItem> = [
-  {
-    outlet: "Calgary Herald — Business",
-    logo_label: "Calgary Herald",
-    title:
-      "An Alberta startup is reading every AHCIP claim before it leaves the desk. The pitch: catch the missed codes your billers never see.",
-    url: "https://example.com/calgary-herald/zorva-ahcip-audit",
-    date: "2026-04-18",
-    excerpt:
-      "Zorva's auditor reads the clinical narrative, the billed codes, and the relevant SOMB rules in parallel, then surfaces findings the biller would have missed — modifier-25 unlocks, missed preventive-service codes, E/M levels the note doesn't support. The company says average recovered revenue per flagged encounter runs $38 in primary care, more in cardiology. Clinics pay a flat monthly fee; the model deliberately avoids a percentage of revenue, aligning with the AKS safe-harbor for US pilots and published in the executed IMA for Canadian clinics.",
-    byline: "By Sarah Chen, Business Reporter",
-    kind: "feature",
-  },
-  {
-    outlet: "HIStalk",
-    logo_label: "HIStalk",
-    title:
-      "Zorva raises $2.4M pre-seed to bring pre-submit audit to Canadian primary care",
-    url: "https://example.com/histalk/zorva-preseed",
-    date: "2026-02-04",
-    excerpt:
-      "Founder Maya Okafor says the product's defensibility is the rule library itself — a curated, version-pinned set of AHCIP and SOMB rules updated monthly. 'You can wrap a different LLM around the rules tomorrow,' she says. 'You can't wrap the rules around a different LLM in a month.' The company is HIPAA-aligned for US pilots and HIA-aligned for Alberta clinics, with data residency confirmed in the BAA.",
-    byline: "By HIStalk News Desk",
-    kind: "interview",
-  },
-];
+const COVERAGE: ReadonlyArray<CoverageItem> = [];
 
 function kindLabel(k: CoverageItem["kind"]): string {
   switch (k) {
@@ -88,54 +71,67 @@ export default function PressPage() {
           <span className={styles.eyebrow}>Press</span>
           <h1 className={styles.headline}>Zorva in the news.</h1>
           <p className={styles.subhead}>
-            Third-party coverage of Zorva and the pre-submit audit category.
             Reporters and editors: the press contact below is monitored
-            Monday-Friday; we can usually turn around a same-day quote or a
-            same-week executive interview.
+            Monday-Friday; we can usually turn around a same-day quote
+            or a same-week executive interview.
           </p>
         </header>
 
         <section className={styles.list} aria-label="Coverage items">
-          {sorted.map((item) => (
-            <article key={item.url} className={styles.card}>
-              <header className={styles.cardHeader}>
-                <span className={styles.outletLogo} aria-hidden="true">
-                  {item.logo_label}
-                </span>
-                <span className={styles.kind}>{kindLabel(item.kind)}</span>
-                <time className={styles.date} dateTime={item.date}>
-                  {item.date}
-                </time>
-              </header>
-              <h2 className={styles.title}>
-                <a href={item.url} rel="noopener noreferrer" target="_blank">
-                  {item.title}
-                </a>
-              </h2>
-              <p className={styles.excerpt}>{item.excerpt}</p>
-              <footer className={styles.cardFooter}>
-                <span className={styles.outlet}>{item.outlet}</span>
-                {item.byline ? (
-                  <span className={styles.byline}>{item.byline}</span>
-                ) : null}
-                <a
-                  href={item.url}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                  className={styles.read}
-                >
-                  Read the full piece →
-                </a>
-              </footer>
+          {sorted.length === 0 ? (
+            <article className={styles.card}>
+              <h2 className={styles.title}>No third-party coverage yet.</h2>
+              <p className={styles.excerpt}>
+                Zorva has not been independently profiled, interviewed, or
+                quoted in a published piece as of this write. We will
+                populate this page with real coverage entries (each tied
+                to a real URL on a real outlet&rsquo;s domain) as they
+                land. If you&rsquo;re working on a piece, the press
+                contact below is the fastest way to reach us.
+              </p>
             </article>
-          ))}
+          ) : (
+            sorted.map((item) => (
+              <article key={item.url} className={styles.card}>
+                <header className={styles.cardHeader}>
+                  <span className={styles.outletLogo} aria-hidden="true">
+                    {item.logo_label}
+                  </span>
+                  <span className={styles.kind}>{kindLabel(item.kind)}</span>
+                  <time className={styles.date} dateTime={item.date}>
+                    {item.date}
+                  </time>
+                </header>
+                <h2 className={styles.title}>
+                  <a href={item.url} rel="noopener noreferrer" target="_blank">
+                    {item.title}
+                  </a>
+                </h2>
+                <p className={styles.excerpt}>{item.excerpt}</p>
+                <footer className={styles.cardFooter}>
+                  <span className={styles.outlet}>{item.outlet}</span>
+                  {item.byline ? (
+                    <span className={styles.byline}>{item.byline}</span>
+                  ) : null}
+                  <a
+                    href={item.url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    className={styles.read}
+                  >
+                    Read the full piece →
+                  </a>
+                </footer>
+              </article>
+            ))
+          )}
         </section>
 
         <section className={styles.contact} aria-label="Press contact">
           <h2>Press contact</h2>
           <p>
             For quotes, interviews, logo files, or fact-checks:{" "}
-            <a href="mailto:press@zorva.ca">press@zorva.ca</a>.
+            <a href="mailto:press@ashbi.ca">press@ashbi.ca</a>.
           </p>
           <p>
             We can usually turn around a same-day quote on a regulatory

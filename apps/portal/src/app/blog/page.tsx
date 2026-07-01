@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   description:
     "Writing on Alberta medical billing, AHCIP / SOMB updates, and the " +
     "operational patterns we see in pre-bill audit pipelines. Currently " +
-    "in pre-launch — pitches to writing@zorva.ca.",
+    "in pre-launch — pitches to writing@ashbi.ca.",
 };
 
 const UPCOMING_TOPICS: string[] = [
@@ -57,8 +57,8 @@ export default function BlogPage() {
           </p>
           <p className={styles.contact}>
             Pitches and ideas:{" "}
-            <a href="mailto:writing@zorva.ca" className={styles.link}>
-              writing@zorva.ca
+            <a href="mailto:writing@ashbi.ca" className={styles.link}>
+              writing@ashbi.ca
             </a>
           </p>
         </header>
@@ -100,7 +100,7 @@ export default function BlogPage() {
           <span aria-hidden="true">·</span>
           <Link href="/contact">Contact</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

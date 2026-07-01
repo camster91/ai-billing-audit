@@ -61,6 +61,7 @@ def aggregate_missed_revenue_by_rule(
     """
     start_ts, end_ts = _month_window(now)
     buckets: dict[str, dict[str, Any]] = {}
+    seen_encounters: set[str] = set()
     # First pass: aggregate dollar totals per rule across all demo
     # encounters whose audited_at falls in the current month. Demo
     # records that lack an audited_at timestamp are still considered

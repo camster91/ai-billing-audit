@@ -68,9 +68,12 @@ export default function CalculatorPage() {
       <section className={styles.howItWorks}>
         <h2 className={styles.h2}>How we calculate this</h2>
         <p>
-          The full derivation lives in{" "}
-          <a href="/docs/research/ROI-FORMULA.md">docs/research/ROI-FORMULA.md</a>.
-          The short version:
+          The full derivation (with the SOMB-anchored per-rule dollar
+          rates and the v12 recall baseline) is in our internal{" "}
+          <a href="https://github.com/camster91/ai-billing-audit/blob/main/docs/research/ROI-FORMULA.md">
+            ROI formula research note
+          </a>{" "}
+          on GitHub. The short version:
         </p>
         <ol>
           <li>

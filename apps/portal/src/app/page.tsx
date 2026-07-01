@@ -144,7 +144,7 @@ export default function Home() {
           <span aria-hidden="true">·</span>
           <Link href="/legal/terms">Terms</Link>
         </div>
-        <p>Questions? Email us at hello@zorva.ca</p>
+        <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
     </div>
   );

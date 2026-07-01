@@ -459,7 +459,7 @@ model_run_id       (the LLM call id that produced the audited finding)`}
           Last reviewed: <strong>{LAST_REVIEWED}</strong>. If anything
           on this page disagrees with the source files linked above,
           the source files are correct — please open an issue or
-          email <a href="mailto:security@zorva.ca">security@zorva.ca</a>.
+          email <a href="mailto:security@ashbi.ca">security@ashbi.ca</a>.
         </p>
       </main>
     </div>

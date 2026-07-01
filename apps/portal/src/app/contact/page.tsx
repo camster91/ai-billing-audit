@@ -62,8 +62,8 @@ export default function ContactPage() {
           <p className={styles.bookingFootnote}>
             Calendar opens in a new tab (Cal.com). If the link doesn&apos;t
             work, email{" "}
-            <a href="mailto:sales@zorva.ca" className={styles.bookingSecondary}>
-              sales@zorva.ca
+            <a href="mailto:sales@ashbi.ca" className={styles.bookingSecondary}>
+              sales@ashbi.ca
             </a>{" "}
             and we&apos;ll send three times that fit your week.
           </p>
@@ -73,8 +73,8 @@ export default function ContactPage() {
           <h2>Not ready to fill out a form?</h2>
           <p>
             Email{" "}
-            <a href="mailto:sales@zorva.ca" className={styles.link}>
-              sales@zorva.ca
+            <a href="mailto:sales@ashbi.ca" className={styles.link}>
+              sales@ashbi.ca
             </a>{" "}
             and we&apos;ll respond the same way. Or read the{" "}
             <Link href="/how-it-works" className={styles.link}>

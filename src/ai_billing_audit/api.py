@@ -1139,11 +1139,14 @@ def create_app() -> FastAPI:
             return await call_next(request)
         if not _BEARER:
             # Auth disabled because no token is configured. Refuse
-            # anything that isn't whitelisted above (POST endpoints,
-            # /api/upload/*, /encounter/{id}/accept-all, etc.).
+            # anything that isn't whitelisted above. The message
+            # used to say "POST endpoints disabled" but the
+            # middleware blanket-blocks GETs too — so the old copy
+            # was misleading (P11 bug-sweep finding). Surface the
+            # real reason: the operator hasn't provisioned auth.
             from fastapi.responses import JSONResponse
             return JSONResponse(
-                {"detail": "server has no AUDIT_BEARER_TOKEN configured; POST endpoints disabled"},
+                {"detail": "server has no AUDIT_BEARER_TOKEN configured; non-public requests refused. Contact operator."},
                 status_code=503,
             )
         auth = request.headers.get("authorization", "")
@@ -6226,6 +6229,7 @@ def create_app() -> FastAPI:
     async def encounters_audit(
         request: Request,
         encounter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Run the auditor on a previously uploaded encounter.
 
@@ -6263,6 +6267,21 @@ def create_app() -> FastAPI:
                 detail="encounter_id path param is empty",
             )
         encounter_id = encounter_id.strip()
+
+        # ---- 0. RBAC + tenant gate ----
+        # The bearer-token middleware at line ~1140 enforces auth, but
+        # historically this endpoint accepted ANY caller with a valid
+        # bearer token (including the synthetic "anonymous" user from
+        # ``_rbac_identity_middleware``). P11 bug-sweep finding: a
+        # viewer-role user — or a stolen shared bearer — could trigger
+        # an LLM audit on any encounter. We now require biller-or-admin
+        # explicitly. ``require_biller_or_admin`` raises 403 for
+        # ``role='viewer'`` and ``role='anonymous'`` before this point
+        # is reached, so the dependency handle is just an attestation
+        # marker here — the call still goes through. Tenant scoping
+        # is implicit because the in-process job queue is one-tenant-
+        # per-app-instance, but we keep the dependency to make the
+        # intent (defense in depth) explicit at the route signature.
 
         # ---- 1. read the optional clinical_note from the body ----
         # Accept JSON or form. JSON is the dashboard's preferred

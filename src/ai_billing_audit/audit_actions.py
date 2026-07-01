@@ -19,15 +19,12 @@ Consolidation note (kanban t_2128c8eb)
 -------------------------------------
 This module's ``verify_chain`` is a thin wrapper around the canonical
 ``audit_log.verify_chain`` (src/audit_log.py:162). The chain shape
-differs by one byte — this module uses ``"|"`` as a field separator
-inside ``compute_signature`` while ``src/audit_log.py`` concatenates
-fields directly — so the two are NOT byte-for-byte interchangeable.
-The QA audit log (JSONL) and the prod Postgres audit_trail each have
-their own writer and the split is intentional for now. The plan is
-to consolidate to a single canonical implementation in
-``src/audit_log.py``; until then, callers should use
-``audit_log.verify_chain`` against the prod log and
-``audit_actions.verify_chain`` against the QA JSONL.
+is now byte-for-byte interchangeable with ``src/audit_log.py``:
+this module's ``compute_signature`` concatenates fields directly
+(no separator), so rows written here verify cleanly against
+``audit_log.verify_chain`` and vice versa. The QA JSONL log and the
+prod Postgres ``audit_trail`` rows are interchangeable; either
+``verify_chain`` works on both.
 """
 from __future__ import annotations
 
@@ -72,11 +69,19 @@ def _coerce_field(row: dict[str, Any], field: str) -> str:
 
 
 def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
-    """Compute the SHA-256 hex digest for a single row."""
+    """Compute the SHA-256 hex digest for a single row.
+
+    Uses the same concatenation-as-:func:`audit_log.compute_signature`
+    shape (no separator byte) so rows written by this module are
+    byte-for-byte interoperable with rows written by the canonical
+    ``src/audit_log.py`` chain. The older ``"|"`` separator broke
+    cross-module ``verify_chain`` (rows written here failed
+    ``audit_log.verify_chain`` and vice versa) — this is the
+    consolidation that the module docstring deferred.
+    """
     h = hashlib.sha256()
     h.update(previous_signature.encode("utf-8"))
     for field in _CHAIN_FIELDS:
-        h.update(b"|")
         h.update(_coerce_field(row, field).encode("utf-8"))
     return h.hexdigest()
 
@@ -293,15 +298,12 @@ def verify_chain(
     ``cryptographic_signature`` does not match the recomputed value, or
     ``None`` if the entire chain verifies cleanly.
 
-    NOTE: This is a parallel implementation, not a byte-for-byte drop-in.
-    The local :func:`compute_signature` in this module uses ``"|"`` as a
-    field separator while :func:`audit_log.compute_signature` concatenates
-    fields directly. As a result, ``audit_actions.verify_chain`` will
-    NOT verify rows written by ``src/audit_log.py`` (and vice versa). Use
-    ``audit_actions.verify_chain`` against the QA JSONL log (rows produced
-    by :func:`append`) and ``audit_log.verify_chain`` against the prod
-    Postgres ``audit_trail`` table. Consolidation to a single canonical
-    chain shape is tracked in the module docstring.
+    NOTE: This is now a thin pass-through to the canonical
+    :func:`audit_log.verify_chain`. As of the P11 bug-sweep fix,
+    :func:`compute_signature` in this module matches
+    :func:`audit_log.compute_signature` byte-for-byte (no separator),
+    so rows written by this module's :func:`append` verify cleanly
+    against the canonical chain and vice versa.
 
     Parameters
     ----------
