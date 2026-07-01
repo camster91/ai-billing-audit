@@ -214,5 +214,6 @@ export async function POST(request: Request) {
       demo: false,
     });
   } catch (e) {
-    return internalErrorResponse(request, e, "[/api/billing/change-tier");
+    return internalErrorResponse(request, e, "/api/billing/change-tier");
   }
+}

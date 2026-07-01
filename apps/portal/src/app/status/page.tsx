@@ -157,11 +157,14 @@ export default function StatusPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <span className={styles.eyebrow}>Status</span>
-        <h1>System status &amp; uptime</h1>
-        <p className={styles.lede}>
-          If a clinic cannot submit a claim because we are down, it shows
-          up here within five minutes.
-        </p>
+<h1>System status &amp; uptime</h1>
+          <p className={styles.lede}>
+            Static snapshot per deploy — the on-call phone line is the
+            authoritative source during an incident. We email a small
+            subscriber list when a SEV-1 or SEV-2 incident opens and
+            when it closes; the page itself is regenerated on the next
+            deploy, not in real time.
+          </p>
       </header>
 
       <main className={styles.main} id="main">

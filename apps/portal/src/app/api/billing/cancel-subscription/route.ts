@@ -157,5 +157,6 @@ export async function POST(request: Request) {
       demo: false,
     });
   } catch (e) {
-    return internalErrorResponse(request, e, "[/api/billing/cancel-subscription");
+    return internalErrorResponse(request, e, "/api/billing/cancel-subscription");
   }
+}

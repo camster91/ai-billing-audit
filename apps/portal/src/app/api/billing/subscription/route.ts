@@ -81,5 +81,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (e) {
-    return internalErrorResponse(request, e, "[/api/billing/subscription");
+    return internalErrorResponse(request, e, "/api/billing/subscription");
   }
+}
