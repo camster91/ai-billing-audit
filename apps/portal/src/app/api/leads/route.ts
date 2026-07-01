@@ -39,6 +39,7 @@ import { prisma } from "@/lib/prisma";
 import { isDisposableEmail } from "@/lib/disposable-email-domains";
 import { sendLeadNotificationEmail } from "@/lib/leads-email";
 import { postLeadNotificationToSlack } from "@/lib/leads-slack";
+import { internalErrorResponse } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,12 +122,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       select: { id: true },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "unknown";
-    console.error("[/api/leads] DB error:", message);
-    return NextResponse.json(
-      { error: "internal_error", message },
-      { status: 500 },
-    );
+    return internalErrorResponse(request, e, "/api/leads", {
+      hint: "lead insert failed",
+    });
   }
 
   // 4. Fire notifications (fire-and-forget; do not block the

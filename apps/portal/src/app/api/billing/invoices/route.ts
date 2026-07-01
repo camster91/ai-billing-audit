@@ -34,6 +34,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { loadInvoiceHistory } from "@/lib/billing-page";
 import { assertMembershipCapability } from "@/lib/membership-gate";
+import { internalErrorResponse } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,11 +79,5 @@ export async function GET(request: Request) {
       },
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "unknown";
-    console.error("[/api/billing/invoices] error:", message);
-    return NextResponse.json(
-      { error: "internal_error", message },
-      { status: 500 },
-    );
+    return internalErrorResponse(request, e, "[/api/billing/invoices");
   }
-}

@@ -34,6 +34,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { loadUsageSnapshot } from "@/lib/billing-page";
 import { buildUpgradeUrl, loadQuotaSnapshot } from "@/lib/audit-quota";
 import { assertMembershipCapability } from "@/lib/membership-gate";
+import { internalErrorResponse } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,11 +86,8 @@ export async function GET(request: Request) {
       },
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "unknown";
-    console.error("[/api/usage] DB error:", message);
-    return NextResponse.json(
-      { error: "internal_error", message },
-      { status: 500 },
-    );
+    return internalErrorResponse(request, e, "/api/usage", {
+      hint: "usage snapshot failed",
+    });
   }
 }

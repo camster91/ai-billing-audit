@@ -40,6 +40,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getStripe, isDemoMode } from "@/lib/stripe";
+import { internalErrorResponse } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -156,11 +157,5 @@ export async function POST(request: Request) {
       demo: false,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "unknown";
-    console.error("[/api/billing/cancel-subscription] error:", message);
-    return NextResponse.json(
-      { error: "stripe_error", message },
-      { status: 502 },
-    );
+    return internalErrorResponse(request, e, "[/api/billing/cancel-subscription");
   }
-}
