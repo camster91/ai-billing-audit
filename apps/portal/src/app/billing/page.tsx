@@ -274,15 +274,20 @@ export default async function BillingPage() {
             receipt will appear here.
           </p>
         ) : (
-          <table className={styles.invoiceTable}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Receipt</th>
-              </tr>
-            </thead>
+          // P11 UX sweep 2026-07-01: wrap the table in a horizontally
+          // scrollable container so the page itself doesn't horizontal-
+          // scroll at <400px viewport widths. The /encounters list does
+          // the same (encounters-list.module.css:184 `.tableScroller`).
+          <div className={styles.invoiceTableScroller}>
+            <table className={styles.invoiceTable}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Receipt</th>
+                </tr>
+              </thead>
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id} data-testid="invoice-row">
@@ -322,6 +327,7 @@ export default async function BillingPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </main>

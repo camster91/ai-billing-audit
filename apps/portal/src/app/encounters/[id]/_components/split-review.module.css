@@ -460,7 +460,13 @@
 .btnAccept:hover:not(:disabled),
 .btnAccept:focus-visible {
   background: rgba(34, 197, 94, 0.32);
-  outline: none;
+  /* WCAG SC 2.4.7 (focus-visible): the previous background-tint-only
+     indicator disappeared against the dark dismiss-panel background
+     (rgba(15, 23, 42, 0.55)). Add an explicit outline that meets
+     the 3:1 contrast-vs-adjacent-colors threshold so keyboard users
+     can see where they are. */
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
 }
 
 .btnDismiss {
@@ -472,7 +478,8 @@
 .btnDismiss:hover:not(:disabled),
 .btnDismiss:focus-visible {
   background: rgba(148, 163, 184, 0.28);
-  outline: none;
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
 }
 
 .dismissPanel {

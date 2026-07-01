@@ -398,11 +398,21 @@
   margin-top: 8px;
 }
 
+.invoiceTableScroller {
+  /* P11 UX sweep 2026-07-01: wrap invoice table so it can horizontal-
+     scroll inside its own container at <400px viewport widths instead
+     of pushing the whole page sideways. Mirrors
+     .tableScroller in encounters-list.module.css. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 12px;
+  border-radius: 8px;
+}
+
 .invoiceTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  margin-top: 12px;
 }
 
 .invoiceTable th,

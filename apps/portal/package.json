@@ -16,7 +16,8 @@
     "test:contact-form": "node --import tsx --test tests/contact-form.test.ts",
     "test:fpar": "node --import tsx --test tests/fpar.test.ts",
     "test:calibration": "node --import tsx --test tests/calibration.test.ts",
-    "test:calibration-upsert": "node --import tsx --test tests/calibration.upsert.test.ts"
+    "test:calibration-upsert": "node --import tsx --test tests/calibration.upsert.test.ts",
+    "test:api-errors": "node --import tsx --test tests/api-errors.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.2",
