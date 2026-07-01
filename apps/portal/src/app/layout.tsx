@@ -32,8 +32,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Pre-Bill Audit",
-    template: "%s — AI Pre-Bill Audit",
+    default: "Zorva — AI pre-bill audit for Alberta clinics",
+    template: "%s — Zorva",
   },
   description:
     "AI pre-bill audit catches what your billing team misses. Region-pinned " +

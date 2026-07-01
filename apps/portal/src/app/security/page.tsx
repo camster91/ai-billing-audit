@@ -29,8 +29,9 @@ export const metadata: Metadata = {
   title: "Security & compliance — AI billing audit",
   description:
     "Controls matrix: data residency, encryption in transit and at rest, " +
-    "access controls, hash-chain audit trail, PII handling, and compliance " +
-    "posture under HIA, PIPEDA, HIPAA, and NOM-024.",
+    "access controls, hash-chain audit trail, PII handling, and current " +
+    "compliance posture (HIA + PIPEDA covered today; HIPAA / PHIPA / " +
+    "NOM-024 on the 2027 roadmap).",
 };
 
 type Cell = string | { text: string; muted?: boolean };

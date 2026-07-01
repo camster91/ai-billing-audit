@@ -74,6 +74,10 @@ const PUBLIC_PREFIXES = [
   "/technical",     // technical buyer (privacy officer, IT lead) page, public
   "/glossary",      // billing terms glossary for non-billers, public
   "/case-studies",  // anonymized worked examples, public
+  "/calculator",    // ROI estimator — public marketing surface (operationalises the /pricing promise)
+  "/faq",           // public FAQ — buyer-evaluation page
+  "/for",           // per-specialty landing pages (e.g. /for/family-medicine) — public
+  "/legal",         // /legal/privacy + /legal/terms — public legal pages
   "/portal/onboarding", // Stripe success_url lands here, must work w/o auth
   "/portal/billing",   // manage-billing entry from onboarding, public
   "/_next",
