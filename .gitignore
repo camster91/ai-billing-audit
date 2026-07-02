@@ -78,6 +78,15 @@ runs/acceptance/ab-*/
 runs/acceptance/multi-*/
 runs/acceptance/live-parity/
 
+# Blind-test sandbox artifacts (P11 scratch; re-runnable via
+# `python3 scripts/_mock_demo_100.py` + the runner scripts).
+.env.audit
+.venv-stub-test/
+
+# Demo shadow runs (regenerable from data/mock/prospect_demo_100.json
+# via `python3 scripts/_run_with_ollama_v.py`).
+runs/shadow/prospect_demo_100-2026*
+
 # Junk files from mis-quoted shell commands
 " if v else \"\"}\"\"')\n"
 

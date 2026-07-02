@@ -1,0 +1,2693 @@
+[
+  {
+    "encounter_id": "demo_2026_fa_000",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "287271669",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_000-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_001",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "942047957",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_001-1",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "medium",
+        "category": "evaluation",
+        "suggested_code": "03.04A (comprehensive \u2014 work documented in note exceeds 03.01A scope)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "E/M level too low for the documented work"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_002",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "940299275",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_002-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_003",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "779151975",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_003-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_004",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "335151296",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_004-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_ca_005",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "311748666",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_ca_005-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_006",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "390790040",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-14"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_006-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_007",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "03.05A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "339361723",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_007-1",
+        "rule_id": "rule_ahcip_same_day_conflict",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A (drop 03.05A \u2014 same-day conflict per SOMB)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_008",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "257666820",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_008-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_de_009",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "970013960",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-19"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_de_009-1",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "medium",
+        "category": "evaluation",
+        "suggested_code": "03.04A (comprehensive \u2014 work documented in note exceeds 03.01A scope)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "E/M level too low for the documented work"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_010",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "287986607",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_010-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_011",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "577626798",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-14"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_011-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_012",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "581954225",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-19"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_012-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_013",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.\n\nDiscussed Medicare-style annual health maintenance: immunization review, cancer screening, cardiovascular risk assessment, lifestyle counseling.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "337493009",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_013-1",
+        "rule_id": "rule_ahcip_non_insured_service",
+        "severity": "medium",
+        "category": "preventive",
+        "suggested_code": "Bill privately or via Blue Cross (annual physical non-insured)",
+        "clinical_evidence_quote": "Medicare-style annual health maintenance",
+        "note": "Adult annual physical largely non-insured under AHCIP \u2014 would be denied as 03.04A"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_014",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.\n\nDiscussed Medicare-style annual health maintenance: immunization review, cancer screening, cardiovascular risk assessment, lifestyle counseling.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "478137436",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-19"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_014-1",
+        "rule_id": "rule_ahcip_non_insured_service",
+        "severity": "medium",
+        "category": "preventive",
+        "suggested_code": "Bill privately or via Blue Cross (annual physical non-insured)",
+        "clinical_evidence_quote": "Medicare-style annual health maintenance",
+        "note": "Adult annual physical largely non-insured under AHCIP \u2014 would be denied as 03.04A"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_015",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "955296266",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_015-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_016",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "814611335",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_016-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_de_017",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 55M, follow-up for actinic keratoses on scalp. Cryotherapy to 6 lesions today. Plan: f/u 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "148702155",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-14"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_de_017-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_018",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "490441944",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_018-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_ca_019",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "58F new consult for palpitations, occasional runs of SVT. Event monitor ordered. Discussed trigger avoidance, beta-blocker as needed. Plan: review monitor in 2 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "599237521",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_ca_019-1",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "medium",
+        "category": "evaluation",
+        "suggested_code": "03.04A (comprehensive \u2014 work documented in note exceeds 03.01A scope)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "E/M level too low for the documented work"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_020",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "472376638",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_020-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_021",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "668029107",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-27"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_021-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_022",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "696498847",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_022-1",
+        "rule_id": "rule_ahcip_em_level_upcode",
+        "severity": "medium",
+        "category": "evaluation",
+        "suggested_code": "03.04A (comprehensive \u2014 work documented in note exceeds 03.01A scope)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "E/M level too low for the documented work"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_ca_023",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "58F new consult for palpitations, occasional runs of SVT. Event monitor ordered. Discussed trigger avoidance, beta-blocker as needed. Plan: review monitor in 2 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "03.05A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "942087578",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_ca_023-1",
+        "rule_id": "rule_ahcip_same_day_conflict",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A (drop 03.05A \u2014 same-day conflict per SOMB)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_024",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "152647992",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-19"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_024-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_ca_025",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "764415779",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_ca_025-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_de_026",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "188909389",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_de_026-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_ca_027",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "65M, post-MI week 8 follow-up. Cardiac rehab completed. Medications optimized. No chest pain, no dyspnea. Plan: continue current regimen.\n\nProcedures today: cryotherapy to 2 actinic keratoses on the forearm. Patient tolerated well, no complications. Standard wound care instructions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "08.11A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "327075617",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-03"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_ca_027-1",
+        "rule_id": "rule_ahcip_missing_procedure",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_028",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "486992657",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_028-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_029",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A",
+        "03.05A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "150657257",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_029-1",
+        "rule_id": "rule_ahcip_same_day_conflict",
+        "severity": "high",
+        "category": "modifier",
+        "suggested_code": "03.04A (drop 03.05A \u2014 same-day conflict per SOMB)",
+        "clinical_evidence_quote": "comprehensive annual",
+        "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_030",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.\n\nDiscussed Medicare-style annual health maintenance: immunization review, cancer screening, cardiovascular risk assessment, lifestyle counseling.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "263110298",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-22"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_030-1",
+        "rule_id": "rule_ahcip_non_insured_service",
+        "severity": "medium",
+        "category": "preventive",
+        "suggested_code": "Bill privately or via Blue Cross (annual physical non-insured)",
+        "clinical_evidence_quote": "Medicare-style annual health maintenance",
+        "note": "Adult annual physical largely non-insured under AHCIP \u2014 would be denied as 03.04A"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_031",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.\n\n8-day post-op cholecystectomy check. Wound clean, dry, intact. No fever, no abdominal pain. Cleared for gradual activity. Discussed expected recovery timeline.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "948452676",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-14"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_031-1",
+        "rule_id": "rule_ahcip_global_window",
+        "severity": "high",
+        "category": "evaluation",
+        "suggested_code": "03.02A (post-operative visit \u2014 bundled into surgical fee per SOMB GR 3.2.1)",
+        "clinical_evidence_quote": "8-day post-op cholecystectomy check",
+        "note": "Within 90-day post-op global period \u2014 visit bundled into surgical fee"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_de_032",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 55M, follow-up for actinic keratoses on scalp. Cryotherapy to 6 lesions today. Plan: f/u 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "937572818",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_de_032-1",
+        "rule_id": "rule_ahcip_em_level",
+        "severity": "medium",
+        "category": "modifier",
+        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+        "note": "Qualifying chronic conditions documented \u2014 CMGP modifier applies per SOMB GR 2.6"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_033",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.\n\n8-day post-op cholecystectomy check. Wound clean, dry, intact. No fever, no abdominal pain. Cleared for gradual activity. Discussed expected recovery timeline.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "122183704",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-19"
+    },
+    "rules": [],
+    "ground_truth": [
+      {
+        "finding_id": "gt-demo_2026_fa_033-1",
+        "rule_id": "rule_ahcip_global_window",
+        "severity": "high",
+        "category": "evaluation",
+        "suggested_code": "03.02A (post-operative visit \u2014 bundled into surgical fee per SOMB GR 3.2.1)",
+        "clinical_evidence_quote": "8-day post-op cholecystectomy check",
+        "note": "Within 90-day post-op global period \u2014 visit bundled into surgical fee"
+      }
+    ]
+  },
+  {
+    "encounter_id": "demo_2026_fa_034",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "410201080",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_035",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "338175239",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_036",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "793790644",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_037",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "852329982",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_038",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "553029839",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_039",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "394697202",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_040",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "926728476",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_041",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "780164796",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_042",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "374552954",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_043",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "619422876",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_044",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "65M, post-MI week 8 follow-up. Cardiac rehab completed. Medications optimized. No chest pain, no dyspnea. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "918321496",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_045",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 55M, follow-up for actinic keratoses on scalp. Cryotherapy to 6 lesions today. Plan: f/u 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "583956661",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_046",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "956574367",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_047",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "590512008",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_048",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "489747530",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_049",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "815576663",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_050",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "777318007",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_051",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "918032045",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ob_052",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "32F established, routine prenatal visit at 28 weeks. Fundal height appropriate, FHR 140, no concerns. Routine labs ordered. Plan: 32-week f/u.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "550594551",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_053",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "58F new consult for palpitations, occasional runs of SVT. Event monitor ordered. Discussed trigger avoidance, beta-blocker as needed. Plan: review monitor in 2 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "193440763",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_054",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "293092251",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_055",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "439157475",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_056",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "635928194",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_057",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "647159730",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_058",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "873376995",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_059",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "555430408",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_060",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "892230822",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_061",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "782955437",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_062",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "65M, post-MI week 8 follow-up. Cardiac rehab completed. Medications optimized. No chest pain, no dyspnea. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "525598161",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_063",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "891647066",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_064",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "493664226",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_065",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "452470845",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_066",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "65M, post-MI week 8 follow-up. Cardiac rehab completed. Medications optimized. No chest pain, no dyspnea. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "258970063",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_067",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "169173748",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_068",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "387906379",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ob_069",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "32F established, routine prenatal visit at 28 weeks. Fundal height appropriate, FHR 140, no concerns. Routine labs ordered. Plan: 32-week f/u.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "646000622",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_070",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "562685934",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_071",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established patient 58F, comprehensive annual for multiple chronic conditions: T2DM (A1C 7.4, on metformin), HTN (well-controlled on perindopril), dyslipidemia (LDL 2.8 on rosuvastatin). Reviewed all meds, did medication reconciliation, updated lab orders, completed diabetes flowsheet. Plan: 6-month f/u. Patient stable.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "133644061",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_072",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "771668984",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_073",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "439575717",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_074",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "389954564",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ob_075",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "32F established, routine prenatal visit at 28 weeks. Fundal height appropriate, FHR 140, no concerns. Routine labs ordered. Plan: 32-week f/u.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "314923638",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ob_076",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Routine postpartum 6-week check. Healing well, no concerns. Contraception discussed, started OCPs. Plan: annual thereafter.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": null,
+      "patient_health_number": "554401105",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_077",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "858700596",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_078",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "67F, annual preventive visit. Reviewed immunizations, did Medicare-style annual health maintenance. Counseled on diet, exercise. Plan: f/u in 1 year.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "323201841",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_079",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "966112017",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_080",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "789088337",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ob_081",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "32F established, routine prenatal visit at 28 weeks. Fundal height appropriate, FHR 140, no concerns. Routine labs ordered. Plan: 32-week f/u.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "470006103",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_082",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "I10"
+      ],
+      "modifier": null,
+      "patient_health_number": "381195003",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_083",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Follow-up 67M, recent MI 3 months ago, on secondary prevention regimen. Reviewed cardiology letter, current symptoms (occasional angina with heavy exertion), medication tolerance OK. Plan: continue current regimen.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "683620731",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_084",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "754817024",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-01-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_085",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "351629711",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_086",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": null,
+      "patient_health_number": "216337425",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_087",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 55M, follow-up for actinic keratoses on scalp. Cryotherapy to 6 lesions today. Plan: f/u 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "738956227",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_088",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "I25.10"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "554251546",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_089",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "196141768",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_090",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "280213435",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_091",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "598421753",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-02-14"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_092",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New consult 72M referred by Dr. Park for chest pain on exertion. History, focused exam, ECG ordered, troponin drawn (pending). Discussed risk factors, started ASA 81mg. Plan: follow-up with stress test results.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": null,
+      "patient_health_number": "990285197",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-19"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_093",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "Established 45M, urgent walk-in for sore throat, fever, anterior cervical nodes. Strep swab positive. Started penicillin V, hydration advice. Return precautions given.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E78.5"
+      ],
+      "modifier": null,
+      "patient_health_number": "774095422",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_094",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "O09.90"
+      ],
+      "modifier": null,
+      "patient_health_number": "122313966",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-22"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_de_095",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "New patient 42F, full skin check. Found 3 atypical nevi on back, photographed and tracked. No concerning lesions today. Plan: 6-month full skin check.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "R07.9"
+      ],
+      "modifier": null,
+      "patient_health_number": "720544620",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_096",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "58F new consult for palpitations, occasional runs of SVT. Event monitor ordered. Discussed trigger avoidance, beta-blocker as needed. Plan: review monitor in 2 weeks.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "493084722",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-04-08"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_097",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "E11.9",
+        "I10",
+        "E78.5"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "483984181",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-06-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_fa_098",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "55F established patient, brief follow-up for HTN. BP today 138/86. No med changes. Renewed prescriptions. Plan: 3-month BP check.",
+    "claim": {
+      "som_b_codes": [
+        "03.01A"
+      ],
+      "diagnosis_codes": [
+        "L82.1"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "424340573",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-05-27"
+    },
+    "rules": [],
+    "ground_truth": []
+  },
+  {
+    "encounter_id": "demo_2026_ca_099",
+    "is_flagged": true,
+    "market": "CA",
+    "province": "AB",
+    "billing_authority": "AHCIP Schedule of Medical Benefits (SOMB)",
+    "compliance_law": "PIPEDA",
+    "clinical_note": "72M with known CAD s/p PCI 2019, routine cardiology follow-up. Echo stable, EF 50%. Meds: ASA, atorvastatin, metoprolol. No active complaints. Plan: continue current regimen, recheck lipids in 3 months.",
+    "claim": {
+      "som_b_codes": [
+        "03.04A"
+      ],
+      "diagnosis_codes": [
+        "Z00.00"
+      ],
+      "modifier": "CMGP",
+      "patient_health_number": "946043596",
+      "referring_provider_npi": null,
+      "date_of_service": "2026-03-03"
+    },
+    "rules": [],
+    "ground_truth": []
+  }
+]

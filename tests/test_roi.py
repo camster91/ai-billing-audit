@@ -8,11 +8,11 @@ a demo call.
 What's pinned
 -------------
 * compute_roi() math: with default inputs, monthly revenue saved
-  = monthly_claims × 0.075 × 0.42 × $190
+  = monthly_claims × 0.075 × 0.69 × $190
 * Plan tier auto-selection by monthly volume
 * Tier override (pass plan_tier="starter" for a 5000-claim
   clinic and the calculation uses $499)
-* Default catch_rate = 0.42 (matches the v10 smartness-test F1)
+* Default catch_rate = 0.69 (matches the v12 AHCIP val-set F1, README.md:7)
 * Validation: monthly_claims must be > 0, rates in [0, 1]
 * HTML route /roi renders without 500
 * JSON route /roi/results returns valid JSON
@@ -58,27 +58,27 @@ def test_tier_for_volume_scale():
 
 def test_compute_roi_default_inputs():
     """Default inputs (1000 claims, 7.5% denial, $190/claim, 50%
-    appeal, 42% catch) should produce a sensible result."""
+    appeal, 69% catch) should produce a sensible result."""
     r = compute_roi(monthly_claims=1000)
     # monthly_denials = 1000 * 0.075 = 75
     assert r["monthly"]["denials_without_zorva"] == 75
-    # monthly_caught = 75 * 0.42 = 31.5 → 31 (int)
-    assert r["monthly"]["caught_by_zorva"] == 31
-    # revenue_saved = 31.5 * 190 = 5985.0
-    assert r["monthly"]["revenue_saved_by_zorva"] == 5985.0
+    # monthly_caught = 75 * 0.69 = 51.75 → 51 (int)
+    assert r["monthly"]["caught_by_zorva"] == 51
+    # revenue_saved = 51.75 * 190 = 9832.5
+    assert r["monthly"]["revenue_saved_by_zorva"] == 9832.5
     # Plan tier auto-selected: growth (1000 > 200)
     assert r["inputs"]["plan_tier"] == "growth"
-    # Net monthly savings = 5985 - 1499 = 4486
-    assert r["monthly"]["net_monthly_savings_usd"] == 4486.0
+    # Net monthly savings = 9832.5 - 1499 = 8333.5
+    assert r["monthly"]["net_monthly_savings_usd"] == 8333.5
 
 
 def test_compute_roi_starter_tier():
     r = compute_roi(monthly_claims=150, plan_tier="starter")
     assert r["inputs"]["plan_tier"] == "starter"
-    # revenue_saved = 150 * 0.075 * 0.42 * 190 = 897.75
-    assert r["monthly"]["revenue_saved_by_zorva"] == 897.75
-    # Net = 897.75 - 499 = 398.75
-    assert r["monthly"]["net_monthly_savings_usd"] == 398.75
+    # revenue_saved = 150 * 0.075 * 0.69 * 190 = 1474.875
+    assert r["monthly"]["revenue_saved_by_zorva"] == 1474.875
+    # Net = 1474.875 - 499 = 975.875
+    assert r["monthly"]["net_monthly_savings_usd"] == 975.875
 
 
 def test_compute_roi_scale_tier():
@@ -140,9 +140,9 @@ def test_compute_roi_negative_net_is_possible():
     """For a tiny clinic with low volume, Zorva may not pay back
     immediately. The calculator must report a negative net."""
     r = compute_roi(monthly_claims=10, current_denial_rate=0.01)
-    # 10 * 0.01 * 0.42 * 190 = $7.98 revenue saved
+    # 10 * 0.01 * 0.69 * 190 = $13.11 revenue saved
     # Plan cost = $499 (starter tier, since volume <= 200)
-    # Net = 7.98 - 499 = -491.02 (negative)
+    # Net = 13.11 - 499 = -485.89 (negative)
     assert r["monthly"]["net_monthly_savings_usd"] < 0
 
 
@@ -207,12 +207,11 @@ def test_compute_roi_narrative_summary_present():
 
 
 def test_compute_roi_constants_match_smartness_test():
-    """Default catch_rate = 0.42 = v10 F1 (recall × precision).
+    """Default catch_rate = 0.69 = v12 AHCIP val-set F1 (README.md:7).
 
-    v10 US-full: precision 0.65, recall 0.65, F1 0.65.
-    Conservative: catch_rate = recall × precision = 0.4225 ≈ 0.42.
+    v12 AHCIP: precision 0.625, recall 0.769, F1 0.690.
     """
-    assert DEFAULT_CATCH_RATE == 0.42
+    assert DEFAULT_CATCH_RATE == 0.69
     # catch_rate is a probability in [0, 1] independent of denial_rate
     assert 0 < DEFAULT_CATCH_RATE < 1
     assert 0 < DEFAULT_DENIAL_RATE < 1
@@ -240,19 +239,19 @@ def test_roi_route_returns_200_with_defaults(client):
 
 def test_roi_route_uses_default_catch_rate(client):
     resp = client.get("/roi")
-    # Default catch_rate 0.42 should be in the rendered form
-    assert "0.42" in resp.text
+    # Default catch_rate 0.69 should be in the rendered form
+    assert "0.69" in resp.text
 
 
 def test_roi_route_renders_results_with_defaults(client):
     resp = client.get("/roi")
-    # With defaults (1000 claims, 7.5% denial, etc.):
-    #   monthly_revenue_saved = 1000 * 0.075 * 0.42 * 190 = $5,985
+    # With defaults (1000 claims, 7.5% denial, catch_rate=0.69):
+    #   monthly_revenue_saved = 1000 * 0.075 * 0.69 * 190 = $9,832.50
     #   plan_tier = growth ($1,499)
-    #   net = $4,486
+    #   net = $8,333.50
     # Either formatted with commas or as raw number
-    assert "5,985" in resp.text or "5985" in resp.text
-    assert "4,486" in resp.text or "4486" in resp.text
+    assert "9,832.5" in resp.text or "9832.5" in resp.text
+    assert "8,333.5" in resp.text or "8333.5" in resp.text
 
 
 def test_roi_route_uses_query_params(client):

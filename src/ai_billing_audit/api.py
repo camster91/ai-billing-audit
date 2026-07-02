@@ -4100,7 +4100,7 @@ def create_app() -> FastAPI:
         current_denial_rate: float = 0.075,
         avg_claim_value_usd: float = 190.0,
         current_appeal_rate: float = 0.50,
-        catch_rate: float = 0.42,
+        catch_rate: float = 0.69,  # v12 AHCIP val-set F1 (was 0.42 from v10; aligned to README.md:7, 2026-07-02)
         plan_tier: str | None = None,
     ):
         """ROI calculator for the one-pager.
@@ -4118,7 +4118,7 @@ def create_app() -> FastAPI:
           * 7.5% denial rate (CMS commercial average)
           * $190/claim (CMS commercial office-visit average)
           * 50% manual appeal rate (industry average)
-          * 42% catch rate (v10 smartness-test F1 score)
+          * 69% catch rate (v12 AHCIP val-set F1 score, README.md:7)
         """
         from .roi import compute_roi
 

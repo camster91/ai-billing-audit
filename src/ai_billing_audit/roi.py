@@ -20,8 +20,8 @@ Inputs (with sensible defaults):
     Tiers: starter (up to 200 claims), growth (200-2000),
     scale (2000+). Default: derived from monthly_claims.
   catch_rate: fraction of pre-submission errors Zorva catches.
-    This is recall × precision from the smartness test.
-    Default: 0.42 (from v10 prompt: 0.65 × 0.65).
+    This is the v12 AHCIP val-set F1 score (micro over cleaned gold).
+    Default: 0.69 (README.md:7, 2026-06-23 post-leakage-fix).
 
 Outputs:
   monthly_denials: claims denied on first submission, without Zorva.
@@ -40,8 +40,8 @@ Plan pricing (CAD, monthly):
   scale:  $2,999  (2,000+ claims)
 
 The calculator is intentionally conservative. catch_rate defaults
-to 0.42 (v10 measured) but callers can pass a custom value
-based on their own smartness-test runs.
+to 0.69 (v12 AHCIP val-set F1, README.md:7) but callers can pass a
+custom value based on their own smartness-test runs.
 """
 from __future__ import annotations
 
@@ -53,12 +53,20 @@ PLAN_PRICING_CAD: dict[str, dict[str, Any]] = {
     "growth":  {"monthly_price_cad": 1499, "max_claims_per_month": 2000},
     "scale":   {"monthly_price_cad": 2999, "max_claims_per_month": None},
 }
+# TODO(2026-07-02): Kanban task t_2b65879e expected PILOT_OFFER.md to
+# define 99/499/999 CAD tiers, but PILOT_OFFER.md is a no-cost 60-day
+# pilot doc with no pricing at all. The 499/1499/2999 numbers above are
+# the canonical pricing across this file, apps/portal/src/lib/pricing.ts,
+# apps/portal/.env.example, templates/roi.html, and tests/test_roi.py,
+# and are stated in README.md:9 as the Alberta-pivot tiers. Leaving
+# PLAN_PRICING_CAD unchanged pending operator confirmation of source
+# of truth. See kanban comment thread on t_2b65879e for full audit.
 
 # Conservative defaults pulled from CMS / industry sources.
 DEFAULT_DENIAL_RATE = 0.075       # 7.5% of claims denied on first submission
 DEFAULT_APPEAL_RATE = 0.50        # 50% of denials get appealed and recovered
 DEFAULT_AVG_CLAIM_USD = 190.0    # CMS commercial office-visit average
-DEFAULT_CATCH_RATE = 0.42        # v10 smartness test: recall × precision
+DEFAULT_CATCH_RATE = 0.69        # v12 AHCIP val-set F1 (README.md:7, 2026-06-23 post-leakage-fix); was 0.42 from v10
 DEFAULT_TIER = "growth"          # conservative middle tier
 
 
@@ -113,8 +121,8 @@ def compute_roi(
     # Zorva catches (catch_rate) of the would-be denials and the
     # biller fixes them pre-submission. The catch_rate is
     # conservative: not every caught error was going to be denied,
-    # and not every denial is fixable. The default 0.42 reflects
-    # the v10 smartness-test F1 score on the val set.
+    # and not every denial is fixable. The default 0.69 reflects
+    # the v12 AHCIP val-set F1 score (README.md:7).
     monthly_caught_with_zorva = monthly_denials * catch_rate
     monthly_revenue_saved = monthly_caught_with_zorva * avg_claim_value_usd
 
