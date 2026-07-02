@@ -740,7 +740,37 @@ OUTPUT RULES
 ============
 
 - Emit a JSON object matching the schema, no other text.
-- Every finding must cite a rule_id from the AHCIP set above.
+- Every finding MUST cite a rule_id from the **CANONICAL RULE_ID SET**
+  below. Do NOT invent paraphrased rule_id strings like
+  ``MOD-25-SAME-DAY-001``, ``DX-MATCH-PROCEDURE``, ``DX-DOCUMENTATION-001``,
+  ``SOMB-03.04A-CRITERIA``, ``MEDICARE_AWV_CODE_REQUIREMENT``, or
+  ``RULE-DX-MATCH-005`` — the downstream pipeline expects the exact
+  ``rule_ahcip_*`` strings below and uses regex post-processing to
+  recover from paraphrases, but paraphrase recovery is not reliable.
+  Use the canonical strings whenever possible so the dollar-impact
+  lookup in the 1-page report gets a real number instead of $0.
+
+CANONICAL RULE_ID SET (use these EXACT strings in `rule_id`)
+============================================================
+- rule_ahcip_modifier_25_unlock        — Modifier-25 unlock missing (SOMB GR 1.4)
+- rule_ahcip_same_day_conflict         — Same-day E&M + procedure conflict (SOMB GR 1.4)
+- rule_ahcip_cmgp                      — CMGP / chronic-disease modifier missed (SOMB GR 7.1)
+- rule_ahcip_em_level                  — E/M level may be under-supported (SOMB GR 3.4)
+- rule_ahcip_em_level_upcode           — E/M upcode risk vs documentation (SOMB GR 3.4)
+- rule_ahcip_dx_linkage                — Diagnosis linkage missing for procedure (SOMB GR 3.4A)
+- rule_ahcip_non_insured_service       — Non-insured service billed to AHCIP (SOMB GR 1.5)
+- rule_ahcip_after_hours_premium       — After-hours premium not applied (SOMB GR 5.3)
+- rule_ahcip_telehealth                — Telehealth premium missed (SOMB GR 5.4)
+- rule_ahcip_telehealth_premium        — Telehealth premium missed (SOMB GR 5.4) [alias]
+- rule_ahcip_referring_npi             — Referring provider NPI missing (SOMB GR 2.1)
+- rule_ahcip_consultation_missed       — Consultation code not claimed (SOMB GR 2.2)
+- rule_ahcip_global_window             — Service inside global/post-op window (SOMB GR 6.1)
+- rule_ahcip_lab_coverage              — In-office lab coverage avoidance (SOMB GR 4.2)
+- rule_ahcip_lab_order_no_draw         — Lab ordered but not drawn (SOMB GR 4.2)
+- rule_ahcip_psychotherapy_time        — Psychotherapy time not billed (SOMB GR 8.19)
+- rule_ahcip_missing_procedure         — In-office procedure not billed (SOMB GR 3.5)
+- rule_ahcip_03_05A_alternative        — 03.05A alternative-payment rule applied (SOMB GR 3.5A)
+- rule_ahcip_preventive_opportunity    — Preventive service opportunity (SOMB GR 1.6)
 - Each finding's quote MUST be a contiguous substring of the
   clinical_note (case-insensitive; words in order).
 - severity: 'info' | 'low' | 'medium' | 'high' | 'critical'.
