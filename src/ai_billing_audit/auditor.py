@@ -108,6 +108,241 @@ RESPONSE_JSON_SCHEMA: dict[str, Any] = {
 }
 
 
+# P11 round-3 (2026-07-02): canonical rule_id + alias map.
+#
+# The v12 prompt instructs the LLM to emit rule_ids in the
+# ``rule_ahcip_*`` namespace. In practice the model emits generic
+# labels (MOD-25-*, DX-MATCH-*, MEDICARE_AWV_*) because the JSON
+# schema permits any string and the few-shot examples aren't strict
+# enough. We canonicalize post-validation so the 1-page report and
+# the SOMB dollar mapping in shadow_audit.py can recognize the
+# finding. Keys are LOWER-CASE for case-insensitive matching; values
+# are the canonical rule_id (always ``rule_ahcip_*``).
+#
+# Pattern matching uses regex. Order matters: more specific patterns
+# first (e.g. MOD-25-SAME-DAY -> same_day_conflict, not
+# modifier_25_unlock) so the canonicalization picks the right
+# bucket.
+_RULE_ID_ALIASES: list[tuple[str, str]] = [
+    # --- Same-day conflict family -> rule_ahcip_same_day_conflict ---
+    # (must come BEFORE the generic MOD-25 wildcard below)
+    (r"MOD-25-SAME-DAY", "rule_ahcip_same_day_conflict"),
+    (r"same_day_conflict", "rule_ahcip_same_day_conflict"),
+    # --- Modifier-25 family -> rule_ahcip_modifier_25_unlock ---
+    (r"^MOD-25", "rule_ahcip_modifier_25_unlock"),
+    (r"^E_M_PROCEDURE_MODIFIER", "rule_ahcip_modifier_25_unlock"),
+    (r"^MOD-STD-001", "rule_ahcip_modifier_25_unlock"),
+    # --- CMGP / chronic-disease family -> rule_ahcip_cmgp ---
+    (r"CMGP", "rule_ahcip_cmgp"),
+    (r"chronic.disease.management", "rule_ahcip_cmgp"),
+    # --- Annual physical / preventive / non-insured ---
+    (r"^MEDICARE_AWV", "rule_ahcip_non_insured_service"),
+    (r"^CMS-AWV", "rule_ahcip_non_insured_service"),
+    (r"^AWV-", "rule_ahcip_non_insured_service"),
+    (r"^Z00_", "rule_ahcip_non_insured_service"),
+    (r"^ZCODE-", "rule_ahcip_non_insured_service"),
+    (r"z00_00_no_abnormal", "rule_ahcip_non_insured_service"),
+    (r"non.insured", "rule_ahcip_non_insured_service"),
+    (r"annual.physical", "rule_ahcip_non_insured_service"),
+    (r"^PREV-", "rule_ahcip_non_insured_service"),
+    (r"^PREV-DX-", "rule_ahcip_non_insured_service"),
+    (r"^DOC_REQ_COMPREHENSIVE_ANNUAL", "rule_ahcip_non_insured_service"),
+    (r"^DOC-REQ-ANNUAL", "rule_ahcip_non_insured_service"),
+    # --- Missing procedure / in-office service not billed ---
+    (r"missing_procedure", "rule_ahcip_missing_procedure"),
+    # --- Same-day conflict (variant spellings) ---
+    (r"^SAME-DAY-MOD", "rule_ahcip_same_day_conflict"),
+    (r"^SAME_DAY", "rule_ahcip_same_day_conflict"),
+    (r"^SAME-DAY", "rule_ahcip_same_day_conflict"),
+    # --- Global window / 90-day post-op ---
+    (r"^SCOPE-OF-PRACTICE", "rule_ahcip_global_window"),
+    (r"global.window", "rule_ahcip_global_window"),
+    (r"post.op", "rule_ahcip_global_window"),
+    # --- Lab coverage / imaging in-office ---
+    (r"lab.coverage", "rule_ahcip_lab_coverage"),
+    # --- Telehealth premium ---
+    (r"telehealth.premium", "rule_ahcip_telehealth_premium"),
+    (r"^TELEHEALTH", "rule_ahcip_telehealth"),
+    # --- Psychotherapy time ---
+    (r"psychotherapy.time", "rule_ahcip_psychotherapy_time"),
+    (r"08\.19", "rule_ahcip_psychotherapy_time"),
+    # --- Consultation / referring NPI ---
+    (r"REFERRING.NPI", "rule_ahcip_referring_npi"),
+    (r"referring.provider", "rule_ahcip_referring_npi"),
+    (r"consultation.missed", "rule_ahcip_consultation_missed"),
+    (r"^CONS-REF", "rule_ahcip_referring_npi"),
+    (r"^CONS-REFERRAL", "rule_ahcip_referring_npi"),
+    (r"^CONSULT-REF", "rule_ahcip_referring_npi"),
+    (r"^CONS-EXAM", "rule_ahcip_em_level_upcode"),  # consult-exam-comprehensive
+    # --- E/M level / upcode / undercode ---
+    (r"^som_b_", "rule_ahcip_em_level"),
+    (r"^SOM-", "rule_ahcip_em_level"),  # generic SOM-* codes (e.g. SOM-012)
+    (r"em_level_upcode", "rule_ahcip_em_level_upcode"),
+    (r"undercoded|undercode", "rule_ahcip_em_level_upcode"),
+    (r"procedure.code.accuracy", "rule_ahcip_em_level_upcode"),
+    # --- Diagnosis linkage / matching (DX-MATCH family → em_level) ---
+    (r"^DX-MATCH", "rule_ahcip_em_level"),
+    (r"^DX-CODE-SUPPORT", "rule_ahcip_em_level"),
+    (r"^DX-DOC-SUPPORT", "rule_ahcip_em_level"),
+    (r"^DX-PROC", "rule_ahcip_em_level"),
+    (r"^DX-PROCEDURE", "rule_ahcip_em_level"),
+    (r"^DX_PROCEDURE", "rule_ahcip_em_level"),
+    (r"^DX_PROC", "rule_ahcip_em_level"),
+    (r"^DX-CONSIST", "rule_ahcip_em_level"),
+    (r"^DX_GENDER", "rule_ahcip_em_level"),
+    (r"^DX_SEX", "rule_ahcip_em_level"),
+    (r"^DX_GENDER_CONSISTENCY", "rule_ahcip_em_level"),
+    (r"^DX-MUST-REFLECT", "rule_ahcip_em_level"),
+    (r"^DX-SUPPORT-", "rule_ahcip_em_level"),
+    (r"^DX_SUPPORT", "rule_ahcip_em_level"),
+    (r"^DX-CLINICAL", "rule_ahcip_em_level"),
+    (r"^DX_CLINICAL", "rule_ahcip_em_level"),
+    (r"^DX-MEDICAL-NECESSITY", "rule_ahcip_em_level"),
+    (r"^DX-CODE-MATCH", "rule_ahcip_em_level"),
+    (r"^DX-CODE-ACCURACY", "rule_ahcip_em_level"),
+    (r"^DX-SECONDARY", "rule_ahcip_em_level"),
+    (r"^DX-PRIMARY-REFLECT", "rule_ahcip_em_level"),
+    (r"^DX_CODE_CHRONIC", "rule_ahcip_em_level"),
+    (r"^dx-clinical-appropriateness", "rule_ahcip_em_level"),
+    (r"^dx-demographic-consistency", "rule_ahcip_em_level"),
+    (r"^DX-DOC-MATCH", "rule_ahcip_em_level"),
+    (r"^DIAG-", "rule_ahcip_em_level"),
+    (r"^RULE-DX-", "rule_ahcip_em_level"),
+    (r"^RULE-MULTI-DX", "rule_ahcip_em_level"),
+    (r"^PROC-DX-MATCH", "rule_ahcip_em_level"),
+    (r"^PRIMARY-DX-", "rule_ahcip_em_level"),
+    (r"^PRIMARY-DX-002", "rule_ahcip_em_level"),
+    (r"diagnosis-encounter-alignment", "rule_ahcip_em_level"),
+    (r"dx-clinical-encounter-support", "rule_ahcip_em_level"),
+    (r"primary_reason_for_visit", "rule_ahcip_em_level"),
+    # --- ICD-10 specific (→ em_level; sex/age/lesion-type families) ---
+    (r"^ICD10-", "rule_ahcip_em_level"),
+    (r"^ICD10-CM", "rule_ahcip_em_level"),
+    (r"^ICD-CLINICAL-MATCH", "rule_ahcip_em_level"),
+    (r"^ICD-CM", "rule_ahcip_em_level"),
+    # --- dx_linkage (separate from em_level — DX_DOCUMENTATION family) ---
+    (r"^DX_DOCUMENTATION_SUPPORT", "rule_ahcip_dx_linkage"),
+    (r"^DX_DOCUMENTATION", "rule_ahcip_dx_linkage"),
+    (r"^DX-DOCUMENTATION-", "rule_ahcip_dx_linkage"),
+    (r"^DX-COMPLETE", "rule_ahcip_dx_linkage"),
+    (r"^DX-COMPLETENESS", "rule_ahcip_dx_linkage"),
+    (r"^PROC-DX-LINK", "rule_ahcip_dx_linkage"),
+    (r"^DOC-SUPPORT-", "rule_ahcip_dx_linkage"),
+    (r"dx.linkage", "rule_ahcip_dx_linkage"),
+    (r"E78\.5-REQUIRE", "rule_ahcip_dx_linkage"),
+    (r"^DIAGNOSIS_CODE_DOCUMENTATION_SUPPORT", "rule_ahcip_dx_linkage"),
+    (r"^DIAGNOSIS_DOCUMENTATION_REQUIREMENT", "rule_ahcip_dx_linkage"),
+    (r"^DIAGNOSIS_DOCUMENTATION", "rule_ahcip_dx_linkage"),
+    (r"^DIAGNOSIS_CODE_MUST_MATCH", "rule_ahcip_dx_linkage"),
+    (r"^CA-MEDI-CAL-DX-MATCH", "rule_ahcip_em_level"),  # California-style; treat as DX family
+    (r"PROCEDURE_DIAGNOSIS_LINKAGE", "rule_ahcip_dx_linkage"),
+    (r"PROCEDURE_REQUIRES_APPROPRIATE_DIAGNOSIS", "rule_ahcip_dx_linkage"),
+    (r"^EOM_DIAGNOSIS_COVERAGE", "rule_ahcip_dx_linkage"),
+    # --- Same-day conflict: variant spellings ---
+    (r"^E_M_PROCEDURE_SAME_DAY_MODIFIER", "rule_ahcip_same_day_conflict"),
+    (r"SAME.DAY.MOD", "rule_ahcip_same_day_conflict"),
+    (r"modifier.25.same.day", "rule_ahcip_same_day_conflict"),
+    # --- Annual physical / preventive (additional variants) ---
+    (r"^DOC-SUFFICIENCY-AWV", "rule_ahcip_non_insured_service"),
+    (r"^PREVENTIVE-EXAM-DOC", "rule_ahcip_non_insured_service"),
+    (r"^AGE-MEDICARE-PREVENTIVE", "rule_ahcip_non_insured_service"),
+    (r"^medicare-age-eligibility", "rule_ahcip_non_insured_service"),
+    (r"^preventive-vs-acute-visit-type", "rule_ahcip_non_insured_service"),
+    (r"^ICD-Z00\.00", "rule_ahcip_non_insured_service"),
+    # --- E/M level: variant spellings ---
+    (r"^REQ-PRIMARY-DX", "rule_ahcip_em_level"),
+    (r"^cpt-encounter-service-alignment", "rule_ahcip_em_level"),
+    (r"diagnosis-encounter-reason-alignment", "rule_ahcip_em_level"),
+    (r"^procedure-code-coverage", "rule_ahcip_missing_procedure"),
+    (r"^DX-SEX-", "rule_ahcip_em_level"),
+    (r"^SOMB-", "rule_ahcip_em_level"),  # generic SOMB-* codes (e.g. SOMB-03.04A)
+    # --- Cross-payer LLM leaks (WA-MCD, CA-SOM, CA-MEDI are US/state
+    # payer codes the model sometimes emits for AHCIP encounters; treat
+    # them as em_level / dx_linkage based on the suffix) ---
+    (r"^WA-MCD-", "rule_ahcip_em_level"),  # Washington Medicaid
+    (r"^CA-SOM-", "rule_ahcip_em_level"),  # California SOM
+    (r"^CA-MEDI-CAL-", "rule_ahcip_em_level"),
+    (r"^DOC-PREV-", "rule_ahcip_non_insured_service"),  # DOC-PREVENTIVE family
+    (r"^MODIFIER-CHECK", "rule_ahcip_modifier_25_unlock"),
+    (r"^PROC-DX-CORRELATION", "rule_ahcip_dx_linkage"),
+    (r"^PROC-DX-MATCH", "rule_ahcip_dx_linkage"),
+    (r"^PROC-MINOR-SAME-VISIT", "rule_ahcip_same_day_conflict"),
+    (r"^PROC-", "rule_ahcip_em_level"),  # generic PROC-* family
+    (r"^CARD-MI-FOLLOWUP", "rule_ahcip_em_level"),  # cardiac followup
+    (r"^CARD-", "rule_ahcip_em_level"),
+    (r"^DX-PERTINENT-PRIMARY", "rule_ahcip_em_level"),
+    (r"^DX-PRINCIPAL-MATCH", "rule_ahcip_em_level"),
+    (r"^DX-SYMPTOM-CODING", "rule_ahcip_em_level"),
+    (r"^DOC-CODE-ALIGNMENT", "rule_ahcip_dx_linkage"),
+    (r"^WORKUP-PENDING", "rule_ahcip_em_level"),
+    (r"^ICD10_GENDER_CONFLICT", "rule_ahcip_em_level"),
+    (r"^ICD10_DIAGNOSIS_PROCEDURE_MATCH", "rule_ahcip_em_level"),
+    (r"^ICD10_DX_MATCH", "rule_ahcip_em_level"),
+    (r"^ICD10_EXCLUDES", "rule_ahcip_em_level"),
+    (r"^DX-DOC-", "rule_ahcip_dx_linkage"),
+    (r"^DX_DOC", "rule_ahcip_dx_linkage"),
+    (r"^DX_CODE_", "rule_ahcip_dx_linkage"),
+    (r"^DX-COMPLETE", "rule_ahcip_dx_linkage"),
+    (r"^DX-COMPLETENESS", "rule_ahcip_dx_linkage"),
+    (r"^DX_COMPLETE", "rule_ahcip_dx_linkage"),
+    (r"^DX_COMPLETENESS", "rule_ahcip_dx_linkage"),
+    (r"^OAR-", "rule_ahcip_em_level"),  # Oregon admin rule prefix
+    (r"DIAGNOSIS_COMPLETENESS", "rule_ahcip_dx_linkage"),
+    (r"^PROC_MULTIPLE", "rule_ahcip_em_level"),
+    (r"^PREC-PREVENTIVE", "rule_ahcip_non_insured_service"),
+    (r"^DX-SYMPTOM-PRIMARY", "rule_ahcip_em_level"),
+    (r"^dx-visit-support", "rule_ahcip_em_level"),
+    (r"^DX-GENDER-", "rule_ahcip_em_level"),
+    (r"^DX-SCOPE-", "rule_ahcip_em_level"),
+    (r"^REF-NPI-", "rule_ahcip_referring_npi"),
+    (r"^DX-COMPLETENESS-", "rule_ahcip_dx_linkage"),
+    (r"^DX-PRIMARY", "rule_ahcip_em_level"),
+    (r"^EM-DX-SUPPORT", "rule_ahcip_em_level"),
+    (r"^e-m-level-support", "rule_ahcip_em_level"),
+    (r"^procedure-documentation-adequacy", "rule_ahcip_em_level"),
+    (r"^DX-MUST-MATCH-DOCUMENTATION", "rule_ahcip_dx_linkage"),
+    (r"^DX-PRIMARY-MUST-REFLECT", "rule_ahcip_em_level"),
+    (r"^DIAGNOSIS_MUST_REFLECT", "rule_ahcip_em_level"),
+    (r"^PROC-REQUIRES-SUPPORTING-DX", "rule_ahcip_dx_linkage"),
+    (r"^diagnosis-procedure-nexus", "rule_ahcip_dx_linkage"),
+    (r"^MODIFIER-25-REQUIRED", "rule_ahcip_modifier_25_unlock"),
+    (r"^modifier-distinct-procedural-service", "rule_ahcip_modifier_25_unlock"),
+    (r"^DX-PATIENT-MATCH", "rule_ahcip_em_level"),
+    (r"^DX-CORRESPONDENCE", "rule_ahcip_em_level"),
+    (r"^DOC-COMPLETENESS", "rule_ahcip_dx_linkage"),
+    (r"^diagnosis_code_support", "rule_ahcip_dx_linkage"),
+    # --- Lab order no draw ---
+    (r"lab.order.no.draw", "rule_ahcip_lab_order_no_draw"),
+    # --- 03.05A alternative ---
+    (r"03.05A.alternative", "rule_ahcip_03_05A_alternative"),
+    # --- Age matching ---
+    (r"^CODE-MATCH-PATIENT-AGE", "rule_ahcip_em_level"),
+    # --- ICD-10 sex-age consistency ---
+    (r"ICD.10.SEX.AGE", "rule_ahcip_em_level"),  # generic DX
+]
+
+import re as _re_canonicalize  # alias for canonical alias map (see below); re also imported above for re.split
+
+
+def _canonicalize_rule_id(rule_id: str) -> str:
+    """Map an LLM-emitted rule_id string back to the canonical
+    ``rule_ahcip_*`` form via the alias map. Returns the input
+    unchanged if no alias matches (the validator accepts any string,
+    so unknown rule_ids still pass through — they just don't get
+    SOMB-specific render treatment in the 1-page report).
+    """
+    if not rule_id:
+        return rule_id
+    rid_lower = rule_id.strip().lower()
+    # First check if it's already canonical (rule_ahcip_*) — pass through
+    if rid_lower.startswith("rule_ahcip_"):
+        return rule_id  # preserve original casing
+    for pattern, canonical in _RULE_ID_ALIASES:
+        if _re_canonicalize.search(pattern, rid_lower, _re_canonicalize.IGNORECASE):
+            return canonical
+    return rule_id  # unknown — pass through
+
+
 class AuditValidationError(ValueError):
     """Raised when the LLM response does not match the findings schema."""
 
@@ -340,6 +575,18 @@ def validate_findings(
                 # model's explanation as the quote verbatim — it's
                 # better than nothing for the dashboard display.
                 quote = str(item.get("explanation", "") or "")[:500]
+        # P11 round-3 (2026-07-02): canonicalize the rule_ids. The LLM
+        # often emits a generic / slightly-off label (e.g.
+        # "MOD-25-SAME-DAY-001" instead of the prompt's canonical
+        # "rule_ahcip_modifier_25_unlock") because the JSON schema
+        # permits any string. Without canonicalization the 1-page
+        # report + downstream SOMB dollar mapping don't recognize
+        # the finding. The alias map (defined above) catches the
+        # patterns the LLM actually emits on MiniMax-M3 + maps them
+        # back to the canonical SOMB-aware rule_id.
+        canonical_rule_ids = tuple(
+            _canonicalize_rule_id(r) for r in rule_ids
+        )
         # Hallucination guardrail: if we have a clinical note to check against,
         # reject any finding whose quote is not in the note. The whole
         # finding (suggested_code + severity + rule_ids) is suspect when the
@@ -355,7 +602,7 @@ def validate_findings(
                 suggested_code=str(item.get("suggested_code", "")),
                 quote=quote,
                 severity=str(item["severity"]),
-                rule_ids=tuple(rule_ids),
+                rule_ids=canonical_rule_ids,
                 finding_id=str(item.get("finding_id", "") or ""),
                 explanation=str(item.get("explanation", "")),
             )
