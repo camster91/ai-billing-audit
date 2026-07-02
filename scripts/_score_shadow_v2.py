@@ -47,8 +47,30 @@ from pathlib import Path
 
 # Semantic bucket mapping: planted rule_id -> list of regex patterns
 # that the LLM would emit for the same finding.
+#
+# P11 round-3 (2026-07-02): the runner now canonicalizes raw LLM
+# rule_ids to ``rule_ahcip_*`` (via ``_canonicalize_rule_id``) before
+# writing the report JSON. The bucket patterns below therefore MUST
+# match BOTH:
+#   - the canonical rule_id (e.g. ``rule_ahcip_modifier_25_unlock``)
+#   - the legacy raw LLM output (e.g. ``MOD-25-SAME-DAY-001``) which
+#     may still appear if a finding slipped past the canonicalizer
+#     (e.g. multi-rule comma-joined strings).
 BUCKET_PATTERNS: dict[str, list[str]] = {
+    # Same-day bucket listed FIRST so its more-specific pattern
+    # (``^MOD-25-SAME-DAY``) wins over the generic ``^MOD-25-`` in the
+    # missing_procedure bucket below for legacy raw LLM output that
+    # slipped past the canonicalizer. (Canonical rule_ids resolve
+    # via the \b...\b boundary patterns regardless of order.)
+    r"rule_ahcip_same_day_conflict": [
+        r"\brule_ahcip_same_day_conflict\b",
+        r"^MOD-25-SAME-DAY",
+        r"same.day.conflict",
+        r"same_day_conflict",
+    ],
     r"rule_ahcip_missing_procedure": [
+        r"\brule_ahcip_modifier_25_unlock\b",
+        r"\brule_ahcip_missing_procedure\b",
         r"^MOD-25-",
         r"^E_M_PROCEDURE_MODIFIER",
         r"^MOD-STD-001",
@@ -56,29 +78,32 @@ BUCKET_PATTERNS: dict[str, list[str]] = {
         r"missing_modifier",
     ],
     r"rule_ahcip_em_level_upcode": [
+        r"\brule_ahcip_em_level_upcode\b",
         r"^som_b_",
         r"^DX-PROCEDURE-ALIGNMENT",
         r"em_level_upcode|comprehensive|undercoded|undercode",
         r"e/m level too low",
     ],
     r"rule_ahcip_em_level": [
+        r"\brule_ahcip_em_level\b",
+        r"\brule_ahcip_dx_linkage\b",
+        r"\brule_ahcip_global_window\b",
         r"^som_b_",
         r"^DX-MATCH-",
+        r"^DX-DOC-",
         r"evaluation.*level",
     ],
-    r"rule_ahcip_same_day_conflict": [
-        r"^MOD-25-SAME-DAY",
-        r"same.day.conflict",
-        r"same_day_conflict",
-    ],
     r"rule_ahcip_non_insured_service": [
+        r"\brule_ahcip_non_insured_service\b",
         r"^MEDICARE_AWV",
         r"^Z00_",
         r"^ZCODE-",
+        r"^AWV-",
         r"annual.*physical|preventive.*non.insured|non.insured.*annual",
         r"z00_00_no_abnormal",
     ],
     r"rule_ahcip_global_window": [
+        r"\brule_ahcip_global_window\b",
         r"^SCOPE-OF-PRACTICE",
         r"global.*period|post.op|surgical.*global",
     ],

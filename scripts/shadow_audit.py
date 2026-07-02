@@ -90,8 +90,13 @@ SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
 # These are conservative mid-points used only for the report summary;
 # real per-encounter impact varies by payer mix and modifier context.
 # The numbers are not a guarantee of recovered revenue.
+#
+# P11 round-3 (2026-07-02): aligned with the canonical rule_id
+# namespace emitted by ``_canonicalize_rule_id()`` in auditor.py
+# (the LLM-side alias map). New buckets added for aliases that
+# previously fell through to "$0" in the report summary.
 SOMB_DOLLAR_BY_RULE: dict[str, int] = {
-    "rule_ahcip_modifier_25": 50,
+    "rule_ahcip_modifier_25_unlock": 50,  # was: _modifier_25
     "rule_ahcip_psychotherapy_time": 64,
     "rule_ahcip_em_level": 30,
     "rule_ahcip_em_level_upcode": 30,
@@ -99,12 +104,60 @@ SOMB_DOLLAR_BY_RULE: dict[str, int] = {
     "rule_ahcip_non_insured_service": 48,
     "rule_ahcip_after_hours_premium": 25,
     "rule_ahcip_telehealth": 20,
+    "rule_ahcip_telehealth_premium": 20,  # alias-mapped
     "rule_ahcip_referring_npi": 40,
+    "rule_ahcip_consultation_missed": 40,  # alias-mapped
     "rule_ahcip_global_window": 60,
     "rule_ahcip_lab_coverage": 0,  # not a recovery, an avoidance
+    "rule_ahcip_lab_order_no_draw": 0,  # alias-mapped; also an avoidance
     "rule_ahcip_cmgp": 25,
     "rule_ahcip_same_day_conflict": 30,
+    "rule_ahcip_missing_procedure": 30,  # alias-mapped; conservative
+    "rule_ahcip_03_05A_alternative": 40,  # alias-mapped; conservative
 }
+
+
+# SOMB-friendly human-readable labels for the canonical rule_ids.
+# Used in the 1-page report's finding-by-finding rows so the privacy
+# officer / clinic admin sees SOMB language ("Modifier-25 unlock
+# missed per SOMB GR 1.4") instead of the snake_case internal name.
+# Add new entries whenever a new canonical rule_id is added to
+# SOMB_DOLLAR_BY_RULE above.
+SOMB_LABEL_BY_RULE: dict[str, str] = {
+    "rule_ahcip_modifier_25_unlock": "Modifier-25 unlock missed (SOMB GR 1.4)",
+    "rule_ahcip_psychotherapy_time": "Psychotherapy time not billed (SOMB GR 8.19)",
+    "rule_ahcip_em_level": "E/M level may be under-supported (SOMB GR 3.4)",
+    "rule_ahcip_em_level_upcode": "E/M upcode risk vs documentation (SOMB GR 3.4)",
+    "rule_ahcip_dx_linkage": "Diagnosis linkage missing for procedure (SOMB GR 3.4A)",
+    "rule_ahcip_non_insured_service": "Non-insured service billed to AHCIP (SOMB GR 1.5)",
+    "rule_ahcip_after_hours_premium": "After-hours premium not applied (SOMB GR 5.3)",
+    "rule_ahcip_telehealth": "Telehealth premium missed (SOMB GR 5.4)",
+    "rule_ahcip_telehealth_premium": "Telehealth premium missed (SOMB GR 5.4)",
+    "rule_ahcip_referring_npi": "Referring provider NPI missing (SOMB GR 2.1)",
+    "rule_ahcip_consultation_missed": "Consultation code not claimed (SOMB GR 2.2)",
+    "rule_ahcip_global_window": "Service inside global/post-op window (SOMB GR 6.1)",
+    "rule_ahcip_lab_coverage": "In-office lab coverage avoidance (SOMB GR 4.2)",
+    "rule_ahcip_lab_order_no_draw": "Lab ordered but not drawn (SOMB GR 4.2)",
+    "rule_ahcip_cmgp": "CMGP / chronic disease management missed (SOMB GR 7.1)",
+    "rule_ahcip_same_day_conflict": "Same-day E&M + procedure conflict (SOMB GR 1.4)",
+    "rule_ahcip_missing_procedure": "In-office procedure not billed (SOMB GR 3.5)",
+    "rule_ahcip_03_05A_alternative": "03.05A alternative-payment rule applied (SOMB GR 3.5A)",
+}
+
+
+def _friendly_rule_label(rule_id: str) -> str:
+    """Render a canonical rule_id as SOMB-friendly copy.
+
+    Falls back to the raw rule_id (with leading 'rule_ahcip_' stripped)
+    if no friendly label is registered.
+    """
+    if not rule_id:
+        return ""
+    if rule_id in SOMB_LABEL_BY_RULE:
+        return SOMB_LABEL_BY_RULE[rule_id]
+    # Best-effort fallback: 'rule_ahcip_modifier_25_unlock' -> 'Modifier 25 Unlock'
+    bare = rule_id.replace("rule_ahcip_", "").replace("_", " ").strip()
+    return bare.title() if bare else rule_id
 
 
 # ---------- Input loading ---------------------------------------------------
@@ -409,12 +462,13 @@ def _render_markdown(
     if summary["by_rule"]:
         lines.append("## Findings by rule")
         lines.append("")
-        lines.append("| Rule | Count | Per-finding SOMB rate |")
-        lines.append("|---|---|---|")
+        lines.append("| Rule (canonical) | SOMB-friendly label | Count | Per-finding SOMB rate |")
+        lines.append("|---|---|---|---|")
         for rule, count in summary["by_rule"].items():
             rate = SOMB_DOLLAR_BY_RULE.get(rule, 0)
+            label = _friendly_rule_label(rule)
             lines.append(
-                f"| `{rule}` | {count} | "
+                f"| `{rule}` | {label} | {count} | "
                 f"{'$' + str(rate) if rate else '—'} |"
             )
         lines.append("")
@@ -438,12 +492,13 @@ def _render_markdown(
         for f in findings:
             sev = (f.get("severity") or "info").upper()
             rule = f.get("rule_id") or "—"
+            label = _friendly_rule_label(rule) if rule != "—" else "—"
             code = f.get("suggested_code") or ""
             quote = f.get("quote") or ""
             explanation = f.get("explanation") or ""
             err = " (ERROR)" if f.get("error") else ""
             lines.append(
-                f"- **{sev}** `{rule}` → `{code}`{err}"
+                f"- **{sev}** `{rule}` ({label}) → `{code}`{err}"
             )
             if quote:
                 wrapped = textwrap.fill(
