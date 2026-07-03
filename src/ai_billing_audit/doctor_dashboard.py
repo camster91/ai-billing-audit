@@ -152,7 +152,7 @@ def _one_sentence_fix(finding: dict[str, Any]) -> str:
     """The copy-pastable 'add this sentence to your note' suggestion."""
     rule = str(finding.get("rule_id", ""))
     if rule in ("MOD-25", "MOD-59"):
-        return "The E/M service is significant and separately identifiable from today's procedure."
+        return "Add modifier -25 (or -59) with this sentence: the E/M service is significant and separately identifiable from today's procedure, and the documentation supports a distinct workup."
     if rule == "E/M-LEVEL":
         return "Medical decision making: [problems], [data reviewed], [risk]. Total time: [X] minutes."
     if rule == "TIME":
