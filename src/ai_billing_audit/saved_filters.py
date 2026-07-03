@@ -172,6 +172,18 @@ class SavedFilterStore:
             if p.is_default:
                 existing_default = p.preset_name
                 break
+        # If we're promoting a *different* preset to default, we must
+        # also write a clear-default entry for the previously-default
+        # preset so ``list_for_user`` returns exactly one default per
+        # user (the contract pinned by test_set_default_only_one).
+        if set_default and existing_default and existing_default != preset_name:
+            clear_entry = SavedFilterEntry(
+                user_id=user_id,
+                preset_name=existing_default,
+                filter=self.get_preset(user_id, existing_default).filter,
+                is_default=False,
+            )
+            self._append(clear_entry)
         # Determine the effective is_default flag.
         if set_default:
             effective_default = True
@@ -216,7 +228,13 @@ class SavedFilterStore:
         """Return the user's presets, latest-version per name.
 
         Ordering: most-recently-saved first. ``is_default`` is
-        sticky on the most recent entry that sets it."""
+        sticky on the most recent entry that sets it.
+
+        Tombstones (the most-recent row for a name has an empty
+        ``filter``) are filtered out — the append-only log keeps
+        the audit trail intact, but live queries drop tombstoned
+        presets so a deleted preset doesn't resurface in the UI.
+        """
         latest: dict[str, SavedFilterEntry] = {}
         order: list[str] = []
         for entry in self._read_all():
@@ -227,7 +245,15 @@ class SavedFilterStore:
             latest[entry.preset_name] = entry
         # Build the list in latest-write order (the order keys
         # were inserted is the order each preset was last touched).
-        return [latest[name] for name in order]
+        # Build the list in latest-write order (skipping tombstones —
+        # most-recent row for that preset name has empty ``filter``).
+        result: list[SavedFilterEntry] = []
+        for name in order:
+            e = latest[name]
+            if not e.filter:
+                continue
+            result.append(e)
+        return result
 
     def get_preset(
         self, user_id: str, preset_name: str
