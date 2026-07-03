@@ -233,10 +233,17 @@ def test_audit_actions_uses_canonical_patient_hash(monkeypatch, tmp_path):
     monkeypatch.setenv("PATIENT_HASH_PEPPER", "z" * 32)
     monkeypatch.setenv("APP_ENV", "production")
     log_path = tmp_path / "audit_trail.jsonl"
-    # _LOG_PATH is captured at module import time, so monkeypatching
-    # the env var doesn't redirect writes after import. Override the
-    # module attribute directly so the test stays isolated.
-    monkeypatch.setattr(audit_actions, "_LOG_PATH", log_path)
+    # Redirect the audit-trail path via env var + reload rather
+    # than monkeypatching ``aa_mod._LOG_PATH`` directly. The
+    # legacy patch pattern conflicts with the broader
+    # ``AUDIT_TRAIL_LOG`` env var contract used by ``test_rbac`` /
+    # ``test_contact`` etc — tests that share the same module
+    # attribute would otherwise leak the previous tmp path via
+    # monkeypatch.undo. Standardizing on env var + reload keeps
+    # each test's path fully isolated.
+    import importlib as _il
+    monkeypatch.setenv("AUDIT_TRAIL_LOG", str(log_path))
+    _il.reload(audit_actions)
 
     audit_actions.append(
         action="accept_all",

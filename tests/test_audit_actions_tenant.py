@@ -17,6 +17,7 @@ What's pinned
 from __future__ import annotations
 
 import json
+import importlib
 import tempfile
 from pathlib import Path
 
@@ -27,9 +28,18 @@ from ai_billing_audit import audit_actions as aa_mod
 
 @pytest.fixture
 def tmp_log(tmp_path, monkeypatch):
-    """Point the audit_actions module at a tmp log file."""
+    """Point the audit_actions module at a tmp log file.
+
+    Set ``AUDIT_TRAIL_LOG`` env var and reload ``audit_actions`` so
+    the module reads the new path on every call. The legacy
+    ``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)`` pattern
+    interferes with other tests that share the env var path
+    (e.g. ``tests/test_rbac.py`` pins ``/tmp/...rbac.jsonl``),
+    so we standardize on env var + reload instead.
+    """
     log = tmp_path / "audit_trail.jsonl"
-    monkeypatch.setattr(aa_mod, "_LOG_PATH", log)
+    monkeypatch.setenv("AUDIT_TRAIL_LOG", str(log))
+    importlib.reload(aa_mod)
     return log
 
 

@@ -255,6 +255,14 @@ def test_old_audit_rows_without_user_id_still_verify(tmp_path: Path):
     post-feature row."""
     audit_log = Path(_TMP_AUDIT_LOG)
     try:
+        # Clean up any pre-existing rows from an earlier test run
+        # that landed in the same shared log path (setdefault at
+        # module load pins the path to _TMP_AUDIT_LOG, so other
+        # tests in the suite may have already written here).
+        # Without this cleanup the len==4 assertion below fails
+        # because the read returns the leftover rows too.
+        if audit_log.exists():
+            audit_log.unlink()
         # Write 3 pre-feature rows (mimicking pre-RBAC logs)
         for i in range(3):
             audit_actions.append(

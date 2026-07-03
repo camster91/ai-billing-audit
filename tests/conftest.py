@@ -13,6 +13,14 @@ import os
 
 def pytest_configure(config):
     os.environ.setdefault("AUDIT_ALLOW_NO_AUTH", "1")
+    # Some test runners carry APP_ENV=production or NODE_ENV=production
+    # inherited from a CI parent. That makes ``patient_hash._is_production``
+    # return True even in tests, which trips the production fail-fast
+    # (32+ char pepper required). Force ``APP_ENV=test`` and drop
+    # ``NODE_ENV`` so all patient_hash runs use the dev path unless a
+    # specific test monkeypatches APP_ENV back to ``production``.
+    os.environ["APP_ENV"] = "test"
+    os.environ.pop("NODE_ENV", None)
     # Set a long-enough test pepper for the salted patient_hash so
     # the test runner inherits a working PATIENT_HASH_PEPPER value
     # regardless of what other env vars the test runner's parent

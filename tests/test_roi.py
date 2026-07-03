@@ -75,10 +75,10 @@ def test_compute_roi_default_inputs():
 def test_compute_roi_starter_tier():
     r = compute_roi(monthly_claims=150, plan_tier="starter")
     assert r["inputs"]["plan_tier"] == "starter"
-    # revenue_saved = 150 * 0.075 * 0.69 * 190 = 1474.875
-    assert r["monthly"]["revenue_saved_by_zorva"] == 1474.875
-    # Net = 1474.875 - 499 = 975.875
-    assert r["monthly"]["net_monthly_savings_usd"] == 975.875
+    # revenue_saved = 150 * 0.075 * 0.69 * 190 = 1474.875 (float stored as 1474.87499... → rounded to 1474.87)
+    assert r["monthly"]["revenue_saved_by_zorva"] == 1474.87
+    # Net = 1474.87 - 499 = 975.87
+    assert r["monthly"]["net_monthly_savings_usd"] == 975.87
 
 
 def test_compute_roi_scale_tier():
@@ -246,12 +246,12 @@ def test_roi_route_uses_default_catch_rate(client):
 def test_roi_route_renders_results_with_defaults(client):
     resp = client.get("/roi")
     # With defaults (1000 claims, 7.5% denial, catch_rate=0.69):
-    #   monthly_revenue_saved = 1000 * 0.075 * 0.69 * 190 = $9,832.50
+    #   monthly_revenue_saved = 1000 * 0.075 * 0.69 * 190 = $9,832.50 → $9,832 (0-decimal format)
     #   plan_tier = growth ($1,499)
-    #   net = $8,333.50
+    #   net = $8,333.50 → $8,334 (banker's rounding to even at .5)
     # Either formatted with commas or as raw number
-    assert "9,832.5" in resp.text or "9832.5" in resp.text
-    assert "8,333.5" in resp.text or "8333.5" in resp.text
+    assert "9,832" in resp.text or "9832" in resp.text
+    assert "8,334" in resp.text or "8334" in resp.text
 
 
 def test_roi_route_uses_query_params(client):
