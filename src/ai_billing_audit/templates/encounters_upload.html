@@ -12,7 +12,7 @@
 
 <nav class="upload-tabs" role="tablist">
   <button class="upload-tab is-active" data-target="tab-837p" role="tab" aria-selected="true">837P file</button>
-  <button class="upload-tab" data-target="tab-zip" role="tab" aria-selected="false">ZIP of 837Ps</button>
+  <button class="upload-tab" data-target="tab-zip" role="tab" aria-selected="false">837P ZIP</button>
   <button class="upload-tab" data-target="tab-note" role="tab" aria-selected="false">Clinical note</button>
   <button class="upload-tab" data-target="tab-paste" role="tab" aria-selected="false">Paste form</button>
 </nav>
@@ -29,7 +29,7 @@
 </section>
 
 <section class="card mt-4" id="tab-zip" data-tab-panel hidden>
-  <h2 style="margin-top: 0;">Upload ZIP of 837Ps</h2>
+  <h2 style="margin-top: 0;">Upload 837P ZIP</h2>
   <p class="muted small">ZIP archive of 837P files. Each file is parsed and queued for audit individually.</p>
   <label class="dropzone" data-kind="zip">
     <input type="file" accept=".zip" hidden>
@@ -47,13 +47,14 @@
     <span class="dropzone__hint">Drag a PDF or image, or click to choose</span>
     <span class="dropzone__filename muted small"></span>
   </label>
+  <p id="note-status" class="muted small" hidden></p>
   <div class="upload-output" data-output></div>
 </section>
 
 <section class="card mt-4" id="tab-paste" data-tab-panel hidden>
   <h2 style="margin-top: 0;">Paste form</h2>
   <p class="muted small">Manually key in a claim + clinical note. Useful when there's no EHR export to upload.</p>
-  <form data-form="paste" class="paste-form">
+  <form id="paste-form" data-form="paste" class="paste-form">
     <div class="form-row">
       <label class="form-label">Encounter ID</label>
       <input class="form-input" type="text" name="encounter_id" required placeholder="e.g. ENC-2026-001">
@@ -79,11 +80,69 @@
       <textarea class="form-input" name="clinical_note" rows="8" placeholder="Paste the clinical note here..."></textarea>
     </div>
     <div class="form-actions">
-      <button class="btn btn-primary" type="submit">Submit for audit</button>
+      <button id="btn-paste-preview" class="btn" type="button">Preview rows</button>
+      <button id="btn-submit" class="btn btn-primary" type="submit" disabled>Submit for audit</button>
     </div>
   </form>
   <div class="upload-output" data-output></div>
 </section>
+
+<!-- Preview panel (hidden until rows land). The upload.js wires the
+     preview-accept-submit flow: drop a file, see preview rows, then
+     enable the submit button only when at least one row is OK. -->
+<section id="preview-panel" class="card mt-4" hidden>
+  <h2 style="margin-top: 0;">Parsed claims preview</h2>
+  <p id="preview-summary" class="muted small">No rows parsed yet.</p>
+  <div style="overflow-x: auto;">
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>Encounter</th>
+          <th>Patient</th>
+          <th>NPI</th>
+          <th>DOS</th>
+          <th>CPT</th>
+          <th>Source</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="preview-tbody"></tbody>
+    </table>
+  </div>
+  <details id="preview-raw-wrap" hidden style="margin-top: 0.75rem;">
+    <summary>Raw text snippets (debug)</summary>
+    <pre id="preview-raw" class="muted small" style="white-space: pre-wrap;"></pre>
+  </details>
+</section>
+
+<!-- Submit summary + jobs panel (filled by upload.js once a batch
+     submits). Hidden by default so the empty-state is clean. -->
+<section id="jobs-panel" class="card mt-4" hidden>
+  <h2 style="margin-top: 0;">Submit status</h2>
+  <p id="submit-summary" class="muted small"></p>
+  <ul id="job-list" class="job-list"></ul>
+</section>
+
+<!-- Row templates (cloned by upload.js renderPreview() and
+     renderJobs()). Hidden <template> elements so the DOM clones
+     don't render until JS pulls them. -->
+<template id="row-template">
+  <tr>
+    <td class="cell-enc"></td>
+    <td class="cell-pid"></td>
+    <td class="cell-npi"></td>
+    <td class="cell-dos"></td>
+    <td class="cell-cpt"></td>
+    <td class="cell-source"></td>
+    <td class="cell-status"></td>
+  </tr>
+</template>
+<template id="job-template">
+  <li class="job-item">
+    <span class="job-id"></span>
+    <span class="job-status muted small"></span>
+  </li>
+</template>
 
 {% endblock %}
 

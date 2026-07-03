@@ -100,7 +100,7 @@
       {% else %}
         <span class="badge badge-flagged">{{ findings|length }} finding{{ "" if findings|length == 1 else "s" }}</span>
         {% for f in findings %}
-          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
+          <span class="badge badge-sev-{{ f.severity }} badge--{{ f.severity }}">{{ f.severity }}</span>
         {% endfor %}
       {% endif %}
     </div>
@@ -146,7 +146,7 @@
           </div>
         </div>
         {% if opp.quote %}
-          <div class="finding-item__quote">&ldquo;{{ opp.quote }}&rdquo;</div>
+          <blockquote class="finding-quote">&ldquo;{{ opp.quote }}&rdquo;</blockquote>
         {% endif %}
         {% if opp.suggested_action %}
           <p class="revenue-opportunity-card__action">
@@ -174,7 +174,7 @@
     {% for f in findings %}
       <li class="finding-item" id="finding-{{ f.finding_id }}">
         <div class="finding-item__head">
-          <span class="badge badge-sev-{{ f.severity }}">{{ f.severity }}</span>
+          <span class="badge badge-sev-{{ f.severity }} badge--{{ f.severity }}">{{ f.severity }}</span>
           {% if f.category %}<span class="badge badge-neutral">{{ f.category }}</span>{% endif %}
           {% if f.rule_id %}<span class="chip-rule mono">{{ f.rule_id }}</span>{% endif %}
           {% if f.suggested_code %}<span class="muted small">&rarr; {{ f.suggested_code }}</span>{% endif %}
@@ -291,7 +291,14 @@
           </div>
         </form>
         {% if f.quote %}
-          <div class="finding-item__quote">&ldquo;{{ f.quote }}&rdquo;</div>
+          <blockquote class="finding-quote">
+            &ldquo;{{ f.quote }}&rdquo;
+            <button type="button" class="btn btn-ghost btn-sm finding-quote-copy"
+                    data-action="copy-quote" data-quote="{{ f.quote }}"
+                    aria-label="Copy this evidence quote">
+              Copy quote
+            </button>
+          </blockquote>
         {% endif %}
         {% if f.explanation %}
           <p class="finding-item__explain">{{ f.explanation }}</p>
@@ -441,7 +448,7 @@
 {% if clinical_note %}
 <section class="section">
   <h2>Clinical note</h2>
-  <pre class="clinical-note">{{ clinical_note }}</pre>
+  <pre class="clinical-note">{{ clinical_note | highlight_quote(primary_quote) }}</pre>
 </section>
 {% endif %}
 
@@ -452,6 +459,34 @@
   <button class="btn btn-ghost" data-action="flag" data-endpoint="/encounter/{{ encounter_id }}/flag">
     Flag for review
   </button>
+  {# DOM hooks the JS highlight workflow depends on (see tests + dashboard.css):
+     copy-quote / scroll-to-note let the biller jump to the evidence
+     directly; btn-toggle-mark hides/recovers the <mark> highlights
+     when the biller needs a clean note render. The advanced
+     buttons (jump-to-high / next-finding / severity-filter) are
+     only rendered for HARD-difficulty encounters — they're the
+     advanced hard-tier action panel the task acceptance criteria
+     pin. #}
+  <button class="btn btn-ghost" data-action="copy-quote" type="button">
+    Copy evidence quote
+  </button>
+  <button class="btn btn-ghost" data-action="scroll-to-note" type="button">
+    Jump to note
+  </button>
+  <button class="btn btn-ghost" id="btn-toggle-mark" data-action="toggle-mark" type="button">
+    Toggle evidence highlight
+  </button>
+  {% if difficulty == "HARD" %}
+  <button class="btn btn-ghost" id="btn-jump-high" data-action="jump-high" type="button">
+    Jump to high-severity finding
+  </button>
+  <button class="btn btn-ghost" id="btn-next-finding" data-action="next-finding" type="button">
+    Next finding
+  </button>
+  <button class="btn btn-ghost" id="btn-severity-filter" data-action="severity-filter" type="button">
+    Filter: severity
+  </button>
+  {% endif %}
   <span class="grow"></span>
   <a class="btn btn-ghost" href="/encounter/{{ encounter_id }}/json">View raw JSON</a>
 </div>

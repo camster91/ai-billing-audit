@@ -274,6 +274,39 @@
        class="btn btn-ghost btn-sm">Clear</a>
   {% endif %}
 </form>
+
+{# Demo encounter registry (kanban t_d33c5aca / t_5c741803 / t_d16db103).
+   Renders one card per registered demo encounter with a difficulty-tier
+   CSS hook (`encounter-card--easy|medium|hard`) so the easy / medium
+   / hard wiring tasks' acceptance criteria pin cleanly. Each card
+   links to the full audit panel AND the raw JSON endpoint so the
+   biller / friend-reviewer can verify the audit output without
+   context. #}
+{% if cards %}
+<section class="demo-encounters" aria-label="Demo encounters">
+  <h2>Demo encounters</h2>
+  <p class="muted small">One-click auditor fixtures (EASY / MEDIUM / HARD difficulty tiers). Use these to preview the audit pipeline before uploading your own claims.</p>
+  <div class="demo-encounters-grid">
+    {% for c in cards %}
+      <article class="encounter-card encounter-card--{{ c.difficulty|lower }}" id="encounter-card-{{ c.encounter_id }}">
+        <header class="encounter-card__head">
+          <span class="encounter-card__id mono">{{ c.encounter_id }}</span>
+          <span class="badge badge-{{ c.difficulty|lower }}">{{ c.difficulty }}</span>
+        </header>
+        {% if c.summary %}<p class="encounter-card__summary muted small">{{ c.summary }}</p>{% endif %}
+        <footer class="encounter-card__actions">
+          <a class="btn btn-primary btn-sm" href="/encounter/{{ c.encounter_id }}">Open audit</a>
+          <a class="btn btn-ghost btn-sm" href="/encounter/{{ c.encounter_id }}/json">Raw JSON</a>
+        </footer>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="demo-encounters demo-encounters--empty" aria-label="Demo encounters">
+  <p class="muted small">No demo encounters registered yet.</p>
+</section>
+{% endif %}
 {% if search.active %}
 <p class="muted small encounter-search__status" aria-live="polite">
   Showing matches for
