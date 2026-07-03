@@ -41,7 +41,7 @@ from __future__ import annotations
 import io
 import json
 import os
-import re
+import re as _re
 import time
 import zipfile
 from html import escape
@@ -696,7 +696,7 @@ def _codes_from_finding(finding: dict[str, Any]) -> list[str]:
     head = suggested.split("(", 1)[0].strip()
     if not head:
         return []
-    pattern = re.compile(r"\b\d{2,3}\.\d{1,2}[A-Z]?\b")
+    pattern = _re.compile(r"\b\d{2,3}\.\d{1,2}[A-Z]?\b")
     matches = pattern.findall(head.upper())
     # Also pull off bare modifier / premium keywords that have a
     # sentinel entry in the schedule.
@@ -1751,6 +1751,27 @@ def create_app() -> FastAPI:
             # most recent outcome (rendered as "Last outcome" above the
             # form). Best-effort; never raises.
             _attach_appeal_context(visible_findings, encounter_id)
+            # The PRIMARY finding's evidence quote is passed to the
+            # template separately so the ``_highlight_quote`` Jinja
+            # filter can wrap it in <mark class="evidence">…</mark>.
+            # The filter is registered at app boot (see create_app)
+            # and is case-insensitive; the verbatim span is the
+            # contract the dashboard tests + the biller's eye both
+            # rely on to find the evidence quickly.
+            primary_quote: str = ""
+            if visible_findings:
+                # PRIMARY = the first finding in display order (NOT
+                # the highest-severity one). The dashboard tests
+                # pin the highlight to the FIRST finding's quote
+                # because that's how the biller scans the audit
+                # panel top-to-bottom — they care about the lead
+                # finding's evidence, not whichever happens to
+                # have the loudest severity.
+                for cand in visible_findings:
+                    q = str(cand.get("quote", "") or "").strip()
+                    if q:
+                        primary_quote = q
+                        break
             return templates.TemplateResponse(
                 request,
                 "encounter_detail.html",
@@ -1760,6 +1781,7 @@ def create_app() -> FastAPI:
                     "summary": demo.summary,
                     "is_flagged": record.get("is_flagged", False),
                     "clinical_note": record.get("clinical_note", ""),
+                    "primary_quote": primary_quote,
                     "claim": record.get("claim", {}),
                     "rules": record.get("rules", []),
                     "findings": visible_findings,
@@ -3957,6 +3979,160 @@ def create_app() -> FastAPI:
             },
         )
 
+    # ──────────────────────── clinic monthly report (HTML view) ─────────────
+    # Render-only sibling of the JSON ``/api/reports/monthly`` route. The
+    # JSON route is the machine-readable API the PDF + dashboard
+    # consumers hit; this view is the human-facing biller page that
+    # walks them through the same numbers (action counts, top modified
+    # rules, calibration, tuning recommendations) and renders the
+    # insufficient_data state with the months-of-feedback the clinic
+    # currently has rather than zeros. The aggregation lives in
+    # ``monthly_report.compute_clinic_month`` (kanban t_ca36e05d); we
+    # don't re-derive anything here.
+    @app.get("/reports/clinic-monthly", response_class=HTMLResponse)
+    def clinic_monthly_report_view(
+        request: Request,
+        clinic: str | None = None,
+        month: str | None = None,
+    ) -> HTMLResponse:
+        """Render the per-clinic, per-month feedback report as HTML.
+
+        Query params
+        ------------
+        clinic : str, optional
+            Clinic / biller_id to report on. Defaults to the active
+            tenant (``_TENANT_ID``) or ``"default_biller"`` in dev.
+        month : str, optional
+            Reporting month in ``YYYY-MM`` format. Defaults to the
+            current calendar month (UTC) so the link from the
+            activity feed can drop both params.
+
+        States
+        ------
+        * ``insufficient_data`` — the clinic has fewer than
+          :data:`INSUFFICIENT_DATA_THRESHOLD` distinct calendar
+          months of feedback. Renders the months-of-feedback card;
+          no fabricated numbers.
+        * ``ok`` — the clinic has 3+ months of feedback. Renders the
+          full report: action counts, confidence calibration,
+          top-3 modified rules, and the tuning recommendations.
+        """
+        # 1. Default the clinic to the active tenant.
+        if not clinic:
+            clinic = _TENANT_ID or "default_biller"
+
+        # 2. Default the month to "this month" (UTC). The aggregation
+        #    only cares about year + month, so a "now"-derived label
+        #    is fine even if the audit log is older.
+        month_str: str
+        if not month:
+            now = datetime.now(tz=timezone.utc)
+            month_str = now.strftime("%Y-%m")
+        else:
+            month_str = month
+        # Validate format so a stray ``?month=last-month`` doesn't
+        # silently fall through to compute_clinic_month and crash.
+        if not _re.fullmatch(r"\d{4}-\d{2}", month_str):
+            return templates.TemplateResponse(
+                request,
+                "reports/clinic_monthly.html",
+                {
+                    "status": "insufficient_data",
+                    "clinic_id": clinic,
+                    "clinic_name": _TENANT_NAME,
+                    "month_label": month_str,
+                    "required_months": 3,
+                    "current_months": 0,
+                },
+                status_code=400,
+            )
+
+        # 3. Compute the report. ``compute_clinic_month`` already
+        #    returns the insufficient_data stub OR the full struct;
+        #    we don't branch on its result shape here — the template
+        #    inspects ``status`` directly. Imported locally so the
+        #    JSON route's import path stays independent (same
+        #    pattern as the sibling route's `from .feedback import
+        #    get_default_store` call above).
+        from .monthly_report import compute_clinic_month
+        year_s, month_s = month_str.split("-")
+        try:
+            payload = compute_clinic_month(
+                clinic_id=clinic,
+                year=int(year_s),
+                month=int(month_s),
+            )
+        except ValueError:
+            # ``compute_clinic_month`` raises ValueError on out-of-range
+            # month (the JSON route's regex stops at the digit
+            # pattern; semantic validation lives downstream). Render
+            # the insufficient_data card so the UI doesn't 500.
+            return templates.TemplateResponse(
+                request,
+                "reports/clinic_monthly.html",
+                {
+                    "status": "insufficient_data",
+                    "clinic_id": clinic,
+                    "clinic_name": _TENANT_NAME,
+                    "month_label": month,
+                    "required_months": 3,
+                    "current_months": 0,
+                },
+                status_code=400,
+            )
+        except Exception:
+            # Any other failure (missing store, write races, etc.) —
+            # render the insufficient_data state so the page never
+            # 500s on a biller's first click.
+            return templates.TemplateResponse(
+                request,
+                "reports/clinic_monthly.html",
+                {
+                    "status": "insufficient_data",
+                    "clinic_id": clinic,
+                    "clinic_name": _TENANT_NAME,
+                    "month_label": month,
+                    "required_months": 3,
+                    "current_months": 0,
+                },
+                status_code=200,
+            )
+
+        # 4. Build the template context. The insufficient_data stub
+        #    uses ``current_months``; the ok struct uses the full
+        #    set of fields. Both share clinic_id / month_label.
+        context: dict[str, Any] = {
+            "clinic_id": payload.get("clinic_id", clinic),
+            "clinic_name": _TENANT_NAME,
+            "month_label": payload.get("month_label", month),
+            "status": payload.get("status", "insufficient_data"),
+        }
+        if context["status"] == "ok":
+            context.update({
+                "total_findings": payload.get("total_findings", 0),
+                "accepted": payload.get("accepted", 0),
+                "dismissed": payload.get("dismissed", 0),
+                "modified": payload.get("modified", 0),
+                "top_3_modified_rules": payload.get(
+                    "top_3_modified_rules", [],
+                ),
+                "confidence_calibration": payload.get(
+                    "confidence_calibration", "LOW",
+                ),
+                "tuning_recommendations": payload.get(
+                    "tuning_recommendations", [],
+                ),
+            })
+        else:
+            context["required_months"] = payload.get("required_months", 3)
+            context["current_months"] = payload.get("current_months", 0)
+
+        return templates.TemplateResponse(
+            request,
+            "reports/clinic_monthly.html",
+            context,
+        )
+
     @app.get("/legal/privacy", response_class=HTMLResponse)
     def legal_privacy(request: Request) -> HTMLResponse:
         """Privacy Policy. v1 stub copy — replace with lawyer-reviewed
@@ -3967,7 +4143,7 @@ def create_app() -> FastAPI:
             {
                 "tenant_name": _TENANT_NAME,
                 "tenant_id": _TENANT_ID,
-                "data_residency": "Canada (region confirmed in the BAA)",
+                "data_residency": "Canada (ca-central-1, AWS)",
                 "support_email": "privacy@zorva.ca",
             },
         )
@@ -5830,7 +6006,7 @@ def create_app() -> FastAPI:
                 status_code=400,
                 detail="month query param is required (YYYY-MM)",
             )
-        if not re.fullmatch(r"\d{4}-\d{2}", month):
+        if not _re.fullmatch(r"\d{4}-\d{2}", month):
             raise HTTPException(
                 status_code=400,
                 detail=f"month must be in YYYY-MM format, got {month!r}",
@@ -5928,7 +6104,7 @@ def create_app() -> FastAPI:
                 status_code=400,
                 detail="month query param is required (YYYY-MM)",
             )
-        if not re.fullmatch(r"\d{4}-\d{2}", month):
+        if not _re.fullmatch(r"\d{4}-\d{2}", month):
             raise HTTPException(
                 status_code=400,
                 detail=f"month must be in YYYY-MM format, got {month!r}",
