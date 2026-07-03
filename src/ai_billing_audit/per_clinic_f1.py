@@ -302,9 +302,12 @@ def weekly_f1(
     # Seed every week in the window so the chart x-axis is dense.
     cur = _dt.datetime.fromtimestamp(start_ts, tz=_dt.timezone.utc).date()
     end_date = _dt.datetime.fromtimestamp(end_ts, tz=_dt.timezone.utc).date()
-    # Walk to next Monday.
+    # Walk BACK to the previous Monday (inclusive), NOT forward to the
+    # next Monday. Walking forward would miss events that fall in the
+    # partial first week (start_ts lands mid-week); the bucket those
+    # events belong to is the Monday *on or before* start_ts.
     while cur.weekday() != 0:
-        cur = cur + _dt.timedelta(days=1)
+        cur = cur - _dt.timedelta(days=1)
     while cur <= end_date:
         buckets[cur.isoformat()] = (0.0, 0.0, 0)
         cur = cur + _dt.timedelta(days=7)
