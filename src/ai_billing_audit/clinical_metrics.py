@@ -48,51 +48,36 @@ from fastapi.responses import JSONResponse
 
 # ---- Constants --------------------------------------------------------
 
-_PROMPT_PIN_PATH = Path(
-    os.environ.get("CLINIC_PROMPT_PIN_LOG", "/app/logs/clinic_prompt_pins.jsonl")
-)
-_TEACHING_VERDICT_PATH = Path(
-    os.environ.get("TEACHING_VERDICT_LOG", "/app/logs/teaching_verdicts.jsonl")
-)
-_REAUDIT_QUEUE_PATH = Path(
-    os.environ.get("REAUDIT_QUEUE_LOG", "/app/logs/reaudit_queue.jsonl")
-)
-_DOCTOR_DASHBOARD_PATH = Path(
-    os.environ.get("DOCTOR_DASHBOARD_LOG", "/app/logs/doctor_dashboard.jsonl")
-)
-_NOTE_SUGGESTION_PATH = Path(
-    os.environ.get("NOTE_SUGGESTION_LOG", "/app/logs/note_suggestions.jsonl")
-)
-_OWNER_EMAIL_PATH = Path(
-    os.environ.get("OWNER_EMAIL_LOG", "/app/logs/owner_emails.jsonl")
-)
-_WEBHOOK_PATH = Path(
-    os.environ.get("SUBMIT_WEBHOOK_LOG", "/app/logs/submit_webhooks.jsonl")
-)
-_FEEDBACK_LOOP_PATH = Path(
-    os.environ.get("FEEDBACK_LOOP_LOG", "/app/logs/feedback_loop_runs.jsonl")
-)
-_TENANT_RULES_PATH = Path(
-    os.environ.get("TENANT_RULES_LOG", "/app/logs/tenant_rules.jsonl")
-)
-_ONBOARDING_PATH = Path(
-    os.environ.get("ONBOARDING_LOG", "/app/logs/onboarding.jsonl")
-)
-_BLOCKING_PATH = Path(
-    os.environ.get("PRE_SUBMIT_BLOCKING_LOG", "/app/logs/pre_submit_blocking.jsonl")
-)
-_EXTENSION_PATH = Path(
-    os.environ.get("BROWSER_EXTENSION_LOG", "/app/logs/browser_extension.jsonl")
-)
-_SPECIALTY_MIX_PATH = Path(
-    os.environ.get("SPECIALTY_MIX_LOG", "/app/logs/specialty_mix.jsonl")
-)
-_BULK_ACCEPT_PATH = Path(
-    os.environ.get("BULK_ACCEPT_LOG", "/app/logs/bulk_accept_patterns.jsonl")
-)
-_POSITIVE_FEEDBACK_PATH = Path(
-    os.environ.get("POSITIVE_FEEDBACK_LOG", "/app/logs/doctor_positive_feedback.jsonl")
-)
+def prompt_pin_path_path() -> Path:
+    return Path(os.environ.get("CLINIC_PROMPT_PIN_LOG", "/app/logs/clinic_prompt_pins.jsonl"))
+def teaching_verdict_path_path() -> Path:
+    return Path(os.environ.get("TEACHING_VERDICT_LOG", "/app/logs/teaching_verdicts.jsonl"))
+def reaudit_queue_path_path() -> Path:
+    return Path(os.environ.get("REAUDIT_QUEUE_LOG", "/app/logs/reaudit_queue.jsonl"))
+def doctor_dashboard_path_path() -> Path:
+    return Path(os.environ.get("DOCTOR_DASHBOARD_LOG", "/app/logs/doctor_dashboard.jsonl"))
+def note_suggestion_path_path() -> Path:
+    return Path(os.environ.get("NOTE_SUGGESTION_LOG", "/app/logs/note_suggestions.jsonl"))
+def owner_email_path_path() -> Path:
+    return Path(os.environ.get("OWNER_EMAIL_LOG", "/app/logs/owner_emails.jsonl"))
+def webhook_path_path() -> Path:
+    return Path(os.environ.get("SUBMIT_WEBHOOK_LOG", "/app/logs/submit_webhooks.jsonl"))
+def feedback_loop_path_path() -> Path:
+    return Path(os.environ.get("FEEDBACK_LOOP_LOG", "/app/logs/feedback_loop_runs.jsonl"))
+def tenant_rules_path_path() -> Path:
+    return Path(os.environ.get("TENANT_RULES_LOG", "/app/logs/tenant_rules.jsonl"))
+def onboarding_path_path() -> Path:
+    return Path(os.environ.get("ONBOARDING_LOG", "/app/logs/onboarding.jsonl"))
+def blocking_path_path() -> Path:
+    return Path(os.environ.get("PRE_SUBMIT_BLOCKING_LOG", "/app/logs/pre_submit_blocking.jsonl"))
+def extension_path_path() -> Path:
+    return Path(os.environ.get("BROWSER_EXTENSION_LOG", "/app/logs/browser_extension.jsonl"))
+def specialty_mix_path_path() -> Path:
+    return Path(os.environ.get("SPECIALTY_MIX_LOG", "/app/logs/specialty_mix.jsonl"))
+def bulk_accept_path_path() -> Path:
+    return Path(os.environ.get("BULK_ACCEPT_LOG", "/app/logs/bulk_accept_patterns.jsonl"))
+def positive_feedback_path_path() -> Path:
+    return Path(os.environ.get("POSITIVE_FEEDBACK_LOG", "/app/logs/doctor_positive_feedback.jsonl"))
 
 
 # ---- Data shapes ------------------------------------------------------
@@ -251,7 +236,7 @@ def _read_feedback_with_incorrect() -> list[dict[str, Any]]:
     """
     from . import feedback as _feedback
 
-    log_path = _feedback._LOG_PATH  # noqa: SLF001 (intentional — same path)
+    log_path = _feedback.feedback_log_path()  # noqa: SLF001 (intentional — same path)
     if not log_path.exists():
         return []
     out: list[dict[str, Any]] = []
@@ -281,13 +266,13 @@ def list_teaching_signal_queue(
 
 def record_teaching_verdict(verdict: TeachingVerdict) -> TeachingVerdict:
     """Persist an admin verdict. Idempotent on (feedback_id, verdict)."""
-    _append_jsonl(_TEACHING_VERDICT_PATH, verdict.to_dict())
+    _append_jsonl(teaching_verdict_path_path(), verdict.to_dict())
     return verdict
 
 
 def list_do_not_flag_rules(clinic_id: str) -> list[dict[str, Any]]:
     """Return the rule+pattern pairs the clinic has marked 'doctor right'."""
-    rows = _read_jsonl(_TEACHING_VERDICT_PATH)
+    rows = _read_jsonl(teaching_verdict_path_path())
     return [
         r for r in rows
         if r.get("verdict") == "doctor_right" and r.get("clinic_id") == clinic_id
@@ -307,12 +292,12 @@ def queue_reaudit(encounter_id: str, actor: str, note: str = "") -> dict[str, An
         "queued_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "status": "queued",
     }
-    _append_jsonl(_REAUDIT_QUEUE_PATH, payload)
+    _append_jsonl(reaudit_queue_path_path(), payload)
     return payload
 
 
 def list_reaudit_queue() -> list[dict[str, Any]]:
-    return _read_jsonl(_REAUDIT_QUEUE_PATH)
+    return _read_jsonl(reaudit_queue_path_path())
 
 
 # ---- Per-clinic prompt version pin (t_17ec5fec) -----------------------
@@ -328,12 +313,12 @@ def pin_prompt_version(
         prompt_version_id=prompt_version_id,
         actor=actor,
     )
-    _append_jsonl(_PROMPT_PIN_PATH, pin.to_dict())
+    _append_jsonl(prompt_pin_path_path(), pin.to_dict())
     return pin
 
 
 def get_pinned_prompt_version(clinic_id: str) -> str | None:
-    rows = _read_jsonl(_PROMPT_PIN_PATH)
+    rows = _read_jsonl(prompt_pin_path_path())
     state: str | None = None
     for row in rows:
         if row.get("clinic_id") == clinic_id:
@@ -342,7 +327,7 @@ def get_pinned_prompt_version(clinic_id: str) -> str | None:
 
 
 def list_pinned_clinics() -> dict[str, str]:
-    rows = _read_jsonl(_PROMPT_PIN_PATH)
+    rows = _read_jsonl(prompt_pin_path_path())
     out: dict[str, str] = {}
     for row in rows:
         cid = str(row.get("clinic_id") or "")
@@ -376,12 +361,12 @@ def log_doctor_dashboard_view(
         "savings_usd": savings_usd,
         "viewed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_DOCTOR_DASHBOARD_PATH, payload)
+    _append_jsonl(doctor_dashboard_path_path(), payload)
     return payload
 
 
 def list_doctor_dashboard_views(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_DOCTOR_DASHBOARD_PATH) if r.get("clinic_id") == clinic_id]
+    return [r for r in _read_jsonl(doctor_dashboard_path_path()) if r.get("clinic_id") == clinic_id]
 
 
 # ---- Doctor "add this to your note" suggestion (t_df188436) ------------
@@ -405,12 +390,12 @@ def record_note_suggestion(
         "model": model,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_NOTE_SUGGESTION_PATH, payload)
+    _append_jsonl(note_suggestion_path_path(), payload)
     return payload
 
 
 def list_note_suggestions(encounter_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_NOTE_SUGGESTION_PATH) if r.get("encounter_id") == encounter_id]
+    return [r for r in _read_jsonl(note_suggestion_path_path()) if r.get("encounter_id") == encounter_id]
 
 
 # ---- Monthly clinic-owner WIN email (t_a8eeb0de) ----------------------
@@ -437,12 +422,12 @@ def queue_owner_monthly_email(
         "actor": actor,
         "status": "queued",
     }
-    _append_jsonl(_OWNER_EMAIL_PATH, payload)
+    _append_jsonl(owner_email_path_path(), payload)
     return payload
 
 
 def list_owner_emails(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_OWNER_EMAIL_PATH) if r.get("clinic_id") == clinic_id]
+    return [r for r in _read_jsonl(owner_email_path_path()) if r.get("clinic_id") == clinic_id]
 
 
 # ---- Submit-time EHR webhook (t_3b15809f) -----------------------------
@@ -468,12 +453,12 @@ def record_submit_webhook(
         "latency_ms": latency_ms,
         "called_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_WEBHOOK_PATH, payload)
+    _append_jsonl(webhook_path_path(), payload)
     return payload
 
 
 def list_submit_webhooks(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_WEBHOOK_PATH) if r.get("clinic_id") == clinic_id]
+    return [r for r in _read_jsonl(webhook_path_path()) if r.get("clinic_id") == clinic_id]
 
 
 # ---- Reviewer feedback loop (t_2ab66102) ------------------------------
@@ -519,7 +504,7 @@ def run_feedback_loop_week(
         "ran_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "status": "advisory",  # never auto-mutates the prompt
     }
-    _append_jsonl(_FEEDBACK_LOOP_PATH, payload)
+    _append_jsonl(feedback_loop_path_path(), payload)
     return payload
 
 
@@ -547,12 +532,12 @@ def add_tenant_rule(
         "actor": actor,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_TENANT_RULES_PATH, payload)
+    _append_jsonl(tenant_rules_path_path(), payload)
     return payload
 
 
 def list_tenant_rules(clinic_id: str) -> list[dict[str, Any]]:
-    rows = [r for r in _read_jsonl(_TENANT_RULES_PATH) if r.get("clinic_id") == clinic_id]
+    rows = [r for r in _read_jsonl(tenant_rules_path_path()) if r.get("clinic_id") == clinic_id]
     # Return only the latest enabled=True state per rule_id
     state: dict[str, dict[str, Any]] = {}
     for r in rows:
@@ -593,12 +578,12 @@ def save_onboarding_answers(
         "recommended_email_cadence": "weekly" if monthly_claim_volume < 500 else "daily",
         "saved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_ONBOARDING_PATH, payload)
+    _append_jsonl(onboarding_path_path(), payload)
     return payload
 
 
 def get_onboarding(clinic_id: str) -> dict[str, Any] | None:
-    rows = [r for r in _read_jsonl(_ONBOARDING_PATH) if r.get("clinic_id") == clinic_id]
+    rows = [r for r in _read_jsonl(onboarding_path_path()) if r.get("clinic_id") == clinic_id]
     return rows[-1] if rows else None
 
 
@@ -623,12 +608,12 @@ def record_pre_submit_block(
         "actor": actor,
         "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_BLOCKING_PATH, payload)
+    _append_jsonl(blocking_path_path(), payload)
     return payload
 
 
 def list_pre_submit_blocks(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_BLOCKING_PATH) if r.get("clinic_id") == clinic_id]
+    return [r for r in _read_jsonl(blocking_path_path()) if r.get("clinic_id") == clinic_id]
 
 
 # ---- Browser extension audit-log (t_8b915264) -------------------------
@@ -655,7 +640,7 @@ def record_extension_audit(
         "extension_version": extension_version,
         "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_EXTENSION_PATH, payload)
+    _append_jsonl(extension_path_path(), payload)
     return payload
 
 
@@ -689,12 +674,12 @@ def compute_specialty_mix(
         "dominant_specialties": [k for k, _ in dominant],
         "computed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_SPECIALTY_MIX_PATH, payload)
+    _append_jsonl(specialty_mix_path_path(), payload)
     return payload
 
 
 def get_specialty_mix(clinic_id: str) -> dict[str, Any] | None:
-    rows = [r for r in _read_jsonl(_SPECIALTY_MIX_PATH) if r.get("clinic_id") == clinic_id]
+    rows = [r for r in _read_jsonl(specialty_mix_path_path()) if r.get("clinic_id") == clinic_id]
     return rows[-1] if rows else None
 
 
@@ -720,13 +705,13 @@ def detect_bulk_accept_pattern(
         "opt_in": False,  # biller must explicitly opt in
         "proposed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    _append_jsonl(_BULK_ACCEPT_PATH, payload)
+    _append_jsonl(bulk_accept_path_path(), payload)
     return payload
 
 
 def opt_in_bulk_accept(pattern_id: str, actor: str = "biller") -> dict[str, Any]:
     """Mark a proposed bulk-accept pattern as opted-in."""
-    rows = _read_jsonl(_BULK_ACCEPT_PATH)
+    rows = _read_jsonl(bulk_accept_path_path())
     for r in rows:
         if r.get("event_id") == pattern_id:
             r["opt_in"] = True
@@ -734,7 +719,7 @@ def opt_in_bulk_accept(pattern_id: str, actor: str = "biller") -> dict[str, Any]
             r["opt_in_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             # Rewrite the log (small file, append-only semantics weakened
             # by design for this single opt-in transition).
-            with _BULK_ACCEPT_PATH.open("w", encoding="utf-8") as fh:
+            with bulk_accept_path_path().open("w", encoding="utf-8") as fh:
                 for row in rows:
                     fh.write(json.dumps(row, sort_keys=True) + "\n")
             return r
@@ -765,12 +750,12 @@ def queue_doctor_positive_digest(
         "scheduled_for": time.strftime("%Y-%m-%dT07:00:00Z", time.gmtime()),
         "status": "queued",
     }
-    _append_jsonl(_POSITIVE_FEEDBACK_PATH, payload)
+    _append_jsonl(positive_feedback_path_path(), payload)
     return payload
 
 
 def list_doctor_positive_digests(doctor_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(_POSITIVE_FEEDBACK_PATH) if r.get("doctor_id") == doctor_id]
+    return [r for r in _read_jsonl(positive_feedback_path_path()) if r.get("doctor_id") == doctor_id]
 
 
 # ---- Route mounting for the 12 new surfaces --------------------------
