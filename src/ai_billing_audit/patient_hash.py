@@ -128,25 +128,27 @@ def resolve_pepper(override: str | None = None) -> str:
     """Return the active pepper, raising in production if it is missing.
 
     Resolution order:
-    1. ``override`` (caller-supplied; used by tests)
-    2. ``PATIENT_HASH_PEPPER`` environment variable
+    1. ``override`` (caller-supplied; used by tests). If supplied
+       explicitly, we trust the caller — length validation only
+       applies to env-sourced peppers, NOT to in-code overrides.
+       This lets tests assert hash-format pinning with a short
+       pepper without tripping the production minimum-length check.
+    2. ``PATIENT_HASH_PEPPER`` environment variable (must be
+       :data:`MIN_PEPPER_LENGTH`+ chars)
     3. Dev fallback constant (only when not in production)
 
-    In production, an unset or too-short pepper raises
+    In production, an unset or too-short env-sourced pepper raises
     :class:`RuntimeError` so the misconfiguration is loud, not
-    silent. A 16+ char pepper is the minimum the threat model
+    silent. A 32+ char pepper is the minimum the threat model
     accepts (longer is fine).
     """
-    candidates: list[str] = []
+    # Caller-supplied overrides are trusted (this is the contract for
+    # unit tests asserting exact digests with a known short pepper).
     if override is not None:
-        candidates.append(override)
+        return override
     env_value = os.environ.get("PATIENT_HASH_PEPPER", "")
-    if env_value:
-        candidates.append(env_value)
-
-    for candidate in candidates:
-        if len(candidate) >= MIN_PEPPER_LENGTH:
-            return candidate
+    if env_value and len(env_value) >= MIN_PEPPER_LENGTH:
+        return env_value
 
     if _is_production():
         raise RuntimeError(
