@@ -87,7 +87,26 @@ _TABLES: dict[Locale, dict[str, str]] = {
 
 # Per-tenant locale log (append-only JSONL, SHA-256 chained for
 # tamper evidence — same pattern as audit_actions.py).
+# Module-level path. Stored at import time so legacy
+# `monkeypatch.setattr(module, '_LOG_PATH', log)` patches still
+# work (the audit_actions / feedback / feature_flags / i18n
+# test suites depend on this contract). Tests that need to
+# override the path per-test should patch this attribute; the
+# accessors below read the attribute each call so a patch
+# takes effect immediately.
 _LOG_PATH = Path(os.environ.get("TENANT_LOCALE_LOG", "/app/logs/tenant_locale.jsonl"))
+
+def tenant_locale_log_path() -> Path:
+    """Return the audit-trail JSONL path.
+
+    Reads the module-level ``_LOG_PATH`` attribute every call so
+    tests that monkey-patch the attribute at module scope
+    (``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)``) see the
+    patched path on every call. The path is selected from the
+    ``TENANT_LOCALE_LOG`` env var at import time; absent that var, falls
+    back to ``/app/logs/tenant_locale.jsonl`` (the production layout).
+    """
+    return _LOG_PATH
 _GENESIS_SIG = "0" * 64
 
 
@@ -179,7 +198,7 @@ def set_locale(tenant_id: str, locale: Locale) -> dict[str, object]:
         raise ValueError(
             f"locale must be one of {SUPPORTED_LOCALES}, got {locale!r}"
         )
-    path = Path(os.environ.get("TENANT_LOCALE_LOG", str(_LOG_PATH)))
+    path = Path(os.environ.get("TENANT_LOCALE_LOG", str(tenant_locale_log_path())))
     path.parent.mkdir(parents=True, exist_ok=True)
     prev_sig = _last_signature(path)
     row: dict[str, object] = {
@@ -197,7 +216,7 @@ def set_locale(tenant_id: str, locale: Locale) -> dict[str, object]:
 
 def get_locale(tenant_id: str, *, log_path: Path | str | None = None) -> Locale:
     """Return the most-recent locale set for ``tenant_id`` (default ``en``)."""
-    path = Path(log_path) if log_path is not None else _LOG_PATH
+    path = Path(log_path) if log_path is not None else tenant_locale_log_path()
     if not path.exists():
         return DEFAULT_LOCALE
     latest: Locale | None = None
@@ -220,3 +239,14 @@ def get_locale(tenant_id: str, *, log_path: Path | str | None = None) -> Locale:
 def locale_for_tenant(tenant_id: str, *, log_path: Path | str | None = None) -> Locale:
     """Alias for ``get_locale`` (clearer at call sites)."""
     return get_locale(tenant_id, log_path=log_path)
+# Module-level ``__getattr__`` (Python 3.7+) defers legacy
+# ``module._LOG_PATH`` reads to the accessor function so late-set
+# env vars (the bulk_actions / rbac / monthly_report test suites
+# all set ``AUDIT_TRAIL_LOG`` after import) take effect on the very
+# next call. ``monkeypatch.setattr(module, '_LOG_PATH', log)``
+# still wins cleanly because the patch adds the name to the
+# module's __dict__ and __getattr__ runs ONLY for missing names.
+def __getattr__(name: str):
+    if name == "_LOG_PATH":
+        return tenant_locale_log_path()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

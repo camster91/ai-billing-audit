@@ -23,7 +23,26 @@ from typing import Any, Literal
 
 Action = Literal["accept", "dismiss", "modify", "comment"]
 
+# Module-level path. Stored at import time so legacy
+# `monkeypatch.setattr(module, '_LOG_PATH', log)` patches still
+# work (the audit_actions / feedback / feature_flags / i18n
+# test suites depend on this contract). Tests that need to
+# override the path per-test should patch this attribute; the
+# accessors below read the attribute each call so a patch
+# takes effect immediately.
 _LOG_PATH = Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
+
+def feedback_log_path() -> Path:
+    """Return the audit-trail JSONL path.
+
+    Reads the module-level ``_LOG_PATH`` attribute every call so
+    tests that monkey-patch the attribute at module scope
+    (``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)``) see the
+    patched path on every call. The path is selected from the
+    ``FEEDBACK_LOG`` env var at import time; absent that var, falls
+    back to ``/app/logs/feedback.jsonl`` (the production layout).
+    """
+    return _LOG_PATH
 _GENESIS_SIG = "0" * 64
 
 # Fields included in the chain hash. Order matters.
@@ -70,7 +89,7 @@ class FeedbackEntry:
 class FeedbackStore:
     """Append-only JSONL store with SHA-256 chain."""
     def __init__(self, log_path: Path | str | None = None) -> None:
-        self._path = Path(log_path) if log_path is not None else _LOG_PATH
+        self._path = Path(log_path) if log_path is not None else feedback_log_path()
 
     def append(self, entry: FeedbackEntry) -> FeedbackEntry:
         """Append ``entry``, signing it into the chain. Returns the entry."""
@@ -874,3 +893,14 @@ def list_comments(
         comments_log = store._path.parent / "finding_comments.jsonl"  # noqa: SLF001
     cstore = _get_comment_store(comments_log)
     return cstore.list_for_finding(encounter_id, finding_id)
+# Module-level ``__getattr__`` (Python 3.7+) defers legacy
+# ``module._LOG_PATH`` reads to the accessor function so late-set
+# env vars (the bulk_actions / rbac / monthly_report test suites
+# all set ``AUDIT_TRAIL_LOG`` after import) take effect on the very
+# next call. ``monkeypatch.setattr(module, '_LOG_PATH', log)``
+# still wins cleanly because the patch adds the name to the
+# module's __dict__ and __getattr__ runs ONLY for missing names.
+def __getattr__(name: str):
+    if name == "_LOG_PATH":
+        return feedback_log_path()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

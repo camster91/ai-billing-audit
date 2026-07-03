@@ -39,8 +39,67 @@ from typing import Any, Iterable, Mapping
 
 from .patient_hash import hash_patient_id
 
-_LOG_PATH = Path(os.environ.get("AUDIT_TRAIL_LOG", "/app/logs/audit_trail.jsonl"))
+# Module-level path. Read on every access so the test suite can
+# set ``AUDIT_TRAIL_LOG`` BEFORE audit_actions is imported (or
+# monkey-patch ``aa_mod._LOG_PATH = log`` directly) and have the
+# new path take effect immediately. Without this lazy resolution
+# the module would pin its path at first import and tests that
+# set the env var later would write to the production default
+# (``/app/logs/...``) — which doesn't exist on developer laptops
+# and causes Read-only file system errors when the test attempts
+# ``Path.parent.mkdir(...)``.
+def audit_trail_path() -> Path:
+    """Return the audit-trail JSONL path (read on every call).
+
+    Resolution order:
+    1. If the module attribute ``_LOG_PATH`` was set explicitly
+       (e.g. ``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)``
+       in ``tests/test_audit_actions_tenant.py::tmp_log``) return
+       that value. This is the standard test-isolation pattern.
+    2. Otherwise return ``Path($AUDIT_TRAIL_LOG)`` if the env var
+       is set, falling back to ``/app/logs/audit_trail.jsonl``.
+
+    Resolves on every call so a per-test monkeypatch takes effect
+    immediately AND a late-set ``AUDIT_TRAIL_LOG`` env var (e.g.
+    from a parallel test that imports audit_actions first) is
+    also honored — neither path can silently pin the production
+    default.
+    """
+    # Resolution order:
+    # 1. Module-level override ``_LOG_PATH`` (set by ``monkeypatch.setattr``
+    #    in ``tests/test_audit_actions_tenant.py::tmp_log`` and other
+    #    per-tenant tests). When the override is a Path (the typical
+    #    test pattern) we trust it as the authoritative path for
+    #    the current test scope; the function we are inside, the
+    #    function we are, and the module-global ``_LOG_PATH`` form
+    #    a single contract that pre-dates the env-var path.
+    # 2. ``AUDIT_TRAIL_LOG`` env var (set by ``tests/test_rbac.py``,
+    #    ``tests/test_contact.py``, ``tests/test_finding_assignments.py``,
+    #    etc. via ``monkeypatch.setenv`` + ``importlib.reload``).
+    # 3. Production default ``/app/logs/audit_trail.jsonl``.
+    #
+    # Priority: env var wins over monkeypatched _LOG_PATH.
+    # Reason: pytest's monkeypatch.setattr(aa_mod, '_LOG_PATH', log)
+    # calls getattr(target, name, NOTSET) internally to read the
+    # current value. If we serve _LOG_PATH via __getattr__ it
+    # returns a sentinel-y Path, monkeypatch interprets that as the
+    # "previous value" and writes it back into __dict__ on undo —
+    # causing the rbac test's env var path to leak across tests.
+    # Returning from env var FIRST means monkeypatch sees a real
+    # missing attribute and cleanly adds + removes on undo.
+    env_value = os.environ.get("AUDIT_TRAIL_LOG", "")
+    if env_value:
+        return Path(env_value)
+    # Fall through to _LOG_PATH only when the env var is unset,
+    # which is the original audit_actions_tenant test pattern.
+    override = globals().get("_LOG_PATH")
+    if override is not None and not isinstance(override, type(audit_trail_path)):
+        return override
+    return Path("/app/logs/audit_trail.jsonl")
+
+
 _GENESIS_SIG = "0" * 64
+
 
 # Fields included in the chain hash. Must match audit_trail.sql.
 _CHAIN_FIELDS = (
@@ -120,11 +179,11 @@ def _read_last_signature() -> str:
 
     Returns genesis (64 zeros) if the log is empty or doesn't exist.
     """
-    if not _LOG_PATH.is_file():
+    if not audit_trail_path().is_file():
         return _GENESIS_SIG
     last_sig = _GENESIS_SIG
     try:
-        with _LOG_PATH.open() as fh:
+        with audit_trail_path().open() as fh:
             for line in fh:
                 line = line.strip()
                 if not line:
@@ -192,7 +251,12 @@ def append(
 
     Returns the appended row including cryptographic_signature.
     """
-    _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    p = audit_trail_path()
+    env = os.environ.get("AUDIT_TRAIL_LOG", "<unset>")
+    override = globals().get("_LOG_PATH")
+    _in_dict = "_LOG_PATH" in globals()
+    print(f"DEBUG: pid={os.getpid()} path={p} env={env} override={override} in_dict={_in_dict}")
+    p.parent.mkdir(parents=True, exist_ok=True)
 
     findings = findings or []
     # patient_hash is a salted SHA-256 of the encounter identifier,
@@ -238,7 +302,7 @@ def append(
     row = _normalize_row(row)
 
     # Append (line-by-line, JSONL)
-    with _LOG_PATH.open("a") as fh:
+    with audit_trail_path().open("a") as fh:
         fh.write(json.dumps(row) + "\n")
     return row
 
@@ -255,10 +319,10 @@ def read_all(
     ``tenant_id="*"`` to read across all tenants (used by the
     privacy officer's cross-tenant audit view).
     """
-    if not _LOG_PATH.is_file():
+    if not audit_trail_path().is_file():
         return []
     rows: list[dict[str, Any]] = []
-    with _LOG_PATH.open() as fh:
+    with audit_trail_path().open() as fh:
         for line in fh:
             line = line.strip()
             if not line:

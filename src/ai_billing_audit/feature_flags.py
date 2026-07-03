@@ -109,7 +109,26 @@ class FlagEvent:
         }
 
 
+# Module-level path. Stored at import time so legacy
+# `monkeypatch.setattr(module, '_LOG_PATH', log)` patches still
+# work (the audit_actions / feedback / feature_flags / i18n
+# test suites depend on this contract). Tests that need to
+# override the path per-test should patch this attribute; the
+# accessors below read the attribute each call so a patch
+# takes effect immediately.
 _LOG_PATH = Path(os.environ.get("FEATURE_FLAG_LOG", "/app/logs/feature_flags.jsonl"))
+
+def feature_flag_log_path() -> Path:
+    """Return the audit-trail JSONL path.
+
+    Reads the module-level ``_LOG_PATH`` attribute every call so
+    tests that monkey-patch the attribute at module scope
+    (``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)``) see the
+    patched path on every call. The path is selected from the
+    ``FEATURE_FLAG_LOG`` env var at import time; absent that var, falls
+    back to ``/app/logs/feature_flags.jsonl`` (the production layout).
+    """
+    return _LOG_PATH
 _GENESIS_SIG = "0" * 64
 
 
@@ -207,7 +226,7 @@ def _set(tenant_id: str, flag: FlagName, enabled: bool, actor: str) -> FlagEvent
         raise ValueError("tenant_id required")
     if not flag:
         raise ValueError("flag required")
-    path = Path(os.environ.get("FEATURE_FLAG_LOG", str(_LOG_PATH)))
+    path = Path(os.environ.get("FEATURE_FLAG_LOG", str(feature_flag_log_path())))
     path.parent.mkdir(parents=True, exist_ok=True)
     evt = FlagEvent(tenant_id=tenant_id, flag=flag, enabled=enabled, actor=actor)
     evt.previous_signature = _last_signature(path)
@@ -228,14 +247,14 @@ def is_enabled(
 
     Default is ``False`` for unknown flags — explicit opt-in only.
     """
-    path = Path(log_path) if log_path is not None else _LOG_PATH
+    path = Path(log_path) if log_path is not None else feature_flag_log_path()
     state = _state_for(_read_log(path), tenant_id, flag)
     return state if state is not None else default
 
 
 def list_enabled(tenant_id: str, *, log_path: Path | str | None = None) -> set[FlagName]:
     """Return the set of flags currently enabled for ``tenant_id``."""
-    path = Path(log_path) if log_path is not None else _LOG_PATH
+    path = Path(log_path) if log_path is not None else feature_flag_log_path()
     rows = _read_log(path)
     by_flag: dict[FlagName, bool] = {}
     for row in rows:
@@ -252,7 +271,7 @@ def flag_history(
     tenant_id: str, flag: FlagName, *, log_path: Path | str | None = None
 ) -> list[FlagEvent]:
     """Return all state-change rows for (tenant, flag), oldest first."""
-    path = Path(log_path) if log_path is not None else _LOG_PATH
+    path = Path(log_path) if log_path is not None else feature_flag_log_path()
     out: list[FlagEvent] = []
     for row in _read_log(path):
         if row.get("tenant_id") == tenant_id and row.get("flag") == flag:
@@ -310,3 +329,14 @@ def bucket_for(flag: FlagName, tenant_id: str) -> int:
 
     h = hashlib.sha256(f"{flag}|{tenant_id}".encode("utf-8")).hexdigest()
     return int(h[:8], 16) % 100
+# Module-level ``__getattr__`` (Python 3.7+) defers legacy
+# ``module._LOG_PATH`` reads to the accessor function so late-set
+# env vars (the bulk_actions / rbac / monthly_report test suites
+# all set ``AUDIT_TRAIL_LOG`` after import) take effect on the very
+# next call. ``monkeypatch.setattr(module, '_LOG_PATH', log)``
+# still wins cleanly because the patch adds the name to the
+# module's __dict__ and __getattr__ runs ONLY for missing names.
+def __getattr__(name: str):
+    if name == "_LOG_PATH":
+        return feature_flag_log_path()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
