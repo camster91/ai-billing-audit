@@ -64,6 +64,7 @@ day 7 of a real pilot.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as _cf
 import csv
 import datetime as _dt
 import hashlib
@@ -72,6 +73,7 @@ import os
 import re
 import sys
 import textwrap
+import time as _time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -424,6 +426,9 @@ def _render_markdown(
     encounters: list[dict[str, Any]],
     summary: dict[str, Any],
     provider: str,
+    *,
+    wall_seconds: float | None = None,
+    concurrency: int = 1,
 ) -> str:
     """Render the human-readable finding report."""
     ts = _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -440,9 +445,20 @@ def _render_markdown(
     lines: list[str] = []
     lines.append(f"# Zorva shadow audit report — {input_path.name}")
     lines.append("")
+    timing = ""
+    if wall_seconds is not None:
+        if n > 0:
+            timing = (
+                f" · wall={wall_seconds:.1f}s "
+                f"({wall_seconds / n:.2f}s/encounter, "
+                f"concurrency={concurrency})"
+            )
+        else:
+            timing = f" · wall={wall_seconds:.1f}s"
     lines.append(
         f"Generated {ts} · provider=`{provider}` · encounters={n} · "
         f"findings={n_f} · estimated impact=${n_d:,} CAD (SOMB-anchored)"
+        f"{timing}"
     )
     lines.append("")
     lines.append("## Summary")
@@ -603,7 +619,33 @@ def main() -> int:
         default=None,
         help="Audit only the first N encounters (for quick smoke tests).",
     )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help=(
+            "Number of encounters to audit in parallel using a "
+            "thread pool. Default 1 (sequential). 5-10 is a good "
+            "range for Ollama Cloud and OpenAI; locally-hosted "
+            "Ollama (single GPU) should stay at 1 to avoid "
+            "queueing. Each worker holds its own connection "
+            "to the LLM provider — concurrent calls share the "
+            "provider's rate limit, so going above 25 usually "
+            "doesn't help."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.concurrency < 1:
+        print(f"ERROR: --concurrency must be >= 1, got {args.concurrency}", file=sys.stderr)
+        return 2
+    if args.concurrency > 50:
+        print(
+            f"WARN: --concurrency={args.concurrency} is unusually high; "
+            "capping at 50 to keep provider rate limits sane.",
+            file=sys.stderr,
+        )
+        args.concurrency = 50
 
     if not args.input.is_file():
         print(f"ERROR: input file not found: {args.input}", file=sys.stderr)
@@ -617,8 +659,38 @@ def main() -> int:
         return 3
 
     run = _auditor_for(args.provider, args.base_url)
-    for enc in encounters:
-        enc["findings"] = run(enc)
+    wall_start = _time.monotonic()
+    if args.concurrency == 1 or len(encounters) <= 1:
+        for enc in encounters:
+            enc["findings"] = run(enc)
+    else:
+        # Concurrent path. ThreadPoolExecutor workers share the GIL
+        # but the work here is I/O-bound on the LLM call (HTTP POST
+        # to litellm), so threading gives a near-linear speedup on
+        # latency. Workers are submitted in encounter order and the
+        # results are written back into the same index, so the output
+        # is byte-identical to the sequential path (modulo a slow
+        # call finishing before a fast one — order of arrival is
+        # irrelevant to the report because we never compare across
+        # encounters in the markdown / JSON renders).
+        n_workers = min(args.concurrency, len(encounters))
+        with _cf.ThreadPoolExecutor(max_workers=n_workers) as ex:
+            futures: dict[_cf.Future[list[dict[str, Any]]], int] = {
+                ex.submit(run, enc): idx
+                for idx, enc in enumerate(encounters)
+            }
+            done_count = 0
+            total = len(encounters)
+            for fut in _cf.as_completed(futures):
+                idx = futures[fut]
+                encounters[idx]["findings"] = fut.result()
+                done_count += 1
+                if total <= 50 or done_count % max(1, total // 10) == 0:
+                    print(
+                        f"  ... {done_count}/{total} audits complete",
+                        file=sys.stderr,
+                    )
+    wall_seconds = _time.monotonic() - wall_start
 
     summary = _summarise(encounters)
 
@@ -629,7 +701,14 @@ def main() -> int:
     json_path = args.out_dir / f"{stem}-{ts}.json"
 
     md_path.write_text(
-        _render_markdown(args.input, encounters, summary, args.provider)
+        _render_markdown(
+            args.input,
+            encounters,
+            summary,
+            args.provider,
+            wall_seconds=wall_seconds,
+            concurrency=args.concurrency,
+        )
     )
     json_path.write_text(
         json.dumps(
@@ -641,6 +720,11 @@ def main() -> int:
     print(f"OK: {len(encounters)} encounters, {summary['n_findings']} findings")
     print(f"    Markdown: {md_path}")
     print(f"    JSON:     {json_path}")
+    print(
+        f"    Wall time: {wall_seconds:.1f}s "
+        f"({wall_seconds / max(1, len(encounters)):.2f}s/encounter, "
+        f"concurrency={args.concurrency})"
+    )
     if summary["n_findings"] == 0:
         print("    (no findings — re-run with --provider ollama for a real audit)")
     return 0
