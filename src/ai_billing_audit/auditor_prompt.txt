@@ -51,9 +51,32 @@ A. DIAGNOSIS LINKAGE (CRITICAL) — most-frequent auto-denial.
    - diagnosis_codes contains the literal "REVIEW" placeholder
    - diagnosis_codes contains only the R69 "unspecified" code
      when the note describes a specific reportable condition
+   - The clinical note describes a specific reportable
+     condition AND the diagnosis_codes list is empty, missing,
+     or contains only R69 / "REVIEW" / an unrelated code.
    Do NOT fire on encounters where dx is present and matches
    the note. A hypertensive visit with I10 billed is NOT a
    dx-linkage issue.
+
+   Trigger phrases for "specific reportable condition" (any of
+   these in the assessment or chief-complaint portion of the
+   note indicates the visit was FOR a specific condition — not
+   a generic preventive check):
+     - Chest pain, SOB, dyspnea, palpitations, cough
+     - Abdominal pain, nausea, vomiting, diarrhea
+     - Headache, dizziness, vertigo, syncope
+     - Hypertension, hypotension, BP elevated, BP check
+     - Diabetes, DM, A1C, hyperglycemia, hypoglycemia
+     - COPD, asthma, pneumonia, bronchitis, wheeze
+     - Cellulitis, abscess, laceration, wound check, sutures
+     - Fracture, sprain, MSK pain, joint pain, back pain
+     - Depression, anxiety, mental health, SI, mood
+     - UTI, dysuria, urinary symptoms, hematuria
+     - Rash, pruritus, eczema, dermatitis
+   A note mentioning ONLY "follow-up" or "medication refill"
+   with none of the above does NOT fire — those are visits
+   without a specific billable complaint and the dx-linkage
+   rule doesn't apply.
 
 B. NON-INSURED SERVICE (HIGH) — Alberta does not insure
    "annual physical", "health maintenance visit", "wellness
@@ -63,6 +86,25 @@ B. NON-INSURED SERVICE (HIGH) — Alberta does not insure
    rule_ahcip_non_insured_service. The visit should not be
    submitted to AHCIP at all; the patient pays out-of-pocket
    or via private insurance.
+
+   Trigger phrases in the clinical note that should fire this
+   rule (any of these, even without an explicit "annual"
+   keyword):
+     - "annual physical", "annual exam", "annual visit"
+     - "health maintenance visit", "HMV"
+     - "wellness check", "wellness visit", "well-baby",
+       "well-child", "well-man", "well-woman"
+     - "preventive visit", "preventive care", "preventive
+       check", "routine preventive"
+     - "AWV", "annual wellness visit"
+     - "complete physical", "comprehensive physical",
+       "comprehensive preventive", "executive physical"
+     - "Medicare annual wellness" (US-context leak — not
+       billable to AHCIP)
+   If the note contains ANY of these AND no specific presenting
+   complaint, fire. If a specific complaint IS present
+   ("annual physical — also c/o chest pain"), the visit IS
+   insured and the rule does not fire.
 
 C. E/M LEVEL DISTINCTION — be precise. The same rule_id
    `rule_ahcip_em_level_upcode` is used in BOTH directions; what
@@ -177,22 +219,37 @@ D. CONSULTATION / REFERRING PRACTITIONER ID:
    - 03.03A billed without referring_provider_practitioner_id →
      rule_ahcip_referring_npi HIGH (consultation requires a
      referring provider in writing)
-   - Note documents a referral ("referred by Dr. X") AND 03.04A
-     billed but referring_provider_practitioner_id is null →
+   - Note documents a referral AND 03.04A billed but
+     referring_provider_practitioner_id is null →
      rule_ahcip_referring_npi MEDIUM (data-population issue; may
      also be a 03.03A code-choice opportunity)
+
+   Referral trigger phrases (any of these in the clinical note
+   indicates a referral and should make you check for the NPI
+   + the 03.03A code choice):
+     - "referred by Dr." / "referral from Dr." / "re: Dr." /
+       "consult from Dr." (any physician-name prefix)
+     - "consultation request from" / "consult letter" /
+       "consult note" / "consultative assessment"
+     - "per referral from" / "on referral from"
+     - "for second opinion from" / "second-opinion referral"
+     - "re-referral" / "re-referred"
+     - "transfer of care from Dr." / "assuming care from Dr."
+     - "external referral" / "out-of-region referral"
+   Without a matching referring_provider_practitioner_id
+   field, fire rule_ahcip_referring_npi. With a matching field
+   AND the claim is 03.04A when it should be 03.03A, also fire
+   rule_ahcip_consultation_missed.
+
    - CONSULTATION DIFFERENTIATION (03.04A vs 03.03A code choice):
      Note documents BOTH (a) a referral from another physician
-     ("referred by Dr. X", "consultation request from Dr. Y",
-     "re: referral from Dr. Z", "consult letter to referring
-     physician") AND (b) >15 minutes of consultative work
-     (extended history, review of prior records, formal consult
-     letter documented, "consultation note", "consultative
-     assessment"), AND the claim is billed 03.04A
-     (comprehensive) instead of 03.03A (consultation) →
-     rule_ahcip_consultation_missed MEDIUM. suggested_code:
-     03.03A. Revenue impact: ~$20/encounter (03.03A pays more
-     than 03.04A for a referred consult).
+     AND (b) >15 minutes of consultative work (extended history,
+     review of prior records, formal consult letter documented,
+     "consultation note", "consultative assessment"), AND the
+     claim is billed 03.04A (comprehensive) instead of 03.03A
+     (consultation) → rule_ahcip_consultation_missed MEDIUM.
+     suggested_code: 03.03A. Revenue impact: ~$20/encounter
+     (03.03A pays more than 03.04A for a referred consult).
      DO NOT fire when:
        * no referral documented (use em_level rules instead)
        * referral present but consultative work ≤ 15 minutes
@@ -260,13 +317,32 @@ F2. PSYCHOTHERAPY DURATION MATCH (08.19A/B/C):
      mismatches between the three 08.19 sub-codes.
 
 G. TELEHEALTH PREMIUM (MEDIUM):
-   - Note says "telehealth", "phone follow-up", "virtual visit",
-     "video visit", or other indication the encounter was not
-     in-person AND claim has no telehealth indicator →
-     rule_ahcip_telehealth MEDIUM
+   - Note says the encounter was not in-person AND claim has no
+     telehealth indicator → rule_ahcip_telehealth MEDIUM
    - Alberta's telehealth premium code has changed several times;
      do not hardcode a specific code, suggest the auditor add
      the current SOMB telehealth premium
+
+   Trigger phrases in the clinical note that should fire this rule
+   (any of these in the note, even without an explicit
+   "telehealth" keyword, indicates the encounter was remote):
+     - "telehealth", "tele-medicine", "telemedicine", "virtual
+       care", "virtual visit", "video visit", "video call"
+     - "phone follow-up", "phone visit", "phone call", "phone
+       consult", "telephone consult", "by phone"
+     - "Zoom", "Webex", "Teams call", "Doxy.me", "OTN" (Ontario
+       Telehealth Network — useful when Alberta physician is
+       consulting with an Ontario colleague)
+     - "remote visit", "remote consult", "virtual encounter",
+       "e-visit", "eConsult"
+     - "patient called from home", "video from home", "tele-
+       follow-up"
+     - "secure message", "patient portal message" (if the
+       visit was billed as a visit and not just a portal
+       exchange — verify before firing)
+   A documented in-person modifier ("patient seen in clinic",
+   "patient here for visit") suppresses this rule even if the
+   note also mentions phone.
 
 H. LAB vs IMAGING COVERAGE:
    - Note documents an imaging order (X-ray, ultrasound,
@@ -290,12 +366,52 @@ I. SAME-DAY VISIT CONFLICT:
    - Also: two 03.04A claims on same date for same patient →
      likely duplicate, fire rule_ahcip_same_day_conflict HIGH
 
+   Trigger phrases in the clinical note (only fires if MULTIPLE
+   E/M codes are billed on the same date — a single 03.04A
+   visit alone never fires this rule):
+     - "patient seen today for [X] AND also c/o [Y]"
+     - "two visits today", "return visit later in the day",
+       "patient returned to clinic same day"
+     - "extended follow-up later same day", "additional
+       assessment same day"
+     - "afternoon revisit", "evening recheck"
+     - "patient also seen this morning for [X]"
+   The trigger pattern is "one encounter, multiple SOMB E/M
+   codes billed". A second separate encounter (a different
+   scheduled appointment the same day with a different
+   documented time) is NOT this rule.
+
 J. CHRONIC DISEASE (CMGP):
-   - Patient has documented chronic condition (T2DM, HTN, CKD,
-     COPD, CHF, dyslipidemia, OA with ongoing management) AND
-     03.04A billed AND no CMGP modifier → rule_ahcip_cmgp MEDIUM
+   - Patient has documented chronic condition AND 03.04A billed
+     AND no CMGP modifier → rule_ahcip_cmgp MEDIUM
    - Do NOT fire on acute visits (URI, pneumonia, simple injury)
      even if the patient has a chronic history
+
+   Trigger phrases for the chronic condition (any of these in
+   the problem list, past medical history, OR the assessment
+   portion of the note indicates active chronic management —
+   a single past mention in the social history does NOT fire):
+     - "T2DM", "type 2 diabetes", "NIDDM", "DM2", "diabetes
+       mellitus type 2"
+     - "HTN", "hypertension", "essential hypertension",
+       "hypertensive disorder"
+     - "CKD", "chronic kidney disease", "renal insufficiency"
+     - "COPD", "chronic obstructive pulmonary disease",
+       "emphysema", "chronic bronchitis"
+     - "CHF", "congestive heart failure", "heart failure",
+       "HFrEF", "HFpEF"
+     - "dyslipidemia", "hyperlipidemia", "hypercholesterolemia"
+     - "OA", "osteoarthritis" with ongoing management
+       (not "remote OA from 10 years ago, asymptomatic")
+     - "asthma" with ongoing management
+     - "atrial fibrillation" / "AFib" with active management
+     - "coronary artery disease" / "CAD" with active management
+     - "depression" / "MDD" with active management
+   Acute-only mentions ("patient with chronic HTN presents
+   with URI — no HTN management today") do NOT fire — CMGP
+   requires the visit to be FOR chronic-disease management,
+   not just that the patient happens to have a chronic
+   condition.
 
 L. PREVENTIVE SERVICE OPPORTUNITY (MEDIUM) — adult patient
    (age >18) meets age / risk criteria for an AHCIP-INSURED
