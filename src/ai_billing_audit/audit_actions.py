@@ -178,25 +178,80 @@ def _read_last_signature() -> str:
     """Read the most recent cryptographic_signature from the log.
 
     Returns genesis (64 zeros) if the log is empty or doesn't exist.
+
+    swarm-audit H-Perf-1: this used to walk the entire log file
+    on every audit append (every accept / dismiss / modify / flag
+    click). With ~50k events in a real pilot that's a 50k-row
+    read + JSON-parse per click — 200ms+ at scale. Now caches
+    the result in process memory and only re-reads when:
+
+      * the cache is empty (first call after import / file change)
+      * the file's mtime has changed since the last read (someone
+        else wrote to the log, e.g. the worker process)
+      * a manual ``_reset_last_signature_cache()`` is invoked
+        (used by tests that rewrite the log out-of-band)
+
+    The cache is process-local and best-effort — a multi-worker
+    deployment would have one cache per worker. The chain
+    verification on read (``verify_chain``) still walks the full
+    log, which is correct: chain integrity must be exact, not
+    cached.
     """
-    if not audit_trail_path().is_file():
-        return _GENESIS_SIG
-    last_sig = _GENESIS_SIG
+    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH
+    path = audit_trail_path()
     try:
-        with audit_trail_path().open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if "cryptographic_signature" in rec:
-                    last_sig = rec["cryptographic_signature"]
+        mtime = path.stat().st_mtime if path.is_file() else 0.0
     except OSError:
         return _GENESIS_SIG
+    if (
+        _LAST_SIG_CACHE is not None
+        and _LAST_SIG_MTIME == mtime
+        and _LAST_SIG_PATH == path
+    ):
+        return _LAST_SIG_CACHE
+    # Cache miss — read the file. (Cheap when the file is empty
+    # or the process just started; expensive only on the cold
+    # path that the cache is designed to skip.)
+    if not path.is_file():
+        last_sig = _GENESIS_SIG
+    else:
+        last_sig = _GENESIS_SIG
+        try:
+            with path.open() as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if "cryptographic_signature" in rec:
+                        last_sig = rec["cryptographic_signature"]
+        except OSError:
+            last_sig = _GENESIS_SIG
+    _LAST_SIG_CACHE = last_sig
+    _LAST_SIG_MTIME = mtime
+    _LAST_SIG_PATH = path
     return last_sig
+
+
+def _reset_last_signature_cache() -> None:
+    """Drop the in-process cache. Used by tests that rewrite
+    the audit-trail log out-of-band (e.g. via direct file writes)
+    and need the next ``_read_last_signature()`` to re-read.
+    """
+    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH
+    _LAST_SIG_CACHE = None
+    _LAST_SIG_MTIME = None
+    _LAST_SIG_PATH = None
+
+
+# Process-local cache for ``_read_last_signature``. Set by the
+# function on a cache miss; cleared by ``_reset_last_signature_cache``.
+_LAST_SIG_CACHE: str | None = None
+_LAST_SIG_MTIME: float | None = None
+_LAST_SIG_PATH: Path | None = None
 
 
 # RBAC roles supported by the audit app. Multi-user team feature

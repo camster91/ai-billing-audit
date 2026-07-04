@@ -45,6 +45,11 @@ def feedback_log_path() -> Path:
     return Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
 _GENESIS_SIG = "0" * 64
 
+# Process-local cache of ``FeedbackStore._last_signature()`` results.
+# Keyed by ``(str(path), mtime)`` so a rewrite of the file (e.g.
+# by a test or by another process) invalidates the cache.
+_FEEDBACK_LAST_SIG_CACHE: dict[tuple[str, float], str] = {}
+
 # Fields included in the chain hash. Order matters.
 _CHAIN_FIELDS = (
     "event_id", "timestamp", "encounter_id", "finding_id", "action",
@@ -374,23 +379,36 @@ class FeedbackStore:
         return True
 
     def _last_signature(self) -> str:
+        # swarm-audit H-Perf-1: this used to walk the whole
+        # feedback log on every FeedbackStore.append() (every
+        # accept / dismiss / modify). With 10k+ rows that's a
+        # full read + JSON parse per click. Now caches by file
+        # path + mtime — a no-op fast path on the hot path. The
+        # cache key includes the path so a different FeedbackStore
+        # pointing at a different log doesn't see stale data.
+        cache_key = (str(self._path), self._path.stat().st_mtime if self._path.is_file() else 0.0)
+        cached = _FEEDBACK_LAST_SIG_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
         if not self._path.is_file():
-            return _GENESIS_SIG
-        last = _GENESIS_SIG
-        try:
-            with self._path.open() as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if "cryptographic_signature" in rec:
-                        last = rec["cryptographic_signature"]
-        except OSError:
-            return _GENESIS_SIG
+            last = _GENESIS_SIG
+        else:
+            last = _GENESIS_SIG
+            try:
+                with self._path.open() as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if "cryptographic_signature" in rec:
+                            last = rec["cryptographic_signature"]
+            except OSError:
+                last = _GENESIS_SIG
+        _FEEDBACK_LAST_SIG_CACHE[cache_key] = last
         return last
 
 
