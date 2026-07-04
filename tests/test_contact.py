@@ -92,7 +92,7 @@ def test_contact_get_renders_form(client):
     test_client, _ = client
     resp = test_client.get("/contact")
     assert resp.status_code == 200
-    assert "Book a 15-minute walkthrough" in resp.text
+    assert "Send 100 claims, get a 1-page audit" in resp.text
     # The form fields
     assert 'name="name"' in resp.text
     assert 'name="clinic"' in resp.text
