@@ -219,11 +219,21 @@ def test_encrypted_archive_is_not_a_plain_gzip(
 # ─── Key handling ────────────────────────────────────────────────────────
 
 
-def test_missing_key_raises_backup_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No key + no env var → :class:`BackupError`."""
+def test_missing_key_raises_backup_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """No key + no env var → :class:`BackupError`.
+
+    swarm-audit B-Test-3 (2026-07-04): previously the test used
+    ``source_dirs=["/tmp"]`` which walked the entire /tmp on the
+    host — non-hermetic, ~60s slow, and depending on what's in
+    /tmp it could raise FileNotFoundError before BackupError
+    even fired. Now uses ``tmp_path`` so the test is hermetic.
+    """
     monkeypatch.delenv("ZORVA_BACKUP_KEY", raising=False)
+    outfile = tmp_path / "should-not-exist.tar.gz.enc"
     with pytest.raises(BackupError):
-        create_backup("/tmp/should-not-exist.tar.gz.enc", source_dirs=["/tmp"])
+        create_backup(str(outfile), source_dirs=[str(tmp_path)])
 
 
 def test_passphrase_derives_to_a_key(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -988,7 +988,14 @@ def main(argv: list[str] | None = None) -> int:
             "from data/synth/val_ca.json."
         ),
     )
-    args = parser.parse_args(argv)
+    # swarm-audit B-Test-2 (2026-07-04): previously
+    # ``parse_args(argv)`` with ``argv=None`` read sys.argv[1:],
+    # so pytest's CLI flags (``tests/``, ``-q``, ``-p no:randomly``)
+    # were treated as unknown args → SystemExit(2) → 5 tests in
+    # tests/test_dev_loop_factory.py failed when CI passed extra
+    # flags. Default to an empty argv list when None so a caller
+    # can pass ``main()`` with no args and get the defaults.
+    args = parser.parse_args(argv if argv is not None else [])
     selected_val_split, split_label = _select_split(args.split)
     print(
         f"[optimize] split={split_label} val_size={len(selected_val_split)}"

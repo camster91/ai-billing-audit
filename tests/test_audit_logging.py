@@ -73,13 +73,26 @@ def test_json_formatter_emits_core_fields(clean_logger):
 
 
 def test_json_formatter_merges_extra_fields(clean_logger):
+    """swarm-audit B-Test-4: previously this test assigned a value
+    to a local variable but asserted nothing — it passed for any
+    reason. Now it actually exercises the merge path and pins
+    the contract: ``extra=`` keys land in the top-level JSON
+    output (under their original names), not nested."""
     from ai_billing_audit.audit_logging import JsonFormatter
 
-    handler = logging.StreamHandler(sys.stdout)
+    # Capture the formatted output by hooking a fake stream
+    class _Capture(list):
+        def write(self, s):
+            self.append(s)
+
+        def flush(self):
+            pass
+
+    cap = _Capture()
+    handler = logging.StreamHandler(cap)
     handler.setFormatter(JsonFormatter())
     clean_logger.addHandler(handler)
 
-    # Standard logging: extra= goes through __dict__ on the record
     clean_logger.info(
         "user action",
         extra={
@@ -90,7 +103,19 @@ def test_json_formatter_merges_extra_fields(clean_logger):
         },
     )
 
-    record = clean_logger.handlers[0].stream  # type: ignore[attr-defined]
+    raw = "".join(cap)
+    lines = [ln for ln in raw.splitlines() if ln.strip()]
+    parsed = json.loads(lines[-1])
+    # The extra keys must land at the top level, not nested under
+    # an "extra" sub-object.
+    for k in ("user_id", "action", "n_findings", "tenant_id"):
+        assert k in parsed, (
+            f"extra key {k!r} did not land at the top level; "
+            f"got JSON keys: {list(parsed.keys())}"
+        )
+    assert parsed["user_id"] == "u-123"
+    assert parsed["action"] == "accept_finding"
+    assert parsed["n_findings"] == 4
 
 
 def test_json_formatter_extra_merge_via_handler(clean_logger):
