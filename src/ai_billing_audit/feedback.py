@@ -23,26 +23,26 @@ from typing import Any, Literal
 
 Action = Literal["accept", "dismiss", "modify", "comment"]
 
-# Module-level path. Stored at import time so legacy
-# `monkeypatch.setattr(module, '_LOG_PATH', log)` patches still
-# work (the audit_actions / feedback / feature_flags / i18n
-# test suites depend on this contract). Tests that need to
-# override the path per-test should patch this attribute; the
-# accessors below read the attribute each call so a patch
-# takes effect immediately.
-_LOG_PATH = Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
-
 def feedback_log_path() -> Path:
-    """Return the audit-trail JSONL path.
+    """Return the feedback JSONL path (read on every call).
 
-    Reads the module-level ``_LOG_PATH`` attribute every call so
-    tests that monkey-patch the attribute at module scope
-    (``monkeypatch.setattr(aa_mod, '_LOG_PATH', log)``) see the
-    patched path on every call. The path is selected from the
-    ``FEEDBACK_LOG`` env var at import time; absent that var, falls
-    back to ``/app/logs/feedback.jsonl`` (the production layout).
+    Resolution order:
+    1. ``FEEDBACK_LOG`` env var (set by ``tests/conftest.py`` for
+       cross-session consistency, and per-test via
+       ``monkeypatch.setenv`` in test fixtures).
+    2. Production default ``/app/logs/feedback.jsonl``.
+
+    No module-level cache: each call resolves afresh so test
+    fixtures that set ``FEEDBACK_LOG`` after import (the standard
+    pattern) take effect immediately. A module-level ``_LOG_PATH``
+    attribute would shadow the env var and break the per-test
+    tmp path; the conftest's pre-setdefault value at import
+    time would persist across the whole test session and
+    pollute ``tests/test_clinical_metrics.py`` that expects
+    ``os.environ["FEEDBACK_LOG"]`` (not ``_LOG_PATH``) to be
+    authoritative for ``feedback_log_path()`` calls.
     """
-    return _LOG_PATH
+    return Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
 _GENESIS_SIG = "0" * 64
 
 # Fields included in the chain hash. Order matters.
@@ -893,14 +893,3 @@ def list_comments(
         comments_log = store._path.parent / "finding_comments.jsonl"  # noqa: SLF001
     cstore = _get_comment_store(comments_log)
     return cstore.list_for_finding(encounter_id, finding_id)
-# Module-level ``__getattr__`` (Python 3.7+) defers legacy
-# ``module._LOG_PATH`` reads to the accessor function so late-set
-# env vars (the bulk_actions / rbac / monthly_report test suites
-# all set ``AUDIT_TRAIL_LOG`` after import) take effect on the very
-# next call. ``monkeypatch.setattr(module, '_LOG_PATH', log)``
-# still wins cleanly because the patch adds the name to the
-# module's __dict__ and __getattr__ runs ONLY for missing names.
-def __getattr__(name: str):
-    if name == "_LOG_PATH":
-        return feedback_log_path()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
