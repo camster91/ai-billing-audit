@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Clinic monthly report — {{ month_label }} — Zorva{% endblock %}
+{% block content %}
+<main class="container" style="max-width: 980px;">
+  <header style="margin-bottom: 24px;">
+    <span class="eyebrow">Clinic report &middot; feedback</span>
+    <h1 style="margin-top: 8px;">
+      {{ clinic_name }} — {{ month_label }}
+    </h1>
+    <p class="muted" style="max-width: 720px;">
+      How your billers acted on Zorva's findings for this clinic in
+      {{ month_label }}: how many findings they accepted, dismissed,
+      or modified, the rules they modified most, and the calibration
+      bucket that goes with those numbers.
+    </p>
+  </header>
+
+  {% if status == "insufficient_data" %}
+    {# ─────────────── insufficient_data branch ─────────────────── #}
+    {# The clinic hasn't crossed the 3-month feedback threshold yet.
+       We surface the months-of-feedback the clinic currently has so
+       the biller knows how far they are from a full report — never
+       fabricate zeros or made-up numbers. #}
+    <section class="card" style="padding: 32px;">
+      <h2 style="margin-top: 0;">Not enough feedback yet for {{ month_label }}</h2>
+      <p class="muted">
+        Zorva needs at least <strong>{{ required_months }}</strong>
+        months of feedback from your billers before generating a
+        monthly report. Right now we have
+        <strong>{{ current_months }}</strong>
+        month{{ "" if current_months == 1 else "s" }} on file for
+        <span class="mono">{{ clinic_id }}</span>.
+      </p>
+
+      {% if current_months > 0 %}
+        <p class="muted">
+          Keep reviewing findings — once your team has acted on
+          findings across {{ required_months }} different calendar
+          months, this page will switch over to the full monthly
+          report automatically.
+        </p>
+      {% else %}
+        <p class="muted">
+          Nothing has been reviewed yet for this clinic. Start by
+          uploading a batch of encounters; the audit cards in your
+          main dashboard will appear within minutes and feedback you
+          record against them feeds this report.
+        </p>
+        <p style="margin-top: 16px;">
+          <a class="btn btn-primary" href="/encounters/upload">Upload encounters</a>
+          <a class="btn btn-secondary" href="/" style="margin-left: 8px;">Back to dashboard</a>
+        </p>
+      {% endif %}
+    </section>
+  {% else %}
+    {# ─────────────── ok branch (3+ months of feedback) ─────────── #}
+    {# Top row: the headline action counts for the selected month.
+       All four numbers come straight from compute_clinic_month. #}
+    <section class="card" style="padding: 28px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Total findings</div>
+          <div style="font-size: 32px; font-weight: 700;" class="mono">{{ total_findings }}</div>
+          <div class="muted small">in {{ month_label }}</div>
+        </div>
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Accepted</div>
+          <div style="font-size: 32px; font-weight: 700; color: #1d7a3a;" class="mono">{{ accepted }}</div>
+          <div class="muted small">actioned by billers</div>
+        </div>
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Dismissed</div>
+          <div style="font-size: 32px; font-weight: 700; color: #6b7280;" class="mono">{{ dismissed }}</div>
+          <div class="muted small">marked not relevant</div>
+        </div>
+        <div>
+          <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Modified</div>
+          <div style="font-size: 32px; font-weight: 700; color: #b45309;" class="mono">{{ modified }}</div>
+          <div class="muted small">partially agreed</div>
+        </div>
+      </div>
+    </section>
+
+    {# Confidence calibration — HIGH / MEDIUM / LOW bucket derived
+       from per-rule precision over the last 30 days. Colour-coded
+       so a glance tells the biller where they stand. #}
+    <section class="card" style="padding: 24px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="flex: 0 0 auto;">
+          {% if confidence_calibration == "HIGH" %}
+            <span class="badge" style="background: #1d7a3a; color: white; padding: 6px 12px; border-radius: 4px; font-weight: 600;">
+              HIGH
+            </span>
+          {% elif confidence_calibration == "MEDIUM" %}
+            <span class="badge" style="background: #b45309; color: white; padding: 6px 12px; border-radius: 4px; font-weight: 600;">
+              MEDIUM
+            </span>
+          {% else %}
+            <span class="badge" style="background: #b91c1c; color: white; padding: 6px 12px; border-radius: 4px; font-weight: 600;">
+              LOW
+            </span>
+          {% endif %}
+        </div>
+        <div style="flex: 1 1 auto;">
+          <h2 style="margin: 0; font-size: 18px;">Confidence calibration</h2>
+          <p class="muted" style="margin: 4px 0 0;">
+            Average precision across the rules your billers reviewed in
+            the last 30 days. HIGH means the auditor's findings are
+            landing as-is; LOW means a calibration pass is overdue.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {# Top-3 modified rules — sorted by count desc, rule_name asc
+       inside compute_clinic_month. Renders even if the list is
+       empty so the UI never has to special-case the section. #}
+    <section style="margin-bottom: 24px;">
+      <h2>Top modified rules</h2>
+      <p class="muted">
+        Rules your billers most often changed rather than accepted or
+        dismissed outright. These are the candidates for a tuning pass
+        — high modify counts usually mean the rule's severity or
+        category misfires on real-world claims.
+      </p>
+      {% if top_3_modified_rules %}
+        <table class="data-table" style="width: 100%; margin-top: 12px;">
+          <thead>
+            <tr>
+              <th style="text-align: left;">Rule</th>
+              <th style="text-align: right;">Modify events</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in top_3_modified_rules %}
+              <tr>
+                <td class="mono">{{ r.rule_name }}</td>
+                <td style="text-align: right;" class="mono">{{ r.count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">
+          No rules were modified by billers in {{ month_label }}.
+          That usually means the rule set is well-calibrated for
+          this clinic's claim mix.
+        </p>
+      {% endif %}
+    </section>
+
+    {# Tuning recommendations — always at least one entry, even on
+       thin data, so the block never renders as empty whitespace. #}
+    <section class="card" style="padding: 24px; margin-bottom: 24px;">
+      <h2 style="margin-top: 0;">Tuning recommendations</h2>
+      <ul style="margin: 0; padding-left: 20px;">
+        {% for rec in tuning_recommendations %}
+          <li style="margin-bottom: 8px;">{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <p style="margin-top: 32px;">
+    <a class="btn btn-secondary" href="/">&larr; Back to dashboard</a>
+    {% if status != "insufficient_data" %}
+      <a class="btn btn-secondary"
+         href="/api/reports/monthly?clinic={{ clinic_id | urlencode }}&month={{ month_label | urlencode }}"
+         style="margin-left: 8px;">
+        JSON
+      </a>
+      <a class="btn btn-secondary"
+         href="/api/reports/monthly.pdf?clinic_id={{ clinic_id | urlencode }}&month={{ month_label | urlencode }}"
+         style="margin-left: 8px;">
+        PDF
+      </a>
+    {% endif %}
+  </p>
+</main>
+{% endblock %}
