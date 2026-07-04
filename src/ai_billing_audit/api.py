@@ -1029,6 +1029,14 @@ def create_app() -> FastAPI:
     fires, so registration is complete by the time the first request
     hits a route).
     """
+    # Install JSON logging on the root logger iff LOG_FORMAT=json.
+    # Done at app-factory time so test code that calls create_app()
+    # multiple times (and reloads modules) still picks up the
+    # formatter exactly once per process.
+    from .audit_logging import configure_json_logging_if_requested
+
+    configure_json_logging_if_requested()
+
     if not _TEMPLATES_DIR.is_dir():
         raise RuntimeError(
             f"templates dir missing at {_TEMPLATES_DIR}; "
@@ -4952,6 +4960,7 @@ def create_app() -> FastAPI:
 
     @app.post("/encounters/upload/submit")
     async def encounters_upload_submit(
+        request: Request,
         payload: str = Form(...),
     ) -> JSONResponse:
         """Accept a parse-preview payload and enqueue audit jobs.
@@ -4965,10 +4974,38 @@ def create_app() -> FastAPI:
             ``payload`` — a JSON string with shape
             ``{"rows": [...rows-as-from-preview...]}``.
 
+        Idempotency: callers MAY set an ``Idempotency-Key`` header
+        (opaque, ASCII, ≤255 chars). On a retry with the same
+        key + same body, the cached response is replayed without
+        enqueueing duplicate jobs. A retry with the same key but
+        a different body returns 409 Conflict.
+
         Response:
             ``{"jobs": [{"job_id": "...", "encounter_id": "..."}, ...],
                "rejected": [{"source_filename": "...", "errors": [...]}]}``
         """
+        # Idempotency-Key replay: check the cache BEFORE running
+        # the endpoint. If the key matches a prior call with the
+        # same body fingerprint, return the cached response. If
+        # the key matches a prior call with a DIFFERENT body,
+        # return 409 Conflict (the caller is misusing the key).
+        from .idempotency import (
+            IdempotencyMismatch,
+            fingerprint_request_body,
+            lookup as idem_lookup,
+            store as idem_store,
+        )
+        idem_key = request.headers.get("Idempotency-Key", "").strip()[:255]
+        body_fp = fingerprint_request_body(payload)
+        try:
+            cached = idem_lookup(idem_key, body_fp)
+        except IdempotencyMismatch as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        if cached is not None:
+            return JSONResponse(
+                cached.response_json, status_code=cached.status_code
+            )
+
         try:
             data = json.loads(payload)
         except json.JSONDecodeError as exc:
@@ -5046,7 +5083,11 @@ def create_app() -> FastAPI:
                     "source": source,
                 }
             )
-        return JSONResponse({"jobs": accepted, "rejected": rejected})
+        response_payload = {"jobs": accepted, "rejected": rejected}
+        # Persist the response so a retry with the same Idempotency-Key
+        # + same body replays this exact response without re-enqueueing.
+        idem_store(idem_key, body_fp, 200, response_payload)
+        return JSONResponse(response_payload)
 
     @app.post("/upload/837i")
     async def upload_837i(

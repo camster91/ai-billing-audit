@@ -34,11 +34,17 @@ __all__ = ["main"]
 
 
 def _configure_logging() -> None:
-    level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s worker %(levelname)s %(message)s",
-    )
+    # Try JSON mode first (production / Loki-shipper friendly);
+    # fall back to plain text for local dev. The JSON formatter
+    # lives in audit_logging.py so the api can share it.
+    from .audit_logging import configure_json_logging_if_requested
+
+    if not configure_json_logging_if_requested():
+        level = os.environ.get("LOG_LEVEL", "INFO").upper()
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s worker %(levelname)s %(message)s",
+        )
 
 
 def main() -> NoReturn:
