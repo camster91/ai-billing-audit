@@ -216,11 +216,20 @@ def test_audit_log_export_bad_fmt(client):
 # --- t_d9713083 --------------------------------------------------------
 
 def test_sticky_note_round_trip(client):
-    r = client.post("/encounter/enc-9/note", json={"note": "follow-up Tue", "user_id": "u1"})
+    # swarm-audit B-Sec-1: user_id is now from the authenticated
+    # session (X-User-Id header), not from the request body. The
+    # POST body must omit user_id; the GET no longer takes query
+    # params; the test now sends the auth header explicitly.
+    r = client.post(
+        "/encounter/enc-9/note",
+        headers={"X-User-Id": "u1", "X-User-Role": "biller"},
+        json={"note": "follow-up Tue"},
+    )
     assert r.status_code == 200
-    # Sticky notes are private — the read filters by user_id. Pass
-    # the same user_id the note was written with.
-    r2 = client.get("/encounter/enc-9/note?user_id=u1")
+    r2 = client.get(
+        "/encounter/enc-9/note",
+        headers={"X-User-Id": "u1", "X-User-Role": "biller"},
+    )
     assert r2.status_code == 200
     assert "follow-up Tue" in r2.text
 
@@ -228,22 +237,36 @@ def test_sticky_note_round_trip(client):
 # --- t_b0e3dd73 --------------------------------------------------------
 
 def test_reorder_endpoint(client):
-    r = client.post("/api/encounters/reorder", json={"user_id": "u1", "ordering": ["a", "b", "c"]})
+    r = client.post(
+        "/api/encounters/reorder",
+        headers={"X-User-Id": "u1", "X-User-Role": "biller"},
+        json={"ordering": ["a", "b", "c"]},
+    )
     assert r.status_code == 200
     assert r.json() == {"ok": True, "n": 3}
 
 
 def test_reorder_rejects_non_list(client):
-    r = client.post("/api/encounters/reorder", json={"user_id": "u1", "ordering": "not-a-list"})
+    r = client.post(
+        "/api/encounters/reorder",
+        headers={"X-User-Id": "u1", "X-User-Role": "biller"},
+        json={"ordering": "not-a-list"},
+    )
     assert r.status_code == 400
 
 
 # --- t_0ea1cdce --------------------------------------------------------
 
 def test_rule_tuning_round_trip(client):
-    r = client.post("/api/clinic/clinic-7/rules", json={"enabled": ["AH.001"], "suppressed": ["AH.014"]})
+    # swarm-audit H-Sec-1: rule tuning is admin-only now.
+    admin_h = {"X-User-Id": "ops-1", "X-User-Role": "admin"}
+    r = client.post(
+        "/api/clinic/clinic-7/rules",
+        headers=admin_h,
+        json={"enabled": ["AH.001"], "suppressed": ["AH.014"]},
+    )
     assert r.status_code == 200
-    r2 = client.get("/api/clinic/clinic-7/rules")
+    r2 = client.get("/api/clinic/clinic-7/rules", headers=admin_h)
     body = r2.json()
     assert "AH.001" in body["enabled"]
     assert "AH.014" in body["suppressed"]
@@ -252,7 +275,8 @@ def test_rule_tuning_round_trip(client):
 # --- t_24c99ece --------------------------------------------------------
 
 def test_llm_choice_endpoint(client):
-    r = client.get("/api/clinic/c1/llm")
+    admin_h = {"X-User-Id": "ops-1", "X-User-Role": "admin"}
+    r = client.get("/api/clinic/c1/llm", headers=admin_h)
     assert r.status_code == 200
     body = r.json()
     assert body["clinic_id"] == "c1"
@@ -358,10 +382,11 @@ def test_bulk_confirm_small_accept_does_not_require_confirm(client):
 
 # t_59fe7e05 — in-app notification record + mark-read
 def test_notifications_record_then_list(client):
+    # swarm-audit B-Sec-1: user_id comes from the X-User-Id header.
     rec = client.post(
         "/api/notifications",
+        headers={"X-User-Id": "u-notify", "X-User-Role": "biller"},
         json={
-            "user_id": "u-notify",
             "title": "Audit flagged",
             "body": "Encounter enc-1 has 3 findings",
             "link": "/encounter/enc-1",
@@ -369,37 +394,55 @@ def test_notifications_record_then_list(client):
     )
     assert rec.status_code == 200
     event_id = rec.json()["record"]["event_id"]
-    listed = client.get("/api/notifications?user_id=u-notify").json()
+    listed = client.get(
+        "/api/notifications",
+        headers={"X-User-Id": "u-notify", "X-User-Role": "biller"},
+    ).json()
     assert any(it.get("event_id") == event_id for it in listed["items"])
 
 
 def test_notifications_mark_read(client):
     rec = client.post(
         "/api/notifications",
-        json={"user_id": "u-mr", "title": "hi"},
+        headers={"X-User-Id": "u-mr", "X-User-Role": "biller"},
+        json={"title": "hi"},
     ).json()
     eid = rec["record"]["event_id"]
-    r = client.post(f"/api/notifications/{eid}/read?user_id=u-mr")
+    r = client.post(
+        f"/api/notifications/{eid}/read",
+        headers={"X-User-Id": "u-mr", "X-User-Role": "biller"},
+    )
     assert r.status_code == 200
-    items = client.get("/api/notifications?user_id=u-mr").json()["items"]
+    items = client.get(
+        "/api/notifications",
+        headers={"X-User-Id": "u-mr", "X-User-Role": "biller"},
+    ).json()["items"]
     latest = next(it for it in items if it.get("event_id") == eid)
     assert latest.get("read") is True
 
 
 def test_notifications_mark_read_other_user_404(client):
+    # Owner records a notification; stranger tries to mark it read.
     rec = client.post(
         "/api/notifications",
-        json={"user_id": "owner", "title": "hi"},
+        headers={"X-User-Id": "owner", "X-User-Role": "biller"},
+        json={"title": "hi"},
     ).json()
     eid = rec["record"]["event_id"]
-    r = client.post(f"/api/notifications/{eid}/read?user_id=stranger")
+    r = client.post(
+        f"/api/notifications/{eid}/read",
+        headers={"X-User-Id": "stranger", "X-User-Role": "biller"},
+    )
     assert r.status_code == 404
 
 
 # t_77c0c140 — re-engagement status
 def test_re_engagement_no_login_yet(client):
     # Fresh user — no last_login row → should_send False.
-    r = client.get("/api/re-engagement?user_id=brand-new-user-xyz")
+    r = client.get(
+        "/api/re-engagement",
+        headers={"X-User-Id": "brand-new-user-xyz", "X-User-Role": "biller"},
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["last_login_ts"] is None
@@ -415,7 +458,10 @@ def test_re_engagement_recent_login_no_nudge(client):
         up._log_path("last_login"),
         {"user_id": "u-recent", "ts": time.time()},
     )
-    r = client.get("/api/re-engagement?user_id=u-recent").json()
+    r = client.get(
+        "/api/re-engagement",
+        headers={"X-User-Id": "u-recent", "X-User-Role": "biller"},
+    ).json()
     assert r["days_since_login"] < 7.0
     assert r["should_send"] is False
 
@@ -429,7 +475,10 @@ def test_re_engagement_old_login_should_send(client):
         up._log_path("last_login"),
         {"user_id": "u-stale", "ts": eight_days_ago},
     )
-    r = client.get("/api/re-engagement?user_id=u-stale").json()
+    r = client.get(
+        "/api/re-engagement",
+        headers={"X-User-Id": "u-stale", "X-User-Role": "biller"},
+    ).json()
     assert r["days_since_login"] >= 7.0
     assert r["should_send"] is True
 
@@ -459,25 +508,47 @@ def test_llm_choice_set_rejects_bad_provider(client):
 
 # t_d9713083 — sticky notes are private (filter by user_id)
 def test_sticky_note_private_to_user(client):
-    # User u-A writes a note; user u-B should NOT see it.
+    # swarm-audit B-Sec-1: user_id is now resolved from the
+    # authenticated session (X-User-Id header), not from the
+    # request body or query string. Cross-user reads must fail.
     client.post(
         "/encounter/enc-priv/note",
-        json={"note": "A's private note", "user_id": "u-A"},
+        headers={"X-User-Id": "u-A", "X-User-Role": "biller"},
+        json={"note": "A's private note"},
     )
-    r_a = client.get("/encounter/enc-priv/note?user_id=u-A")
-    r_b = client.get("/encounter/enc-priv/note?user_id=u-B")
+    r_a = client.get(
+        "/encounter/enc-priv/note",
+        headers={"X-User-Id": "u-A", "X-User-Role": "biller"},
+    )
+    r_b = client.get(
+        "/encounter/enc-priv/note",
+        headers={"X-User-Id": "u-B", "X-User-Role": "biller"},
+    )
     assert "A's private note" in r_a.text
-    assert r_b.text == ""
+    assert r_b.text == "", (
+        "user u-B saw u-A's sticky note — IDOR regression"
+    )
 
 
-def test_sticky_note_star_user_sees_all(client):
-    # Admin/debug ``user_id=*`` reads across users.
+def test_sticky_note_admin_sees_all(client):
+    # swarm-audit B-Sec-1: the user_id=* query param is REMOVED.
+    # Admin role now sees across users (the role check is the gate).
     client.post(
         "/encounter/enc-admin/note",
-        json={"note": "shared admin", "user_id": "u-X"},
+        headers={"X-User-Id": "u-X", "X-User-Role": "biller"},
+        json={"note": "shared admin"},
     )
-    r = client.get("/encounter/enc-admin/note?user_id=*")
+    r = client.get(
+        "/encounter/enc-admin/note",
+        headers={"X-User-Id": "ops-1", "X-User-Role": "admin"},
+    )
     assert "shared admin" in r.text
+    # And a biller CANNOT see across users anymore (no query bypass).
+    r_biller = client.get(
+        "/encounter/enc-admin/note",
+        headers={"X-User-Id": "u-Y", "X-User-Role": "biller"},
+    )
+    assert "shared admin" not in r_biller.text
 
 
 # --- t_a5bd33af --------------------------------------------------------

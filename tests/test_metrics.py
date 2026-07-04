@@ -155,3 +155,64 @@ def test_render_metrics_returns_string(client):
     out = render_metrics()
     assert isinstance(out, str)
     assert "zorva_uptime_seconds" in out
+
+
+def test_bump_http_request_bucketizes_encounter_id(client):
+    """swarm-audit B-Sec-4: paths with embedded encounter_ids
+    must collapse to a /{id}/ template so Prometheus label
+    values don't leak per-encounter PHI."""
+    from ai_billing_audit import metrics
+    metrics._HTTP_COUNTER.clear()
+    metrics.bump_http_request(
+        "/encounter/ca_ahcip_001/audit", "GET", 200
+    )
+    # The label stored should be the bucketed template, not the
+    # raw path with the encounter_id.
+    keys = [k for k in metrics._HTTP_COUNTER.keys() if k[0].startswith("/encounter")]
+    assert keys, "encounter path should have been recorded"
+    for k in keys:
+        assert "ca_ahcip_001" not in k[0], (
+            f"raw encounter_id leaked into metrics label: {k[0]}"
+        )
+        assert "{id}" in k[0], (
+            f"path was not bucketised to a template: {k[0]}"
+        )
+
+
+def test_bump_http_request_bucketizes_hex_job_id(client):
+    """32-char hex job_ids (upload-flow UUIDs) collapse to {id}."""
+    from ai_billing_audit import metrics
+    metrics._HTTP_COUNTER.clear()
+    metrics.bump_http_request(
+        "/jobs/abc123def456789012345678901234ab", "GET", 200
+    )
+    keys = [k for k in metrics._HTTP_COUNTER.keys() if k[0].startswith("/jobs")]
+    assert keys
+    for k in keys:
+        assert "abc123def456789012345678901234ab" not in k[0]
+        assert "{id}" in k[0]
+
+
+def test_bump_http_request_keeps_static_routes_intact(client):
+    """Static routes like /healthz, /roi, /metrics must NOT be
+    bucketised — they're already non-identifying."""
+    from ai_billing_audit import metrics
+    metrics._HTTP_COUNTER.clear()
+    metrics.bump_http_request("/healthz", "GET", 200)
+    metrics.bump_http_request("/roi", "GET", 200)
+    metrics.bump_http_request("/metrics", "GET", 200)
+    keys = [k for k in metrics._HTTP_COUNTER.keys()]
+    paths = [k[0] for k in keys]
+    assert "/healthz" in paths
+    assert "/roi" in paths
+    assert "/metrics" in paths
+
+
+def test_bucketize_path_idempotent(client):
+    """Running bucketize twice on the same path is a no-op
+    (templates don't double-collide)."""
+    from ai_billing_audit.metrics import _bucketize_path
+    once = _bucketize_path("/encounter/ca_ahcip_001/audit")
+    twice = _bucketize_path(once)
+    assert once == twice
+    assert "{id}" in once

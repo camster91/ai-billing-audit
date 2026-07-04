@@ -38,6 +38,7 @@ Tasks covered (one function each):
 from __future__ import annotations
 
 import csv
+import html
 import io
 import json
 import os
@@ -46,16 +47,29 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
+
+# swarm-audit B-Sec-1: use ``Depends(require_biller_or_admin)`` /
+# ``Depends(require_admin)`` instead of taking user_id from the
+# request body or query string. Imports are deferred to
+# ``register_routes`` body so this module can be imported without
+# triggering api.py's module-level ``create_app()`` (which would
+# partially-initialise this module in the process — circular).
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 
 
-_LOGS_DIR = Path(os.environ.get("UX_POLISH_LOG_DIR", "/app/logs"))
+# Lazy module-level directory resolution: read env on each call so
+# test fixtures that set ``UX_POLISH_LOG_DIR`` after import take
+# effect immediately (matches the late-bind pattern used by
+# ``audit_actions.audit_trail_path``).
+def _logs_dir() -> Path:
+    return Path(os.environ.get("UX_POLISH_LOG_DIR", "/app/logs"))
 
 
 def _log_path(name: str) -> Path:
-    _LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    return _LOGS_DIR / f"{name}.jsonl"
+    d = _logs_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"{name}.jsonl"
 
 
 def _append_jsonl(path: Path, record: dict[str, Any]) -> None:
@@ -824,7 +838,19 @@ def wcag_status() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def register_routes(app: Any) -> None:
-    """Attach the UX-polish routes to the FastAPI app."""
+    """Attach the UX-polish routes to the FastAPI app.
+
+    swarm-audit B-Sec-1: import the auth helpers lazily here so
+    this module can be imported without triggering api.py's
+    module-level ``create_app()`` (which would partially
+    initialise ux_polish in the process — a circular import).
+    """
+    # Lazy import to break the circular dependency. api.py imports
+    # this module INSIDE create_app(); importing api.UserContext
+    # / require_* at module top would trigger create_app() during
+    # ux_polish's own import and crash with "partially initialised
+    # module".
+    from .api import UserContext, require_admin, require_biller_or_admin
 
     @app.get("/api/activity/recent", response_class=JSONResponse)
     def api_activity_recent(limit: int = 10) -> JSONResponse:
@@ -866,17 +892,31 @@ def register_routes(app: Any) -> None:
         return JSONResponse({"ok": True, "record": rec})
 
     @app.get("/api/notifications", response_class=JSONResponse)
-    def api_notifications(user_id: str = "dev_user") -> JSONResponse:
-        return JSONResponse({"items": notification_feed(user_id)})
+    def api_notifications(
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: user_id previously came from a query
+        # parameter (any caller could read any user's feed by
+        # passing a forged user_id). Now resolved from the
+        # authenticated session.
+        return JSONResponse(
+            {"items": notification_feed(user.user_id or "dev_user")}
+        )
 
     @app.post("/api/notifications", response_class=JSONResponse)
-    async def api_notifications_record(request: Request) -> JSONResponse:
+    async def api_notifications_record(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: previously took user_id from body,
+        # allowing any bearer-holder to write a notification AS
+        # another user. Now resolved from the authenticated session.
         try:
             body = await request.json()
         except Exception:
             body = {}
         rec = notification_record(
-            str(body.get("user_id", "dev_user")),
+            user.user_id or "dev_user",
             title=str(body.get("title", "")),
             body=str(body.get("body", "")),
             kind=str(body.get("kind", "info")),
@@ -885,27 +925,42 @@ def register_routes(app: Any) -> None:
         return JSONResponse({"ok": True, "record": rec})
 
     @app.post("/api/notifications/{event_id}/read", response_class=JSONResponse)
-    def api_notifications_mark_read(user_id: str, event_id: str) -> JSONResponse:
-        ok = notification_mark_read(user_id, event_id)
+    def api_notifications_mark_read(
+        event_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: previously took user_id from query
+        # string, allowing cross-user marker-as-read. Now uses the
+        # authenticated user from the session.
+        ok = notification_mark_read(user.user_id or "dev_user", event_id)
         if not ok:
             raise HTTPException(status_code=404, detail="notification not found")
         return JSONResponse({"ok": True})
 
     @app.get("/api/re-engagement", response_class=JSONResponse)
-    def api_re_engagement(user_id: str = "dev_user") -> JSONResponse:
-        return JSONResponse(re_engagement_status(user_id))
+    def api_re_engagement(
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        return JSONResponse(re_engagement_status(user.user_id or "dev_user"))
 
     @app.get("/api/email-prefs", response_class=JSONResponse)
-    def api_email_prefs_get(user_id: str = "dev_user") -> JSONResponse:
-        return JSONResponse(email_pref_get(user_id))
+    def api_email_prefs_get(
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        return JSONResponse(email_pref_get(user.user_id or "dev_user"))
 
     @app.post("/api/email-prefs", response_class=JSONResponse)
-    async def api_email_prefs_set(request: Request) -> JSONResponse:
+    async def api_email_prefs_set(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: user_id was previously read from body
+        # (allowing any caller to mutate any user's email prefs).
         try:
             body = await request.json()
         except Exception:
             body = {}
-        user_id = str(body.get("user_id", "dev_user"))
+        user_id = user.user_id or "dev_user"
         flags = {
             k: bool(v)
             for k, v in body.items()
@@ -923,7 +978,13 @@ def register_routes(app: Any) -> None:
         return JSONResponse({"ok": ok, "message": msg})
 
     @app.get("/api/audit-log/export")
-    def api_audit_log_export(fmt: str = "json") -> Response:
+    def api_audit_log_export(
+        fmt: str = "json",
+        user: UserContext = Depends(require_admin),
+    ) -> Response:
+        # swarm-audit B-Sec-2: previously had no auth dependency at
+        # all — any bearer holder could dump the entire audit
+        # trail. Now admin-only.
         if fmt not in {"json", "csv", "jsonl"}:
             raise HTTPException(
                 status_code=400, detail="fmt must be json, csv, or jsonl"
@@ -937,28 +998,48 @@ def register_routes(app: Any) -> None:
 
     @app.get("/encounter/{encounter_id}/note", response_class=PlainTextResponse)
     def api_sticky_note_get(
-        encounter_id: str, user_id: str = "dev_user"
+        encounter_id: str,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> PlainTextResponse:
         # t_d9713083 — sticky notes are PRIVATE to the user who
-        # wrote them, so the read filters by ``user_id``. Pass
-        # ``user_id=*`` (literal star) to read across all users
-        # (admin debugging only — not exposed in the UI).
-        if user_id == "*":
+        # wrote them, so the read filters by the authenticated
+        # user_id (NOT a query parameter — that was a swarm-audit
+        # B-Sec-1 IDOR: ``user_id=*`` in the query string let any
+        # bearer holder read every user's notes for an encounter).
+        # Admin role bypasses the per-user filter (admins have
+        # visibility by definition); billers see only their own.
+        if user.role == "admin":
             return PlainTextResponse(sticky_note_get(encounter_id))
-        return PlainTextResponse(sticky_note_get(encounter_id, user_id=user_id))
+        return PlainTextResponse(
+            sticky_note_get(encounter_id, user_id=user.user_id or "dev_user")
+        )
 
     @app.post("/encounter/{encounter_id}/note", response_class=JSONResponse)
-    async def api_sticky_note_set(encounter_id: str, request: Request) -> JSONResponse:
+    async def api_sticky_note_set(
+        encounter_id: str,
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: user_id previously came from the
+        # request body (any caller could plant a note attributed to
+        # another user). Now from the authenticated session.
         try:
             body = await request.json()
         except Exception:
             body = {}
         note = str(body.get("note", ""))[:2000]
-        sticky_note_set(encounter_id, str(body.get("user_id", "dev_user")), note)
+        sticky_note_set(
+            encounter_id, user.user_id or "dev_user", note
+        )
         return JSONResponse({"ok": True, "len": len(note)})
 
     @app.post("/api/encounters/reorder", response_class=JSONResponse)
-    async def api_reorder(request: Request) -> JSONResponse:
+    async def api_reorder(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        # swarm-audit B-Sec-1: user_id was previously read from
+        # body. Now from the session.
         try:
             body = await request.json()
         except Exception:
@@ -966,15 +1047,27 @@ def register_routes(app: Any) -> None:
         ordering = body.get("ordering") or []
         if not isinstance(ordering, list):
             raise HTTPException(status_code=400, detail="ordering must be a list")
-        reorder_set(str(body.get("user_id", "dev_user")), [str(x) for x in ordering])
+        reorder_set(
+            user.user_id or "dev_user", [str(x) for x in ordering]
+        )
         return JSONResponse({"ok": True, "n": len(ordering)})
 
     @app.get("/api/clinic/{clinic_id}/rules", response_class=JSONResponse)
-    def api_rule_tuning_get(clinic_id: str) -> JSONResponse:
+    def api_rule_tuning_get(
+        clinic_id: str,
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
+        # swarm-audit H-Sec-1: per-clinic rule tuning is operator-
+        # scoped (admin-only). A biller shouldn't be able to
+        # toggle rules that the operator curated.
         return JSONResponse(rule_tuning_get(clinic_id))
 
     @app.post("/api/clinic/{clinic_id}/rules", response_class=JSONResponse)
-    async def api_rule_tuning_set(clinic_id: str, request: Request) -> JSONResponse:
+    async def api_rule_tuning_set(
+        clinic_id: str,
+        request: Request,
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
         try:
             body = await request.json()
         except Exception:
@@ -987,20 +1080,29 @@ def register_routes(app: Any) -> None:
         return JSONResponse({"ok": True})
 
     @app.get("/api/clinic/{clinic_id}/llm", response_class=JSONResponse)
-    def api_llm_choice_get(clinic_id: str) -> JSONResponse:
+    def api_llm_choice_get(
+        clinic_id: str,
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
         return JSONResponse(llm_choice_get(clinic_id))
 
     @app.post("/api/clinic/{clinic_id}/llm", response_class=JSONResponse)
-    async def api_llm_choice_set(clinic_id: str, request: Request) -> JSONResponse:
+    async def api_llm_choice_set(
+        clinic_id: str,
+        request: Request,
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
         try:
             body = await request.json()
         except Exception:
             body = {}
+        # swarm-audit B-Sec-3: user_id previously came from body;
+        # now from the authenticated admin session.
         out = llm_choice_set(
             clinic_id,
             str(body.get("provider", "")),
             str(body.get("model", "")),
-            user_id=str(body.get("user_id", "dev_user")),
+            user_id=user.user_id or "dev_user",
         )
         return JSONResponse(out)
 
@@ -1021,10 +1123,17 @@ def register_routes(app: Any) -> None:
         # real print CSS via PRINT_CSS; this is a minimal standalone view
         # so a biller can do Ctrl-P without round-tripping through the
         # dashboard layout.
+        # swarm-audit B-Sec-3: encounter_id flows from path → HTML
+        # body. Previously unescaped (F-string interpolation into a
+        # ``<title>`` and ``<h1>``). A crafted encounter_id with
+        # ``<script>...</script>`` would land in the rendered
+        # response and execute in any browser viewing the print
+        # preview. Now html-escaped.
+        safe_id = html.escape(encounter_id)
         return HTMLResponse(
-            f"<!doctype html><html><head><title>{encounter_id} — printable</title>"
+            f"<!doctype html><html><head><title>{safe_id} — printable</title>"
             f"<style>{PRINT_CSS}</style></head><body>"
-            f"<h1>Encounter {encounter_id}</h1>"
+            f"<h1>Encounter {safe_id}</h1>"
             f"<p>Open the dashboard view and use your browser's Print dialog for a full layout.</p>"
             f"</body></html>"
         )

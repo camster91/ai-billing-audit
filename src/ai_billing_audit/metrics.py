@@ -60,11 +60,70 @@ def bump_http_request(path: str, method: str, status: int) -> None:
     """Increment the request counter for a given (path, method, status).
 
     Called from the API middleware on every response.
+
+    swarm-audit B-Sec-4: previously stored the raw path (with
+    encounter_id, user_id, etc. embedded in the URL), which then
+    appeared as a Prometheus label value on the public-readable
+    /metrics endpoint — a PHI / identifier-disclosure channel.
+    Now the path is bucketised to a coarse template
+    (``/encounter/{id}/...``) before being labelled. Static
+    segments stay verbatim; dynamic segments collapse to ``{id}``
+    so a scraper sees route-level cardinality, not per-encounter
+    cardinality.
     """
+    template = _bucketize_path(path)
     with _LOCK:
-        _HTTP_COUNTER[(path, method, status)] = (
-            _HTTP_COUNTER.get((path, method, status), 0) + 1
+        _HTTP_COUNTER[(template, method, status)] = (
+            _HTTP_COUNTER.get((template, method, status), 0) + 1
         )
+
+
+import re as _re_metrics  # noqa: E402 — placed after the first use so
+# the module-level _bucketize_path helper below can reference re.
+
+# Dynamic-segment markers we collapse to {id}. Order matters —
+# patterns must be applied left-to-right with the longer / more
+# specific one first so we don't double-collapse (e.g.
+# ``/encounter/ca_ahcip_001`` must collapse ``/ca_ahcip_001``
+# first to ``{id}``, then NOT match ``/enc{id}`` as a separate
+# dynamic segment — ``/encounter`` is a static route prefix).
+_BUCKET_PATTERNS: tuple[tuple[str, str], ...] = (
+    # 32-char hex (job_id from upload flow)
+    (r"/[a-f0-9]{32}", "/{id}"),
+    # 12-char hex (audit-action IDs)
+    (r"/[a-f0-9]{12}", "/{id}"),
+    # UUIDs
+    (r"/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", "/{id}"),
+    # Slug forms — MUST come BEFORE any catch-all /enc* or /api/*
+    # regex, otherwise /encounter/{id}/... double-collapses.
+    (r"/ca_[a-z0-9_]+", "/{id}"),
+    (r"/enc_[a-z0-9_]+", "/{id}"),
+    # Any remaining bare slug — must contain at least one digit
+    # (so /encounter, /healthz, /roi stay verbatim; /enc001,
+    # /job-abc123, /ev-2026-07-04 collapse).
+    (r"/[a-zA-Z][a-zA-Z0-9_-]*\d[a-zA-Z0-9_-]*\b", "/{id}"),
+    # clinic_id slug (default = default)
+    (r"/clinic/[a-zA-Z0-9_-]+", "/clinic/{id}"),
+)
+
+
+def _bucketize_path(path: str) -> str:
+    """Collapse dynamic segments of a path to ``{id}``.
+
+    Static segments (``/healthz``, ``/roi``, ``/metrics``) are
+    untouched. Path-specific segments (``/encounter/{id}/...``)
+    collapse so a Prometheus scraper never sees per-encounter
+    labels on the public /metrics endpoint.
+
+    Examples:
+      /encounter/ca_ahcip_001/audit   → /encounter/{id}/audit
+      /api/audit-log/export?fmt=json   → /api/audit-log/export (static)
+      /jobs/abc123def456              → /jobs/{id}
+    """
+    out = path
+    for pattern, repl in _BUCKET_PATTERNS:
+        out = _re_metrics.sub(pattern, repl, out)
+    return out
 
 
 def _read_job_queue_counts() -> dict[str, int]:
