@@ -233,6 +233,7 @@ class Job:
     __slots__ = (
         "job_id",
         "encounter_id",
+        "patient_id",
         "source",
         "source_filename",
         "tenant_id",
@@ -242,6 +243,7 @@ class Job:
         "submitted_at",
         "started_at",
         "finished_at",
+        "dedup_hit",
     )
 
     def __init__(
@@ -252,9 +254,11 @@ class Job:
         source: str,
         source_filename: str | None,
         tenant_id: str | None = None,
+        patient_id: str | None = None,
     ) -> None:
         self.job_id = job_id
         self.encounter_id = encounter_id
+        self.patient_id = patient_id or ""
         self.source = source
         self.source_filename = source_filename
         self.tenant_id = tenant_id or "default"
@@ -264,6 +268,12 @@ class Job:
         self.submitted_at = time.time()
         self.started_at: float | None = None
         self.finished_at: float | None = None
+        # dedup_hit: True when enqueue() returned this Job because
+        # of a recent-match dedup (NOT a fresh enqueue). Callers
+        # can surface this in the upload-submit response so the
+        # biller sees "already audited at <job_id>" instead of a
+        # brand-new job_id.
+        self.dedup_hit = False
 
     # Status -> progress-percent map used by the upload portal's
     # progress indicator. The portal polls /jobs/{id} every second;
@@ -400,6 +410,7 @@ class JobQueue:
         source: str,
         source_filename: str | None = None,
         tenant_id: str | None = None,
+        allow_duplicate: bool = False,
     ) -> Job:
         """Submit a job. Returns the freshly created Job.
 
@@ -410,12 +421,33 @@ class JobQueue:
         so the JSONL log row carries the tenant. The
         _latest_real_audit_for API handler filters by tenant
         so one tenant's encounter can't leak to another.
+
+        Dedup: unless ``allow_duplicate=True``, the queue
+        refuses to enqueue a second job for the same
+        (tenant_id, encounter_id, patient_id) tuple while an
+        earlier job is still active (queued / running) or was
+        completed in the last ``DEDUP_WINDOW_SECONDS``
+        (default 300). The returned ``Job`` in that case is the
+        existing one, and ``job.dedup_hit=True`` is set so the
+        caller can surface "we already audited this" in the
+        response instead of running a fresh audit.
         """
         jid = uuid.uuid4().hex[:12]
         encounter_id = str(encounter.get("encounter_id") or f"enc_{jid}")
+        patient_id = str(encounter.get("patient_id") or "").strip()
+        if not allow_duplicate:
+            existing = self._find_recent_dup(
+                tenant_id=tenant_id,
+                encounter_id=encounter_id,
+                patient_id=patient_id,
+            )
+            if existing is not None:
+                existing.dedup_hit = True
+                return existing
         job = Job(
             job_id=jid,
             encounter_id=encounter_id,
+            patient_id=patient_id,
             source=source,
             source_filename=source_filename,
             tenant_id=tenant_id,
@@ -430,6 +462,60 @@ class JobQueue:
             daemon=True,
         ).start()
         return job
+
+    def _find_recent_dup(
+        self,
+        *,
+        tenant_id: str | None,
+        encounter_id: str,
+        patient_id: str,
+    ) -> Job | None:
+        """Return an existing job that matches
+        ``(tenant_id, encounter_id, patient_id)`` if one was
+        completed within ``DEDUP_WINDOW_SECONDS`` OR is still
+        active. ``None`` if no recent match — caller should
+        proceed with the enqueue.
+
+        The window default (300s = 5 minutes) is short enough
+        that a biller who genuinely wants to re-audit a claim
+        after a payer-rule update can do so by waiting 5 min
+        (or by passing ``allow_duplicate=True``). It's long
+        enough that a doubled-click or network-retry duplicate
+        gets caught.
+        """
+        import time as _time
+        import os as _os
+        window = int(_os.environ.get("DEDUP_WINDOW_SECONDS", "300"))
+        now = _time.time()
+        with self._lock:
+            # Iterate in reverse insertion order — most-recent jobs
+            # are likeliest to be the duplicate (the biller just
+            # submitted this claim).
+            jobs_in_order = list(self._jobs.values())[::-1]
+            for j in jobs_in_order:
+                if j.tenant_id != tenant_id:
+                    continue
+                if j.encounter_id != encounter_id:
+                    continue
+                # Match by patient_id when both are present (the
+                # biller might have re-keyed the encounter_id with
+                # a typo, but the patient_id is a stable link).
+                # When patient_id is empty on BOTH the new and
+                # existing job, the encounter_id alone is the
+                # dedup key (matches what we have).
+                job_patient = str(getattr(j, "patient_id", "") or "")
+                if patient_id and job_patient and patient_id != job_patient:
+                    continue
+                # Active (queued / running) — definitely a dup
+                if j.status in ("queued", "running"):
+                    return j
+                # Completed within the dedup window
+                finished = getattr(j, "finished_at", None)
+                if finished is None:
+                    continue
+                if now - finished < window:
+                    return j
+        return None
 
     def get(self, job_id: str) -> Job | None:
         with self._lock:

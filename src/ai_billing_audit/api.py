@@ -5113,6 +5113,11 @@ def create_app() -> FastAPI:
                     "job_id": job.job_id,
                     "encounter_id": job.encounter_id,
                     "source": source,
+                    # dedup_hit: True when the queue already had a
+                    # recent match for (tenant, encounter, patient)
+                    # and returned the existing job. The biller sees
+                    # this so they know not to expect a fresh audit.
+                    "dedup_hit": bool(getattr(job, "dedup_hit", False)),
                 }
             )
         response_payload = {"jobs": accepted, "rejected": rejected}

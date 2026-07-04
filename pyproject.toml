@@ -39,6 +39,9 @@ package-dir = { "" = "src" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.scripts]
+zorva-admin = "ai_billing_audit.admin_cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
