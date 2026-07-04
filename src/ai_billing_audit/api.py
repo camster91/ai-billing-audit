@@ -1088,6 +1088,25 @@ def create_app() -> FastAPI:
     _ALLOW_NO_AUTH = _os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
 
     @app.middleware("http")
+    async def _metrics_middleware(request, call_next):
+        """Bump the http_requests counter on every response.
+
+        Runs BEFORE the auth / rate-limit middleware so we count
+        the actual response (including 401 / 429). The /metrics
+        endpoint itself is excluded so a Prometheus scrape doesn't
+        inflate its own count.
+        """
+        response = await call_next(request)
+        if request.url.path != "/metrics":
+            from .metrics import bump_http_request
+            bump_http_request(
+                request.url.path,
+                request.method,
+                response.status_code,
+            )
+        return response
+
+    @app.middleware("http")
     async def _bearer_auth(request, call_next):
         # Whitelist: healthz + static
         if request.url.path in ("/healthz",) or request.url.path.startswith("/static"):
@@ -1158,6 +1177,7 @@ def create_app() -> FastAPI:
                     "/contact",
                     "/legal/privacy",
                     "/legal/terms",
+                    "/metrics",
                 )
             )
             or (
@@ -4009,6 +4029,18 @@ def create_app() -> FastAPI:
             "title": app.title,
             "n_registered": len(list_demo_encounters()),
         }
+
+    @app.get("/metrics")
+    def metrics() -> Response:
+        """Prometheus text-format metrics (no auth required).
+
+        Exposes zorva_uptime_seconds, zorva_version_info,
+        zorva_audit_jobs_total{state}, zorva_http_requests_total
+        {path,method,status}. See ai_billing_audit.metrics.py for
+        the full schema.
+        """
+        from .metrics import render_metrics
+        return Response(content=render_metrics(), media_type="text/plain; version=0.0.4")
 
     # Admin-only stub. The team management UI lives in the Next.js
     # portal (kanban t_23bfd49c); this FastAPI stub exists so the

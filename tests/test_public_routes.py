@@ -52,6 +52,7 @@ def client():
 PUBLIC_GET_ROUTES = [
     "/",
     "/healthz",
+    "/metrics",
     "/roi",
     "/roi/results?monthly_claims=1000",
     "/case-studies",
