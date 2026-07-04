@@ -4276,7 +4276,7 @@ def create_app() -> FastAPI:
         current_denial_rate: float = 0.075,
         avg_claim_value_usd: float = 190.0,
         current_appeal_rate: float = 0.50,
-        catch_rate: float = 0.69,  # v12 AHCIP val-set F1 (was 0.42 from v10; aligned to README.md:7, 2026-07-02)
+        catch_rate: float = 0.77,  # v12 AHCIP val-set RECALL (was 0.69 from F1; recall is the right metric for "errors caught", README.md:7, 2026-07-03)
         plan_tier: str | None = None,
     ):
         """ROI calculator for the one-pager.

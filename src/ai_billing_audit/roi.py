@@ -20,8 +20,14 @@ Inputs (with sensible defaults):
     Tiers: starter (up to 200 claims), growth (200-2000),
     scale (2000+). Default: derived from monthly_claims.
   catch_rate: fraction of pre-submission errors Zorva catches.
-    This is the v12 AHCIP val-set F1 score (micro over cleaned gold).
-    Default: 0.69 (README.md:7, 2026-06-23 post-leakage-fix).
+    This is the v12 AHCIP val-set RECALL score (micro over cleaned
+    gold), not F1. F1 conflates precision and recall; for
+    "fraction of would-be denials the auditor catches" the right
+    metric is recall alone. Recall is what the clinic cares about:
+    precision only affects how much time the biller spends dismissing
+    false positives (a 5-second cost per flag, not revenue lost).
+    Default: 0.77 (v12 AHCIP recall, README.md:7,
+    2026-06-23 post-leakage-fix).
 
 Outputs:
   monthly_denials: claims denied on first submission, without Zorva.
@@ -66,7 +72,7 @@ PLAN_PRICING_CAD: dict[str, dict[str, Any]] = {
 DEFAULT_DENIAL_RATE = 0.075       # 7.5% of claims denied on first submission
 DEFAULT_APPEAL_RATE = 0.50        # 50% of denials get appealed and recovered
 DEFAULT_AVG_CLAIM_USD = 190.0    # CMS commercial office-visit average
-DEFAULT_CATCH_RATE = 0.69        # v12 AHCIP val-set F1 (README.md:7, 2026-06-23 post-leakage-fix); was 0.42 from v10
+DEFAULT_CATCH_RATE = 0.77        # v12 AHCIP val-set RECALL (README.md:7, 2026-06-23 post-leakage-fix); was 0.69 from F1, was 0.42 from v10
 DEFAULT_TIER = "growth"          # conservative middle tier
 
 
@@ -121,8 +127,12 @@ def compute_roi(
     # Zorva catches (catch_rate) of the would-be denials and the
     # biller fixes them pre-submission. The catch_rate is
     # conservative: not every caught error was going to be denied,
-    # and not every denial is fixable. The default 0.69 reflects
-    # the v12 AHCIP val-set F1 score (README.md:7).
+    # and not every denial is fixable. The default 0.77 reflects
+    # the v12 AHCIP val-set RECALL score (README.md:7,
+    # 2026-06-23 post-leakage-fix). Recall is the right metric
+    # here: F1 conflates precision (biller time cost) with recall
+    # (revenue protection); for the "how many errors caught"
+    # question, only recall matters.
     monthly_caught_with_zorva = monthly_denials * catch_rate
     monthly_revenue_saved = monthly_caught_with_zorva * avg_claim_value_usd
 

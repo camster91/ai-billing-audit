@@ -5,8 +5,12 @@
   <h1>ROI calculator</h1>
   <p class="muted">
     For clinic decision-makers: how much revenue will Zorva save?
-    Numbers are conservative. Catch rate is the v10 smartness-test
-    F1 score on the val set (0.42 = recall × precision).
+    Numbers are conservative. The default catch rate (0.77) is the
+    v12 AHCIP val-set <strong>recall</strong> — the fraction of
+    would-be billing errors the auditor catches. We use recall, not
+    F1, because the cost of a missed error (revenue lost) is much
+    higher than the cost of a false positive (5 seconds to dismiss).
+    See README.md for the full recall/precision/F1 breakdown.
   </p>
 
   <div class="roi-grid">
@@ -77,7 +81,7 @@
           step="0.01"
           value="{{ inputs.catch_rate }}"
         />
-        <span class="muted small">Default 0.42 = v10 F1 score (recall × precision). Run your own smartness test to refine.</span>
+        <span class="muted small">Default 0.77 = v12 AHCIP recall (fraction of would-be errors the auditor catches). Run your own smartness test to refine.</span>
       </label>
 
       <label class="roi-form__label">

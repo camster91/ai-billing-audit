@@ -58,27 +58,27 @@ def test_tier_for_volume_scale():
 
 def test_compute_roi_default_inputs():
     """Default inputs (1000 claims, 7.5% denial, $190/claim, 50%
-    appeal, 69% catch) should produce a sensible result."""
+    appeal, 77% catch) should produce a sensible result."""
     r = compute_roi(monthly_claims=1000)
     # monthly_denials = 1000 * 0.075 = 75
     assert r["monthly"]["denials_without_zorva"] == 75
-    # monthly_caught = 75 * 0.69 = 51.75 → 51 (int)
-    assert r["monthly"]["caught_by_zorva"] == 51
-    # revenue_saved = 51.75 * 190 = 9832.5
-    assert r["monthly"]["revenue_saved_by_zorva"] == 9832.5
+    # monthly_caught = 75 * 0.77 = 57.75 → 57 (int)
+    assert r["monthly"]["caught_by_zorva"] == 57
+    # revenue_saved = 57.75 * 190 = 10972.5
+    assert r["monthly"]["revenue_saved_by_zorva"] == 10972.5
     # Plan tier auto-selected: growth (1000 > 200)
     assert r["inputs"]["plan_tier"] == "growth"
-    # Net monthly savings = 9832.5 - 1499 = 8333.5
-    assert r["monthly"]["net_monthly_savings_usd"] == 8333.5
+    # Net monthly savings = 10972.5 - 1499 = 9473.5
+    assert r["monthly"]["net_monthly_savings_usd"] == 9473.5
 
 
 def test_compute_roi_starter_tier():
     r = compute_roi(monthly_claims=150, plan_tier="starter")
     assert r["inputs"]["plan_tier"] == "starter"
-    # revenue_saved = 150 * 0.075 * 0.69 * 190 = 1474.875 (float stored as 1474.87499... → rounded to 1474.87)
-    assert r["monthly"]["revenue_saved_by_zorva"] == 1474.87
-    # Net = 1474.87 - 499 = 975.87
-    assert r["monthly"]["net_monthly_savings_usd"] == 975.87
+    # revenue_saved = 150 * 0.075 * 0.77 * 190 = 1645.875 (banker's-rounded to 1645.88)
+    assert r["monthly"]["revenue_saved_by_zorva"] == 1645.88
+    # Net = 1645.88 - 499 = 1146.88
+    assert r["monthly"]["net_monthly_savings_usd"] == 1146.88
 
 
 def test_compute_roi_scale_tier():
@@ -207,11 +207,21 @@ def test_compute_roi_narrative_summary_present():
 
 
 def test_compute_roi_constants_match_smartness_test():
-    """Default catch_rate = 0.69 = v12 AHCIP val-set F1 (README.md:7).
+    """Default catch_rate = 0.77 = v12 AHCIP val-set RECALL (README.md:7).
 
     v12 AHCIP: precision 0.625, recall 0.769, F1 0.690.
+
+    Catch rate is recall (not F1) because recall measures the
+    fraction of would-be errors the auditor catches — the
+    clinic's revenue-protection question. F1 conflates
+    precision and recall and would understate the catch rate
+    for this purpose.
     """
-    assert DEFAULT_CATCH_RATE == 0.69
+    assert DEFAULT_CATCH_RATE == 0.77, (
+        "default catch_rate should be v12 recall (0.77), not F1 (0.69). "
+        "F1 conflates precision with recall and understates how many "
+        "real errors the auditor catches."
+    )
     # catch_rate is a probability in [0, 1] independent of denial_rate
     assert 0 < DEFAULT_CATCH_RATE < 1
     assert 0 < DEFAULT_DENIAL_RATE < 1
@@ -239,19 +249,18 @@ def test_roi_route_returns_200_with_defaults(client):
 
 def test_roi_route_uses_default_catch_rate(client):
     resp = client.get("/roi")
-    # Default catch_rate 0.69 should be in the rendered form
-    assert "0.69" in resp.text
+    # Default catch_rate 0.77 should be in the rendered form
+    assert "0.77" in resp.text
 
 
 def test_roi_route_renders_results_with_defaults(client):
     resp = client.get("/roi")
-    # With defaults (1000 claims, 7.5% denial, catch_rate=0.69):
-    #   monthly_revenue_saved = 1000 * 0.075 * 0.69 * 190 = $9,832.50 → $9,832 (0-decimal format)
+    # With defaults (1000 claims, 7.5% denial, catch_rate=0.77):
+    #   monthly_revenue_saved = 1000 * 0.075 * 0.77 * 190 = $10,972.50 → $10,972
     #   plan_tier = growth ($1,499)
-    #   net = $8,333.50 → $8,334 (banker's rounding to even at .5)
-    # Either formatted with commas or as raw number
-    assert "9,832" in resp.text or "9832" in resp.text
-    assert "8,334" in resp.text or "8334" in resp.text
+    #   net = $9,473.50 → $9,474 (banker's rounding)
+    assert "10,972" in resp.text or "10972" in resp.text
+    assert "9,474" in resp.text or "9474" in resp.text
 
 
 def test_roi_route_uses_query_params(client):
