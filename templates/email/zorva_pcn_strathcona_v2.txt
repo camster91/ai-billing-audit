@@ -1,0 +1,25 @@
+From: Cameron Ashley <cameron@zorva.ca>
+To: <operations director — Strathcona PCN>
+Subject: Three AHCIP patterns worth a 30-minute shadow audit on your claims
+
+Hi <First Name>,
+
+Three patterns I see on Alberta claims often enough that I'd bet money at least one is costing Strathcona PCN money every month. Happy to confirm against your real claims:
+
+1. Post-op follow-ups billed inside the 90-day global window. The 03.04A is auto-denied because AHCIP bundles it into the surgical fee. About $50 per occurrence.
+
+2. Annual physicals billed as insured visits. Adult health-maintenance visits are largely not insured under AHCIP. The clinic loses the line to denial AND loses the chance to bill Blue Cross or the patient for the full fee.
+
+3. Same-day 03.04A + 03.05A. The 03.05A is denied because the comprehensive visit already covers the work. Catching the conflict also surfaces a missed CMGP modifier on chronic-disease patients — about $25 per visit.
+
+I'm Cameron Ashley. I built Zorva — a pre-submit auditor for AHCIP claims. It reads every claim against the SOMB before it goes to H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
+
+Zorva catches about 77 of every 100 real billing errors before they go to H-Link (v12 AHCIP val-set recall, 10 encounters, 13 audited gold findings). Of the flags it raises, about 6 of every 10 are real findings. Both numbers are public.
+
+If you want to see what Zorva does on Strathcona PCN's actual claims, the offer is: send 100 de-identified claims (837P file or CSV), I'll run Zorva on them, and send back a 1-page finding-by-finding report. No fee. No follow-up unless the report is useful. The whole loop is under 30 minutes.
+
+Cameron Ashley
+Founder, Zorva — Top Rated on Upwork, 80+ projects, $100K+ earned
+cameron@zorva.ca · (647) 555-0142
+
+P.S. The privacy-officer one-pager I send with any pilot: docs/PRIVACY_OFFICER_BRIEF.md. One page, plain English, the five questions a privacy officer should ask before signing.

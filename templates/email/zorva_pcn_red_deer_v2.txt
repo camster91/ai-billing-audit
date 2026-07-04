@@ -1,0 +1,27 @@
+From: Cameron Ashley <cameron@zorva.ca>
+To: <operations director — Red Deer PCN>
+Subject: Three AHCIP patterns your 99-doctor PCN is probably losing money on
+
+Hi <First Name>,
+
+Three patterns I see on Alberta claims all the time. They probably show up across the Red Deer PCN corridor too — I'm happy to confirm against your real claims:
+
+1. Post-op follow-ups inside the 90-day global window. A 8-day post-cholecystectomy visit billed as 03.04A. AHCIP bundles that into the surgical fee per SOMB GR 3.2.1. The clinic gets paid once, then the post-payment audit recoups the second billing. About $50 lost each time it happens.
+
+2. Annual physicals billed as insured 03.04A. Annual health maintenance visits for adults are largely not insured under AHCIP. When the clinic bills them as insured, two things go wrong: AHCIP denies the line, and the clinic loses the chance to bill Blue Cross or the patient directly for the full visit fee.
+
+3. Same-day 03.04A + 03.05A. A comprehensive and a minor on the same date is a same-day conflict per SOMB. The 03.05A line is auto-denied. Catching it also surfaces a missed CMGP modifier on the chronic-disease patient — about $25 per visit.
+
+I'm Cameron Ashley. I built Zorva — a pre-submit auditor for AHCIP claims. It reads every claim against the SOMB before it goes to H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
+
+Zorva catches about 77 of every 100 real billing errors before they go to H-Link (v12 AHCIP val-set recall, 10 encounters, 13 audited gold findings). Of the flags it raises, about 6 of every 10 are real findings. Both numbers are public in the repo.
+
+If you want to see what Zorva does on Red Deer PCN's actual claims, the offer is: send 100 de-identified claims (837P file or CSV), I'll run Zorva on them, and send back a 1-page finding-by-finding report. No fee. No follow-up unless the report is useful. The whole loop is under 30 minutes.
+
+I know the MAPS-to-Central-Corridor RPHCN consolidation is in motion — happy to time the pilot around it if that's the cleaner window.
+
+Cameron Ashley
+Founder, Zorva — Top Rated on Upwork, 80+ projects, $100K+ earned
+cameron@zorva.ca · (647) 555-0142
+
+P.S. The privacy-officer one-pager I send with any pilot: docs/PRIVACY_OFFICER_BRIEF.md in the repo. One page, plain English, the five questions a privacy officer should ask before signing.
