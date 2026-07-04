@@ -4,10 +4,10 @@
   "prompt_path": "prompts/v12/auditor_prompt.txt",
   "source_path": "src/ai_billing_audit/auditor_prompt.txt",
   "source_module": "ai_billing_audit.auditor",
-  "content_sha256": "sha256:88d22535c199ef996f66e55b6ece1c55468b573a71338c473989cccfe069609a",
-  "byte_size": 38015,
-  "created_at": "2026-06-26T00:00:00Z",
-  "description": "The v12 AHCIP-focused auditor system prompt (pivoted Zorva to Canada-first / Alberta Health). The auditor's source-of-truth copy at src/ai_billing_audit/auditor_prompt.txt is overwritten at build time by the Dockerfile COPY of this file; this manifest pins the deployed canonical text. If the file content changes, regenerate the manifest content_sha256 + byte_size (do not edit the hashes by hand).",
+  "content_sha256": "sha256:1bb14185656933da2288ea5ad5668e56603617f80c0c95cf0cde6d56cd07dc56",
+  "byte_size": 40392,
+  "created_at": "2026-07-04T00:00:00Z",
+  "description": "The v12 AHCIP-focused auditor system prompt (pivoted Zorva to Canada-first / Alberta Health). The auditor's source-of-truth copy at src/ai_billing_audit/auditor_prompt.txt is overwritten at build time by the Dockerfile COPY of this file; this manifest pins the deployed canonical text. If the file content changes, regenerate the manifest content_sha256 + byte_size (do not edit the hashes by hand). Swarm-batch3 (2026-07-04): re-pinned after B-Engine-2 fix that replaced the editable-install fallback with the canonical v12 copy.",
   "loaders": {
     "default": "ai_billing_audit.auditor.load_prompt() with no path argument resolves to the Dockerfile-installed copy under src/ at import time via importlib.resources.",
     "explicit": "ai_billing_audit.auditor.load_prompt(path='prompts/v12/auditor_prompt.txt') returns the pinned verbatim text."

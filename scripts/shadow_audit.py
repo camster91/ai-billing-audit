@@ -288,7 +288,9 @@ def _auditor_for(provider: str, base_url: str | None) -> Any:
     def run(encounter: dict[str, Any]) -> list[dict[str, Any]]:
         try:
             messages = build_messages(encounter, prompt=prompt)
-            payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA)
+            payload = client.complete_json(
+                messages, RESPONSE_JSON_SCHEMA, temperature=0.2
+            )
         except Exception as exc:  # noqa: BLE001
             return [
                 {
