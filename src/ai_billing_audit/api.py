@@ -1189,6 +1189,79 @@ def create_app() -> FastAPI:
     # authentication); it only extracts identity for the dependency
     # layer to enforce role-based authorization.
     @app.middleware("http")
+    async def _rate_limit_middleware(request, call_next):
+        """In-process per-IP rate limiter for unauthenticated routes.
+
+        Defence-in-depth on top of the Traefik rate-limiter
+        (see /opt/traefik/dynamic/routers.yml). Traefik caps at
+        the network edge; this middleware caps at the app edge so
+        a misconfigured proxy or a direct-container-request from
+        the host still can't drive /contact into spam.
+
+        Routes limited (request > 10/minute per IP → 429):
+          * POST /contact
+          * POST /api/encounters/upload (real-clients upload path)
+
+        All other routes are unbounded here — auth-required routes
+        are already protected by the bearer middleware, and
+        public-read marketing routes are too cheap to abuse.
+
+        Storage: a plain dict keyed by (route, ip). Each entry is
+        a list of timestamps; on each request we evict anything
+        older than 60s and check the remaining count. This is
+        fine for one-process Uvicorn; a multi-worker setup would
+        need Redis. Multi-worker note: each uvicorn worker has its
+        own dict, so the effective limit per IP is
+        ``N_WORKERS * 10/minute``. Acceptable for defence-in-depth;
+        document if you scale past one worker.
+        """
+        import time as _time
+        from fastapi.responses import JSONResponse
+
+        path = request.url.path
+        method = request.method
+        is_limited = (
+            (method == "POST" and path == "/contact")
+            or (method == "POST" and path.startswith("/api/encounters/upload"))
+        )
+        if not is_limited:
+            return await call_next(request)
+
+        # Pick a key for the requester. X-Forwarded-For is set by
+        # Traefik; fall back to the direct client.
+        xff = request.headers.get("x-forwarded-for", "")
+        ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "unknown")
+        bucket_key = (method, path, ip)
+        now = _time.monotonic()
+        window_start = now - 60.0
+        bucket = _rate_limit_state.setdefault(bucket_key, [])
+        # Evict old timestamps (in-place; safe because we mutate the
+        # list reference held in the dict).
+        i = 0
+        while i < len(bucket) and bucket[i] < window_start:
+            i += 1
+        if i:
+            del bucket[:i]
+        if len(bucket) >= 10:
+            return JSONResponse(
+                {
+                    "detail": "rate limit exceeded: 10 requests/minute per IP",
+                    "retry_after_s": 60,
+                },
+                status_code=429,
+                headers={"Retry-After": "60"},
+            )
+        bucket.append(now)
+        return await call_next(request)
+
+    # Per-process rate-limit state. Dict keyed by (method, path,
+    # ip) → list of monotonic timestamps within the last 60s.
+    # Module-level so it survives between requests but resets on
+    # process restart (intentional — a long-running bucket could
+    # lock out an IP that was rate-limited hours ago).
+    _rate_limit_state: dict = {}
+
+    @app.middleware("http")
     async def _rbac_identity_middleware(request, call_next):
         user_id = request.headers.get("X-User-Id")
         user_role = request.headers.get("X-User-Role")
