@@ -150,6 +150,50 @@ def test_production_mode_accepts_16_char_pepper(monkeypatch):
     assert resolve_pepper() == "x" * MIN_PEPPER_LENGTH
 
 
+def test_pepper_file_takes_precedence_over_env(monkeypatch, tmp_path):
+    """PATIENT_HASH_PEPPER_FILE: the rotation script writes the
+    new pepper to a file and the api reads it on every call.
+    The file content wins over PATIENT_HASH_PEPPER env var so a
+    rotation in progress (file has new, env has old) doesn't
+    serve stale hashes."""
+    pepper_file = tmp_path / "pepper"
+    pepper_file.write_text("f" * MIN_PEPPER_LENGTH)
+    monkeypatch.setenv("PATIENT_HASH_PEPPER_FILE", str(pepper_file))
+    monkeypatch.setenv("PATIENT_HASH_PEPPER", "e" * MIN_PEPPER_LENGTH)
+    assert resolve_pepper() == "f" * MIN_PEPPER_LENGTH
+
+
+def test_pepper_file_reads_every_call(monkeypatch, tmp_path):
+    """A rotation writes a new pepper to the file; the api picks
+    it up on the very next call without a restart."""
+    pepper_file = tmp_path / "pepper"
+    pepper_file.write_text("a" * MIN_PEPPER_LENGTH)
+    monkeypatch.setenv("PATIENT_HASH_PEPPER_FILE", str(pepper_file))
+    assert resolve_pepper() == "a" * MIN_PEPPER_LENGTH
+    pepper_file.write_text("b" * MIN_PEPPER_LENGTH)
+    assert resolve_pepper() == "b" * MIN_PEPPER_LENGTH
+
+
+def test_pepper_file_falls_through_to_env_when_too_short(monkeypatch, tmp_path):
+    """A file with a short pepper doesn't satisfy the length
+    check; we fall through to PATIENT_HASH_PEPPER (env) so a
+    partial rotation doesn't accidentally serve a weak hash."""
+    pepper_file = tmp_path / "pepper"
+    pepper_file.write_text("short")
+    monkeypatch.setenv("PATIENT_HASH_PEPPER_FILE", str(pepper_file))
+    monkeypatch.setenv("PATIENT_HASH_PEPPER", "e" * MIN_PEPPER_LENGTH)
+    assert resolve_pepper() == "e" * MIN_PEPPER_LENGTH
+
+
+def test_pepper_file_falls_through_to_env_when_unreadable(monkeypatch, tmp_path):
+    """A missing file falls through to PATIENT_HASH_PEPPER (env).
+    The rotation script creates the file first then updates .env;
+    between those two steps the api must keep serving hashes."""
+    monkeypatch.setenv("PATIENT_HASH_PEPPER_FILE", str(tmp_path / "does-not-exist"))
+    monkeypatch.setenv("PATIENT_HASH_PEPPER", "e" * MIN_PEPPER_LENGTH)
+    assert resolve_pepper() == "e" * MIN_PEPPER_LENGTH
+
+
 def test_assert_production_pepper_noop_in_dev(monkeypatch):
     monkeypatch.delenv("PATIENT_HASH_PEPPER", raising=False)
     monkeypatch.delenv("APP_ENV", raising=False)

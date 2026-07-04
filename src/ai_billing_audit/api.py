@@ -1178,6 +1178,9 @@ def create_app() -> FastAPI:
                     "/legal/privacy",
                     "/legal/terms",
                     "/metrics",
+                    "/openapi.json",
+                    "/docs",
+                    "/redoc",
                 )
             )
             or (

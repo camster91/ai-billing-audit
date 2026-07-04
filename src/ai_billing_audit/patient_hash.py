@@ -133,9 +133,15 @@ def resolve_pepper(override: str | None = None) -> str:
        applies to env-sourced peppers, NOT to in-code overrides.
        This lets tests assert hash-format pinning with a short
        pepper without tripping the production minimum-length check.
-    2. ``PATIENT_HASH_PEPPER`` environment variable (must be
+    2. ``PATIENT_HASH_PEPPER_FILE`` env var: a path to a file
+       whose first line is the pepper. Used by the
+       ``rotate_patient_hash_pepper.sh`` script so the api can
+       restart with a new pepper without leaking it to the env.
+       The pepper is read on each call so the rotation takes
+       effect on the next request after the file is updated.
+    3. ``PATIENT_HASH_PEPPER`` environment variable (must be
        :data:`MIN_PEPPER_LENGTH`+ chars)
-    3. Dev fallback constant (only when not in production)
+    4. Dev fallback constant (only when not in production)
 
     In production, an unset or too-short env-sourced pepper raises
     :class:`RuntimeError` so the misconfiguration is loud, not
@@ -146,15 +152,31 @@ def resolve_pepper(override: str | None = None) -> str:
     # unit tests asserting exact digests with a known short pepper).
     if override is not None:
         return override
+    # PATIENT_HASH_PEPPER_FILE: a path to a file whose contents
+    # are the pepper. Read on every call so a rotation script
+    # that updates the file takes effect on the next request
+    # (the api doesn't need to be restarted to pick up a new
+    # pepper — only the api env, which is unchanged, holds the
+    # path).
+    pepper_file = os.environ.get("PATIENT_HASH_PEPPER_FILE", "").strip()
+    if pepper_file:
+        try:
+            with open(pepper_file) as _f:
+                file_pepper = _f.read().strip()
+            if len(file_pepper) >= MIN_PEPPER_LENGTH:
+                return file_pepper
+        except OSError:
+            pass  # fall through to env / dev fallback
     env_value = os.environ.get("PATIENT_HASH_PEPPER", "")
     if env_value and len(env_value) >= MIN_PEPPER_LENGTH:
         return env_value
 
     if _is_production():
         raise RuntimeError(
-            f"PATIENT_HASH_PEPPER must be set to a {MIN_PEPPER_LENGTH}+ "
-            "char secret in production. Refusing to compute a "
-            "patient_hash with a weak / missing pepper."
+            f"PATIENT_HASH_PEPPER (or PATIENT_HASH_PEPPER_FILE pointing "
+            f"to a file with a valid pepper) must be set to a "
+            f"{MIN_PEPPER_LENGTH}+ char secret in production. Refusing "
+            "to compute a patient_hash with a weak / missing pepper."
         )
 
     return DEV_FALLBACK_PEPPER
