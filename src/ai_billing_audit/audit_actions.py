@@ -252,10 +252,6 @@ def append(
     Returns the appended row including cryptographic_signature.
     """
     p = audit_trail_path()
-    env = os.environ.get("AUDIT_TRAIL_LOG", "<unset>")
-    override = globals().get("_LOG_PATH")
-    _in_dict = "_LOG_PATH" in globals()
-    print(f"DEBUG: pid={os.getpid()} path={p} env={env} override={override} in_dict={_in_dict}")
     p.parent.mkdir(parents=True, exist_ok=True)
 
     findings = findings or []
