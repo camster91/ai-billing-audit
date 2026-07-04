@@ -615,6 +615,7 @@ def run_audit(
     *,
     llm: LLMClient | None = None,
     prompt_path: str | Path | None = None,
+    max_retries: int = 1,
 ) -> AuditResult:
     """Run the auditor on a single encounter.
 
@@ -625,6 +626,19 @@ def run_audit(
     Passes the encounter's ``clinical_note`` into :func:`validate_findings`
     so fabricated quotes are rejected at the validator layer (Stark / AKS
     / HIA hallucination guardrail).
+
+    ``max_retries`` (default 1) re-invokes the model with a slightly
+    stronger directive when the response has zero findings AND a
+    non-empty clinical note (a known calibration regression on the
+    pinned minimax-m3 model where the long prompt + JSON-schema
+    envelope flips the model into "summarize" mode and emits no
+    findings even on encounters with a known SOMB issue). The retry
+    appends a short follow-up message: "Re-check: the previous
+    response contained zero findings. SOMB rules commonly missed
+    on this encounter shape are <rule list>. Re-emit findings as
+    JSON." This nudges the model back into "find issues" mode
+    without modifying the prompt (which would invalidate the v12
+    recall number).
     """
     # Default 60s is too tight for the v7 prompt + Ollama cloud path
     # (mean=41s, p95=60s on the 50-encounter val set, 23/50 timed out
@@ -633,7 +647,52 @@ def run_audit(
     client = llm if llm is not None else LLMClient(timeout=180.0)
     prompt = load_prompt(prompt_path)
     messages = build_messages(encounter, prompt=prompt)
-    payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA)
+    # Default to a low (deterministic-ish) temperature for the
+    # auditor. Higher temps push the model toward creative
+    # generation, which for a structured JSON-schema task adds
+    # noise without lifting recall. 0.2 is a known-good middle
+    # ground: deterministic enough for stable recall/P across
+    # runs but non-zero so identical prompts don't always emit
+    # the same word. Caller can override by passing
+    # ``temperature=`` via LLMClient construction or by
+    # wrapping ``client.complete``.
+    payload = client.complete_json(
+        messages, RESPONSE_JSON_SCHEMA, temperature=0.2
+    )
+    # Retry-on-empty: if the model returned 0 findings AND a clinical
+    # note was provided (i.e. the model had something to work with),
+    # re-prompt with a follow-up nudge that asks for re-emission.
+    # This protects recall against the calibration regression
+    # observed on the pinned model in 2026-07-03 smoke tests.
+    if (
+        max_retries > 0
+        and not (payload.get("findings") or [])
+        and str(encounter.get("clinical_note", "") or "").strip()
+    ):
+        for attempt in range(max_retries):
+            messages = list(messages) + [
+                {
+                    "role": "user",
+                    "content": (
+                        "Re-check the previous response: it returned zero "
+                        "findings. AHCIP SOMB rules commonly missed on "
+                        "encounters of this shape include: dx-linkage "
+                        "(empty/missing diagnosis codes), modifier-25 "
+                        "unlock (same-day E/M + procedure), CMGP "
+                        "eligibility (T2DM/HTN/CKD/COPD/CHF with no "
+                        "modifier claimed), telehealth premium (visit "
+                        "by phone/video), and consultation code when a "
+                        "referring practitioner ID is present. Re-emit "
+                        "any applicable findings as JSON."
+                    ),
+                }
+            ]
+            retry_payload = client.complete_json(
+                messages, RESPONSE_JSON_SCHEMA, temperature=0.2
+            )
+            if retry_payload.get("findings"):
+                payload = retry_payload
+                break
     # Normalize severity to lowercase. Different models echo
     # back "CRITICAL" vs "critical"; the jsonschema enum requires
     # lowercase but the model prompt often writes uppercase.
