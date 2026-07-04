@@ -163,7 +163,7 @@ def test_legal_pages_extend_base_template(client):
         html = resp.text
         # Look for the base layout markers
         assert "<header" in html and "tenant-pill" in html
-        assert "<footer" in html or "ai-billing-audit v0.1.0" in html
+        assert "<footer" in html or "Zorva v0.1.0" in html
 
 
 def test_privacy_page_acknowledges_v1_stub(client):

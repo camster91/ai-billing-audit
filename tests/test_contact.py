@@ -277,3 +277,119 @@ def test_contact_in_topbar_nav(client):
     test_client, _ = client
     resp = test_client.get("/")
     assert "/contact" in resp.text
+
+
+# swarm-audit B-Conv-1: the contact form must accept a claims
+# file (837P / CSV / FHIR / ZIP) and stage it to disk. Without
+# this the marketing promise "send 100 claims, get a 1-page
+# audit" was a lie — the form previously only took text fields.
+def test_contact_post_with_claims_file_stages_and_records(client, tmp_path):
+    """A contact submit with a claims file stages the file to
+    ``CONTACT_UPLOAD_DIR`` and writes the manifest to the audit
+    trail."""
+    from pathlib import Path
+    import json
+    test_client, audit_log = client
+    monkey_dir = tmp_path / "staged"
+    monkey_dir.mkdir()
+    monkeypatch_dir = str(monkey_dir)
+    import os
+    os.environ["CONTACT_UPLOAD_DIR"] = monkeypatch_dir
+
+    # Minimal-but-valid-looking 837P-ish payload (we don't validate
+    # the format at the /contact stage; the audit pipeline does
+    # that downstream — see B-Conv-1 docstring).
+    claims_content = b"ISA*00*...~GS*HC*...~CLM*ENC001*100***11:B:1*Y*A*Y*Y~"
+
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr. Audit",
+            "clinic": "Acme Family Practice",
+            "email": "audit@example.com",
+            "monthly_claims": "100",
+            "message": "Audit my 100 claims",
+        },
+        files={"claims": ("claims.837", claims_content, "application/octet-stream")},
+    )
+    assert resp.status_code == 200
+    assert "we'll be in touch" in resp.text.lower() or "we'll be in touch" in resp.text
+
+    # The file should be on disk in the staged directory.
+    staged_files = list(monkey_dir.iterdir())
+    assert len(staged_files) == 1, (
+        f"expected 1 staged file, found {staged_files}"
+    )
+    assert staged_files[0].read_bytes() == claims_content
+
+    # And the audit-trail row should record the manifest.
+    if audit_log.exists():
+        events = [
+            json.loads(l)
+            for l in audit_log.read_text().splitlines()
+            if l.strip()
+        ]
+        contact_events = [
+            e for e in events if e.get("action") == "contact_request"
+        ]
+        assert len(contact_events) == 1
+        # audit_actions.append() merges `extra=` into
+        # `data_elements` — that's where the upload manifest lives.
+        upload_meta = (
+            contact_events[0].get("data_elements", {}).get("upload")
+        )
+        assert upload_meta is not None
+        assert upload_meta["filename"] == "claims.837"
+        assert upload_meta["size_bytes"] == len(claims_content)
+        assert len(upload_meta["sha256"]) == 64
+        assert upload_meta["extension"] == ".837"
+        assert upload_meta["staged_path"].startswith(monkeypatch_dir)
+
+
+def test_contact_post_with_unsupported_extension_rejected(client):
+    """A claims file with .pdf extension is rejected with a
+    clear error message — keeps the form's promise honest."""
+    test_client, _ = client
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr. Audit",
+            "clinic": "Acme",
+            "email": "audit@example.com",
+            "monthly_claims": "100",
+            "message": "",
+        },
+        files={"claims": ("claims.pdf", b"not really a PDF", "application/pdf")},
+    )
+    assert resp.status_code == 200  # form re-renders with error
+    assert "unsupported" in resp.text.lower() or "accepted" in resp.text.lower()
+
+
+def test_contact_post_without_file_does_not_error(client):
+    """A submit with no claims file is the normal path (text-only).
+    The form used to only accept text fields; we want to keep
+    that flow working too."""
+    test_client, _ = client
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr. Audit",
+            "clinic": "Acme",
+            "email": "audit@example.com",
+            "monthly_claims": "100",
+            "message": "follow up by email",
+        },
+    )
+    assert resp.status_code == 200
+    assert "we'll be in touch" in resp.text.lower() or "we'll be in touch" in resp.text
+
+
+def test_contact_button_no_longer_says_walkthrough(client):
+    """swarm-audit B-Conv-2: 'Book a walkthrough' was a banned
+    high-commitment CTA. The submit button now matches the page's
+    promise."""
+    test_client, _ = client
+    resp = test_client.get("/contact")
+    assert "Book a walkthrough" not in resp.text
+    assert "Request a walkthrough" not in resp.text
+    assert "Send the 100 claims" in resp.text

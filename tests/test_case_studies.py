@@ -302,7 +302,7 @@ def test_case_study_pages_use_base_template(client):
         resp = client.get(path)
         html = resp.text
         assert "<header" in html and "tenant-pill" in html
-        assert "<footer" in html or "ai-billing-audit v0.1.0" in html
+        assert "<footer" in html or "Zorva v0.1.0" in html
 
 
 def test_case_studies_index_in_topbar_nav(client):

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}ai-billing-audit{% endblock %}</title>
+  <title>{% block title %}Zorva{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
@@ -11,7 +11,7 @@
   <header class="topbar">
     <a class="brand" href="/">
       <span class="brand-mark">A</span>
-      <span class="brand-text">ai-billing-audit</span>
+      <span class="brand-text">Zorva</span>
     </a>
     <nav>
       <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Audits</a>
@@ -33,7 +33,11 @@
   </main>
 
   <footer class="footer">
-    ai-billing-audit v0.1.0 &middot; tenant: <strong>Acme Family Practice</strong> &middot; <a href="/healthz">health</a>
+    Zorva by Ashbi Design
+    &middot; Top Rated on Upwork, 80+ projects, $100K+ earned
+    &middot; <a href="/legal/privacy">Privacy</a>
+    &middot; <a href="/legal/terms">Terms</a>
+    &middot; <a href="/healthz">health</a>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

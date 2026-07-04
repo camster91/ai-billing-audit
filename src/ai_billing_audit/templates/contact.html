@@ -67,9 +67,21 @@
     </label>
 
     <label class="contact-form__label">
-      What would you like to see in the demo?
+      What billing issue hurts most? (optional)
       <textarea name="message" rows="5" maxlength="2000"
                 placeholder="e.g. We're a 6-physician family practice in Toronto. Currently 6% of our claims get denied. Looking for tools that catch modifier-25 and dx-linkage issues before submission.">{{ message or '' }}</textarea>
+    </label>
+
+    <label class="contact-form__label">
+      Claims file (optional — 837P, CSV, or FHIR)
+      <input type="file" name="claims" accept=".837,.edi,.txt,.csv,.json,.xml,.fhir,.zip"
+             data-max-bytes="{{ max_upload_bytes }}" />
+      <span class="muted small">
+        Drop your de-identified claims here OR follow up by
+        email. We'll run Zorva on them and send back a 1-page
+        finding-by-finding report. The upload is hashed and
+        deleted within 30 days; we don't see patient names.
+      </span>
     </label>
 
     <p class="muted small">
@@ -80,7 +92,7 @@
     </p>
 
     <button type="submit" class="btn btn-primary contact-form__submit">
-      Request a walkthrough
+      Send the 100 claims
     </button>
   </form>
 

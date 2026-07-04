@@ -4315,15 +4315,30 @@ def create_app() -> FastAPI:
         email: str = Form(""),
         monthly_claims: str = Form(""),
         message: str = Form(""),
+        claims: UploadFile | None = File(None),
     ):
-        """Contact sales — book a 15-minute walkthrough.
+        """Contact sales — send 100 claims, get a 1-page audit.
 
         GET: render the empty form.
-        POST: validate input, write to audit trail, render
-        the success page with a follow-up message.
+        POST: validate input, optionally persist a claims file
+        to the upload queue, write to audit trail, render the
+        success page with a follow-up message.
+
+        swarm-audit B-Conv-1: previously the form only accepted
+        text fields and promised an audit "by following up with
+        100 claims" — but no upload path existed, so the
+        marketing promise was a lie. Now the form accepts an
+        optional ``claims`` file (837P / CSV / FHIR / ZIP). The
+        file is staged to ``/app/logs/contact_uploads/`` with
+        a SHA-256 hash and an audit-trail row; the actual audit
+        runs once an operator pulls it through the shadow-audit
+        pipeline. (Live auto-run from /contact is a follow-up
+        card — the file stage + operator handoff matches the
+        rest of the privacy posture.)
         """
         from .contact import (
             _append_contact_event,
+            _stage_contact_upload,
             valid_email,
             valid_volume,
         )
@@ -4331,6 +4346,7 @@ def create_app() -> FastAPI:
         error: str | None = None
         success = False
         email_hash_prefix: str | None = None
+        upload_staged: dict[str, Any] | None = None
         if request.method == "POST":
             # Validate
             if not name or len(name) > 200:
@@ -4348,6 +4364,15 @@ def create_app() -> FastAPI:
                 )
             elif len(message) > 2000:
                 error = "Message is too long (max 2000 chars)."
+            if error is None and claims is not None:
+                # Stage the file. Size + extension validation
+                # happens inside; the function returns either a
+                # manifest dict or None (skipped if filename was
+                # empty, e.g. the user didn't pick a file).
+                try:
+                    upload_staged = await _stage_contact_upload(claims)
+                except ValueError as exc:
+                    error = str(exc)
             if error is None:
                 row = _append_contact_event(
                     name=name,
@@ -4355,11 +4380,9 @@ def create_app() -> FastAPI:
                     email=email,
                     monthly_claims=monthly_claims,
                     message=message,
+                    upload=upload_staged,
                 )
                 success = True
-                # Show first 16 chars of the email hash so the
-                # user sees that the email was registered
-                # without us showing the email itself.
                 email_hash_prefix = (
                     row["user_identifier"][:16] + "..."
                 )
@@ -4372,12 +4395,14 @@ def create_app() -> FastAPI:
                 "success": success,
                 "error": error,
                 "email_hash_prefix": email_hash_prefix,
+                "upload_staged": upload_staged,
                 "name": name if not success else "",
                 "clinic": clinic if not success else "",
                 "email": email if not success else "",
                 "monthly_claims": monthly_claims if not success else "",
                 "message": message if not success else "",
                 "support_email": "sales@zorva.ca",
+                "max_upload_bytes": _MAX_UPLOAD_BYTES,
             },
         )
 

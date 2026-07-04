@@ -153,7 +153,7 @@ def test_upload_page_renders(client: TestClient) -> None:
     body = r.text
     # Page extends the base layout (it should be the same shell the
     # other portal pages render).
-    assert "ai-billing-audit" in body
+    assert "Zorva" in body
     # Three input modes are visible in the four-tab nav: 837P file,
     # ZIP, clinical note, paste form. The task body says "three
     # input modes" (837P, clinical note, paste-form); the bulk ZIP
