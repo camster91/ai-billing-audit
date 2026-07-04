@@ -1133,8 +1133,29 @@ def create_app() -> FastAPI:
         ):
             return await call_next(request)
         # Legacy whitelists: /, /healthz, /static. GET-only on / + /healthz.
-        if request.url.path in ("/", "/healthz") or request.url.path.startswith(
-            "/static"
+        # Marketing / funnel pages are also public-read (no PHI, no
+        # claims data — just the ROI calculator, the case-study index,
+        # the contact form, and the legal stubs). They're the top of
+        # the conversion funnel and must not require a bearer token.
+        if (
+            request.url.path in ("/", "/healthz")
+            or request.url.path.startswith("/static")
+            or (
+                request.method == "GET"
+                and request.url.path
+                in (
+                    "/roi",
+                    "/roi/results",
+                    "/case-studies",
+                    "/contact",
+                    "/legal/privacy",
+                    "/legal/terms",
+                )
+            )
+            or (
+                request.method == "GET"
+                and request.url.path.startswith("/case-studies/")
+            )
         ):
             return await call_next(request)
         if not _BEARER:
@@ -1228,7 +1249,15 @@ def create_app() -> FastAPI:
         # the biller; ``?delete_preset=1`` removes a preset.
         from .saved_filters import SavedFilterStore
 
-        user = get_request_user(request)
+        # Use the anonymous-friendly user lookup so the index page
+        # still renders for unauthenticated visitors (the demo
+        # encounters and saved-filter presets are public-readable
+        # when AUDIT_ALLOW_NO_AUTH is on, and the middleware
+        # whitelist routes / through to this handler regardless of
+        # bearer state). For auth-required deployments, the
+        # middleware 401s before we get here — see
+        # _bearer_auth_middleware in the create_app factory.
+        user = get_request_user_or_anonymous(request)
         user_id = user.user_id or "dev_user"
         preset_store = SavedFilterStore()
         user_presets = preset_store.list_for_user(user_id)
