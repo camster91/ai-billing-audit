@@ -68,7 +68,27 @@
       confirm within one business day.
     </p>
 
-    <form class="contact-form" method="post" action="/contact">
+    {% if success %}
+    <div class="demo-form__success">
+      <h3>Thanks — we'll be in touch.</h3>
+      <p>
+        Your request is on the calendar queue. We respond
+        within 1 business day at
+        <strong>{{ support_email }}</strong>.
+      </p>
+      <p class="muted small">
+        Confirmation reference:
+        <code>{{ email_hash_prefix }}</code>
+        (SHA-256 prefix of your email; we use it to dedupe).
+      </p>
+      <p>
+        <a class="btn btn-ghost" href="/">Back to home</a>
+        <a class="btn btn-ghost" href="/try">Or try the sample claim</a>
+      </p>
+    </div>
+    {% else %}
+
+    <form class="contact-form" method="post" action="/demo-request">
       <label class="contact-form__label">
         Your name
         <input type="text" name="name" maxlength="200" required value="" />
@@ -116,7 +136,11 @@
         will not add you to a mailing list. We will not share
         the contact details with anyone.
       </p>
+      {% if error %}
+      <p class="contact-form__error" role="alert">{{ error }}</p>
+      {% endif %}
     </form>
+    {% endif %}
   </div>
 </section>
 

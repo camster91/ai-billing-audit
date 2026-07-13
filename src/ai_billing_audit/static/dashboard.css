@@ -3713,3 +3713,112 @@ main.page:focus {
 .back-link:hover {
   text-decoration: underline;
 }
+
+/* === newsletter form ============================================ */
+.newsletter {
+  max-width: 640px;
+  margin: 40px auto;
+}
+.newsletter__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 24px 0;
+}
+.newsletter__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--color-fg, #1a2330);
+}
+.newsletter__label input {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border, #d8dee7);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 1rem;
+}
+.newsletter__label input:focus {
+  outline: 2px solid var(--color-brand-accent, #1FB89A);
+  outline-offset: 1px;
+}
+.newsletter__submit {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.newsletter__success {
+  background: rgba(31, 184, 154, 0.1);
+  border: 1px solid rgba(31, 184, 154, 0.3);
+  border-radius: 10px;
+  padding: 24px;
+  margin: 24px 0;
+}
+.newsletter__success h2 {
+  margin: 0 0 8px;
+  color: #157a64;
+}
+.newsletter__alt {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border, #d8dee7);
+}
+.newsletter__error,
+.contact-form__error {
+  color: #C8324D;
+  font-weight: 500;
+  margin: 8px 0 0;
+}
+
+/* === glossary term page ========================================= */
+.glossary-term {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.glossary-term__body {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--color-fg, #1a2330);
+  margin: 32px 0;
+}
+.glossary-term__related {
+  margin: 40px 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border, #d8dee7);
+}
+.glossary-term__related h2 {
+  font-size: 1.125rem;
+  margin: 0 0 12px;
+}
+.glossary-term__related ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.glossary-term__related li {
+  margin-bottom: 8px;
+}
+
+/* === changelog release page ===================================== */
+.changelog-release-detail {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.changelog-release__body {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  margin: 32px 0;
+}
+.changelog-release__body h2 {
+  margin-top: 32px;
+  margin-bottom: 12px;
+  font-size: 1.25rem;
+}
+.changelog-release__body ul {
+  margin: 0 0 16px;
+  padding-left: 24px;
+}
+.changelog-release__body li {
+  margin-bottom: 6px;
+}

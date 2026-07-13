@@ -1262,6 +1262,7 @@ def create_app() -> FastAPI:
                     "/demo-request",
                     "/pilot",
                     "/blog",
+                    "/newsletter",
                     "/careers",
                     "/press",
                     "/changelog",
@@ -1282,6 +1283,14 @@ def create_app() -> FastAPI:
             or (
                 request.method == "GET"
                 and request.url.path.startswith("/blog/")
+            )
+            or (
+                request.method == "GET"
+                and request.url.path.startswith("/glossary/")
+            )
+            or (
+                request.method == "GET"
+                and request.url.path.startswith("/changelog/")
             )
         ):
             return await call_next(request)
@@ -4484,12 +4493,94 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/demo-request", response_class=HTMLResponse)
-    def demo_request(request: Request) -> HTMLResponse:
-        """30-minute walkthrough request form."""
+    @app.post("/demo-request", response_class=HTMLResponse)
+    async def demo_request(
+        request: Request,
+        name: str = Form(""),
+        clinic: str = Form(""),
+        email: str = Form(""),
+        monthly_claims: str = Form(""),
+        emr: str = Form(""),
+        message: str = Form(""),
+    ):
+        """30-minute walkthrough request form.
+
+        GET: render the empty form.
+        POST: validate + write a 'walkthrough_request' event
+        to the hash-chained audit trail. Distinct from
+        /contact (which is the 'send 100 claims' form) so
+        the marketing lead can tell which is which without
+        reading the message text.
+        """
+        from .contact import (
+            _append_contact_event,
+            valid_email,
+            valid_volume,
+        )
+        success = False
+        error: str | None = None
+        email_hash_prefix: str | None = None
+        if request.method == "POST":
+            if not name or len(name) > 200:
+                error = "Please enter your name (max 200 chars)."
+            elif not clinic or len(clinic) > 200:
+                error = "Please enter your clinic name (max 200 chars)."
+            elif not valid_email(email):
+                error = "Please enter a valid email address."
+            elif monthly_claims and not valid_volume(monthly_claims):
+                error = (
+                    "Please enter a positive number for "
+                    "monthly claim volume (max 1,000,000)."
+                )
+            elif len(message) > 2000:
+                error = "Message is too long (max 2000 chars)."
+            else:
+                # Reuse the contact-event audit-trail writer but
+                # tag the request_type so the marketing lead can
+                # tell /demo-request requests from /contact
+                # requests. v1 keeps it simple — the same
+                # contact_request action + a "request_type" extra.
+                from . import audit_actions as _aa
+                import hashlib
+                from .api import _TENANT_ID  # type: ignore[attr-defined]
+                email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
+                extra = {
+                    "request_type": "demo_request",
+                    "message_excerpt": (message or "")[:500],
+                    "emr": emr or "",
+                }
+                _aa.append(
+                    action="contact_request",
+                    encounter_id="*",
+                    user_identifier=email_hash,
+                    findings=[],
+                    note=(
+                        f"demo_request: name={name[:80]!r} "
+                        f"clinic={clinic[:80]!r} "
+                        f"monthly_claims={monthly_claims!r} "
+                        f"emr={emr!r}"
+                    ),
+                    extra=extra,
+                    tenant_id=_TENANT_ID,
+                )
+                success = True
+                email_hash_prefix = email_hash[:16] + "..."
         return templates.TemplateResponse(
             request,
             "demo-request.html",
-            {"tenant_name": _TENANT_NAME},
+            {
+                "tenant_name": _TENANT_NAME,
+                "success": success,
+                "error": error,
+                "email_hash_prefix": email_hash_prefix,
+                "name": name if not success else "",
+                "clinic": clinic if not success else "",
+                "email": email if not success else "",
+                "monthly_claims": monthly_claims if not success else "",
+                "emr": emr if not success else "",
+                "message": message if not success else "",
+                "support_email": "sales@ashbi.ca",
+            },
         )
 
     @app.get("/pilot", response_class=HTMLResponse)
@@ -4500,6 +4591,51 @@ def create_app() -> FastAPI:
             request,
             "pilot.html",
             {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/newsletter", response_class=HTMLResponse)
+    @app.post("/newsletter", response_class=HTMLResponse)
+    async def newsletter(
+        request: Request,
+        name: str = Form(""),
+        email: str = Form(""),
+    ):
+        """Newsletter signup form (P1 audit fix, 2026-07-13).
+
+        GET: render the empty form.
+        POST: validate + write a 'newsletter_signup' event
+        to the hash-chained audit trail. The email is
+        SHA-256 hashed in the log so the privacy officer
+        can dedupe without the raw email being stored.
+        v1 doesn't have a separate CRM database — the
+        marketing lead reads the audit trail manually
+        and adds emails to the Resend list.
+        """
+        from .newsletter import (
+            append_newsletter_signup,
+            valid_newsletter_email,
+        )
+        success = False
+        error: str | None = None
+        email_hash_prefix: str | None = None
+        if request.method == "POST":
+            if not valid_newsletter_email(email):
+                error = "Please enter a valid email address."
+            else:
+                row = append_newsletter_signup(name=name, email=email)
+                success = True
+                email_hash_prefix = row["user_identifier"][:16] + "..."
+        return templates.TemplateResponse(
+            request,
+            "newsletter.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "success": success,
+                "error": error,
+                "email_hash_prefix": email_hash_prefix,
+                "name": name if not success else "",
+                "email": email if not success else "",
+            },
         )
 
     @app.get("/blog", response_class=HTMLResponse)
@@ -4564,13 +4700,75 @@ def create_app() -> FastAPI:
             {"tenant_name": _TENANT_NAME},
         )
 
+    @app.get("/changelog/{version}", response_class=HTMLResponse)
+    def changelog_release_detail(version: str, request: Request) -> HTMLResponse:
+        """One release by version (e.g. /changelog/v0.5.0).
+
+        Release bodies live in :mod:`ai_billing_audit.changelog_releases`.
+        The metadata is duplicated in
+        :mod:`ai_billing_audit.feeds` for the RSS feed.
+        """
+        from .changelog_releases import get_release
+        release = get_release(version)
+        if release is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"changelog release '{version}' not found",
+            )
+        return templates.TemplateResponse(
+            request,
+            "changelog_release.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "release": release,
+            },
+        )
+
     @app.get("/glossary", response_class=HTMLResponse)
     def glossary(request: Request) -> HTMLResponse:
-        """AHCIP / SOMB / HIA / CMGP / PHIPA / HIPAA terms."""
+        """AHCIP / SOMB / HIA / CMGP / PHIPA / HIPAA terms.
+
+        Term definitions are sourced from
+        :mod:`ai_billing_audit.glossary` (single source of
+        truth). The per-term detail page at /glossary/{slug}
+        shares the same data.
+        """
+        from .glossary import list_terms
         return templates.TemplateResponse(
             request,
             "glossary.html",
-            {"tenant_name": _TENANT_NAME},
+            {
+                "tenant_name": _TENANT_NAME,
+                "terms": list_terms(),
+            },
+        )
+
+    @app.get("/glossary/{slug}", response_class=HTMLResponse)
+    def glossary_term_detail(slug: str, request: Request) -> HTMLResponse:
+        """One glossary term by slug.
+
+        Each term body lives in :mod:`ai_billing_audit.glossary`.
+        The detail page resolves the term + its 'related' slugs
+        so a privacy officer can share a single link to a
+        single term definition (P0 audit fix, COMPLETENESS-AUDIT.md
+        2026-07-13).
+        """
+        from .glossary import get_term, get_terms_by_slugs
+        term = get_term(slug)
+        if term is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"glossary term '{slug}' not found",
+            )
+        related = get_terms_by_slugs(term.get("related", []))
+        return templates.TemplateResponse(
+            request,
+            "glossary_term.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "term": term,
+                "related": related,
+            },
         )
 
     @app.get("/for/family-medicine", response_class=HTMLResponse)

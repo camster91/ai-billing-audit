@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Newsletter — Zorva{% endblock %}
+{% block description %}Subscribe to Zorva updates: new AHCIP rules, case studies, and the quarterly prompt-tuning report.{% endblock %}
+{% block content %}
+<section class="newsletter">
+  <header class="page-head">
+    <h1>Get Zorva updates</h1>
+    <p class="sub">
+      New AHCIP rules as they ship, case studies from the
+      pilot clinics, and the quarterly prompt-tuning
+      report. About one email a month. No marketing
+      automation, no upsell sequence, no "AI-rewrites
+      your subject line" nonsense.
+    </p>
+  </header>
+
+  {% if success %}
+  <div class="newsletter__success">
+    <h2>You're on the list.</h2>
+    <p>
+      Confirmation reference:
+      <code>{{ email_hash_prefix }}</code>
+      (a SHA-256 prefix of your email; we use it to dedupe).
+      We'll email you at <strong>{{ email }}</strong> when
+      the next release ships.
+    </p>
+    <p>
+      Or jump straight to:
+      <a href="/blog">The blog</a> &middot;
+      <a href="/changelog">The changelog</a> &middot;
+      <a href="/rss.xml">The RSS feed</a> &middot;
+      <a href="/contact">Send 100 claims for a 1-page audit</a>
+    </p>
+  </div>
+  {% else %}
+  <form class="newsletter__form" method="post" action="/newsletter">
+    <label class="newsletter__label">
+      Your name (optional)
+      <input type="text" name="name" maxlength="200"
+             value="{{ name or '' }}" />
+    </label>
+    <label class="newsletter__label">
+      Work email
+      <input type="email" name="email" maxlength="320" required
+             value="{{ email or '' }}" />
+    </label>
+    <p class="muted small">
+      By subscribing, you agree to receive product
+      updates from Zorva. We don't share your email with
+      anyone. Unsubscribe at the bottom of any email.
+    </p>
+    <button type="submit" class="btn btn-primary newsletter__submit">
+      Subscribe
+    </button>
+    {% if error %}
+    <p class="newsletter__error" role="alert">{{ error }}</p>
+    {% endif %}
+  </form>
+  {% endif %}
+
+  <aside class="newsletter__alt">
+    <h2>Prefer RSS?</h2>
+    <p>
+      <a href="/rss.xml">/rss.xml</a> combines the blog
+      and changelog into a single Atom 1.0 feed. Most
+      readers handle it.
+    </p>
+  </aside>
+</section>
+{% endblock %}

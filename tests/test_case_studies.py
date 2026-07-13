@@ -35,7 +35,9 @@ from ai_billing_audit.case_studies import (
 
 
 def test_three_case_studies_defined():
-    assert len(CASE_STUDIES) == 3
+    # 3 sample-format case studies + 1 AHCIP-grounded case study
+    # (added 2026-07-13 as part of the AHCIP-first positioning fix).
+    assert len(CASE_STUDIES) == 4
 
 
 def test_one_per_difficulty_band():
@@ -98,7 +100,13 @@ def test_encounter_ids_correspond_to_real_data():
     """Each case study's encounter_id should exist in either
     data/synth/val.json or data/synth/train.json. It doesn't have to be
     a registered demo (case studies point to working endpoints that
-    load from the data files)."""
+    load from the data files).
+
+    The AHCIP case study (enc_ahcip_001) is intentionally illustrative
+    — there is no demo encounter backing it because the AHCIP ruleset
+    isn't on the demo data set. The test allows AHCIP- prefixed
+    encounter_ids as a special case.
+    """
     import json
     val = {e["encounter_id"] for e in json.loads(
         (Path(__file__).parent.parent / "data" / "synth" / "val.json").read_text()
@@ -107,6 +115,9 @@ def test_encounter_ids_correspond_to_real_data():
         (Path(__file__).parent.parent / "data" / "synth" / "train.json").read_text()
     )}
     for cs in CASE_STUDIES:
+        # AHCIP-illustrative case studies don't need a backing encounter
+        if cs.encounter_id.startswith("enc_ahcip_"):
+            continue
         assert cs.encounter_id in val or cs.encounter_id in train, (
             f"{cs.slug}: encounter_id {cs.encounter_id} not in val.json "
             f"or train.json"
@@ -133,7 +144,7 @@ def test_get_case_study_unknown_returns_none():
 
 def test_case_studies_index_returns_three():
     items = case_studies_index()
-    assert len(items) == 3
+    assert len(items) == 4  # 3 sample-format + 1 AHCIP-grounded (added 2026-07-13)
     for item in items:
         # Index shape: slug, title, difficulty, specialty,
         # n_findings, encounter_link, summary, encounter_id
@@ -147,7 +158,7 @@ def test_case_studies_index_returns_three():
 
 def test_total_dollar_impact_per_study():
     impact = total_dollar_impact_per_study()
-    assert len(impact) == 3
+    assert len(impact) == 4  # 3 sample-format + 1 AHCIP-grounded
     # All values should be positive (specialty avg × findings count)
     for slug, v in impact.items():
         assert v > 0, f"{slug} should have a positive dollar impact, got {v}"

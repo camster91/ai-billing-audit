@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ release.title }} — Zorva changelog{% endblock %}
+{% block description %}{{ release.summary }}{% endblock %}
+{% block og_title %}{{ release.title }}{% endblock %}
+{% block og_description %}{{ release.summary }}{% endblock %}
+{% block content %}
+<article class="changelog-release-detail">
+  <header class="page-head">
+    <a href="/changelog" class="back-link muted">&larr; All releases</a>
+    <h1>{{ release.title }}</h1>
+    <p class="muted">
+      <time datetime="{{ release.published.isoformat() }}">
+        {{ release.published.strftime("%B %-d, %Y") }}
+      </time>
+    </p>
+  </header>
+
+  <section class="changelog-release__body">
+    {{ release.body_html | safe }}
+  </section>
+
+  <aside class="changelog-cta">
+    <h2>Want Zorva on your own claims?</h2>
+    <p>
+      Send 100 de-identified claims (837P, CSV, or FHIR). We
+      run Zorva on them and send back a 1-page finding-by-
+      finding report. No fee. No follow-up unless the report
+      is useful. Whole loop is under 30 minutes.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="/contact?source=changelog">Send the 100 claims &rarr;</a>
+      <a class="btn btn-ghost" href="/rss.xml">Subscribe via RSS</a>
+    </p>
+  </aside>
+</article>
+{% endblock %}

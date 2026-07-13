@@ -226,6 +226,7 @@ PUBLIC_MARKETING_PATHS = [
     "/pilot",
     "/press",
     "/pricing",
+    "/newsletter",
     "/roi",
     "/case-studies",
     "/security",

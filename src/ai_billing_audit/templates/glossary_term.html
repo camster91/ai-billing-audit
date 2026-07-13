@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ term.name }} &mdash; {{ term.short }} &mdash; Zorva glossary{% endblock %}
+{% block description %}{{ term.body | striptags | truncate(160, true, '') }}{% endblock %}
+{% block og_title %}{{ term.name }} &mdash; {{ term.short }}{% endblock %}
+{% block og_description %}{{ term.body | striptags | truncate(160, true, '') }}{% endblock %}
+{% block content %}
+<article class="glossary-term">
+  <header class="page-head">
+    <a href="/glossary" class="back-link muted">&larr; All glossary terms</a>
+    <h1>{{ term.name }} &mdash; {{ term.short }}</h1>
+  </header>
+
+  <section class="glossary-term__body">
+    <p>{{ term.body }}</p>
+  </section>
+
+  {% if related %}
+  <section class="glossary-term__related" aria-label="Related terms">
+    <h2>Related terms</h2>
+    <ul>
+      {% for r in related %}
+      <li>
+        <a href="/glossary/{{ r.slug }}">
+          <strong>{{ r.name }}</strong> &mdash; {{ r.short }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <aside class="glossary-cta">
+    <h2>Want Zorva on your own claims?</h2>
+    <p>
+      Send 100 de-identified claims (837P, CSV, or FHIR). We
+      run Zorva on them and send back a 1-page finding-by-
+      finding report. No fee. No follow-up unless the report
+      is useful. Whole loop is under 30 minutes.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="/contact?source=glossary">Send the 100 claims &rarr;</a>
+      <a class="btn btn-ghost" href="/try">Or try the sample claim</a>
+    </p>
+  </aside>
+</article>
+{% endblock %}
