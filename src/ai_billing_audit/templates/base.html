@@ -14,14 +14,15 @@
       <span class="brand-text">Zorva</span>
     </a>
     <nav>
-      <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Audits</a>
+      <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Home</a>
+      <a href="/audits" {% if request.url.path.startswith("/audits") %}class="is-active"{% endif %}>Audits</a>
       <a href="/encounters/upload" {% if request.url.path == "/encounters/upload" %}class="is-active"{% endif %}>Upload</a>
-      <a href="/activity" {% if request.url.path == "/activity" %}class="is-active"{% endif %}>Activity</a>
-      <a href="/roi" {% if request.url.path.startswith("/roi") %}class="is-active"{% endif %}>ROI</a>
-      <a href="/case-studies" {% if request.url.path.startswith("/case-studies") %}class="is-active"{% endif %}>Case studies</a>
+      <a href="/pricing" {% if request.url.path.startswith("/pricing") %}class="is-active"{% endif %}>Pricing</a>
+      <a href="/how-it-works" {% if request.url.path.startswith("/how-it-works") %}class="is-active"{% endif %}>How it works</a>
+      <a href="/security" {% if request.url.path.startswith("/security") %}class="is-active"{% endif %}>Security</a>
+      <a href="/try" {% if request.url.path.startswith("/try") %}class="is-active"{% endif %}>Try</a>
+      <a href="/faq" {% if request.url.path.startswith("/faq") %}class="is-active"{% endif %}>FAQ</a>
       <a href="/contact" {% if request.url.path.startswith("/contact") %}class="is-active"{% endif %}>Contact</a>
-      <a href="/legal/privacy" {% if request.url.path.startswith("/legal/privacy") %}class="is-active"{% endif %}>Privacy</a>
-      <a href="/legal/terms" {% if request.url.path.startswith("/legal/terms") %}class="is-active"{% endif %}>Terms</a>
     </nav>
     <div class="tenant-pill" title="Tenant">{{ tenant_name or "Acme Family Practice" }}</div>
   </header>
@@ -35,9 +36,14 @@
   <footer class="footer">
     Zorva by Ashbi Design
     &middot; Top Rated on Upwork, 80+ projects, $100K+ earned
+    &middot; <a href="/how-it-works">How it works</a>
+    &middot; <a href="/pricing">Pricing</a>
+    &middot; <a href="/security">Security</a>
+    &middot; <a href="/try">Try</a>
+    &middot; <a href="/faq">FAQ</a>
+    &middot; <a href="/contact">Contact</a>
     &middot; <a href="/legal/privacy">Privacy</a>
     &middot; <a href="/legal/terms">Terms</a>
-    &middot; <a href="/healthz">health</a>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

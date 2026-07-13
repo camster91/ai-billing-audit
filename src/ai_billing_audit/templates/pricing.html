@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Pricing — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Pricing</h1>
+    <p class="sub">
+      Three tiers bracketed by audit volume. Flat monthly fee, no
+      recovery share, no per-claim charge. AKS safe-harbor-aligned
+      for any US pilots. Published in the executed IMA / BAA for
+      Canadian clinics so counsel can sign off without further review.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/contact">Send 100 claims first</a>
+</header>
+
+<section class="pricing-tiers" aria-label="Three pricing tiers">
+  <article class="pricing-card">
+    <header class="pricing-card__head">
+      <span class="pricing-card__tier">Solo</span>
+      <span class="pricing-card__price">
+        <span class="pricing-card__currency">CAD</span>
+        <span class="pricing-card__amount">$499</span>
+        <span class="pricing-card__period">/mo</span>
+      </span>
+      <p class="pricing-card__sub">For solo practitioners and small clinics.</p>
+    </header>
+    <ul class="pricing-card__features">
+      <li>Up to <strong>1,000</strong> encounter audits / month</li>
+      <li>LLM-agnostic audit engine (any provider, your keys)</li>
+      <li>Deterministic runs: seed pinned, temperature=0</li>
+      <li>HIA-aligned audit trail with hash-chain (PIPEDA-compliant)</li>
+      <li>Email support, weekly digest</li>
+    </ul>
+    <a class="btn btn-ghost" href="/contact">Talk to us</a>
+  </article>
+
+  <article class="pricing-card pricing-card--featured">
+    <header class="pricing-card__head">
+      <span class="pricing-card__tier">Practice</span>
+      <span class="pricing-card__price">
+        <span class="pricing-card__currency">CAD</span>
+        <span class="pricing-card__amount">$1,499</span>
+        <span class="pricing-card__period">/mo</span>
+      </span>
+      <p class="pricing-card__sub">For multi-physician practices and PCN member clinics.</p>
+    </header>
+    <ul class="pricing-card__features">
+      <li>Up to <strong>3,000</strong> encounter audits / month</li>
+      <li>LLM-agnostic audit engine (any provider, your keys)</li>
+      <li>Deterministic runs: seed pinned, temperature=0</li>
+      <li>HIA-aligned audit trail with hash-chain (PIPEDA-compliant)</li>
+      <li>Priority email support, same-day response</li>
+      <li>Multi-user access (up to 5 seats)</li>
+    </ul>
+    <a class="btn btn-primary" href="/contact">Talk to us</a>
+  </article>
+
+  <article class="pricing-card">
+    <header class="pricing-card__head">
+      <span class="pricing-card__tier">Network</span>
+      <span class="pricing-card__price">
+        <span class="pricing-card__currency">CAD</span>
+        <span class="pricing-card__amount">$2,999+</span>
+        <span class="pricing-card__period">/mo</span>
+      </span>
+      <p class="pricing-card__sub">For PCN central offices and multi-clinic networks.</p>
+    </header>
+    <ul class="pricing-card__features">
+      <li><strong>3,000+</strong> encounter audits / month (custom volume)</li>
+      <li>LLM-agnostic audit engine (any provider, your keys)</li>
+      <li>Deterministic runs: seed pinned, temperature=0</li>
+      <li>HIA-aligned audit trail with hash-chain (PIPEDA-compliant)</li>
+      <li>Priority support with same-day response SLA</li>
+      <li>Multi-user access (unlimited seats)</li>
+      <li>Quarterly billing-rules tuning session</li>
+    </ul>
+    <a class="btn btn-ghost" href="/contact">Talk to us</a>
+  </article>
+</section>
+
+<section class="pricing-includes" aria-label="What every tier includes">
+  <h2>What every tier includes</h2>
+  <div class="pricing-includes__grid">
+    <div>
+      <h3>Pre-submit audit, not post-denial recovery</h3>
+      <p>
+        Every claim goes through the auditor before it leaves your
+        desk &mdash; not after AHCIP denies it. You save the
+        revenue. You don't share the savings with us.
+      </p>
+    </div>
+    <div>
+      <h3>Deterministic, reproducible runs</h3>
+      <p>
+        Temperature 0, seed pinned, model version pinned. Re-run the
+        same input and you get the same findings. The audit
+        trail is hash-chained so a privacy officer can verify the
+        full chain at any time.
+      </p>
+    </div>
+    <div>
+      <h3>Bring your own LLM keys</h3>
+      <p>
+        We never proxy your claims through our LLM account. You
+        bring your own provider (OpenAI, Anthropic, Gemini, or any
+        Ollama-compatible endpoint) and we call it directly from
+        the auditor. Your data doesn't train anyone else's model.
+      </p>
+    </div>
+    <div>
+      <h3>Vendor-neutral, PCN-friendly</h3>
+      <p>
+        We don't take referral fees from any EHR or clearinghouse.
+        The auditor runs against the 837P payload regardless of which
+        EMR produced it (Telus PS Suite, OSCAR, Accuro, Med Access,
+        or any FHIR-capable system).
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="pricing-not-included" aria-label="What Zorva does not do">
+  <h2>What we don't do</h2>
+  <ul>
+    <li>
+      <strong>No percentage of recovered revenue.</strong> We're
+      paid a flat fee. Your recovery rate is yours.
+    </li>
+    <li>
+      <strong>No silent auto-correction.</strong> The auditor
+      surfaces findings to your biller. Nothing ships until a human
+      signs off.
+    </li>
+    <li>
+      <strong>No cross-tenant training.</strong> Your data never
+      trains our model. Per-tenant calibration is a one-way
+      lookup, not a feedback loop to the global model.
+    </li>
+  </ul>
+  <p class="muted small">
+    See <a href="/security">/security</a> for the full posture and
+    <a href="/legal/privacy">/legal/privacy</a> for the data handling
+    agreement.
+  </p>
+</section>
+
+<section class="pricing-faq" aria-label="Pricing FAQ">
+  <h2>Pricing FAQ</h2>
+  <details>
+    <summary>Why flat-fee, not per-claim?</summary>
+    <p>
+      Per-claim pricing punishes the clinics that use us most
+      aggressively &mdash; the clinics with the highest denial
+      rates that need the most help. Flat-fee pricing means we
+      make the same amount whether you run 100 or 10,000 audits,
+      so the incentive to under-audit is gone. Your biller audits
+      every claim, not just the ones that look risky.
+    </p>
+  </details>
+  <details>
+    <summary>What's the actual tier threshold?</summary>
+    <p>
+      Tiers are 1,000 / 3,000 / 3,000+ audits per month. We count
+      <em>audited</em> claims, not claims you upload &mdash; if the
+      auditor runs on a 1,200-claim month on the Solo tier, we'll
+      reach out before the overage to talk about the upgrade. We
+      don't auto-upgrade you to the next tier.
+    </p>
+  </details>
+  <details>
+    <summary>What does "LLM-agnostic" mean in practice?</summary>
+    <p>
+      You bring your own LLM API key (OpenAI, Anthropic, Gemini, or
+      any OpenAI-compatible local endpoint via Ollama). The auditor
+      runs against whichever provider you've configured; if your
+      provider is unavailable, the audit fails closed (the biller
+      sees "auditor unavailable, claim not audited") rather than
+      falling back to a weaker model silently.
+    </p>
+  </details>
+  <details>
+    <summary>How is "deterministic run" actually deterministic?</summary>
+    <p>
+      Temperature 0 + seed pinned in the prompt + model version
+      pinned in the API call. The auditor emits the same JSON
+      output for the same input across runs. Re-run a prior
+      encounter and the findings match byte-for-byte. The
+      <a href="/how-it-works">how-it-works</a> page has the full
+      reproducibility contract.
+    </p>
+  </details>
+  <details>
+    <summary>What about OHIP and MSP?</summary>
+    <p>
+      OHIP and MSP are on the 2027 roadmap. We sign HIA Information
+      Manager Agreements today for Alberta clinics. PHIPA and HIPAA
+      templates are on request for pilots in Ontario and the US.
+    </p>
+  </details>
+</section>
+
+<aside class="pricing-cta" aria-label="Next step">
+  <h2>Try it before you buy it</h2>
+  <p>
+    <a href="/try">Open the sample claim</a> &mdash; see the auditor
+    on a real AHCIP-style encounter. Or
+    <a href="/contact">send 100 of your own claims</a> and we'll run
+    the auditor and send back a 1-page report. No fee, no follow-up.
+  </p>
+</aside>
+
+{% endblock %}

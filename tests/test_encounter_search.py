@@ -27,7 +27,7 @@ def client() -> TestClient:
 
 def test_search_form_renders_on_home(client: TestClient) -> None:
     """The home page must show a search form with all five inputs."""
-    r = client.get("/")
+    r = client.get("/audits")
     assert r.status_code == 200
     body = r.text
     assert 'class="encounter-search"' in body
@@ -51,7 +51,7 @@ def test_search_form_renders_on_home(client: TestClient) -> None:
 
 def test_search_by_encounter_id_substring(client: TestClient) -> None:
     """?q=enc_1003 should match enc_10032, enc_10030, enc_10031…"""
-    r = client.get("/?q=enc_1003")
+    r = client.get("/audits?q=enc_1003")
     assert r.status_code == 200
     body = r.text
     assert "enc_10032" in body
@@ -71,7 +71,7 @@ def test_search_by_cpt_prefix(client: TestClient) -> None:
     exact cards depends on train.json contents. The contract here
     is "prefix filter doesn't break the route", not "encounter X
     must be in val.json"."""
-    r = client.get("/?cpt=99214")
+    r = client.get("/audits?cpt=99214")
     assert r.status_code == 200
     body = r.text
     assert 'name="cpt" value="99214"' in body
@@ -83,7 +83,7 @@ def test_search_by_icd10_prefix(client: TestClient) -> None:
     """?icd10=I10 should echo back the value without 500-ing."""
     import re as _re
 
-    r = client.get("/?icd10=I10")
+    r = client.get("/audits?icd10=I10")
     assert r.status_code == 200
     body = r.text
     # Whitespace may sit between attributes; regex it.
@@ -96,7 +96,7 @@ def test_search_by_icd10_prefix(client: TestClient) -> None:
 
 def test_search_unknown_returns_empty_state(client: TestClient) -> None:
     """A no-match search returns the empty-state copy, not a 500."""
-    r = client.get("/?q=zzzz_no_such_encounter")
+    r = client.get("/audits?q=zzzz_no_such_encounter")
     assert r.status_code == 200
     body = r.text
     assert "No encounters match your search" in body
@@ -106,7 +106,7 @@ def test_search_unknown_returns_empty_state(client: TestClient) -> None:
 
 def test_search_combines_with_status_chip(client: TestClient) -> None:
     """Search + status=flagged combine via AND."""
-    r = client.get("/?status=flagged&q=enc_1003")
+    r = client.get("/audits?status=flagged&q=enc_1003")
     assert r.status_code == 200
     body = r.text
     # The hidden status input preserves the active chip.
@@ -116,7 +116,7 @@ def test_search_combines_with_status_chip(client: TestClient) -> None:
 def test_search_inputs_echo_back_submitted_values(client: TestClient) -> None:
     """The submitted query values are echoed back into the form so the
     biller can refine a search without re-typing everything."""
-    r = client.get("/?q=enc_1003&cpt=99214")
+    r = client.get("/audits?q=enc_1003&cpt=99214")
     assert r.status_code == 200
     body = r.text
     assert 'name="q" value="enc_1003"' in body
@@ -125,7 +125,7 @@ def test_search_inputs_echo_back_submitted_values(client: TestClient) -> None:
 
 def test_search_filter_is_and(client: TestClient) -> None:
     """A search that no encounter matches both sides of returns empty."""
-    r = client.get("/?q=enc_1003&cpt=00000")
+    r = client.get("/audits?q=enc_1003&cpt=00000")
     assert r.status_code == 200
     body = r.text
     assert "No encounters match your search" in body

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Security &amp; compliance — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Security &amp; compliance</h1>
+    <p class="sub">
+      What's in scope today, what's in the legal pipeline, and
+      what you can hand to your privacy officer. The HIA Information
+      Manager Agreement template is in lawyer review.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/legal/privacy">Read the privacy doc</a>
+</header>
+
+<section class="security-intro" aria-label="Posture summary">
+  <h2>The short version</h2>
+  <ul>
+    <li>
+      <strong>Alberta &mdash; HIA + PIPEDA:</strong> covered today.
+      Signed IMA before any data is accepted.
+    </li>
+    <li>
+      <strong>Ontario &mdash; PHIPA:</strong> supported on request
+      via the HIC-Agent template.
+    </li>
+    <li>
+      <strong>United States &mdash; HIPAA:</strong> supported on
+      request via the BAA template.
+    </li>
+    <li>
+      <strong>Mexico &mdash; NOM-024:</strong> on the 2027 roadmap.
+    </li>
+  </ul>
+</section>
+
+<section class="security-controls" aria-label="Control matrix">
+  <h2>Controls matrix</h2>
+
+  <article class="control">
+    <h3>Data residency</h3>
+    <p>
+      Customer data is stored in a single, region-pinned facility
+      documented in the executed IMA / BAA. Canadian customers are
+      served from a Canadian-region facility; US customers from a
+      US-region facility. Region is locked at sign-up and confirmed
+      in the executed agreement. No cross-region replication, no
+      movement out of the chosen region without written notice.
+    </p>
+    <p class="muted small">
+      The actual hosting provider, facility, and any third-party
+      attestations they currently hold (where they exist) are
+      documented in the executed IMA / BAA.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Encryption in transit</h3>
+    <p>
+      TLS 1.3 only on the public edge. Older protocol versions
+      disabled at the load balancer. Service-to-service calls
+      inside the VPC use mutual TLS. Certificate rotation is
+      automated.
+    </p>
+    <p class="muted small">
+      SOC 2 Type II and ISO 27001 are on our certification roadmap
+      (not currently held).
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Encryption at rest</h3>
+    <p>
+      AES-256 on every volume, snapshot, and backup.
+      Customer-managed keys are available on the Enterprise tier.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Patient pseudonyms (salted SHA-256)</h3>
+    <p>
+      Salted SHA-256 patient_hash on both the portal and FastAPI
+      paths, using the same <code>patient-hash:v1</code> domain
+      format and <code>PATIENT_HASH_PEPPER</code> env var. Backed
+      by a hex CHECK constraint on the audit_trail SQL schema. The
+      FastAPI service fails fast at startup if
+      <code>PATIENT_HASH_PEPPER</code> is unset or shorter than 32
+      characters in production. Raw patient identifiers are stored
+      only in the encrypted encounter table, never in the audit
+      log.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Audit trail &amp; chain</h3>
+    <p>
+      Every state-changing click (accept, dismiss, flag,
+      encounter upload, contact submission) is appended to a
+      hash-chained JSONL log. Each row's
+      <code>cryptographic_signature</code> is
+      <code>SHA-256(prev_signature || tenant_id || user_id ||
+      event_type || timestamp || payload_canonical_json)</code>.
+      The chain can be verified at any time from the dashboard
+      (Privacy Officer mode). A privacy officer can re-export the
+      log and re-verify offline.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Access control</h3>
+    <p>
+      RBAC roles: <code>viewer</code>, <code>biller</code>,
+      <code>admin</code>, <code>privacy_officer</code>. Bearer
+      token auth on all mutating API endpoints. The
+      <code>viewer</code> role can read but not act on findings;
+      <code>biller</code> can accept/dismiss/flag; <code>admin</code>
+      manages users + audit chain; <code>privacy_officer</code>
+      can re-export the full chain.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Logging &amp; monitoring</h3>
+    <p>
+      Structured JSON logs in production
+      (<code>LOG_FORMAT=json</code>). Prometheus
+      <code>/metrics</code> on every service. Healthz +
+      readyz endpoints. <a href="/status">/status</a> shows the
+      current live state.
+    </p>
+  </article>
+
+  <article class="control">
+    <h3>Incident response</h3>
+    <p>
+      Security incident contact:
+      <strong>security@ashbi.ca</strong>. PGP key on request.
+      Target notification time: 24 hours from incident
+      confirmation.
+    </p>
+  </article>
+</section>
+
+<section class="security-frameworks" aria-label="Compliance frameworks">
+  <h2>Frameworks</h2>
+  <table class="frameworks">
+    <thead>
+      <tr><th scope="col">Framework</th><th scope="col">Jurisdiction</th><th scope="col">Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">HIA</th>
+        <td>Alberta, Canada</td>
+        <td>Active. IMA template in lawyer review (2026-Q3).</td>
+      </tr>
+      <tr>
+        <th scope="row">PIPEDA</th>
+        <td>Canada (federal)</td>
+        <td>Active. Covered by the HIA-aligned audit trail + patient pseudonyms.</td>
+      </tr>
+      <tr>
+        <th scope="row">PHIPA</th>
+        <td>Ontario, Canada</td>
+        <td>On request. HIC-Agent template available.</td>
+      </tr>
+      <tr>
+        <th scope="row">HIPAA</th>
+        <td>United States</td>
+        <td>On request. BAA template available. AKS safe-harbor-aligned for any US pilots.</td>
+      </tr>
+      <tr>
+        <th scope="row">NOM-024</th>
+        <td>Mexico</td>
+        <td>2027 roadmap.</td>
+      </tr>
+      <tr>
+        <th scope="row">SOC 2 Type II</th>
+        <td>—</td>
+        <td>Certification roadmap (not currently held).</td>
+      </tr>
+      <tr>
+        <th scope="row">ISO 27001</th>
+        <td>—</td>
+        <td>Certification roadmap (not currently held).</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<aside class="security-cta">
+  <h2>For your privacy officer</h2>
+  <p>
+    The five questions they should be able to answer after reading
+    this page:
+  </p>
+  <ol>
+    <li>Where is the data stored? <em>A single region-pinned facility, documented in the executed IMA.</em></li>
+    <li>How is it pseudonymized? <em>Salted SHA-256 with a per-deployment pepper, fail-fast at startup if the pepper is missing.</em></li>
+    <li>Can the audit trail be tampered with after the fact? <em>No &mdash; hash-chained, every state-changing click signs the prior row, re-verifiable from the dashboard.</em></li>
+    <li>Is the data used to train a model? <em>No &mdash; your LLM key, your data, no shared training.</em></li>
+    <li>How do you delete it? <em>On one email from your billing lead, full tenant wipe within 7 business days, with a written confirmation.</em></li>
+  </ol>
+  <p>
+    The full legal text is at
+    <a href="/legal/privacy">/legal/privacy</a>. The IMA template is
+    in <code>docs/BAA_TEMPLATE_HIA.md</code> in the repo. The
+    lawyer-review checklist for the HIA is in
+    <code>docs/HIA_LAWYER_REVIEW_CHECKLIST.md</code>.
+  </p>
+</aside>
+
+{% endblock %}

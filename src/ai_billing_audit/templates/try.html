@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Try Zorva — sample AHCIP claim{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Try Zorva on a sample claim</h1>
+    <p class="sub">
+      Three findings, the rule that fired, and the exact passage
+      in the clinical note. Synthetic data, no signup, no contract.
+      The whole demo is under 30 seconds.
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="/case-studies">More case studies &rarr;</a>
+</header>
+
+<section class="try-sample" aria-label="Sample encounter">
+  <article class="try-card">
+    <header class="try-card__head">
+      <div>
+        <span class="try-card__id">ca_ahcip_002</span>
+        <span class="badge badge-warn">Medium</span>
+      </div>
+      <h2 class="try-card__title">Family medicine follow-up, same-day procedure</h2>
+      <p class="muted small">
+        A 50-year-old patient with established hypertension and a
+        new sore shoulder. The biller billed a 99213 (level-3
+        established-patient office visit) and a 20610 (major joint
+        injection, shoulder). The auditor flagged 3 things.
+      </p>
+    </header>
+
+    <div class="try-finding">
+      <h3>Finding 1 &mdash; Referring provider NPI missing</h3>
+      <p class="try-finding__quote">
+        "patient was referred by Dr. Patel for ongoing BP management
+        and joint pain. BP today 142/88, HR 78. No acute distress.
+        Plan: continue amlodipine 5mg, refer for shoulder injection."
+      </p>
+      <p class="muted small">
+        Rule: <code>rule_ahcip_referring_npi</code>. The clinical
+        note mentions a referral, but no referring_provider_npi
+        is on the 837P. AHCIP rejects the claim with code 80G
+        (referring provider NPI required).
+      </p>
+      <p>
+        <strong>Estimated impact:</strong> $45 (single-claim
+        rejection + resubmission cost).
+      </p>
+    </div>
+
+    <div class="try-finding">
+      <h3>Finding 2 &mdash; CMGP modifier not declared</h3>
+      <p class="try-finding__quote">
+        "BP 142/88, amlodipine 5mg continued. Right shoulder
+        injection performed without complication using
+        40mg triamcinolone + 4ml lidocaine. Patient tolerated
+        procedure well."
+      </p>
+      <p class="muted small">
+        Rule: <code>rule_ahcip_cmgp</code>. A GP performing a
+        procedure same-day as an office visit should declare the
+        CMGP modifier (Comprehensive Care Management / General
+        Practice) on the visit line. Without it, the procedure
+        line pays at 100% but the visit line is reduced to 50%
+        under AHCIP GR 4.4.
+      </p>
+      <p>
+        <strong>Estimated impact:</strong> $85 (underpayment on
+        the visit line).
+      </p>
+    </div>
+
+    <div class="try-finding">
+      <h3>Finding 3 &mdash; Modifier-25 not appended on separately-identifiable E/M</h3>
+      <p class="try-finding__quote">
+        "Right shoulder injection performed without complication..."
+      </p>
+      <p class="muted small">
+        Rule: <code>rule_ahcip_modifier_25_unlock</code>. When a
+        procedure and an E/M visit are billed on the same day, the
+        E/M needs a -25 modifier to indicate it's a separately
+        identifiable service beyond the usual pre-/post-procedure
+        work. The clinical note shows distinct history, exam, and
+        medical-decision-making for the BP management, so the -25
+        is justified. Without it, AHCIP bundles the visit into
+        the procedure and pays $0 for it.
+      </p>
+      <p>
+        <strong>Estimated impact:</strong> $50 (bundled
+        underpayment).
+      </p>
+    </div>
+  </article>
+</section>
+
+<section class="try-cta" aria-label="Two ways to try Zorva">
+  <h2>Two ways to try Zorva</h2>
+  <div class="try-cta__grid">
+    <article class="try-cta__card">
+      <h3>Sample claim &mdash; this page</h3>
+      <p>
+        The above is a real AHCIP-style sample. The findings are
+        canned, the rules are real, the dollar amounts are
+        conservative estimates. If you want to see the auditor on
+        your own claim shapes, the next step takes 5 minutes.
+      </p>
+    </article>
+    <article class="try-cta__card try-cta__card--primary">
+      <h3>100 of your own claims &mdash; 1-page report</h3>
+      <p>
+        Export 100 of your own claims (any of 837P, CSV, or paste
+        one-by-one). De-identify patient IDs if you'd rather not
+        share them. We run the auditor and send back a 1-page
+        finding-by-finding report in under 30 minutes. No fee, no
+        follow-up.
+      </p>
+      <a class="btn btn-primary" href="/contact">Send 100 claims</a>
+    </article>
+  </div>
+</section>
+
+{% endblock %}

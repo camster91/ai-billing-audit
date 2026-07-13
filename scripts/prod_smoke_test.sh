@@ -63,6 +63,8 @@ check_status "GET /metrics (Prometheus)" 200 "$(http_status "$HOST/metrics")"
 
 # 3. Marketing / public-read pages
 check_status "GET / (index)" 200 "$(http_status "$HOST/")"
+check_status "GET / (marketing landing)" 200 "$(http_status "$HOST/")"
+check_status "GET /audits (dashboard)" 200 "$(http_status "$HOST/audits")"
 check_status "GET /roi" 200 "$(http_status "$HOST/roi")"
 check_status "GET /case-studies" 200 "$(http_status "$HOST/case-studies")"
 check_status "GET /contact" 200 "$(http_status "$HOST/contact")"

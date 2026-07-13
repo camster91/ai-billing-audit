@@ -329,10 +329,18 @@ def test_roi_page_links_to_other_legal_pages(client):
     """The ROI page should share the base template with the legal
     pages and the rest of the app."""
     resp = client.get("/roi")
-    # The topbar nav links
+    # The topbar nav links — Marketing nav on the public site
+    # (Home / Audits / Pricing / How it works / Security / Try / FAQ
+    # / Contact). /activity is internal-tool and intentionally not
+    # in the public marketing nav; the dashboard lives at /audits.
     assert "/legal/privacy" in resp.text
     assert "/legal/terms" in resp.text
-    assert "/activity" in resp.text
+    assert "/audits" in resp.text
+    assert "/pricing" in resp.text
+    assert "/how-it-works" in resp.text
+    assert "/security" in resp.text
+    assert "/try" in resp.text
+    assert "/faq" in resp.text
 
 
 def test_roi_includes_shareable_url_note(client):

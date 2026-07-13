@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}FAQ — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Frequently asked questions</h1>
+    <p class="sub">
+      For the privacy officer, the billing lead, the clinic
+      manager, and the IT contact. If you have a question not
+      covered here, <a href="/contact">send us a note</a>.
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="/security">For the privacy officer &rarr;</a>
+</header>
+
+<section class="faq-section" aria-label="For the privacy officer">
+  <h2>For the privacy officer</h2>
+
+  <details open>
+    <summary>Is Zorva HIA-compliant?</summary>
+    <p>
+      For Alberta clinics (our current go-to-market), we sign an
+      HIA Information Manager Agreement (template in
+      <code>docs/BAA_TEMPLATE_HIA.md</code>, currently in lawyer
+      review). We also support BAA / HIC-Agent / affiliate
+      agreements for US HIPAA and Ontario PHIPA pilots on
+      request &mdash; the templates exist but are not pre-signed
+      for jurisdictions where we don't currently have a customer.
+    </p>
+  </details>
+
+  <details>
+    <summary>Where is the data stored?</summary>
+    <p>
+      Customer data is stored in a single, region-pinned facility
+      documented in the executed IMA / BAA. Canadian customers are
+      served from a Canadian-region facility; US customers from a
+      US-region facility. Region is locked at sign-up. The actual
+      hosting provider, facility, and any third-party attestations
+      they currently hold (where they exist) are documented in the
+      IMA.
+    </p>
+  </details>
+
+  <details>
+    <summary>How is patient data pseudonymized?</summary>
+    <p>
+      Salted SHA-256 on the patient_id field, using the same
+      <code>patient-hash:v1</code> domain format on both the
+      portal and FastAPI paths. The salt is a per-deployment
+      <code>PATIENT_HASH_PEPPER</code> env var. The FastAPI service
+      fails fast at startup if the pepper is missing or shorter
+      than 32 characters. Raw patient identifiers are stored only
+      in the encrypted encounter table, never in the audit log.
+    </p>
+  </details>
+
+  <details>
+    <summary>Can the audit trail be tampered with after the fact?</summary>
+    <p>
+      No. Every state-changing click is appended to a hash-chained
+      JSONL log. Each row's signature includes the prior row's
+      signature; tampering with even one byte breaks the chain at
+      that row. A privacy officer with the <code>privacy_officer</code>
+      role can re-export the chain and re-verify offline.
+    </p>
+  </details>
+
+  <details>
+    <summary>Is the data used to train a model?</summary>
+    <p>
+      No. You bring your own LLM key (OpenAI, Anthropic, Gemini,
+      or any Ollama-compatible local endpoint). The auditor calls
+      it directly from your environment. Your data doesn't train
+      anyone else's model. Cross-tenant training is explicitly
+      forbidden by the design.
+    </p>
+  </details>
+
+  <details>
+    <summary>How do you delete the data?</summary>
+    <p>
+      On one email from your billing lead, we delete every claim,
+      every finding, every audit log entry, and every
+      pseudonymization record associated with your tenant within 7
+      business days. We send a written confirmation. The audit
+      chain hash is preserved (one final entry) so you can verify
+      the chain was complete at the time of deletion.
+    </p>
+  </details>
+
+  <details>
+    <summary>What about SOC 2 / ISO 27001?</summary>
+    <p>
+      SOC 2 Type II and ISO 27001 are on the certification roadmap.
+      Not currently held. We publish that on
+      <a href="/security">/security</a> so you can hand the page
+      directly to your privacy officer.
+    </p>
+  </details>
+</section>
+
+<section class="faq-section" aria-label="For the billing lead">
+  <h2>For the billing lead</h2>
+
+  <details>
+    <summary>Does Zorva submit claims on my behalf?</summary>
+    <p>
+      No. Zorva reads every claim through the auditor before
+      <em>you</em> submit it, surfaces findings to the biller,
+      and the biller accepts or dismisses each finding. Nothing
+      ships to AHCIP until a human signs off. We don't
+      auto-correct silently.
+    </p>
+  </details>
+
+  <details>
+    <summary>How does the auditor interact with my EMR?</summary>
+    <p>
+      The auditor reads the 837P payload &mdash; the same file
+      you'd hand to H-Link. We don't need an integration with
+      your EMR for the pilot. The biller uploads the 837P via the
+      dashboard or by paste-form, and the auditor runs. EMR
+      integrations are on the 2026-Q4 roadmap (Accuro first,
+      then OSCAR Pro, then TELUS PS Suite).
+    </p>
+  </details>
+
+  <details>
+    <summary>What does "deterministic" mean for my workflow?</summary>
+    <p>
+      Re-running the auditor on the same claim produces the same
+      findings. Temperature 0, seed pinned, model version pinned.
+      This means your biller can re-run an encounter after a
+      rule-set update and compare findings; or your privacy
+      officer can re-run a prior encounter and verify the chain.
+    </p>
+  </details>
+
+  <details>
+    <summary>What if I disagree with a finding?</summary>
+    <p>
+      Dismiss it. Each finding has a Dismiss button with a reason
+      picker (wrong payer policy, not relevant, already
+      addressed, other-with-text). Your dismiss reason is part of
+      the audit trail. Over time, the per-clinic F1 widget
+      reflects how often your dismisses match real findings (signal)
+      vs not (noise).
+    </p>
+  </details>
+
+  <details>
+    <summary>How do I onboard my team?</summary>
+    <p>
+      During the pilot, we sign the IMA / BAA, get a read-only
+      data feed or sample file from your billing system, and
+      stand up your dashboard. We provide a 1-page cheat sheet
+      for the biller (what the findings mean, what to accept, what
+      to dismiss). The first 100-claim audit is the first
+      artifact your biller sees.
+    </p>
+  </details>
+</section>
+
+<section class="faq-section" aria-label="For the clinic manager">
+  <h2>For the clinic manager</h2>
+
+  <details>
+    <summary>How long does the pilot take?</summary>
+    <p>
+      60 days from signed IMA to first ROI report. Week 1 is
+      connection + data feed; weeks 2-6 are shadow-run + weekly
+      review; weeks 7-8 are measure-and-decide.
+    </p>
+  </details>
+
+  <details>
+    <summary>What's the cost?</summary>
+    <p>
+      The 60-day no-cost pilot is free. The first paid engagement
+      is one of the three tiers on <a href="/pricing">/pricing</a>
+      ($499 / $1,499 / $2,999+ CAD per month, capped at 1,000 /
+      3,000 / 3,000+ audits per month). No setup fee, no per-claim
+      charge, no recovery-linked fee.
+    </p>
+  </details>
+
+  <details>
+    <summary>What happens after the pilot?</summary>
+    <p>
+      If you continue: we move to a paid engagement at the tier
+      that fits your claim volume. If you don't: we delete
+      everything 7 business days after the pilot ends, on one
+      email from your billing lead. We send a written
+      confirmation.
+    </p>
+  </details>
+
+  <details>
+    <summary>What if we have multiple clinics?</summary>
+    <p>
+      Multi-clinic tenants are supported. The PCN central-office
+      model (one Zorva tenant for a Primary Care Network with
+      dozens of member clinics) is the most common
+      multi-tenant shape. Per-clinic F1 is the recommended
+      metric for a PCN &mdash; it's per-clinic (not per-network)
+      because the biller at each clinic knows their own
+      patterns.
+    </p>
+  </details>
+</section>
+
+<section class="faq-section" aria-label="For the IT contact">
+  <h2>For the IT contact</h2>
+
+  <details>
+    <summary>How do I get a 100-claim sample into the auditor?</summary>
+    <p>
+      Pick a 30-day window from your billing system. Export the
+      837P (or a CSV, or paste the encounters one-by-one via
+      the dashboard paste-form). De-identify patient IDs if
+      you'd rather not share them &mdash; the auditor hashes them
+      anyway.
+    </p>
+  </details>
+
+  <details>
+    <summary>What does the 837P need to contain?</summary>
+    <p>
+      Standard 837P loop 2300 with at least the encounter header
+      (NM1*85, NM1*87, HI, DTP*472) and at least one service line
+      (LX, SV1, DTP*472). The 835 / 837P / 837I dialects are
+      vendor-specific; we accept any of them as long as the
+      standard segments are present.
+    </p>
+  </details>
+
+  <details>
+    <summary>What about FHIR?</summary>
+    <p>
+      FHIR R4 (the <code>Claim</code> + <code>ClaimResponse</code>
+      resources) is on the 2026-Q4 roadmap. The 837P path is
+      shipping today.
+    </p>
+  </details>
+</section>
+
+<aside class="faq-cta">
+  <h2>Still have a question?</h2>
+  <p>
+    <a href="/contact">Send us a note</a> &mdash; we read every
+    one and reply within one business day. Or
+    <a href="/security">/security</a> for the privacy officer
+    one-pager.
+  </p>
+</aside>
+
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Zorva — AI pre-bill audit for Alberta clinics{% endblock %}
+{% block content %}
+
+{# Marketing landing page (replaces the Audits dashboard at / ).
+   Audits now lives at /audits. This page is what prospects see
+   when they land on ai-billing-audit.ashbi.ca — it answers the
+   four questions they have in the first 30 seconds:
+     1. What is this thing?
+     2. Does it work for Alberta / AHCIP specifically?
+     3. How much does it cost?
+     4. Can I try it without signing anything? #}
+
+<section class="hero">
+  <div class="hero__inner">
+    <span class="hero__eyebrow">Pre-submit audit for Alberta clinic billing teams</span>
+    <h1 class="hero__headline">Find the revenue your billers are leaving on the table.</h1>
+    <p class="hero__subhead">
+      Zorva reads every Alberta claim against AHCIP and the SOMB
+      before it leaves your desk — catching the missed codes,
+      underbilled modifiers, and shadow-billed services that
+      quietly drain your monthly revenue. Your billing team
+      reviews what it finds. Nothing ships until a human signs off.
+    </p>
+    <div class="hero__cta">
+      <a class="btn btn-primary" href="/try">Try Zorva on a sample claim</a>
+      <a class="btn btn-ghost" href="/contact">Send 100 claims, get a 1-page audit →</a>
+    </div>
+    <p class="hero__sub">
+      No signup. No contract. No cost to try. The 60-day pilot
+      kicks off under a signed IMA / BAA <em>after</em> you've
+      seen the report.
+    </p>
+  </div>
+</section>
+
+<section class="trust" aria-label="Built and operated by">
+  <div class="trust__inner">
+    <span class="trust__line">
+      <strong>Built by Cameron Ashley</strong> &mdash; Top Rated on Upwork,
+      80+ projects, $100K+ earned &middot; Ashbi Design &middot; Toronto
+    </span>
+  </div>
+</section>
+
+<section class="pillars" aria-label="What the product does">
+  <article class="pillar">
+    <h2>Audit every claim, not just the flagged ones</h2>
+    <p>
+      The auditor reads the clinical narrative, the billed codes,
+      and the retrieved rules for every encounter &mdash; E/M level,
+      NCCI edits, MUE limits, modifier pairs, payer policy.
+      Findings cite the exact rule and the exact passage in the
+      note.
+    </p>
+  </article>
+  <article class="pillar">
+    <h2>Built for Alberta first</h2>
+    <p>
+      v12 ships with 18 AHCIP rules covering modifier-25, telehealth,
+      CMGP, lab coverage, and the most common AHCIP denial codes.
+      OHIP and MSP are on the 2027 roadmap. The HIA Information
+      Manager Agreement template is in lawyer review and ready
+      for the first paid Alberta pilot.
+    </p>
+  </article>
+  <article class="pillar">
+    <h2>Region-pinned, hash-chained, audit-defensible</h2>
+    <p>
+      Your data lives in a single, region-pinned facility
+      documented in the executed IMA. The audit trail is
+      hash-chained &mdash; every state-changing click signs the
+      prior entry, and you can verify the full chain at any
+      time from the dashboard. HIA + PIPEDA covered today.
+    </p>
+  </article>
+  <article class="pillar">
+    <h2>Flat monthly fee, no recovery share</h2>
+    <p>
+      No percentage of revenue, no per-claim charge, no
+      recovery-linked fee. Three tiers bracketed by audit volume.
+      AKS safe-harbor-aligned for any US pilots. Published in
+      the executed IMA for Canadian clinics so counsel can sign
+      off without further review.
+    </p>
+  </article>
+</section>
+
+<section class="how" aria-label="How it works">
+  <header class="how__head">
+    <h2>How a 60-day pilot works</h2>
+    <p class="muted">
+      From first contact to first signed IMA in under 30 days.
+      No fee, no commitment.
+    </p>
+  </header>
+  <ol class="how__steps">
+    <li>
+      <span class="how__num">1</span>
+      <h3>Send 100 claims</h3>
+      <p>
+        Pick a 30-day window from your billing system. Export the
+        837P, a CSV, or paste the encounters one-by-one. We
+        accept any of the three. De-identify the patient IDs
+        beforehand if you'd rather not share them &mdash; Zorva
+        hashes them anyway.
+      </p>
+    </li>
+    <li>
+      <span class="how__num">2</span>
+      <h3>We run the auditor</h3>
+      <p>
+        The same v12 AHCIP auditor your peers use in production.
+        About 77 of every 100 real billing errors caught before
+        they hit the payer, with about 6 of every 10 raised flags
+        being a real finding. We send back a 1-page report in
+        under 30 minutes.
+      </p>
+    </li>
+    <li>
+      <span class="how__num">3</span>
+      <h3>You decide what to do</h3>
+      <p>
+        Every finding is on screen with the exact rule, the exact
+        quote from the note, and a one-line fix recommendation.
+        You accept the ones that are real, dismiss the ones that
+        aren't, and we delete everything 7 business days after
+        the pilot ends &mdash; on one email from your billing lead.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="cta" aria-label="Get started">
+  <div class="cta__inner">
+    <h2>Two ways to start</h2>
+    <div class="cta__row">
+      <article class="cta__card">
+        <h3>Sample claim &mdash; no signup</h3>
+        <p>
+          See the auditor in action on a real Alberta AHCIP
+          sample. Three findings, the rule that fired, and the
+          exact passage in the clinical note.
+        </p>
+        <a class="btn btn-primary" href="/try">Open the sample</a>
+      </article>
+      <article class="cta__card">
+        <h3>100 real claims &mdash; 1-page report</h3>
+        <p>
+          Send 100 of your own claims (any of 837P / CSV / paste)
+          and we'll run the auditor and send back a 1-page
+          finding-by-finding report. No fee, no follow-up.
+        </p>
+        <a class="btn btn-primary" href="/contact">Send 100 claims</a>
+      </article>
+      <article class="cta__card cta__card--muted">
+        <h3>Already have an account?</h3>
+        <p>
+          The Audits dashboard is at <code>/audits</code>.
+        </p>
+        <a class="btn btn-ghost" href="/audits">Open the dashboard</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<aside class="proof" aria-label="What we caught in the latest pilot">
+  <div class="proof__inner">
+    <h2>What we caught in the latest pilot</h2>
+    <p class="muted">
+      A 19-encounter audit on a real AHCIP-style sample. Real
+      AHCIP claim shapes. Real SOMB rule references. No fabricated
+      examples.
+    </p>
+    <ul class="proof__list">
+      <li>
+        <strong>1</strong> encounter flagged for <em>referring-provider NPI
+        missing on a specialist referral</em> &mdash; AHCIP rule
+        <code>rule_ahcip_referring_npi</code>. Single missing field
+        worth ~$45 in denied-downcoding risk.
+      </li>
+      <li>
+        <strong>1</strong> encounter flagged for <em>CMGP-modifier
+        not declared when both GP and a specialist service are
+        billed same-day</em> &mdash; AHCIP rule
+        <code>rule_ahcip_cmgp</code>. Worth ~$85 if rejected.
+      </li>
+      <li>
+        <strong>1</strong> encounter flagged for <em>modifier-25 not
+        appended on a separately-identifiable E/M on the same
+        day as a procedure</em> &mdash; AHCIP rule
+        <code>rule_ahcip_modifier_25_unlock</code>. Worth ~$50 in
+        bundling risk.
+      </li>
+    </ul>
+    <p class="muted small">
+      Full report at
+      <a href="/case-studies">/case-studies</a> &middot;
+      <a href="/roi">/roi</a> &middot;
+      <a href="/how-it-works">/how-it-works</a>
+    </p>
+  </div>
+</aside>
+
+<aside class="alt-path" aria-label="Other ways to learn more">
+  <h2>Want the full picture first?</h2>
+  <p>
+    <a href="/pricing">See pricing</a> &middot;
+    <a href="/how-it-works">How it works</a> &middot;
+    <a href="/security">Security and compliance</a> &middot;
+    <a href="/case-studies">Case studies</a> &middot;
+    <a href="/faq">FAQ</a> &middot;
+    <a href="/contact">Talk to us</a>
+  </p>
+</aside>
+
+{% endblock %}

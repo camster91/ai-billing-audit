@@ -76,8 +76,10 @@ def test_load_encounter_record_returns_none_for_missing() -> None:
 
 # --- route contracts -----------------------------------------------------
 
-def test_index_lists_registered_encounter(client: TestClient) -> None:
-    r = client.get("/")
+def test_audits_dashboard_lists_registered_encounter(client: TestClient) -> None:
+    # The marketing landing page at / replaced the Audits dashboard
+    # on 2026-07-13. The Audits dashboard now lives at /audits.
+    r = client.get("/audits")
     assert r.status_code == 200
     body = r.text
     assert "enc_10032" in body
@@ -87,7 +89,7 @@ def test_index_lists_registered_encounter(client: TestClient) -> None:
     assert 'href="/encounter/enc_10032/json"' in body
 
 
-def test_index_renders_no_card_when_registry_empty(
+def test_audits_dashboard_renders_no_card_when_registry_empty(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Reset the registry in-place: the module is shared across the
@@ -95,9 +97,44 @@ def test_index_renders_no_card_when_registry_empty(
     monkeypatch.setattr(
         "ai_billing_audit.api.list_demo_encounters", lambda: []
     )
-    r = client.get("/")
+    r = client.get("/audits")
     assert r.status_code == 200
     assert "No demo encounters registered yet." in r.text
+
+
+def test_home_is_marketing_landing(client: TestClient) -> None:
+    """The home page at / is the marketing landing, not the Audits
+    dashboard. Prospects who land on ai-billing-audit.ashbi.ca
+    should see the four-question marketing structure, not an
+    internal tool dashboard.
+    """
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.text
+    # Hero copy.
+    assert "Find the revenue your billers" in body
+    # The two primary CTAs.
+    assert 'href="/try"' in body
+    assert 'href="/contact"' in body
+    # The four pillars.
+    assert "Audit every claim" in body
+    assert "Built for Alberta first" in body
+    assert "Region-pinned" in body
+    assert "Flat monthly fee" in body
+    # Trust line.
+    assert "Top Rated on Upwork" in body
+    # The 60-day pilot steps.
+    assert "60-day pilot" in body
+    # The CTA section with three options.
+    assert "Sample claim" in body
+    assert "100 real claims" in body
+    # The Audits dashboard is no longer the home — assert the
+    # "Audits" h1 from index.html is NOT in the home page body.
+    assert "Claims audited before submission" not in body
+    # /audits IS the dashboard — same 200 + encounter list.
+    r2 = client.get("/audits")
+    assert r2.status_code == 200
+    assert "enc_10032" in r2.text
 
 
 def test_encounter_detail_renders_evidence_highlight(
@@ -183,7 +220,7 @@ def test_medium_record_loadable() -> None:
 
 
 def test_index_lists_medium_card(client: TestClient) -> None:
-    r = client.get("/")
+    r = client.get("/audits")
     assert r.status_code == 200
     body = r.text
     assert MEDIUM_ID in body
@@ -323,7 +360,7 @@ def test_hard_record_loadable() -> None:
 
 
 def test_index_lists_hard_card(client: TestClient) -> None:
-    r = client.get("/")
+    r = client.get("/audits")
     assert r.status_code == 200
     body = r.text
     assert HARD_ID in body
@@ -471,14 +508,14 @@ def test_hard_detail_404_when_unregistered(
 def test_index_with_auth_headers_does_not_500(client: TestClient) -> None:
     """GET / with auth headers must not raise UnboundLocalError."""
     r = client.get(
-        "/",
+        "/audits",
         headers={
             "X-User-Id": "test-biller-1",
             "X-User-Role": "biller",
         },
     )
     assert r.status_code == 200, (
-        f"GET / with auth headers returned {r.status_code}; body: {r.text[:500]}"
+        f"GET /audits with auth headers returned {r.status_code}; body: {r.text[:500]}"
     )
     # And the early `current_filter_state` block ran without 500,
     # so the response body should contain the registered encounter
@@ -487,14 +524,14 @@ def test_index_with_auth_headers_does_not_500(client: TestClient) -> None:
 
 
 def test_index_with_auth_headers_and_query_params(client: TestClient) -> None:
-    """GET /?status=flagged&q=chest with auth headers must not 500.
+    """GET /audits?status=flagged&q=chest with auth headers must not 500.
 
     The query-param parsing block at line ~1306 is what overwrites
     the initializers we set at the top of the function. If the
     ordering or initial values regressed, this test catches it.
     """
     r = client.get(
-        "/?status=flagged&q=chest&cpt=99214",
+        "/audits?status=flagged&q=chest&cpt=99214",
         headers={
             "X-User-Id": "test-biller-2",
             "X-User-Role": "biller",

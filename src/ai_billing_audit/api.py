@@ -1171,6 +1171,7 @@ def create_app() -> FastAPI:
                 request.method == "GET"
                 and request.url.path
                 in (
+                    "/audits",
                     "/roi",
                     "/roi/results",
                     "/case-studies",
@@ -1181,6 +1182,11 @@ def create_app() -> FastAPI:
                     "/openapi.json",
                     "/docs",
                     "/redoc",
+                    "/pricing",
+                    "/security",
+                    "/try",
+                    "/how-it-works",
+                    "/faq",
                 )
             )
             or (
@@ -1344,7 +1350,21 @@ def create_app() -> FastAPI:
     templates.env.globals["tenant_id"] = _TENANT_ID
 
     @app.get("/", response_class=HTMLResponse)
-    def index(request: Request) -> HTMLResponse:
+    def home(request: Request) -> HTMLResponse:
+        """Public marketing landing page.
+
+        Replaces the Audits dashboard at / so prospects who land on
+        ai-billing-audit.ashbi.ca see a marketing surface first. The
+        Audits dashboard is now at /audits (preserved as the same
+        handler with the same name). See the home.html template
+        for the four-question landing structure.
+        """
+        return templates.TemplateResponse(request, "home.html", {
+            "request": request,
+        })
+
+    @app.get("/audits", response_class=HTMLResponse)
+    def audits_dashboard(request: Request) -> HTMLResponse:
         registered = list_demo_encounters()
         # Saved-filter presets (kanban t_66b05d72). Resolve the
         # current user from the RBAC layer so each biller sees their
@@ -4304,6 +4324,54 @@ def create_app() -> FastAPI:
                 "tenant_name": _TENANT_NAME,
                 "support_email": "support@zorva.ca",
             },
+        )
+
+    @app.get("/pricing", response_class=HTMLResponse)
+    def pricing(request: Request) -> HTMLResponse:
+        """Pricing page &mdash; 3 tiers, flat-fee, no recovery share."""
+        return templates.TemplateResponse(
+            request,
+            "pricing.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/security", response_class=HTMLResponse)
+    def security(request: Request) -> HTMLResponse:
+        """Security + compliance posture &mdash; HIA, PIPEDA, audit chain."""
+        return templates.TemplateResponse(
+            request,
+            "security.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/try", response_class=HTMLResponse)
+    def try_demo(request: Request) -> HTMLResponse:
+        """Public demo path &mdash; the auditor on a real AHCIP-style
+        sample encounter, no signup, no contract."""
+        return templates.TemplateResponse(
+            request,
+            "try.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/how-it-works", response_class=HTMLResponse)
+    def how_it_works(request: Request) -> HTMLResponse:
+        """Audit loop explainer &mdash; what the auditor reads, what
+        rules it pulls, how findings surface for review."""
+        return templates.TemplateResponse(
+            request,
+            "how-it-works.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/faq", response_class=HTMLResponse)
+    def faq(request: Request) -> HTMLResponse:
+        """Frequently asked questions &mdash; HIA, deterministic runs,
+        tier thresholds, and the privacy brief."""
+        return templates.TemplateResponse(
+            request,
+            "faq.html",
+            {"tenant_name": _TENANT_NAME},
         )
 
     @app.get("/contact", response_class=HTMLResponse)

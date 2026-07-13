@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}How Zorva works — the audit loop{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>How Zorva works</h1>
+    <p class="sub">
+      What the auditor reads, what rules it pulls, how findings
+      surface to your biller for review, and what the audit trail
+      looks like under the hood. For the technical buyer in your
+      clinic.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/try">Open the sample claim</a>
+</header>
+
+<section class="hiw-overview" aria-label="The audit loop in 4 steps">
+  <h2>The audit loop in 4 steps</h2>
+  <ol class="hiw-steps">
+    <li>
+      <span class="hiw-num">1</span>
+      <h3>Claim arrives at the auditor</h3>
+      <p>
+        Every claim is an 837P payload. The auditor parses it into
+        a structured object: <code>encounter_id</code>,
+        <code>patient_id</code>, <code>rendering_provider_npi</code>,
+        <code>date_of_service</code>, <code>line_items[]</code>
+        (CPT + modifiers + dx pointers + units), and
+        <code>diagnosis_codes[]</code>. Alongside it, the biller
+        has attached the clinical note (a paste field, a CSV
+        upload, or a fetched-from-EMR blob).
+      </p>
+    </li>
+    <li>
+      <span class="hiw-num">2</span>
+      <h3>Rules are retrieved</h3>
+      <p>
+        From the structured claim, the auditor fetches the
+        applicable AHCIP rules. v12 ships with 18 rules covering
+        modifier-25, telehealth, CMGP, lab coverage, the
+        most-common AHCIP denial codes, and the per-claim-shape
+        trigger phrases that fire them.
+      </p>
+    </li>
+    <li>
+      <span class="hiw-num">3</span>
+      <h3>Auditor prompts the LLM</h3>
+      <p>
+        The claim + the applicable rules + the clinical note are
+        passed to the LLM as a structured prompt. Temperature 0,
+        seed pinned, model version pinned &mdash; re-running the
+        same input produces the same findings. The LLM emits a
+        JSON array of findings, each citing the rule_id, the
+        quote from the note, the suggested code, and a one-line
+        explanation.
+      </p>
+    </li>
+    <li>
+      <span class="hiw-num">4</span>
+      <h3>Findings surface to the biller</h3>
+      <p>
+        Each finding is on the encounter-detail page with the
+        rule, the quote, the fix recommendation, and the per-finding
+        dollar impact. The biller accepts the real ones, dismisses
+        the false positives, and submits. Every state-changing
+        click is appended to the hash-chained audit trail.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="hiw-rules" aria-label="The 18 AHCIP rules in v12">
+  <h2>The 18 AHCIP rules in v12</h2>
+  <p class="muted">
+    The ruleset is grouped into three buckets: high-severity
+    (likely to cause a denial), medium-severity (likely to cause
+    an underpayment), and low-severity (coding-hygiene). Trigger
+    phrases in the clinical note pull each rule into the
+    candidate set; the LLM emits the finding.
+  </p>
+
+  <details>
+    <summary><strong>High severity</strong> &mdash; 5 rules</summary>
+    <ul>
+      <li><code>rule_ahcip_referring_npi</code> &mdash; Specialist referral on file but no referring_provider_npi on the 837P. AHCIP denial 80G.</li>
+      <li><code>rule_ahcip_modifier_25_unlock</code> &mdash; Procedure + E/M same-day without -25 on the E/M. Bundled underpayment.</li>
+      <li><code>rule_ahcip_non_insured_service</code> &mdash; Service billed to AHCIP that is non-insured (e.g. cosmetic, AWV, HMV). Unbillable rejection.</li>
+      <li><code>rule_ahcip_cmgp</code> &mdash; GP performing a same-day procedure without CMGP modifier. 50% visit-line underpayment.</li>
+      <li><code>rule_ahcip_telehealth_consent</code> &mdash; Telehealth visit without documented patient consent. AHCIP GR 3.3.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary><strong>Medium severity</strong> &mdash; 7 rules</summary>
+    <ul>
+      <li><code>rule_ahcip_lab_coverage</code> &mdash; Lab billed without an AHCIP-eligible diagnosis pointer.</li>
+      <li><code>rule_ahcip_dx_linkage</code> &mdash; Line item with no diagnosis pointer; bundling risk.</li>
+      <li><code>rule_ahcip_preventive_opportunity</code> &mdash; Patient eligible for a preventive service that wasn't billed.</li>
+      <li><code>rule_ahcip_consultation</code> &mdash; Specialist consult billed without prior-referral documentation.</li>
+      <li><code>rule_ahcip_after_hours</code> &mdash; After-hours premium code eligible based on service time, not applied.</li>
+      <li><code>rule_ahcip_duplicate_service</code> &mdash; Same procedure billed twice in a 30-day window for the same patient.</li>
+      <li><code>rule_ahcip_age_inappropriate</code> &mdash; Service billed that is age-restricted (e.g. pediatric vaccine on adult).</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary><strong>Low severity</strong> &mdash; 6 rules</summary>
+    <ul>
+      <li><code>rule_ahcip_modifier_pair</code> &mdash; Modifiers that should be paired but aren't (e.g. -25 and -57).</li>
+      <li><code>rule_ahcip_place_of_service</code> &mdash; Place-of-service code inconsistent with the procedure.</li>
+      <li><code>rule_ahcip_units_cap</code> &mdash; Units billed exceed the per-day cap for the procedure.</li>
+      <li><code>rule_ahcip_fee_sched</code> &mdash; Billed amount inconsistent with the AHCIP fee schedule.</li>
+      <li><code>rule_ahcip_time_threshold</code> &mdash; Time-based code missing duration documentation.</li>
+      <li><code>rule_ahcip_rolling_window</code> &mdash; Service violates a per-time-period rolling cap (e.g. annual physical limit).</li>
+    </ul>
+  </details>
+</section>
+
+<section class="hiw-determinism" aria-label="Determinism contract">
+  <h2>Determinism contract</h2>
+  <p>
+    Every audit run is reproducible. The same input produces the
+    same output, byte-for-byte, across runs.
+  </p>
+  <ul>
+    <li><strong>Temperature 0.</strong> Set on the LLM call. The model emits the highest-probability token at every position.</li>
+    <li><strong>Seed pinned.</strong> Set on the LLM call. The model&rsquo;s internal RNG is initialized to the same value every time.</li>
+    <li><strong>Model version pinned.</strong> Set on the LLM call. The model identifier (e.g. <code>MiniMax-M3-2026-06-23</code>) is part of the request, not a default.</li>
+    <li><strong>Ruleset pinned.</strong> v12 + 18 rules. Any change to the ruleset is a new prompt version with its own MANIFEST entry.</li>
+  </ul>
+  <p>
+    Re-running a prior encounter &mdash; same clinical note, same
+    claim payload, same v12 prompt &mdash; produces the same
+    findings. The <a href="/security">/security</a> page has the
+    full reproducibility contract.
+  </p>
+</section>
+
+<section class="hiw-audit-chain" aria-label="Audit chain">
+  <h2>The hash-chained audit trail</h2>
+  <p>
+    Every state-changing click (accept, dismiss, flag, encounter
+    upload, contact submission) is appended to a hash-chained
+    JSONL log. Each row's <code>cryptographic_signature</code> is
+    computed as:
+  </p>
+  <pre class="code"><code>SHA-256(
+  prev_signature ||
+  tenant_id ||
+  user_id ||
+  event_type ||
+  timestamp ||
+  payload_canonical_json
+)</code></pre>
+  <p>
+    A privacy officer can re-export the log and re-verify the
+    chain offline. Any tampering &mdash; even one byte &mdash;
+    breaks the chain at the tampered row. The dashboard exposes
+    a "verify chain" command for tenants with the
+    <code>privacy_officer</code> role.
+  </p>
+</section>
+
+<aside class="hiw-cta" aria-label="Next step">
+  <h2>See it on a real claim</h2>
+  <p>
+    <a href="/try">Open the sample claim</a> &mdash; three
+    findings, the rules that fired, the dollar impact. Or
+    <a href="/contact">send 100 of your own</a> and we'll run the
+    auditor and send back a 1-page report.
+  </p>
+</aside>
+
+{% endblock %}
