@@ -86,6 +86,10 @@ runs/acceptance/live-parity/
 # Demo shadow runs (regenerable from data/mock/prospect_demo_100.json
 # via `python3 scripts/_run_with_ollama_v.py`).
 runs/shadow/prospect_demo_100-2026*
+# Live smoke test artifacts (regenerable via scripts/prod_smoke_test.sh).
+runs/shadow/_live_smoke_*.json
+# Validation run artifacts (regenerable via scripts/val_ca.py).
+runs/shadow/val_ca-2026*
 
 # Junk files from mis-quoted shell commands
 " if v else \"\"}\"\"')\n"
