@@ -1200,6 +1200,8 @@ def create_app() -> FastAPI:
                     "/trust",
                     "/what-zorva-finds",
                     "/status",
+                    "/rss.xml",
+                    "/sitemap.xml",
                 )
             )
             or (
@@ -4507,6 +4509,47 @@ def create_app() -> FastAPI:
             request,
             "status.html",
             {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/rss.xml", response_class=Response)
+    def rss_feed(request: Request) -> Response:
+        """Atom 1.0 feed combining blog + changelog.
+
+        Combined feed so subscribers get a single source of
+        "what's new on the Zorva site." See
+        :mod:`ai_billing_audit.feeds` for the source-of-truth
+        entry list. Whitelisted for the no-auth public-read
+        bypass.
+        """
+        from .feeds import build_atom_feed
+        host = (
+            request.headers.get("x-forwarded-proto", "https")
+            + "://"
+            + request.headers.get("host", "ai-billing-audit.ashbi.ca")
+        )
+        return Response(
+            content=build_atom_feed(host),
+            media_type="application/atom+xml; charset=utf-8",
+        )
+
+    @app.get("/sitemap.xml", response_class=Response)
+    def sitemap(request: Request) -> Response:
+        """XML sitemap for the public marketing surface.
+
+        Lists every route the public_read whitelist allows
+        plus a lastmod and a priority per page. Search engines
+        pick this up from robots.txt (TODO when robots.txt is
+        wired).
+        """
+        from .feeds import build_sitemap, PUBLIC_MARKETING_PATHS
+        host = (
+            request.headers.get("x-forwarded-proto", "https")
+            + "://"
+            + request.headers.get("host", "ai-billing-audit.ashbi.ca")
+        )
+        return Response(
+            content=build_sitemap(host, PUBLIC_MARKETING_PATHS),
+            media_type="application/xml; charset=utf-8",
         )
 
     @app.get("/contact", response_class=HTMLResponse)
