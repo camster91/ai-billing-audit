@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Zorva for family medicine — Alberta clinics{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Zorva for family medicine</h1>
+    <p class="sub">
+      For the 5&ndash;20-physician family-medicine practice with
+      a dedicated billing desk. The high-volume claim shape
+      is the one Zorva is calibrated against.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/try">Open the sample claim</a>
+</header>
+
+<section class="for-fm-intro" aria-label="Why family medicine">
+  <h2>Why Zorva is calibrated for family medicine</h2>
+  <p>
+    The v12 prompt was trained on a 19-encounter, 31-gold-finding
+    val set that is mostly family medicine. The audit rules
+    that fire most often &mdash; modifier-25 unlock, CMGP,
+    referring-NPI for the lab / specialist referral pattern
+    &mdash; are family-medicine patterns. Zorva's recall
+    on these is meaningfully higher than its aggregate F1
+    would suggest.
+  </p>
+  <p>
+    The 7 highest-yield rules for family-medicine practices
+    are listed below. Every one of them is a pattern a
+    family-medicine biller sees on real claims every week.
+  </p>
+</section>
+
+<section class="for-fm-rules" aria-label="The 7 highest-yield family-medicine rules">
+  <h2>The 7 highest-yield rules for family medicine</h2>
+  <ol class="for-fm-rules__list">
+    <li>
+      <h3>Modifier-25 unlock</h3>
+      <p>
+        When a procedure and an E/M visit are billed on
+        the same day, the E/M needs a -25 modifier. Without
+        it, AHCIP bundles the visit into the procedure and
+        pays $0. Family-medicine clinics that do in-office
+        procedures (joint injections, biopsies, IUDs)
+        leave real money on the table here.
+      </p>
+    </li>
+    <li>
+      <h3>CMGP on same-day GP + procedure</h3>
+      <p>
+        A GP performing a procedure same-day as a visit
+        should declare CMGP. Without it, the visit line
+        pays 50%. Family-medicine volume makes this the
+        single highest-yield rule on a per-month basis.
+      </p>
+    </li>
+    <li>
+      <h3>Referring NPI for specialist referral</h3>
+      <p>
+        Specialist visit billed but the clinical note
+        mentions a referring provider. AHCIP denies with
+        80G if the referring_provider_npi is missing. Easy
+        to miss because the referring NPI is not on the
+        clinic's own claim &mdash; it's on the receiving
+        specialist's claim. Zorva flags when the clinical
+        note suggests a referral pattern.
+      </p>
+    </li>
+    <li>
+      <h3>Lab coverage</h3>
+      <p>
+        Lab billed without an AHCIP-eligible diagnosis
+        pointer. Common in family medicine because
+        in-house lab is high-volume and the diagnosis-
+        pointer field is easy to miss. Zorva flags when a
+        lab is billed but no HI segment carries an
+        AHCIP-eligible code.
+      </p>
+    </li>
+    <li>
+      <h3>After-hours premium</h3>
+      <p>
+        Visits billed outside the standard 9&ndash;5
+        window without the after-hours premium code.
+        Common in walk-in components of family-medicine
+        practices. Zorva flags when the service time
+        suggests an after-hours premium is missing.
+      </p>
+    </li>
+    <li>
+      <h3>Preventive opportunity (AWV / HMV)</h3>
+      <p>
+        Patient eligible for a preventive service (AWV,
+        HMV, well-baby) that wasn't billed. Zorva flags
+        when the patient is age-eligible and there's no
+        AWV / HMV code in the last 12 months.
+      </p>
+    </li>
+    <li>
+      <h3>Duplicate service</h3>
+      <p>
+        Same procedure billed twice in a 30-day window
+        for the same patient. Zorva flags when the
+        diagnosis and the procedure are identical across
+        two claims inside the rolling window. The clinic
+        may not realize one was a duplicate.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="for-fm-economics" aria-label="Practice economics">
+  <h2>What this is worth on the biller's desk</h2>
+  <p>
+    A 5&ndash;10-physician family-medicine practice submitting
+    3,000&ndash;5,000 AHCIP claims per month will see roughly
+    800&ndash;1,500 findings per month from the auditor.
+    Of those, the biller accepts 600&ndash;1,200 (about
+    75% are real findings) and dismisses 200&ndash;300.
+  </p>
+  <p>
+    The per-finding dollar impact varies widely &mdash;
+    modifier-25 unlock is about $50 per claim, CMGP is
+    about $85, referring NPI is about $45. The total
+    recoverable monthly revenue for a 4,000-claim practice
+    is in the range of CAD $30,000&ndash;$80,000.
+  </p>
+  <p>
+    Run the numbers on your own claim shape with the
+    <a href="/roi">ROI calculator</a> or
+    <a href="/contact">send 100 of your own claims</a>
+    and we'll send a 1-page report.
+  </p>
+</section>
+
+<section class="for-fm-casestudy" aria-label="A worked example">
+  <h2>A worked example</h2>
+  <p>
+    50-year-old patient with established hypertension and a
+    new sore shoulder. The biller billed a 99213 (level-3
+    established-patient office visit) and a 20610 (major
+    joint injection, shoulder). The auditor flagged 3 things:
+  </p>
+  <ul>
+    <li>
+      Referring NPI missing on the specialist referral
+      (~$45 impact, AHCIP 80G)
+    </li>
+    <li>
+      CMGP not declared on the same-day GP + procedure
+      (~$85 impact, AHCIP GR 4.4)
+    </li>
+    <li>
+      Modifier-25 not appended on the separately-
+      identifiable E/M (~$50 impact, AHCIP GR 1.4)
+    </li>
+  </ul>
+  <p>
+    <a href="/try">Open the sample claim</a> to see the
+    full audit, the rule citations, and the quote from
+    the clinical note.
+  </p>
+</section>
+
+<aside class="for-fm-cta">
+  <h2>For the family-medicine biller</h2>
+  <p>
+    <a href="/how-it-works">How Zorva works</a> &middot;
+    <a href="/pricing">Pricing</a> &middot;
+    <a href="/contact">Send 100 claims, get a 1-page audit</a>
+  </p>
+</aside>
+
+{% endblock %}

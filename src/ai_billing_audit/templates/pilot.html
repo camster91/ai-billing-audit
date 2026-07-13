@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}60-day no-cost pilot — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>60-day no-cost pilot</h1>
+    <p class="sub">
+      No fee. No commitment. Real numbers, on your real claims.
+      Walk away at the end, and we delete everything you shared
+      with us. This page is what you'd hand to your billing
+      lead.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/contact">Request a pilot</a>
+</header>
+
+<section class="pilot-summary" aria-label="Pilot summary">
+  <h2>What it is</h2>
+  <p>
+    A 60-day pilot of Zorva for one clinic. You bring 100
+    claims (any of 837P, CSV, or paste-form). We run the
+    auditor. You get a 1-page finding-by-finding report.
+    We meet weekly to walk through what the system caught
+    and missed. At the end of 60 days you decide whether to
+    roll Zorva out to the rest of the practice. If you
+    don't continue, we delete your data per the commitment
+    in <a href="/security">/security</a> and part as friends.
+  </p>
+</section>
+
+<section class="pilot-timeline" aria-label="Pilot timeline">
+  <h2>Timeline (60 days)</h2>
+  <ol class="pilot-timeline__steps">
+    <li>
+      <h3>Weeks 1&ndash;2 &mdash; Connect</h3>
+      <p>
+        We sign the HIA IMA (Alberta) or BAA (US). We get a
+        read-only data feed or a sample file from your billing
+        system. We stand up your dashboard. We give your
+        biller a 1-page cheat sheet.
+      </p>
+    </li>
+    <li>
+      <h3>Weeks 3&ndash;6 &mdash; Shadow run + weekly review</h3>
+      <p>
+        The auditor runs alongside your normal process. We
+        collect findings. Your biller accepts the real ones
+        and dismisses the false positives. We meet weekly
+        (30 minutes, your timezone) to walk through what the
+        system caught and missed. The per-clinic F1 widget
+        updates in real time as the biller acts.
+      </p>
+    </li>
+    <li>
+      <h3>Weeks 7&ndash;8 &mdash; Measure and decide</h3>
+      <p>
+        We measure the lift against your day-30 baseline. We
+        write up the ROI &mdash; how many dollars the auditor
+        surfaced, how many of those dollars were billed
+        instead of denied, and how many F1 the system hit
+        on your real claims. You decide whether to continue
+        at one of the three tiers on <a href="/pricing">/pricing</a>.
+        If you don't continue, we delete everything per the
+        commitment in <a href="/security">/security</a>.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="pilot-deliverables" aria-label="Pilot deliverables">
+  <h2>What you get</h2>
+  <ul>
+    <li>
+      <strong>A 1-page audit of your first 100 claims</strong>
+      &mdash; finding-by-finding, with the rule that fired,
+      the quote from the clinical note, the per-finding
+      dollar impact, and the one-line fix.
+    </li>
+    <li>
+      <strong>Dashboard access for the pilot period</strong>
+      &mdash; see the live audit results as the biller acts
+      on them.
+    </li>
+    <li>
+      <strong>An exportable action plan (CSV)</strong>
+      &mdash; your biller can drop it straight into their
+      workflow.
+    </li>
+    <li>
+      <strong>A 30-minute review call at the end of the
+      pilot</strong> &mdash; we walk through every finding
+      together.
+    </li>
+  </ul>
+  <h2>What we get</h2>
+  <ul>
+    <li>
+      <strong>Real-world data for R/P validation</strong>
+      &mdash; your claims help us calibrate the auditor on
+      patterns we don't see in synthetic data.
+    </li>
+    <li>
+      <strong>A testimonial from your billing lead at the
+      end of the pilot</strong> &mdash; only if you're happy
+      with the result. If you're not, no ask.
+    </li>
+  </ul>
+</section>
+
+<section class="pilot-handling" aria-label="Data handling">
+  <h2>Data handling</h2>
+  <ul>
+    <li>
+      <strong>Encrypted in transit</strong> &mdash; TLS 1.3 on
+      every connection to the dashboard and the upload
+      endpoint.
+    </li>
+    <li>
+      <strong>Encrypted at rest</strong> &mdash; claims and
+      findings are stored in encrypted storage;
+      decryption keys are scoped to the pilot tenant.
+    </li>
+    <li>
+      <strong>Salted SHA-256 patient pseudonyms</strong>
+      &mdash; patient_id is hashed before any cross-claim
+      correlation, with a per-deployment pepper that fails
+      fast at startup if missing.
+    </li>
+    <li>
+      <strong>Hash-chained audit trail</strong> &mdash; every
+      state-changing click signs the prior row, re-verifiable
+      offline. A privacy officer can reconstruct the full
+      chain.
+    </li>
+    <li>
+      <strong>Deleted on request</strong> &mdash; at the end of
+      the pilot, on one email from your billing lead, we
+      delete every claim, every finding, and every audit log
+      entry within 7 business days. We send a written
+      confirmation.
+    </li>
+    <li>
+      <strong>Never shared with third parties</strong> &mdash;
+      no subcontractors, no analytics resale, no model-training
+      data sales. Your data stays in your tenant.
+    </li>
+  </ul>
+</section>
+
+<section class="pilot-ask" aria-label="The only ask">
+  <h2>The only ask</h2>
+  <ul>
+    <li>
+      <strong>One 10-minute call</strong> with your billing
+      lead at the start, so we understand your claim mix and
+      where the audit pain actually lives.
+    </li>
+    <li>
+      <strong>A signed IMA before any data moves.</strong>
+      For Alberta clinics, the HIA IMA template is in lawyer
+      review (target sign-off 2026-Q3). For US pilots, the
+      HIPAA BAA template is on request.
+    </li>
+  </ul>
+</section>
+
+<aside class="pilot-cta">
+  <h2>Ready to start, or just want to ask a few questions first?</h2>
+  <p>
+    <a href="/contact">Send us a note</a> &mdash; we read every
+    one and reply within one business day.
+  </p>
+</aside>
+
+{% endblock %}

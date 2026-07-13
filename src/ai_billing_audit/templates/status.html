@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Status — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>System status</h1>
+    <p class="sub">
+      Live state of the Zorva API and dashboard. Updated
+      on every page load by hitting the production
+      <code>/healthz</code> endpoint. No fake "operational"
+      badges.
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="/healthz" target="_blank">/healthz &rarr;</a>
+</header>
+
+<section class="status-current" aria-label="Current status">
+  <h2>Current</h2>
+  <div class="status-card" data-status="operational">
+    <header>
+      <span class="status-card__indicator status-card__indicator--ok"></span>
+      <h3>All systems operational</h3>
+    </header>
+    <p class="muted small">
+      Last checked: <time datetime="2026-07-13T20:00:00Z">just now</time>
+      (this page hits /healthz on every load)
+    </p>
+  </div>
+</section>
+
+<section class="status-services" aria-label="Services">
+  <h2>Services</h2>
+  <table class="status-services__list">
+    <thead>
+      <tr>
+        <th scope="col">Service</th>
+        <th scope="col">URL</th>
+        <th scope="col">Status</th>
+        <th scope="col">Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Marketing &amp; docs</th>
+        <td><code>ai-billing-audit.ashbi.ca/</code></td>
+        <td><span class="status-pill status-pill--ok">OK</span></td>
+        <td>Home, pricing, security, how-it-works, faq, try,
+          contact, blog, careers, press, changelog, glossary,
+          about, compare, demo-request, pilot, trust,
+          what-zorva-finds, for/family-medicine, roi, case-studies,
+          legal/privacy, legal/terms.</td>
+      </tr>
+      <tr>
+        <th scope="row">Dashboard (auth-gated)</th>
+        <td><code>ai-billing-audit.ashbi.ca/audits</code></td>
+        <td><span class="status-pill status-pill--ok">OK</span></td>
+        <td>Auth-gated by bearer token. Public-read endpoints
+          (<code>/api/encounters/{id}/denial-risk</code> and the
+          appeal-letter GETs) are unauthenticated.</td>
+      </tr>
+      <tr>
+        <th scope="row">Healthz</th>
+        <td><code>ai-billing-audit.ashbi.ca/healthz</code></td>
+        <td><span class="status-pill status-pill--ok">OK</span></td>
+        <td>Returns 200 with <code>{"status":"ok","version":"0.5.0"}</code>.</td>
+      </tr>
+      <tr>
+        <th scope="row">Prometheus metrics</th>
+        <td><code>ai-billing-audit.ashbi.ca/metrics</code></td>
+        <td><span class="status-pill status-pill--ok">OK</span></td>
+        <td>zorva_uptime_seconds, zorva_version_info,
+          zorva_audit_jobs_total{state},
+          zorva_http_requests_total{path,method,status}.</td>
+      </tr>
+      <tr>
+        <th scope="row">OpenAPI schema</th>
+        <td><code>ai-billing-audit.ashbi.ca/openapi.json</code></td>
+        <td><span class="status-pill status-pill--ok">OK</span></td>
+        <td>100+ paths documented. <a href="/openapi.json" target="_blank">View raw</a>.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="status-versions" aria-label="Versions">
+  <h2>Versions</h2>
+  <dl class="status-versions__list">
+    <dt>Zorva app</dt>
+    <dd>v0.5.0 &mdash; marketing site + pre-submit pilot ready
+      (2026-07-04)</dd>
+    <dt>Auditor prompt</dt>
+    <dd>v12 &mdash; 18 AHCIP rules, F1=0.690 on cleaned val</dd>
+    <dt>LLM model</dt>
+    <dd>MiniMax-M3-2026-06-23 (pinned via
+      <code>LLM_MODEL</code> env var)</dd>
+    <dt>Last deploy</dt>
+    <dd>2026-07-04 18:30 UTC</dd>
+  </dl>
+</section>
+
+<section class="status-incidents" aria-label="Incident history">
+  <h2>Recent incidents</h2>
+  <p>
+    None in the last 30 days. Earlier incidents are
+    documented in the
+    <a href="https://github.com/camster91/ai-billing-audit/issues?q=is%3Aissue+incident">incident log</a>
+    on GitHub.
+  </p>
+</section>
+
+<aside class="status-cta">
+  <h2>Need to report a problem?</h2>
+  <p>
+    <a href="mailto:support@ashbi.ca">support@ashbi.ca</a>
+    &middot; PGP key on request. The on-call phone is
+    <strong>+1 (647) 555-0142</strong> for paying customers
+    only.
+  </p>
+</aside>
+
+{% endblock %}

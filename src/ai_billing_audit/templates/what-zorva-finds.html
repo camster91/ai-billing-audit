@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}What Zorva finds — sample AHCIP findings{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>What Zorva finds</h1>
+    <p class="sub">
+      A sample of the 18 AHCIP rules in v12, with the
+      denial code or underpayment each one catches and
+      the AHCIP General Rule (GR) reference. The full list
+      is in <a href="/how-it-works">/how-it-works</a>.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/try">Open the sample claim</a>
+</header>
+
+<section class="findings-list" aria-label="Sample findings">
+  <article class="finding">
+    <header>
+      <h2>Modifier-25 unlock</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_modifier_25_unlock</code> &middot;
+        <span class="badge badge-high">High severity</span> &middot;
+        <span class="muted small">~$50 / claim</span>
+      </p>
+    </header>
+    <p>
+      When a procedure and an E/M visit are billed on the
+      same day, the E/M needs a -25 modifier to indicate
+      it's a separately identifiable service. Without it,
+      AHCIP bundles the visit into the procedure and pays
+      $0 for it.
+    </p>
+    <p class="muted">
+      AHCIP reference: General Rule 1.4 (modifier-25
+      unlock). Denial code: bundled.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>CMGP on same-day GP + procedure</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_cmgp</code> &middot;
+        <span class="badge badge-high">High severity</span> &middot;
+        <span class="muted small">~$85 / claim</span>
+      </p>
+    </header>
+    <p>
+      A GP performing a procedure same-day as an office
+      visit should declare the CMGP modifier. Without it,
+      the visit line is reduced to 50% under AHCIP GR 4.4.
+    </p>
+    <p class="muted">
+      AHCIP reference: General Rule 4.4. Denial code: 50%
+      visit-line underpayment.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Referring provider NPI missing</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_referring_npi</code> &middot;
+        <span class="badge badge-high">High severity</span> &middot;
+        <span class="muted small">~$45 / claim</span>
+      </p>
+    </header>
+    <p>
+      Specialist visit billed but the clinical note
+      mentions a referral. AHCIP denies with 80G if the
+      referring_provider_npi is missing.
+    </p>
+    <p class="muted">
+      AHCIP reference: GR 6.2 (referring provider NPI
+      required for specialist claims). Denial code: 80G.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Non-insured service</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_non_insured_service</code> &middot;
+        <span class="badge badge-high">High severity</span> &middot;
+        <span class="muted small">Full claim reject</span>
+      </p>
+    </header>
+    <p>
+      Service billed to AHCIP that is non-insured (e.g.
+      cosmetic, AWV without proper eligibility, certain
+      travel immunizations). The claim is rejected in
+      full rather than underpaid.
+    </p>
+    <p class="muted">
+      AHCIP reference: Schedule of Medical Benefits,
+      section on non-insured services. Denial code: 05A.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Telehealth consent missing</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_telehealth_consent</code> &middot;
+        <span class="badge badge-high">High severity</span> &middot;
+        <span class="muted small">Full claim reject</span>
+      </p>
+    </header>
+    <p>
+      Telehealth visit billed without documented patient
+      consent. AHCIP requires explicit consent for
+      virtual visits.
+    </p>
+    <p class="muted">
+      AHCIP reference: GR 3.3 (telehealth consent).
+      Denial code: 31.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Lab coverage missing</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_lab_coverage</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$30 / claim</span>
+      </p>
+    </header>
+    <p>
+      Lab billed without an AHCIP-eligible diagnosis
+      pointer. Common in family medicine where in-house
+      lab is high-volume.
+    </p>
+    <p class="muted">
+      AHCIP reference: Schedule of Medical Benefits,
+      lab section. Denial code: 39 or 39DA.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Diagnosis linkage missing</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_dx_linkage</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$20 / claim</span>
+      </p>
+    </header>
+    <p>
+      Line item with no diagnosis pointer. The procedure
+      is medically necessary, but the linkage to a
+      specific diagnosis is missing. Bundling risk.
+    </p>
+    <p class="muted">
+      AHCIP reference: GR 6.1 (diagnosis linkage).
+      Denial code: 37 or 37A.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Preventive opportunity (AWV / HMV)</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_preventive_opportunity</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$50 / missed visit</span>
+      </p>
+    </header>
+    <p>
+      Patient eligible for a preventive service (AWV, HMV,
+      well-baby) that wasn't billed. Zorva flags when the
+      patient is age-eligible and there's no AWV / HMV
+      code in the last 12 months.
+    </p>
+    <p class="muted">
+      AHCIP reference: AWV and HMV billing rules in the
+      Schedule of Medical Benefits.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Specialist consultation referral</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_consultation</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$70 / claim</span>
+      </p>
+    </header>
+    <p>
+      Specialist consult billed without prior-referral
+      documentation. AHCIP requires the referring
+      provider's note on file.
+    </p>
+    <p class="muted">
+      AHCIP reference: GR 6.2 (specialist referral).
+      Denial code: 63 or 63A.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>After-hours premium missed</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_after_hours</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$40 / claim</span>
+      </p>
+    </header>
+    <p>
+      Visit billed outside the standard 9&ndash;5 window
+      without the after-hours premium code. Common in
+      walk-in components of family-medicine practices.
+    </p>
+    <p class="muted">
+      AHCIP reference: After-hours premium schedule.
+      Denial code: not applicable (underpayment).
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Duplicate service</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_duplicate_service</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">~$50 / claim</span>
+      </p>
+    </header>
+    <p>
+      Same procedure billed twice in a 30-day window for
+      the same patient. The clinic may not realize one was
+      a duplicate.
+    </p>
+    <p class="muted">
+      AHCIP reference: GR 6.4 (duplicate procedure
+      detection). Denial code: 80G or duplicate-recovery.
+    </p>
+  </article>
+
+  <article class="finding">
+    <header>
+      <h2>Age-inappropriate service</h2>
+      <p class="finding__meta">
+        <code>rule_ahcip_age_inappropriate</code> &middot;
+        <span class="badge badge-medium">Medium severity</span> &middot;
+        <span class="muted small">Full claim reject</span>
+      </p>
+    </header>
+    <p>
+      Service billed that is age-restricted (e.g.
+      pediatric vaccine on an adult, geriatric screening
+      on a young patient). AHCIP rejects in full.
+    </p>
+    <p class="muted">
+      AHCIP reference: Schedule of Medical Benefits,
+      age-restricted codes. Denial code: 67A.
+    </p>
+  </article>
+</section>
+
+<aside class="findings-cta">
+  <h2>See all 18 rules</h2>
+  <p>
+    <a href="/how-it-works">/how-it-works</a> has the complete
+    list with the rule_id, severity bucket, and the AHCIP
+    reference for each one. Or
+    <a href="/try">open the sample claim</a> to see them
+    applied to a real AHCIP-style encounter.
+  </p>
+</aside>
+
+{% endblock %}

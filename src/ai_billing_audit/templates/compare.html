@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Zorva vs the alternatives — 2026 comparison{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Zorva vs the alternatives</h1>
+    <p class="sub">
+      Pre-submit AHCIP audit is a narrow market. Three product
+      categories you might compare us against: billing
+      service companies (Dr. Bill, Petal), EMR billing modules
+      (TELUS PS Suite, OSCAR Pro, Accuro), and post-denial
+      recovery tools (CodaMetrix, AKASA, SmarterDx). Each does
+      something different. Here's where Zorva fits.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/contact">Send 100 claims, get a 1-page audit</a>
+</header>
+
+<section class="compare-frame" aria-label="The comparison">
+  <h2>The 60-second frame</h2>
+  <ul class="compare-points">
+    <li>
+      <strong>Zorva is pre-submit.</strong> Every claim goes
+      through the auditor before it leaves your desk. Other tools
+      either do post-denial recovery (we don't) or pre-submit
+      form-level checks (we do, plus we read the clinical note).
+    </li>
+    <li>
+      <strong>Zorva is flat-fee.</strong> No percentage of
+      recovered revenue. No per-claim charge. The clinics that
+      need the most help get the same price as the clinics that
+      need the least.
+    </li>
+    <li>
+      <strong>Zorva is Alberta-first.</strong> v12 ships with
+      18 AHCIP rules, not 18 generic US-CPT rules. OHIP and
+      MSP are on the 2027 roadmap.
+    </li>
+    <li>
+      <strong>Zorva is no-EMR.</strong> The auditor reads
+      standard 837P payloads. No integration with your EMR
+      required for the pilot. EMR integrations on the 2026-Q4
+      roadmap.
+    </li>
+    <li>
+      <strong>Zorva is audit-defensible.</strong> Hash-chained
+      audit trail. Re-verify offline. A privacy officer can
+      reconstruct the full chain.
+    </li>
+  </ul>
+</section>
+
+<section class="compare-table" aria-label="Side-by-side comparison">
+  <h2>Side-by-side</h2>
+  <table class="compare-matrix">
+    <thead>
+      <tr>
+        <th scope="col">Capability</th>
+        <th scope="col" class="zorva-cell">Zorva</th>
+        <th scope="col">Dr. Bill</th>
+        <th scope="col">PetalMD</th>
+        <th scope="col">EMR billing module</th>
+        <th scope="col">Post-denial recovery</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Pre-submit audit (before AHCIP)</th>
+        <td class="zorva-cell">Yes &mdash; reads clinical note + claim</td>
+        <td>No (managed submission only)</td>
+        <td>No (managed submission only)</td>
+        <td>Form-level checks only</td>
+        <td>No (post-denial)</td>
+      </tr>
+      <tr>
+        <th scope="row">AHCIP rule coverage</th>
+        <td class="zorva-cell">18 rules in v12 (modifier-25, CMGP, lab, telehealth, etc.)</td>
+        <td>None published</td>
+        <td>None published</td>
+        <td>Form-level only</td>
+        <td>Varied</td>
+      </tr>
+      <tr>
+        <th scope="row">OHIP and MSP support</th>
+        <td class="zorva-cell">2027 roadmap</td>
+        <td>Yes (Ontario-native)</td>
+        <td>Yes (Quebec-native)</td>
+        <td>Varies by province</td>
+        <td>Varied</td>
+      </tr>
+      <tr>
+        <th scope="row">Pricing model</th>
+        <td class="zorva-cell">Flat monthly fee, $499&ndash;$2,999+ CAD</td>
+        <td>% of collections</td>
+        <td>% of collections</td>
+        <td>Included in EMR fee</td>
+        <td>% of recovered revenue</td>
+      </tr>
+      <tr>
+        <th scope="row">Bring your own LLM</th>
+        <td class="zorva-cell">Yes (your keys, your data)</td>
+        <td>No</td>
+        <td>No</td>
+        <td>No</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <th scope="row">Audit trail</th>
+        <td class="zorva-cell">Hash-chained, re-verifiable offline</td>
+        <td>Application log, not exportable</td>
+        <td>Application log, not exportable</td>
+        <td>Application log</td>
+        <td>Application log</td>
+      </tr>
+      <tr>
+        <th scope="row">HIA Information Manager Agreement</th>
+        <td class="zorva-cell">Template ready (lawyer review 2026-Q3)</td>
+        <td>Yes (BAA)</td>
+        <td>Yes (BAA)</td>
+        <td>Varies by vendor</td>
+        <td>Varies by vendor</td>
+      </tr>
+      <tr>
+        <th scope="row">PHIPA / HIPAA / NOM-024</th>
+        <td class="zorva-cell">PHIPA / HIPAA on request; NOM-024 on 2027 roadmap</td>
+        <td>PHIPA yes; HIPAA on request</td>
+        <td>Quebec-native</td>
+        <td>Varies by province</td>
+        <td>Varies</td>
+      </tr>
+      <tr>
+        <th scope="row">EMR integration required</th>
+        <td class="zorva-cell">No (pilot uses 837P upload)</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>Yes (it's the EMR)</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <th scope="row">Deterministic runs</th>
+        <td class="zorva-cell">Yes (temperature 0 + seed pinned + model version pinned)</td>
+        <td>Not published</td>
+        <td>Not published</td>
+        <td>N/A (form rules)</td>
+        <td>Not published</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="muted small">
+    Comparison points are based on the vendors' public marketing
+    materials as of 2026-Q3. If a vendor changed their product
+    since, <a href="/contact">let us know</a>.
+  </p>
+</section>
+
+<section class="compare-when" aria-label="When Zorva is not the right fit">
+  <h2>When Zorva is not the right fit</h2>
+  <ul>
+    <li>
+      <strong>You need a managed submission service.</strong>
+      If you want someone else to handle the 837P → H-Link
+      upload for you, Dr. Bill and Petal do that. Zorva
+      doesn't.
+    </li>
+    <li>
+      <strong>You only bill OHIP and want it today.</strong>
+      Zorva is Alberta-first. OHIP and MSP are on the 2027
+      roadmap.
+    </li>
+    <li>
+      <strong>You need your EMR's native billing module.</strong>
+      The EMR billing modules are the right tool for the form
+      level. Zorva is the right tool for the clinical-note
+      level. Use both.
+    </li>
+  </ul>
+</section>
+
+<aside class="compare-cta">
+  <h2>Best way to compare</h2>
+  <p>
+    <a href="/try">Open the sample claim</a> &mdash; see Zorva
+    on a real AHCIP-style encounter. Or
+    <a href="/contact">send 100 of your own</a> and we'll
+    run the auditor and send back a 1-page report you can
+    compare against what your current process finds.
+  </p>
+</aside>
+
+{% endblock %}

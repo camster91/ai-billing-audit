@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Book a 30-minute walkthrough — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Book a 30-minute walkthrough</h1>
+    <p class="sub">
+      For clinic managers, billing leads, and PCN operations
+      directors who want to see Zorva on their own claims
+      before signing anything. We do a live walkthrough on a
+      call, then run the auditor on the sample you bring.
+    </p>
+  </div>
+</header>
+
+<section class="demo-form" aria-label="Walkthrough request form">
+  <div class="demo-form__container">
+    <h2>What we'll cover in 30 minutes</h2>
+    <ol>
+      <li>
+        <strong>10 min &mdash; the audit loop.</strong>
+        What the auditor reads, what rules it pulls, how
+        findings surface for your biller's review. Live demo
+        on the <a href="/try">sample claim</a> or on your
+        own if you bring a 837P.
+      </li>
+      <li>
+        <strong>10 min &mdash; the HIA / IMA walk-through.</strong>
+        The Alberta Information Manager Agreement template
+        in detail. What the IMA actually obligates each side
+        to. How the data residency, encryption, and audit
+        trail map to the agreement.
+      </li>
+      <li>
+        <strong>10 min &mdash; pricing and pilot terms.</strong>
+        Where your clinic sits on the tier ladder (Solo /
+        Practice / Network). What the 60-day no-cost pilot
+        actually delivers. What happens at the end.
+      </li>
+    </ol>
+
+    <h2>Before the call</h2>
+    <ul>
+      <li>
+        <strong>Read</strong> the
+        <a href="/security">security page</a> &mdash; it's the
+        privacy officer's one-pager and answers the 5 questions
+        they'll ask.
+      </li>
+      <li>
+        <strong>Forward</strong> the
+        <a href="/security">security page</a> to your privacy
+        officer. They can flag concerns before the call so we
+        can address them live.
+      </li>
+      <li>
+        <strong>Bring</strong> a 100-claim sample if you have
+        one. CSV, 837P, or paste-form. We'll run the auditor
+        live and you'll see real findings on your own data
+        before signing anything.
+      </li>
+    </ul>
+
+    <h2>Request a walkthrough</h2>
+    <p>
+      Tell us about your clinic and a preferred time. We'll
+      confirm within one business day.
+    </p>
+
+    <form class="contact-form" method="post" action="/contact">
+      <label class="contact-form__label">
+        Your name
+        <input type="text" name="name" maxlength="200" required value="" />
+      </label>
+
+      <label class="contact-form__label">
+        Clinic name
+        <input type="text" name="clinic" maxlength="200" required value="" />
+      </label>
+
+      <label class="contact-form__label">
+        Email
+        <input type="email" name="email" maxlength="320" required value="" />
+      </label>
+
+      <label class="contact-form__label">
+        Monthly claim volume (approximate)
+        <input type="number" name="monthly_claims" min="1" step="1" value="" />
+      </label>
+
+      <label class="contact-form__label">
+        EMR / billing system
+        <select name="emr">
+          <option value="">—</option>
+          <option value="telus-ps-suite">TELUS PS Suite</option>
+          <option value="oscar-pro">OSCAR Pro</option>
+          <option value="accuro">Accuro (QHR)</option>
+          <option value="med-access">Med Access (TELUS)</option>
+          <option value="epic">Epic</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label class="contact-form__label">
+        Preferred time
+        <input type="text" name="message" maxlength="2000" placeholder="e.g. Tuesday 2pm MT, or 'any time this week'" />
+      </label>
+
+      <button type="submit" class="btn btn-primary contact-form__submit">
+        Request a walkthrough
+      </button>
+
+      <p class="contact-form__fine-print muted small">
+        We will only use the email to schedule the call. We
+        will not add you to a mailing list. We will not share
+        the contact details with anyone.
+      </p>
+    </form>
+  </div>
+</section>
+
+<section class="demo-also" aria-label="Other ways to learn about Zorva">
+  <h2>Not ready for a call?</h2>
+  <div class="demo-also__grid">
+    <article class="demo-also__card">
+      <h3>Open the sample claim</h3>
+      <p>
+        See the auditor on a real AHCIP-style encounter. Three
+        findings, the rules that fired, the dollar impact.
+      </p>
+      <a class="btn btn-ghost" href="/try">Open the sample</a>
+    </article>
+    <article class="demo-also__card">
+      <h3>Send 100 of your own claims</h3>
+      <p>
+        We run the auditor and send back a 1-page report. No
+        fee, no follow-up, no call required.
+      </p>
+      <a class="btn btn-ghost" href="/contact">Send 100 claims</a>
+    </article>
+    <article class="demo-also__card">
+      <h3>Forward the security page to your privacy officer</h3>
+      <p>
+        The security page answers the 5 questions your privacy
+        officer will ask. They can sign off before you book a
+        call.
+      </p>
+      <a class="btn btn-ghost" href="/security">Open /security</a>
+    </article>
+  </div>
+</section>
+
+{% endblock %}

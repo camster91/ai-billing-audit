@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Subprocessors — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Subprocessors</h1>
+    <p class="sub">
+      Every third party that touches your data, what they
+      touch, and where the agreement lives. Updated 2026-07-13.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/legal/privacy">Privacy doc</a>
+</header>
+
+<section class="trust-intro" aria-label="Subprocessor overview">
+  <h2>What a subprocessor is</h2>
+  <p>
+    A subprocessor is a third party that handles your data
+    on Zorva's behalf &mdash; hosting, LLM inference, email
+    delivery, error tracking. This page is the master list.
+    Any new subprocessor is added to this page 30 days
+    before it goes live, with a changelog entry at
+    <a href="/changelog">/changelog</a>.
+  </p>
+</section>
+
+<section class="trust-table" aria-label="Subprocessor list">
+  <h2>The list</h2>
+  <table class="subprocessors">
+    <thead>
+      <tr>
+        <th scope="col">Subprocessor</th>
+        <th scope="col">What they touch</th>
+        <th scope="col">Where</th>
+        <th scope="col">Agreement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Hostinger (VPS hosting)</th>
+        <td>All data at rest. Application logs. Audit chain JSONL.</td>
+        <td>Toronto, Ontario (server, 187.77.26.99)</td>
+        <td>Hostinger's standard terms of service; HIA IMA
+          references the facility in Schedule A.</td>
+      </tr>
+      <tr>
+        <th scope="row">MiniMax (LLM inference)</th>
+        <td>Clinical note + claim payload + ruleset, sent
+          for the auditor call. <strong>BYOK:</strong> the
+          customer brings their own LLM key, so this
+          relationship is between the customer and the
+          model provider, not between Zorva and the model
+          provider. Zorva never proxies data through
+          Zorva's own LLM account.</td>
+        <td>Per-customer (BYOK)</td>
+        <td>Customer's own LLM-provider terms. Zorva does
+          not sign a subprocessor agreement because Zorva
+          is not the data controller &mdash; the customer
+          is. The customer signs the LLM-provider terms
+          directly.</td>
+      </tr>
+      <tr>
+        <th scope="row">Stripe (payment processing)</th>
+        <td>Billing details (card, email). Does not touch
+          claim data or audit logs.</td>
+        <td>Stripe's standard regions (US/EU/CA)</td>
+        <td>Stripe's standard services agreement; no PHI
+          is processed because Zorva does not bill
+          per-claim.</td>
+      </tr>
+      <tr>
+        <th scope="row">Resend (transactional email)</th>
+        <td>Biller email address. Doctor-summary outbox
+          notifications. Password-reset flow.</td>
+        <td>Resend's standard regions (US/EU)</td>
+        <td>Resend's standard services agreement. The
+          doctor-summary outbox was on Mailgun until
+          2026-06-26; removed from the live build
+          (operator-outbox JSONL only).</td>
+      </tr>
+      <tr>
+        <th scope="row">Let's Encrypt (TLS certificates)</th>
+        <td>Domain validation challenges only. Does not
+          touch request or response bodies.</td>
+        <td>Per-domain validation endpoint</td>
+        <td>ISRG Subscriber Agreement; no data shared
+          beyond the ACME challenge.</td>
+      </tr>
+      <tr>
+        <th scope="row">GitHub (source control + CI)</th>
+        <td>Source code. Does not touch claim data or
+          audit logs. Deploys are from a private repo
+          with branch protection + required reviews.</td>
+        <td>GitHub Cloud (US)</td>
+        <td>GitHub's standard terms; no PHI in the repo
+          (encounter IDs are demo-grade only).</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="trust-add" aria-label="Adding a subprocessor">
+  <h2>How we add a new subprocessor</h2>
+  <ol>
+    <li>
+      <strong>30 days notice</strong> &mdash; new subprocessor
+      goes here at least 30 days before it touches any
+      customer data.
+    </li>
+    <li>
+      <strong>Customer notification</strong> &mdash; active
+      customers are emailed at <code>contact</code> and given
+      a window to object (we then help them migrate off
+      that subprocessor before it goes live).
+    </li>
+    <li>
+      <strong>Changelog entry</strong> &mdash; added at
+      <a href="/changelog">/changelog</a> with the
+      subprocessor's name, what it touches, and the
+      agreement reference.
+    </li>
+  </ol>
+</section>
+
+<aside class="trust-cta">
+  <h2>Want the legal version?</h2>
+  <p>
+    <a href="/legal/privacy">/legal/privacy</a> is the
+    privacy doc with the subprocessor list referenced in
+    the data-handling section. The HIA IMA template
+    (<a href="https://github.com/camster91/ai-billing-audit/blob/main/docs/BAA_TEMPLATE_HIA.md">docs/BAA_TEMPLATE_HIA.md</a>)
+    has the subprocessor list as Schedule A.
+  </p>
+</aside>
+
+{% endblock %}

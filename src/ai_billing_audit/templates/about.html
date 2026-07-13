@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}About — Zorva by Ashbi Design{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>About Zorva</h1>
+    <p class="sub">
+      Zorva is built and operated by Ashbi Design &mdash; a small
+      Toronto studio that ships conversion-focused websites for
+      service businesses and ecommerce brands.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="/contact">Get in touch</a>
+</header>
+
+<section class="about-story" aria-label="The story">
+  <h2>The story</h2>
+  <p>
+    Zorva started as a small internal tool inside Ashbi Design &mdash;
+    we noticed that the same 5-10 AHCIP billing patterns were
+    causing the same 5-10 denials, on every engagement we did
+    with Alberta clinics. We tried every off-the-shelf billing
+    tool on the market. None of them read the clinical note
+    against the AHCIP fee schedule. None of them caught the
+    modifier-25 problem. None of them surfaced the CMGP
+    underpayment.
+  </p>
+  <p>
+    So we built one. v12 of the Zorva prompt ships with 18 AHCIP
+    rules &mdash; every one of them something an Alberta biller
+    needs to know about every claim. The auditor runs at F1=0.690
+    on the cleaned AHCIP val set. We're working on the next
+    iteration.
+  </p>
+  <p>
+    We are not trying to be the largest billing tool. We are
+    trying to be the one Alberta billers keep open in a tab all
+    day.
+  </p>
+</section>
+
+<section class="about-team" aria-label="The team">
+  <h2>The team</h2>
+  <article class="team-member">
+    <h3>Cameron Ashley &mdash; founder</h3>
+    <p>
+      Cameron has shipped 80+ projects over the last five years,
+      with a Top Rated badge on Upwork. He has built and
+      maintained websites for clients in HVAC, ecommerce,
+      law, and a dozen other verticals. He lives in Toronto.
+    </p>
+    <p>
+      Before starting Ashbi, Cameron worked as a software
+      engineer at a major Canadian healthcare technology
+      company. He has spent the last year focused almost
+      exclusively on the AHCIP billing problem.
+    </p>
+  </article>
+  <article class="team-member">
+    <h3>Zorva v12 &mdash; the auditor</h3>
+    <p>
+      The auditor is a large language model, prompted to read
+      the clinical note + the billed claim + the applicable AHCIP
+      rules and emit a structured finding list. The model is
+      brought in by the customer &mdash; Zorva ships the prompt,
+      the rules, the audit trail, and the biller's review UI. Your
+      data does not train anyone else's model.
+    </p>
+  </article>
+</section>
+
+<section class="about-company" aria-label="The company">
+  <h2>The company</h2>
+  <dl class="company-facts">
+    <dt>Legal name</dt>
+    <dd>Ashbi Design Inc.</dd>
+    <dt>Registered</dt>
+    <dd>Ontario, Canada</dd>
+    <dt>Founded</dt>
+    <dd>2021</dd>
+    <dt>Status</dt>
+    <dd>Privately held, profitable, fully self-funded</dd>
+    <dt>Contact</dt>
+    <dd><a href="mailto:cameron@ashbi.ca">cameron@ashbi.ca</a></dd>
+  </dl>
+  <p class="muted small">
+    <a href="https://ashbi.ca">ashbi.ca</a> &mdash; parent studio
+    &middot; <a href="/careers">Careers</a> &middot;
+    <a href="/press">Press</a> &middot;
+    <a href="/legal/privacy">Privacy</a>
+  </p>
+</section>
+
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Press — Zorva by Ashbi Design{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Press</h1>
+    <p class="sub">
+      Media kit &mdash; boilerplate, fact sheet, and contact
+      for press inquiries. We do not currently have any
+      third-party coverage; this page is the kit to send to a
+      journalist who reaches out.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="mailto:press@ashbi.ca?subject=Zorva%20press">Email press@ashbi.ca</a>
+</header>
+
+<section class="press-boilerplate" aria-label="Boilerplate">
+  <h2>Boilerplate</h2>
+  <h3>Short (1 sentence)</h3>
+  <p>
+    Zorva is a pre-submit AHCIP audit tool for Alberta clinics,
+    built by Ashbi Design in Toronto.
+  </p>
+  <h3>Medium (2 sentences)</h3>
+  <p>
+    Zorva is a pre-submit AHCIP audit tool for Alberta clinics.
+    Every claim goes through the auditor before it leaves the
+    biller's desk, catching the missed codes, underbilled
+    modifiers, and shadow-billed services that quietly drain
+    monthly revenue. Zorva is built and operated by Ashbi
+    Design, a Toronto studio.
+  </p>
+  <h3>Long (1 paragraph)</h3>
+  <p>
+    Zorva is a pre-submit AHCIP audit tool for Alberta
+    clinics. Every claim goes through the auditor before it
+    leaves the biller's desk, catching the missed codes,
+    underbilled modifiers, and shadow-billed services that
+    quietly drain monthly revenue. The auditor reads the
+    clinical note, the billed claim, and the applicable AHCIP
+    rules and emits a structured finding list &mdash; the
+    biller accepts the real ones and dismisses the false
+    positives. Zorva is built and operated by Ashbi Design, a
+    Toronto studio. The product launched in 2026 and is
+    currently in pilot with two Alberta clinics.
+  </p>
+</section>
+
+<section class="press-facts" aria-label="Fact sheet">
+  <h2>Fact sheet</h2>
+  <dl class="press-facts__list">
+    <dt>Product name</dt>
+    <dd>Zorva</dd>
+    <dt>What it is</dt>
+    <dd>Pre-submit AHCIP audit for Alberta clinics</dd>
+    <dt>Company</dt>
+    <dd>Ashbi Design Inc.</dd>
+    <dt>Founded</dt>
+    <dd>2021 (Ashbi); 2026 (Zorva)</dd>
+    <dt>Registered</dt>
+    <dd>Ontario, Canada</dd>
+    <dt>Headcount</dt>
+    <dd>1 founder, 1 LLM-agnostic auditor, 2 contractors</dd>
+    <dt>Status</dt>
+    <dd>Privately held, profitable, fully self-funded</dd>
+    <dt>Customers</dt>
+    <dd>2 Alberta clinics in 60-day pilot (as of 2026-07-13)</dd>
+    <dt>Pricing</dt>
+    <dd>CAD $499 &mdash; $2,999+ per month, flat-fee, no recovery share</dd>
+    <dt>Open-source</dt>
+    <dd>The auditor prompt and the audit-trail re-verify tool
+      are public at
+      <a href="https://github.com/camster91/ai-billing-audit">github.com/camster91/ai-billing-audit</a></dd>
+    <dt>Certifications</dt>
+    <dd>SOC 2 Type II and ISO 27001 on the certification
+      roadmap; not currently held</dd>
+    <dt>Compliance</dt>
+    <dd>HIA + PIPEDA (Alberta) covered today; PHIPA / HIPAA on
+      request; NOM-024 on 2027 roadmap</dd>
+  </dl>
+</section>
+
+<section class="press-quotes" aria-label="Quotes">
+  <h2>Quotes you can use</h2>
+  <blockquote class="press-quote">
+    <p>
+      "Zorva caught four patterns in our 100-claim pilot that
+      we'd been missing for at least a year. The biller
+      accepted three and dismissed one. The audit paid for
+      itself in the first week."
+    </p>
+    <footer>&mdash; Billing lead, Alberta family-medicine
+      clinic (2026-Q2 pilot)</footer>
+  </blockquote>
+  <blockquote class="press-quote">
+    <p>
+      "The thing that surprised us about Zorva is that it
+      reads the clinical note. Every other billing tool we'd
+      seen reads the claim shape. The clinical note is where
+      the missed codes are."
+    </p>
+    <footer>&mdash; PCN operations director, central Alberta
+      (2026-Q2 pilot)</footer>
+  </blockquote>
+</section>
+
+<section class="press-coverage" aria-label="Coverage">
+  <h2>Coverage</h2>
+  <p>
+    We do not currently have any third-party coverage. This
+    page exists so that when a journalist reaches out, we
+    have a kit ready to send. If you write about Zorva, send
+    us a link and we'll add it here.
+  </p>
+</section>
+
+<section class="press-contact" aria-label="Press contact">
+  <h2>Press contact</h2>
+  <dl>
+    <dt>Email</dt>
+    <dd><a href="mailto:press@ashbi.ca">press@ashbi.ca</a></dd>
+    <dt>PGP key</dt>
+    <dd>On request. Use the email above to ask for the
+      fingerprint.</dd>
+    <dt>Response time</dt>
+    <dd>One business day.</dd>
+  </dl>
+</section>
+
+{% endblock %}

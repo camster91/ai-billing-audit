@@ -1187,6 +1187,19 @@ def create_app() -> FastAPI:
                     "/try",
                     "/how-it-works",
                     "/faq",
+                    "/about",
+                    "/compare",
+                    "/demo-request",
+                    "/pilot",
+                    "/blog",
+                    "/careers",
+                    "/press",
+                    "/changelog",
+                    "/glossary",
+                    "/for/family-medicine",
+                    "/trust",
+                    "/what-zorva-finds",
+                    "/status",
                 )
             )
             or (
@@ -4371,6 +4384,128 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(
             request,
             "faq.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/about", response_class=HTMLResponse)
+    def about(request: Request) -> HTMLResponse:
+        """About the founder, the team, the company."""
+        return templates.TemplateResponse(
+            request,
+            "about.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/compare", response_class=HTMLResponse)
+    def compare(request: Request) -> HTMLResponse:
+        """Zorva vs the alternatives &mdash; Dr. Bill, Petal, EMR
+        billing modules, post-denial recovery tools."""
+        return templates.TemplateResponse(
+            request,
+            "compare.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/demo-request", response_class=HTMLResponse)
+    def demo_request(request: Request) -> HTMLResponse:
+        """30-minute walkthrough request form."""
+        return templates.TemplateResponse(
+            request,
+            "demo-request.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/pilot", response_class=HTMLResponse)
+    def pilot(request: Request) -> HTMLResponse:
+        """60-day no-cost pilot &mdash; what it is, timeline, what
+        you get, what we get, data handling."""
+        return templates.TemplateResponse(
+            request,
+            "pilot.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/blog", response_class=HTMLResponse)
+    def blog(request: Request) -> HTMLResponse:
+        """Build notes and AHCIP observations."""
+        return templates.TemplateResponse(
+            request,
+            "blog.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/careers", response_class=HTMLResponse)
+    def careers(request: Request) -> HTMLResponse:
+        """Open roles at Ashbi (engineering + AHCIP SME)."""
+        return templates.TemplateResponse(
+            request,
+            "careers.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/press", response_class=HTMLResponse)
+    def press(request: Request) -> HTMLResponse:
+        """Media kit: boilerplate, fact sheet, press contact."""
+        return templates.TemplateResponse(
+            request,
+            "press.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/changelog", response_class=HTMLResponse)
+    def changelog(request: Request) -> HTMLResponse:
+        """What shipped, when, and the commit that landed it."""
+        return templates.TemplateResponse(
+            request,
+            "changelog.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/glossary", response_class=HTMLResponse)
+    def glossary(request: Request) -> HTMLResponse:
+        """AHCIP / SOMB / HIA / CMGP / PHIPA / HIPAA terms."""
+        return templates.TemplateResponse(
+            request,
+            "glossary.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/for/family-medicine", response_class=HTMLResponse)
+    def for_family_medicine(request: Request) -> HTMLResponse:
+        """Vertical landing for family-medicine practices."""
+        return templates.TemplateResponse(
+            request,
+            "for/family-medicine.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/trust", response_class=HTMLResponse)
+    def trust(request: Request) -> HTMLResponse:
+        """Subprocessor list &mdash; who touches the data, what they
+        touch, where the agreement lives."""
+        return templates.TemplateResponse(
+            request,
+            "trust.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/what-zorva-finds", response_class=HTMLResponse)
+    def what_zorva_finds(request: Request) -> HTMLResponse:
+        """A sample of the 18 AHCIP rules in v12 with the denial
+        code or underpayment each one catches."""
+        return templates.TemplateResponse(
+            request,
+            "what-zorva-finds.html",
+            {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/status", response_class=HTMLResponse)
+    def status(request: Request) -> HTMLResponse:
+        """System status &mdash; live healthz check + services list
+        + versions + recent incidents."""
+        return templates.TemplateResponse(
+            request,
+            "status.html",
             {"tenant_name": _TENANT_NAME},
         )
 

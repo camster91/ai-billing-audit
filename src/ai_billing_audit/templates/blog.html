@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Blog — Zorva{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Blog</h1>
+    <p class="sub">
+      Notes from the build &mdash; what we shipped, what we
+      broke, what we learned about AHCIP billing along the way.
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="/rss.xml">RSS &middot; Atom</a>
+</header>
+
+<section class="blog-list" aria-label="Blog posts">
+  <article class="blog-post">
+    <div class="blog-post__meta">
+      <time datetime="2026-07-13">2026-07-13</time>
+      <span class="muted small">5 min read</span>
+    </div>
+    <h2>
+      <a href="/blog/why-we-built-zorva">
+        Why we built Zorva (and not a billing service)
+      </a>
+    </h2>
+    <p>
+      Most AHCIP billing software falls into one of two
+      categories: a managed submission service (Dr. Bill,
+      Petal), or an EMR billing module (TELUS PS Suite, OSCAR
+      Pro, Accuro). Neither of them reads the clinical note
+      against the AHCIP fee schedule. We built one that does.
+    </p>
+    <p class="muted">
+      Filed under <a href="/blog?tag=about">about</a> &middot;
+      <a href="/blog?tag=ahcip">AHCIP</a>
+    </p>
+  </article>
+
+  <article class="blog-post">
+    <div class="blog-post__meta">
+      <time datetime="2026-07-08">2026-07-08</time>
+      <span class="muted small">7 min read</span>
+    </div>
+    <h2>
+      <a href="/blog/18-ahcip-rules">
+        The 18 AHCIP rules in v12
+      </a>
+    </h2>
+    <p>
+      v12 of the Zorva prompt ships with 18 AHCIP rules
+      covering the highest-yield patterns Alberta billers see
+      on every claim. This post walks through every one &mdash;
+      the rule, the AHCIP denial code it catches, and the
+      one-line fix the biller sees.
+    </p>
+    <p class="muted">
+      Filed under <a href="/blog?tag=ahcip">AHCIP</a> &middot;
+      <a href="/blog?tag=rules">rules</a>
+    </p>
+  </article>
+
+  <article class="blog-post">
+    <div class="blog-post__meta">
+      <time datetime="2026-07-01">2026-07-01</time>
+      <span class="muted small">9 min read</span>
+    </div>
+    <h2>
+      <a href="/blog/why-flat-fee">
+        Why we charge flat-fee, not per-claim
+      </a>
+    </h2>
+    <p>
+      Per-claim pricing punishes the clinics that need the
+      most help. The clinics with the highest denial rates
+      pay the most for a tool that should be making their
+      lives easier. We picked flat-fee because the
+      alternative rewards us for not running the auditor
+      on the trickiest claims.
+    </p>
+    <p class="muted">
+      Filed under <a href="/blog?tag=pricing">pricing</a>
+    </p>
+  </article>
+
+  <article class="blog-post">
+    <div class="blog-post__meta">
+      <time datetime="2026-06-22">2026-06-22</time>
+      <span class="muted small">6 min read</span>
+    </div>
+    <h2>
+      <a href="/blog/why-alberta-first">
+        Why Alberta first
+      </a>
+    </h2>
+    <p>
+      Zorva started as an Ontario-pivot idea. Then we looked
+      at the Alberta AHCIP fee schedule, talked to six
+      Alberta billers, and realized the entire competitive
+      landscape was different. The opportunity was bigger.
+    </p>
+    <p class="muted">
+      Filed under <a href="/blog?tag=go-to-market">go-to-market</a>
+    </p>
+  </article>
+</section>
+
+<aside class="blog-cta">
+  <h2>Want updates?</h2>
+  <p>
+    We post roughly once a month. Mostly build notes, the
+    occasional AHCIP observation, and the rare look at what
+    the auditor got wrong. <a href="/rss.xml">RSS</a> or
+    <a href="/contact">send a note</a> and we'll add you.
+  </p>
+</aside>
+
+{% endblock %}

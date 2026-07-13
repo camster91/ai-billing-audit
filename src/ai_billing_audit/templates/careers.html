@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Careers — Zorva by Ashbi Design{% endblock %}
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <h1>Careers</h1>
+    <p class="sub">
+      Zorva is built and operated by Ashbi Design &mdash; a
+      small Toronto studio. We hire slowly. We hire for
+      craft. The two open roles are below.
+    </p>
+  </div>
+  <a class="btn btn-primary" href="mailto:cameron@ashbi.ca?subject=Zorva%20careers">Apply directly</a>
+</header>
+
+<section class="careers-list" aria-label="Open roles">
+  <article class="career-role">
+    <header>
+      <h2>Senior Backend Engineer &mdash; AHCIP</h2>
+      <p class="career-role__meta">
+        Remote (Canada) &middot; Full-time &middot; CAD $130K&ndash;$180K
+      </p>
+    </header>
+    <p>
+      You are the kind of engineer who reads the AHCIP
+      Schedule of Medical Benefits for fun. You have shipped a
+      production Python service that handles PHI under HIA
+      and you know what an Information Manager Agreement is.
+      You have built an LLM-prompted audit pipeline and
+      watched it pass a privacy-officer review.
+    </p>
+    <h3>What you'll do</h3>
+    <ul>
+      <li>Own the v12 prompt &mdash; the rules, the trigger phrases, the
+        post-validation canonicalization, the SOMB render layer.</li>
+      <li>Extend the auditor to handle H-Link submission, OHIP,
+        and the 2027 PCP migration.</li>
+      <li>Be the technical half of every HIA / BAA
+        conversation with a privacy officer.</li>
+      <li>Maintain the hash-chained audit trail and the
+        re-verify-offline tooling.</li>
+    </ul>
+    <h3>What you need</h3>
+    <ul>
+      <li>5+ years of Python with a FastAPI or Flask service in
+        production (you've been on call).</li>
+      <li>Hands-on with LLM-prompted structured output (litellm,
+        instructor, or roll-your-own).</li>
+      <li>Comfortable reading a regulator's prose and turning
+        it into code that satisfies it.</li>
+      <li>Canadian work authorization (we are not yet sponsoring).</li>
+    </ul>
+  </article>
+
+  <article class="career-role">
+    <header>
+      <h2>Senior Biller &mdash; AHCIP / SOMB Subject Matter Expert</h2>
+      <p class="career-role__meta">
+        Remote (Alberta preferred) &middot; Part-time or full-time &middot;
+        CAD $90&ndash;$120K pro-rated
+      </p>
+    </header>
+    <p>
+      You are a senior AHCIP biller. You have run a biller's
+      desk for at least 5 years at a clinic that submits more
+      than 2,000 AHCIP claims per month. You know the SOMB
+      better than the physicians you bill for. You have
+      seen every modifier-25 mistake and know which ones
+      the auditor misses.
+    </p>
+    <h3>What you'll do</h3>
+    <ul>
+      <li>Review the v12 ruleset once a month and flag new
+        patterns from your own day-to-day work.</li>
+      <li>Co-design the per-clinic F1 widget with the
+        engineering team so it reflects what billers actually
+        use.</li>
+      <li>Co-author the cold-outreach copy with the founder so
+        it sounds like a biller wrote it (because one did).</li>
+      <li>Run the first 60-day pilot on a real Alberta clinic
+        alongside the biller on-site.</li>
+    </ul>
+    <h3>What you need</h3>
+    <ul>
+      <li>5+ years billing for an Alberta clinic, PCN, or
+        hospital family-medicine department.</li>
+      <li>Comfortable with spreadsheets and the AHCIP SOMB
+        PDF (you've already got the digital copy).</li>
+      <li>Direct, plain-English writing style. The privacy
+        officer is not your audience; the biller is.</li>
+    </ul>
+  </article>
+</section>
+
+<section class="careers-also" aria-label="Other roles at Ashbi">
+  <h2>Other roles at Ashbi</h2>
+  <p>
+    The Zorva roles above are the only ones currently open.
+    Ashbi Design (Cameron's studio) also takes on contract
+    WP + Shopify work. If you're a senior engineer or
+    designer and you want a steady flow of small
+    engagements, <a href="mailto:cameron@ashbi.ca?subject=Ashbi%20contract%20work">drop a note</a>.
+  </p>
+</section>
+
+<aside class="careers-cta">
+  <h2>Don't see your role?</h2>
+  <p>
+    <a href="mailto:cameron@ashbi.ca?subject=Zorva%20careers">Send a note anyway</a>
+    &mdash; if the timing is right we'll find one. The Zorva
+    team is small and the next 2 hires are likely to be
+    partners rather than employees.
+  </p>
+</aside>
+
+{% endblock %}
