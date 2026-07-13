@@ -234,4 +234,11 @@ PUBLIC_MARKETING_PATHS = [
     "/try",
     "/what-zorva-finds",
     "/audits",  # dashboard
+    # Per-post blog pages (P0 audit fix — previously the blog index
+    # linked to 4 /blog/{slug} URLs that 404'd). Slugs are the
+    # BLOG_POSTS_DETAIL keys in blog_posts.py.
+    "/blog/why-we-built-zorva",
+    "/blog/18-ahcip-rules",
+    "/blog/why-flat-fee",
+    "/blog/why-alberta-first",
 ]

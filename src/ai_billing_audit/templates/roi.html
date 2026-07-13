@@ -88,9 +88,9 @@
         Plan tier (leave blank to auto-pick)
         <select name="plan_tier">
           <option value="" {% if not inputs.plan_tier %}selected{% endif %}>Auto (based on volume)</option>
-          <option value="starter" {% if inputs.plan_tier == 'starter' %}selected{% endif %}>Starter — $499/mo, up to 200 claims</option>
-          <option value="growth" {% if inputs.plan_tier == 'growth' %}selected{% endif %}>Growth — $1,499/mo, up to 2,000 claims</option>
-          <option value="scale" {% if inputs.plan_tier == 'scale' %}selected{% endif %}>Scale — $2,999/mo, 2,000+ claims</option>
+          <option value="solo" {% if inputs.plan_tier == 'solo' %}selected{% endif %}>Solo — $499/mo, up to 1,000 encounter audits</option>
+          <option value="practice" {% if inputs.plan_tier == 'practice' %}selected{% endif %}>Practice — $1,499/mo, up to 3,000 encounter audits</option>
+          <option value="network" {% if inputs.plan_tier == 'network' %}selected{% endif %}>Network — $2,999+/mo, 3,000+ encounter audits</option>
         </select>
       </label>
 

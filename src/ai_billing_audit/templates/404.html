@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Page not found — Zorva{% endblock %}
+{% block description %}The page you’re looking for doesn’t exist (or has moved). Here are some next steps.{% endblock %}
+{% block og_title %}Page not found — Zorva{% endblock %}
+{% block og_description %}The page you’re looking for doesn’t exist or has moved. Try one of the next steps below.{% endblock %}
+{% block content %}
+<section class="error-page">
+  <div class="error-page__inner">
+    <p class="error-page__eyebrow">404 — page not found</p>
+    <h1 class="error-page__headline">That page isn’t here.</h1>
+    <p class="error-page__sub">
+      The URL might have moved, or never existed. Here are some
+      next steps that will get you back to something useful.
+    </p>
+    <div class="error-page__cta">
+      <a class="btn btn-primary" href="/">Go to the home page</a>
+      <a class="btn btn-ghost" href="/try">Try the sample claim</a>
+      <a class="btn btn-ghost" href="/contact">Send 100 claims</a>
+    </div>
+    <p class="error-page__alt">
+      Or jump straight to:
+      <a href="/pricing">Pricing</a> &middot;
+      <a href="/how-it-works">How it works</a> &middot;
+      <a href="/case-studies">Case studies</a> &middot;
+      <a href="/security">Security</a> &middot;
+      <a href="/faq">FAQ</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

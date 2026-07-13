@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — Zorva blog{% endblock %}
+{% block description %}{{ post.summary }}{% endblock %}
+{% block og_title %}{{ post.title }} — Zorva blog{% endblock %}
+{% block og_description %}{{ post.summary }}{% endblock %}
+{% block content %}
+<article class="blog-post">
+  <header class="page-head">
+    <a href="/blog" class="back-link muted">← All blog posts</a>
+    <h1>{{ post.title }}</h1>
+    <p class="blog-post__meta">
+      <span class="muted">By {{ post.author }} · {{ post.published.strftime("%B %-d, %Y") }}</span>
+      {% if post.tags %}
+      ·
+      <span class="blog-post__tags">
+        {% for t in post.tags %}<a href="/blog?tag={{ t }}" class="chip-tag">{{ t }}</a>{% endfor %}
+      </span>
+      {% endif %}
+    </p>
+    <p class="blog-post__summary">{{ post.summary }}</p>
+  </header>
+
+  <div class="blog-post__body">
+    {{ post.body_html | safe }}
+  </div>
+
+  <footer class="blog-post__footer">
+    <hr>
+    <h2>Want Zorva on your own claims?</h2>
+    <p>
+      Send 100 de-identified claims (837P, CSV, or FHIR). We run
+      Zorva on them and send back a 1-page finding-by-finding
+      report. No fee. No follow-up unless the report is useful.
+      Whole loop is under 30 minutes.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="/contact?source=blog_post">Send the 100 claims →</a>
+      <a class="btn btn-ghost" href="/try">Or try the sample claim</a>
+      <a class="btn btn-ghost" href="/rss.xml">Subscribe via RSS</a>
+    </p>
+  </footer>
+</article>
+
+{# JSON-LD Article schema for richer search results. The base.html
+   template ships the Organization schema; this adds the per-post
+   Article node with author + datePublished. #}
+{% block jsonld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": {{ post.title | tojson }},
+  "description": {{ post.summary | tojson }},
+  "datePublished": {{ post.published.isoformat() | tojson }},
+  "author": {
+    "@type": "Person",
+    "name": {{ post.author | tojson }}
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Zorva",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ai-billing-audit.ashbi.ca/static/favicon-32.png"
+    }
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ai-billing-audit.ashbi.ca/blog/{{ post.id }}"
+  }
+}
+</script>
+{% endblock %}
+
+{% endblock %}

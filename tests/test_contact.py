@@ -265,11 +265,15 @@ def test_contact_success_page_has_follow_up_ctas(client):
 
 
 def test_contact_page_uses_base_template(client):
-    """The contact page shares the layout with the rest of the app."""
+    """The contact page shares the layout with the rest of the app.
+
+    tenant-pill is only on dashboard routes as of 2026-07-13; the
+    test uses the brand SVG marker instead.
+    """
     test_client, _ = client
     resp = test_client.get("/contact")
     assert "<header" in resp.text
-    assert "tenant-pill" in resp.text
+    assert 'aria-label="Zorva home"' in resp.text
 
 
 def test_contact_in_topbar_nav(client):

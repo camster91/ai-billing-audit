@@ -1,33 +1,140 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Zorva{% endblock %}</title>
+  <meta name="description" content="{% block description %}Zorva is the pre-submit AHCIP billing auditor for Alberta clinics. Catches missed codes, underbilled modifiers, and shadow-billed services before they hit the payer.{% endblock %}">
+  <meta name="theme-color" content="#0F1B2D">
   <link rel="stylesheet" href="/static/dashboard.css">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/favicon-32.png">
+
+  {# Open Graph + Twitter Card. Image is the same og-image.jpg
+     (1200x630 JPEG, 80KB) used by every share/preview fetch. #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Zorva">
+  <meta property="og:title" content="{% block og_title %}Zorva — AI pre-bill audit for Alberta clinics{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Find the revenue your billers are leaving on the table. Pre-submit AHCIP audit. No signup, no contract.{% endblock %}">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Zorva — Find the revenue your billers are leaving on the table">
+  <meta property="og:locale" content="en_CA">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}Zorva — AI pre-bill audit for Alberta clinics{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}Find the revenue your billers are leaving on the table. Pre-submit AHCIP audit.{% endblock %}">
+  <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.jpg">
+
+  {# JSON-LD Organization schema (renders the "Ashbi Design" company
+     node, social links, and the SaaS product's primary URL). Per-page
+     templates can extend {% block jsonld %} with additional schemas
+     (SoftwareApplication, FAQPage, Article, etc). #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Zorva",
+    "alternateName": "Ashbi Design",
+    "url": "https://ai-billing-audit.ashbi.ca",
+    "logo": "https://ai-billing-audit.ashbi.ca/static/favicon-32.png",
+    "description": "Pre-submit AHCIP billing auditor for Alberta clinics.",
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "Ontario",
+      "addressCountry": "CA"
+    },
+    "contactPoint": [{
+      "@type": "ContactPoint",
+      "contactType": "sales",
+      "email": "sales@ashbi.ca",
+      "areaServed": "CA",
+      "availableLanguage": "en"
+    }, {
+      "@type": "ContactPoint",
+      "contactType": "privacy",
+      "email": "privacy@ashbi.ca",
+      "areaServed": "CA",
+      "availableLanguage": "en"
+    }],
+    "sameAs": [
+      "https://github.com/camster91/ai-billing-audit"
+    ]
+  }
+  </script>
+  {% block jsonld %}{% endblock %}
+
+  <link rel="canonical" href="{{ request.url }}">
+
+  {% block head_extra %}{% endblock %}
 </head>
 <body>
+  {# Skip-to-content for screen readers and keyboard users. Hidden
+     visually until focused. WCAG 2.4.1 (Bypass Blocks). #}
+  <a class="skip-link" href="#main">Skip to main content</a>
   <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-mark">A</span>
+    <a class="brand" href="/" aria-label="Zorva home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <rect width="32" height="32" rx="6" fill="#0F1B2D"/>
+          <path d="M9 9 L9 23 L23 23" stroke="#1FB89A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M9 16 L17 9 L23 9" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
       <span class="brand-text">Zorva</span>
     </a>
-    <nav>
-      <a href="/" {% if request.url.path == "/" %}class="is-active"{% endif %}>Home</a>
-      <a href="/audits" {% if request.url.path.startswith("/audits") %}class="is-active"{% endif %}>Audits</a>
-      <a href="/encounters/upload" {% if request.url.path == "/encounters/upload" %}class="is-active"{% endif %}>Upload</a>
-      <a href="/pricing" {% if request.url.path.startswith("/pricing") %}class="is-active"{% endif %}>Pricing</a>
-      <a href="/how-it-works" {% if request.url.path.startswith("/how-it-works") %}class="is-active"{% endif %}>How it works</a>
-      <a href="/security" {% if request.url.path.startswith("/security") %}class="is-active"{% endif %}>Security</a>
-      <a href="/try" {% if request.url.path.startswith("/try") %}class="is-active"{% endif %}>Try</a>
-      <a href="/faq" {% if request.url.path.startswith("/faq") %}class="is-active"{% endif %}>FAQ</a>
-      <a href="/contact" {% if request.url.path.startswith("/contact") %}class="is-active"{% endif %}>Contact</a>
+    <nav aria-label="Primary">
+      <a href="/" {% if request.url.path == "/" %}class="is-active" aria-current="page"{% endif %}>Home</a>
+      <a href="/pricing" {% if request.url.path.startswith("/pricing") %}class="is-active" aria-current="page"{% endif %}>Pricing</a>
+      <a href="/how-it-works" {% if request.url.path.startswith("/how-it-works") %}class="is-active" aria-current="page"{% endif %}>How it works</a>
+      <a href="/try" {% if request.url.path.startswith("/try") %}class="is-active" aria-current="page"{% endif %}>Try</a>
+      <a href="/case-studies" {% if request.url.path.startswith("/case-studies") %}class="is-active" aria-current="page"{% endif %}>Case studies</a>
+      <a href="/security" {% if request.url.path.startswith("/security") %}class="is-active" aria-current="page"{% endif %}>Security</a>
+      <details class="topbar-dropdown" {% if request.url.path.startswith("/blog") or request.url.path.startswith("/about") or request.url.path.startswith("/changelog") or request.url.path.startswith("/roi") or request.url.path.startswith("/glossary") or request.url.path.startswith("/compare") or request.url.path.startswith("/pilot") or request.url.path.startswith("/trust") or request.url.path.startswith("/status") or request.url.path.startswith("/press") or request.url.path.startswith("/careers") or request.url.path.startswith("/for/") or request.url.path.startswith("/what-zorva") or request.url.path.startswith("/demo-request") %}open{% endif %}>
+        <summary aria-haspopup="true">More</summary>
+        <div class="topbar-dropdown__menu" role="menu">
+          <div class="topbar-dropdown__group">
+            <h3>Product</h3>
+            <a href="/what-zorva-finds" role="menuitem">What Zorva finds</a>
+            <a href="/for/family-medicine" role="menuitem">For family medicine</a>
+            <a href="/compare" role="menuitem">Compare</a>
+            <a href="/roi" role="menuitem">ROI calculator</a>
+          </div>
+          <div class="topbar-dropdown__group">
+            <h3>Resources</h3>
+            <a href="/blog" role="menuitem">Blog</a>
+            <a href="/changelog" role="menuitem">Changelog</a>
+            <a href="/glossary" role="menuitem">Glossary</a>
+            <a href="/demo-request" role="menuitem">Demo request</a>
+            <a href="/pilot" role="menuitem">Pilot program</a>
+          </div>
+          <div class="topbar-dropdown__group">
+            <h3>Company</h3>
+            <a href="/about" role="menuitem">About</a>
+            <a href="/careers" role="menuitem">Careers</a>
+            <a href="/press" role="menuitem">Press</a>
+          </div>
+          <div class="topbar-dropdown__group">
+            <h3>Trust &amp; status</h3>
+            <a href="/trust" role="menuitem">Subprocessors</a>
+            <a href="/status" role="menuitem">System status</a>
+            <a href="/faq" role="menuitem">FAQ</a>
+          </div>
+        </div>
+      </details>
+      <a href="/contact" {% if request.url.path.startswith("/contact") %}class="is-active" aria-current="page"{% endif %}>Contact</a>
     </nav>
-    <div class="tenant-pill" title="Tenant">{{ tenant_name or "Acme Family Practice" }}</div>
+    {# Tenant pill is only rendered on dashboard routes. On public
+       marketing pages we don't show the (potentially "Acme Family
+       Practice" placeholder) tenant name to prospects. #}
+    {% if request.url.path.startswith("/audits") or request.url.path.startswith("/encounter") or request.url.path == "/activity" %}
+    <div class="tenant-pill" title="Tenant">{{ tenant_name or "Zorva" }}</div>
+    {% endif %}
   </header>
 
-  <main class="page">
+  <main id="main" class="page" tabindex="-1">
     <div class="container">
       {% block content %}{% endblock %}
     </div>
@@ -43,9 +150,11 @@
     &middot; <a href="/faq">FAQ</a>
     &middot; <a href="/about">About</a>
     &middot; <a href="/blog">Blog</a>
+    &middot; <a href="/case-studies">Case studies</a>
     &middot; <a href="/compare">Compare</a>
     &middot; <a href="/pilot">Pilot</a>
     &middot; <a href="/contact">Contact</a>
+    &middot; <a href="/audits">Audits (demo)</a>
     &middot; <a href="/legal/privacy">Privacy</a>
     &middot; <a href="/legal/terms">Terms</a>
   </footer>

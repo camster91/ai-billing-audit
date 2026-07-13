@@ -1052,6 +1052,76 @@ def create_app() -> FastAPI:
         ),
     )
 
+    # Mount the static-asset directory at /static. The marketing
+    # templates (base.html) link to /static/dashboard.css,
+    # /static/favicon.svg, /static/og-image.jpg, and /static/upload.js.
+    # Without this mount the marketing site renders unstyled in
+    # production (P0 audit finding, TECHNICAL-AUDIT.md 2026-07-13).
+    # The auth middleware whitelists /static* so the mount is
+    # reachable without a bearer token.
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(_STATIC_DIR)),
+        name="static",
+    )
+
+    # Branded error pages. The 404 handler catches the default
+    # Starlette "Not Found" response and the FastAPI HTTPException(404)
+    # path; the 500 handler catches uncaught exceptions in any
+    # route. Both render the same base.html layout as the rest of
+    # the marketing site so a mistyped URL still feels like Zorva
+    # (P0 audit finding, MARKETING-CONTENT-AUDIT.md 2026-07-13).
+    import datetime as _dt_err
+    from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+    @app.exception_handler(404)
+    async def _not_found(request: Request, exc: _StarletteHTTPException):
+        # Render the branded HTML 404 for browser / marketing routes;
+        # return a JSON 404 for /api/* and for clients that explicitly
+        # accept application/json (so API consumers and the React
+        # portal don't get a 2 KB HTML page in their error path).
+        from fastapi.responses import JSONResponse
+        path = request.url.path
+        accept = request.headers.get("accept", "")
+        wants_json = (
+            path.startswith("/api/")
+            or "application/json" in accept
+            or path.startswith("/encounter/")   # JSON encounter detail route
+            or path.startswith("/encounters/")  # plural — encounter audit + others
+        )
+        if wants_json:
+            return JSONResponse(
+                {"detail": exc.detail if hasattr(exc, "detail") else "Not found"},
+                status_code=404,
+            )
+        return templates.TemplateResponse(
+            request,
+            "404.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "status_code": 404,
+            },
+            status_code=404,
+        )
+
+    @app.exception_handler(500)
+    async def _server_error(request: Request, exc: Exception) -> HTMLResponse:
+        # Log to the standard error log so the operator can correlate.
+        import logging as _logging_err
+        _logging_err.getLogger("ai_billing_audit").exception(
+            "500 on %s %s: %s", request.method, request.url.path, exc
+        )
+        return templates.TemplateResponse(
+            request,
+            "500.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "now_iso": _dt_err.datetime.now(_dt_err.timezone.utc).isoformat(),
+                "status_code": 500,
+            },
+            status_code=500,
+        )
+
     # CORS for the marketing portal at zorva.ashbi.ca. The portal
     # fetches /api/encounters/{id}/denial-risk + /appeal-letter from
     # this FastAPI to surface denial-risk + appeal-letter UI on the
@@ -1208,6 +1278,10 @@ def create_app() -> FastAPI:
             or (
                 request.method == "GET"
                 and request.url.path.startswith("/case-studies/")
+            )
+            or (
+                request.method == "GET"
+                and request.url.path.startswith("/blog/")
             )
         ):
             return await call_next(request)
@@ -4325,7 +4399,7 @@ def create_app() -> FastAPI:
                 "tenant_name": _TENANT_NAME,
                 "tenant_id": _TENANT_ID,
                 "data_residency": "Canada (ca-central-1, AWS)",
-                "support_email": "privacy@zorva.ca",
+                "support_email": "privacy@ashbi.ca",
             },
         )
 
@@ -4338,7 +4412,7 @@ def create_app() -> FastAPI:
             "legal_terms.html",
             {
                 "tenant_name": _TENANT_NAME,
-                "support_email": "support@zorva.ca",
+                "support_email": "support@ashbi.ca",
             },
         )
 
@@ -4435,6 +4509,32 @@ def create_app() -> FastAPI:
             request,
             "blog.html",
             {"tenant_name": _TENANT_NAME},
+        )
+
+    @app.get("/blog/{slug}", response_class=HTMLResponse)
+    def blog_post_detail(slug: str, request: Request) -> HTMLResponse:
+        """One blog post by slug.
+
+        Each post body lives in
+        :mod:`ai_billing_audit.blog_posts`; the marketing teaser
+        metadata is duplicated in :mod:`ai_billing_audit.feeds`
+        for the RSS / sitemap. The per-post body is the
+        long-form version that lives only here.
+        """
+        from .blog_posts import get_post
+        post = get_post(slug)
+        if post is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"blog post '{slug}' not found",
+            )
+        return templates.TemplateResponse(
+            request,
+            "blog_post.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "post": post,
+            },
         )
 
     @app.get("/careers", response_class=HTMLResponse)
@@ -4662,7 +4762,7 @@ def create_app() -> FastAPI:
                 "email": email if not success else "",
                 "monthly_claims": monthly_claims if not success else "",
                 "message": message if not success else "",
-                "support_email": "sales@zorva.ca",
+                "support_email": "sales@ashbi.ca",
                 "max_upload_bytes": _MAX_UPLOAD_BYTES,
             },
         )

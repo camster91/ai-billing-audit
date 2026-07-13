@@ -157,12 +157,18 @@ def test_privacy_and_terms_use_same_tenant_pill(client):
 
 
 def test_legal_pages_extend_base_template(client):
-    """Both pages should inherit the base layout (header, footer)."""
+    """Both pages should inherit the base layout (header, footer).
+
+    tenant-pill is only rendered on dashboard routes as of 2026-07-13
+    (P0 audit fix: the placeholder "Acme Family Practice" was leaking
+    onto every public marketing page). The test now uses the brand
+    SVG + topbar nav as the marker that the base template is in use.
+    """
     for path in ["/legal/privacy", "/legal/terms"]:
         resp = client.get(path)
         html = resp.text
         # Look for the base layout markers
-        assert "<header" in html and "tenant-pill" in html
+        assert "<header" in html and 'aria-label="Zorva home"' in html
         assert "<footer" in html or "Zorva v0.1.0" in html
 
 

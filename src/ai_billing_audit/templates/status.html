@@ -6,10 +6,12 @@
   <div>
     <h1>System status</h1>
     <p class="sub">
-      Live state of the Zorva API and dashboard. Updated
-      on every page load by hitting the production
-      <code>/healthz</code> endpoint. No fake "operational"
-      badges.
+      Live state of the Zorva API and dashboard. The status
+      badge below is updated by a client-side fetch to the
+      production <code>/healthz</code> endpoint on every
+      page load. If the fetch fails, the badge shows the
+      failure state — we don't fake "operational" if the
+      server is unreachable.
     </p>
   </div>
   <a class="btn btn-ghost" href="/healthz" target="_blank">/healthz &rarr;</a>
@@ -17,17 +19,64 @@
 
 <section class="status-current" aria-label="Current status">
   <h2>Current</h2>
-  <div class="status-card" data-status="operational">
+  <div class="status-card" id="status-current-card" data-status="loading">
     <header>
-      <span class="status-card__indicator status-card__indicator--ok"></span>
-      <h3>All systems operational</h3>
+      <span class="status-card__indicator status-card__indicator--loading" id="status-indicator"></span>
+      <h3 id="status-headline">Checking…</h3>
     </header>
     <p class="muted small">
-      Last checked: <time datetime="2026-07-13T20:00:00Z">just now</time>
-      (this page hits /healthz on every load)
+      Last checked: <time id="status-last-checked">—</time>
+      (this page fetches <code>/healthz</code> on every load)
     </p>
   </div>
 </section>
+
+<script>
+  // Hit /healthz from the browser and update the status card.
+  // P0 audit fix (MARKETING-CONTENT-AUDIT.md 2026-07-13): the
+  // previous version claimed to hit /healthz on every load but
+  // did not — it was hardcoded. Now it's a real fetch, with a
+  // 3-second timeout, that updates the badge with the actual
+  // server response.
+  (function () {
+    var card = document.getElementById("status-current-card");
+    var indicator = document.getElementById("status-indicator");
+    var headline = document.getElementById("status-headline");
+    var ts = document.getElementById("status-last-checked");
+    if (!card || !indicator || !headline || !ts) return;
+
+    var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = (controller) ? setTimeout(function () { controller.abort(); }, 3000) : null;
+
+    fetch("/healthz", { signal: controller ? controller.signal : undefined, cache: "no-store" })
+      .then(function (r) {
+        if (timer) clearTimeout(timer);
+        var now = new Date();
+        ts.textContent = now.toISOString();
+        ts.setAttribute("datetime", now.toISOString());
+        if (r.ok) {
+          return r.json().catch(function () { return {}; }).then(function (data) {
+            card.setAttribute("data-status", "operational");
+            indicator.className = "status-card__indicator status-card__indicator--ok";
+            var v = data && data.version ? " (v" + data.version + ")" : "";
+            headline.textContent = "All systems operational" + v;
+          });
+        }
+        card.setAttribute("data-status", "degraded");
+        indicator.className = "status-card__indicator status-card__indicator--warn";
+        headline.textContent = "API returned HTTP " + r.status;
+      })
+      .catch(function (err) {
+        if (timer) clearTimeout(timer);
+        var now = new Date();
+        ts.textContent = now.toISOString();
+        ts.setAttribute("datetime", now.toISOString());
+        card.setAttribute("data-status", "down");
+        indicator.className = "status-card__indicator status-card__indicator--down";
+        headline.textContent = "Could not reach the API: " + (err && err.message ? err.message : "network error");
+      });
+  })();
+</script>
 
 <section class="status-services" aria-label="Services">
   <h2>Services</h2>

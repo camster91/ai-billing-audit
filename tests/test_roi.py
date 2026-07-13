@@ -10,7 +10,7 @@ What's pinned
 * compute_roi() math: with default inputs, monthly revenue saved
   = monthly_claims × 0.075 × 0.69 × $190
 * Plan tier auto-selection by monthly volume
-* Tier override (pass plan_tier="starter" for a 5000-claim
+* Tier override (pass plan_tier="solo" for a 5000-claim
   clinic and the calculation uses $499)
 * Default catch_rate = 0.69 (matches the v12 AHCIP val-set F1, README.md:7)
 * Validation: monthly_claims must be > 0, rates in [0, 1]
@@ -41,19 +41,19 @@ from ai_billing_audit.roi import (
 # ---------- pure-math tests ----------
 
 
-def test_tier_for_volume_starter():
-    assert tier_for_volume(50) == "starter"
-    assert tier_for_volume(200) == "starter"
+def test_tier_for_volume_solo():
+    assert tier_for_volume(50) == "solo"
+    assert tier_for_volume(1000) == "solo"
 
 
-def test_tier_for_volume_growth():
-    assert tier_for_volume(201) == "growth"
-    assert tier_for_volume(2000) == "growth"
+def test_tier_for_volume_practice():
+    assert tier_for_volume(1001) == "practice"
+    assert tier_for_volume(3000) == "practice"
 
 
-def test_tier_for_volume_scale():
-    assert tier_for_volume(2001) == "scale"
-    assert tier_for_volume(50000) == "scale"
+def test_tier_for_volume_network():
+    assert tier_for_volume(3001) == "network"
+    assert tier_for_volume(50000) == "network"
 
 
 def test_compute_roi_default_inputs():
@@ -66,31 +66,31 @@ def test_compute_roi_default_inputs():
     assert r["monthly"]["caught_by_zorva"] == 57
     # revenue_saved = 57.75 * 190 = 10972.5
     assert r["monthly"]["revenue_saved_by_zorva"] == 10972.5
-    # Plan tier auto-selected: growth (1000 > 200)
-    assert r["inputs"]["plan_tier"] == "growth"
-    # Net monthly savings = 10972.5 - 1499 = 9473.5
-    assert r["monthly"]["net_monthly_savings_usd"] == 9473.5
+    # Plan tier auto-selected: solo (1000 ≤ 1000)
+    assert r["inputs"]["plan_tier"] == "solo"
+    # Net monthly savings = 10972.5 - 499 = 10473.5
+    assert r["monthly"]["net_monthly_savings_usd"] == 10473.5
 
 
-def test_compute_roi_starter_tier():
-    r = compute_roi(monthly_claims=150, plan_tier="starter")
-    assert r["inputs"]["plan_tier"] == "starter"
-    # revenue_saved = 150 * 0.075 * 0.77 * 190 = 1645.875 (banker's-rounded to 1645.88)
-    assert r["monthly"]["revenue_saved_by_zorva"] == 1645.88
-    # Net = 1645.88 - 499 = 1146.88
-    assert r["monthly"]["net_monthly_savings_usd"] == 1146.88
+def test_compute_roi_solo_tier():
+    r = compute_roi(monthly_claims=500, plan_tier="solo")
+    assert r["inputs"]["plan_tier"] == "solo"
+    # revenue_saved = 500 * 0.075 * 0.77 * 190 = 5486.25
+    assert r["monthly"]["revenue_saved_by_zorva"] == 5486.25
+    # Net = 5486.25 - 499 = 4987.25
+    assert r["monthly"]["net_monthly_savings_usd"] == 4987.25
 
 
-def test_compute_roi_scale_tier():
-    r = compute_roi(monthly_claims=5000, plan_tier="scale")
-    assert r["inputs"]["plan_tier"] == "scale"
+def test_compute_roi_network_tier():
+    r = compute_roi(monthly_claims=5000, plan_tier="network")
+    assert r["inputs"]["plan_tier"] == "network"
     assert r["monthly"]["plan_cost_cad"] == 2999
 
 
 def test_compute_roi_explicit_tier_override():
-    """Force a clinic onto the starter tier despite 5000 claims."""
-    r = compute_roi(monthly_claims=5000, plan_tier="starter")
-    assert r["inputs"]["plan_tier"] == "starter"
+    """Force a clinic onto the solo tier despite 5000 claims."""
+    r = compute_roi(monthly_claims=5000, plan_tier="solo")
+    assert r["inputs"]["plan_tier"] == "solo"
     assert r["monthly"]["plan_cost_cad"] == 499
 
 
@@ -112,7 +112,8 @@ def test_compute_roi_zero_denial_rate():
     r = compute_roi(monthly_claims=1000, current_denial_rate=0.0)
     assert r["monthly"]["denials_without_zorva"] == 0
     assert r["monthly"]["revenue_saved_by_zorva"] == 0.0
-    assert r["monthly"]["net_monthly_savings_usd"] == -1499.0  # cost only
+    # 1000 claims is at the upper bound of solo, so plan cost is $499
+    assert r["monthly"]["net_monthly_savings_usd"] == -499.0  # cost only
 
 
 def test_compute_roi_annualization():
@@ -141,7 +142,7 @@ def test_compute_roi_negative_net_is_possible():
     immediately. The calculator must report a negative net."""
     r = compute_roi(monthly_claims=10, current_denial_rate=0.01)
     # 10 * 0.01 * 0.69 * 190 = $13.11 revenue saved
-    # Plan cost = $499 (starter tier, since volume <= 200)
+    # Plan cost = $499 (solo tier, since volume <= 1000)
     # Net = 13.11 - 499 = -485.89 (negative)
     assert r["monthly"]["net_monthly_savings_usd"] < 0
 
@@ -157,7 +158,7 @@ def test_compute_roi_high_volume_huge_savings():
     )
     # 10000 * 0.10 * 0.42 * 190 = 79,800
     assert r["monthly"]["revenue_saved_by_zorva"] == 79800.0
-    # Plan cost = $2,999 (scale tier, since volume > 2000)
+    # Plan cost = $2,999 (network tier, since volume > 3000)
     assert r["monthly"]["plan_cost_cad"] == 2999
     # Net = 79,800 - 2,999 = 76,801
     assert r["monthly"]["net_monthly_savings_usd"] == 76801.0
@@ -257,10 +258,10 @@ def test_roi_route_renders_results_with_defaults(client):
     resp = client.get("/roi")
     # With defaults (1000 claims, 7.5% denial, catch_rate=0.77):
     #   monthly_revenue_saved = 1000 * 0.075 * 0.77 * 190 = $10,972.50 → $10,972
-    #   plan_tier = growth ($1,499)
-    #   net = $9,473.50 → $9,474 (banker's rounding)
+    #   plan_tier = solo ($499) — 1000 claims is at the upper bound of solo
+    #   net = $10,972.50 - $499 = $10,473.50 → $10,474 (banker's rounding)
     assert "10,972" in resp.text or "10972" in resp.text
-    assert "9,474" in resp.text or "9474" in resp.text
+    assert "10,474" in resp.text or "10474" in resp.text
 
 
 def test_roi_route_uses_query_params(client):
@@ -281,13 +282,13 @@ def test_roi_results_endpoint_returns_json(client):
     assert "annual" in data
     assert "inputs" in data
     assert "narrative" in data
-    assert data["monthly"]["plan_cost_cad"] == 1499  # growth tier
+    assert data["monthly"]["plan_cost_cad"] == 499  # solo tier (1000 claims is at the upper bound)
 
 
 def test_roi_results_endpoint_with_custom_inputs(client):
-    resp = client.get("/roi/results?monthly_claims=5000&plan_tier=scale")
+    resp = client.get("/roi/results?monthly_claims=5000&plan_tier=network")
     data = resp.json()
-    assert data["inputs"]["plan_tier"] == "scale"
+    assert data["inputs"]["plan_tier"] == "network"
     assert data["monthly"]["plan_cost_cad"] == 2999
 
 
@@ -305,13 +306,13 @@ def test_roi_post_redirects_to_get(client):
         "avg_claim_value_usd": "200",
         "current_appeal_rate": "0.50",
         "catch_rate": "0.42",
-        "plan_tier": "scale",
+        "plan_tier": "network",
     }, follow_redirects=False)
     assert resp.status_code == 303
     location = resp.headers.get("location", "")
     assert "/roi?" in location
     assert "monthly_claims=2500" in location
-    assert "plan_tier=scale" in location
+    assert "plan_tier=network" in location
 
 
 def test_roi_post_then_get_round_trips(client):

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong — Zorva{% endblock %}
+{% block description %}A server error occurred. The incident is being logged. Please try again in a few minutes.{% endblock %}
+{% block og_title %}Something went wrong — Zorva{% endblock %}
+{% block og_description %}A server error occurred. The incident is being logged. Please try again in a few minutes.{% endblock %}
+{% block content %}
+<section class="error-page">
+  <div class="error-page__inner">
+    <p class="error-page__eyebrow">500 — server error</p>
+    <h1 class="error-page__headline">Something went wrong on our end.</h1>
+    <p class="error-page__sub">
+      The incident is being logged. Try again in a few minutes —
+      most 500s are transient. If you need to reach us right now,
+      the sales and support inboxes below are monitored.
+    </p>
+    <div class="error-page__cta">
+      <a class="btn btn-primary" href="/">Go to the home page</a>
+      <a class="btn btn-ghost" href="/status">Check system status</a>
+      <a class="btn btn-ghost" href="mailto:support@ashbi.ca?subject=500%20error">Email support@ashbi.ca</a>
+    </div>
+    <p class="error-page__alt muted small">
+      Reference: please include the timestamp
+      <code>{{ now_iso or "—" }}</code> in your email so we can
+      correlate with the server log.
+    </p>
+  </div>
+</section>
+{% endblock %}
