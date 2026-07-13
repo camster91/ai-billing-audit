@@ -1,0 +1,40 @@
+Subject: 60-day no-cost pilot — pre-submit AHCIP audit for [PCN] member clinics
+
+Hi [First Name],
+
+I'm Cameron Ashley, founder of Zorva — a pre-submit claims audit
+designed for Alberta Primary Care Networks. We run every member-clinic
+claim through an LLM auditor before it goes to AHCIP, flag the ones
+that would come back denied or under-paid, and let the biller accept
+or dismiss each finding on screen.
+
+What we'd want to do for [PCN]: a 60-day no-cost pilot covering
+[a subset / all member] clinics, the same shape as the run we just
+finished at an Ontario family-medicine clinic. The biller at each
+member clinic gets a private dashboard, we run the auditor in the
+background, and at the end of the 60 days we walk through every
+finding with your central-office billing lead.
+
+What we caught in the Ontario pilot: about 77 of every 100 real
+billing errors before they went to the payer, at about 6 of every 10
+flags being real. The rest of the misses are the cases where the
+clinical note doesn't mention the right modifier or place-of-service
+— exactly the kind of thing a PCN's central pre-submit review is
+supposed to catch but rarely has bandwidth for.
+
+Three things I'd want to know on a 20-minute call:
+  1. How does [PCN] currently handle pre-submit review across
+     member clinics — centralized, delegated, or not at all?
+  2. What are the top two AHCIP denial reasons you see across the
+     network in the last quarter?
+  3. What's the dominant EMR — Telus PS Suite, OSCAR, Accuro,
+     Med Access?
+
+If any of that resonates, here's my calendar: [calendly link]. If
+not, no worries — happy to send the one-pager instead. There's
+also a 1-page privacy brief at https://ai-billing-audit.ashbi.ca/security
+that can go straight to your privacy officer without any sales call.
+
+Cameron Ashley
+Founder, Zorva
+cameron@ashbi.ca · (647) 555-0142

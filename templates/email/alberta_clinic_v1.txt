@@ -1,0 +1,37 @@
+Subject: Free 60-day pilot — pre-submit audit for AHCIP claims
+
+Hi [First Name],
+
+I'm Cameron Ashley, founder of Zorva — a pre-submit claims audit for
+Alberta clinics. We run every claim through an LLM auditor before it
+goes to AHCIP, flag the ones that would come back denied or under-paid,
+and let your biller accept or dismiss each finding on screen.
+
+We just finished a 60-day no-cost pilot at an Ontario family-medicine
+clinic. The pitch is simple: send us your last 100 AHCIP claims
+(837P / CSV / paste-form) plus the clinical note, we run the auditor,
+and at the end of the month we sit down and walk through every
+finding. No fee, no contract, no software to install.
+
+What we caught in the Ontario pilot: about 77 of every 100 real
+billing errors before they went to the payer, at about 6 of every 10
+flags being real. The rest of the misses are the cases where the
+clinical note doesn't mention the right modifier or the right
+place-of-service — exactly the kind of thing a biller's pre-submit
+check is supposed to catch but rarely does in practice.
+
+Three things I'd want to know on a 10-minute call:
+  1. What does your pre-submit review look like today — manual,
+     software, or nothing?
+  2. What are your top two AHCIP denial reasons in the last quarter?
+  3. What's your EMR / billing system — Telus PS Suite, OSCAR,
+     Accuro, Med Access?
+
+If any of that resonates, here's my calendar: [calendly link]. If
+not, no worries — happy to send the one-pager instead. There's
+also a 1-page privacy brief at https://ai-billing-audit.ashbi.ca/security
+you can forward to your privacy officer without any sales call.
+
+Cameron Ashley
+Founder, Zorva
+cameron@ashbi.ca · (647) 555-0142
