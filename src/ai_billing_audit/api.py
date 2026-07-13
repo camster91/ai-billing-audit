@@ -1202,6 +1202,7 @@ def create_app() -> FastAPI:
                     "/status",
                     "/rss.xml",
                     "/sitemap.xml",
+                    "/robots.txt",
                 )
             )
             or (
@@ -4538,8 +4539,7 @@ def create_app() -> FastAPI:
 
         Lists every route the public_read whitelist allows
         plus a lastmod and a priority per page. Search engines
-        pick this up from robots.txt (TODO when robots.txt is
-        wired).
+        pick this up from robots.txt.
         """
         from .feeds import build_sitemap, PUBLIC_MARKETING_PATHS
         host = (
@@ -4550,6 +4550,21 @@ def create_app() -> FastAPI:
         return Response(
             content=build_sitemap(host, PUBLIC_MARKETING_PATHS),
             media_type="application/xml; charset=utf-8",
+        )
+
+    @app.get("/robots.txt", response_class=Response)
+    def robots(request: Request) -> Response:
+        """Static robots.txt that points crawlers at the sitemap
+        and disallows internal-tool paths.
+
+        Source of truth lives in :mod:`ai_billing_audit.robots`
+        so the host can be reconfigured without editing the
+        route handler.
+        """
+        from .robots import ROBOTS_TXT
+        return Response(
+            content=ROBOTS_TXT,
+            media_type="text/plain; charset=utf-8",
         )
 
     @app.get("/contact", response_class=HTMLResponse)
