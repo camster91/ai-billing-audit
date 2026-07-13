@@ -160,6 +160,62 @@
     &middot; <a href="/legal/terms">Terms</a>
   </footer>
 
+  {# Cookie consent banner (P2 audit fix, 2026-07-13).
+     The site does not set cookies today (no third-party
+     trackers, no analytics). The banner is the
+     PIPEDA / HIA / GDPR disclosure: a privacy officer
+     or regulator can confirm at a glance that no
+     tracking technology is in use. Dismissed state
+     persists in localStorage; users on the same browser
+     see the banner once per year. #}
+  <div id="cookie-consent" class="cookie-consent" role="dialog"
+       aria-labelledby="cookie-consent-heading" hidden>
+    <div class="cookie-consent__inner">
+      <p id="cookie-consent-heading" class="cookie-consent__text">
+        <strong>This site doesn't set cookies.</strong> No
+        third-party trackers, no analytics, no advertising
+        pixels. The only client-side storage is your dismissal
+        of this notice (saved in your browser's
+        <code>localStorage</code>). See the
+        <a href="/legal/privacy">privacy policy</a> for the
+        full data-handling posture.
+      </p>
+      <button type="button" class="btn btn-primary btn-sm"
+              id="cookie-consent-dismiss">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    // Cookie consent banner — show once per year unless dismissed.
+    // Pure client-side disclosure. No cookies, no third-party,
+    // no fingerprinting. localStorage stores the dismissal
+    // timestamp; the banner returns on a yearly cadence.
+    (function () {
+      var STORAGE_KEY = "zorva.cookie-consent.dismissed-at";
+      var ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+      var banner = document.getElementById("cookie-consent");
+      var dismissBtn = document.getElementById("cookie-consent-dismiss");
+      if (!banner || !dismissBtn) return;
+      try {
+        var dismissedAt = localStorage.getItem(STORAGE_KEY);
+        var now = Date.now();
+        if (!dismissedAt || (now - parseInt(dismissedAt, 10)) > ONE_YEAR_MS) {
+          // Reveal on next frame so the role/aria attributes
+          // are in the DOM before the focus is set (a11y).
+          requestAnimationFrame(function () { banner.hidden = false; });
+        }
+      } catch (e) {
+        // localStorage may be disabled (Safari private mode).
+        // Show the banner anyway — disclosure over UX polish.
+        banner.hidden = false;
+      }
+      dismissBtn.addEventListener("click", function () {
+        try { localStorage.setItem(STORAGE_KEY, String(Date.now())); } catch (e) {}
+        banner.hidden = true;
+      });
+    })();
+  </script>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>

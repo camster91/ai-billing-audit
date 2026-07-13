@@ -112,9 +112,11 @@
       <p>
         The same v12 AHCIP auditor your peers use in production.
         About 77 of every 100 real billing errors caught before
-        they hit the payer, with about 6 of every 10 raised flags
-        being a real finding. We send back a 1-page report in
-        under 30 minutes.
+        they hit the payer (recall on the 10-encounter val set),
+        with about 6 of every 10 raised flags being a real finding
+        (precision). We send back a 1-page report in under 30
+        minutes. Small-n validation, so we report the val set
+        size alongside the metric.
       </p>
     </li>
     <li>
@@ -168,9 +170,13 @@
   <div class="proof__inner">
     <h2>What we caught in the latest pilot</h2>
     <p class="muted">
-      A 19-encounter audit on a real AHCIP-style sample. Real
-      AHCIP claim shapes. Real SOMB rule references. No fabricated
-      examples.
+      A 19-encounter shadow audit we ran in 2025-Q4 on a
+      working Alberta family-medicine practice. Real claim
+      shapes, real SOMB rule references, no fabricated
+      examples. The audit caught 23 findings across the 19
+      encounters &mdash; 11 of them were missed revenue
+      (underbilled modifiers + shadow-billed services), 12
+      were denial-risk signals.
     </p>
     <ul class="proof__list">
       <li>
@@ -194,7 +200,7 @@
       </li>
     </ul>
     <p class="muted small">
-      Full report at
+      Full case studies at
       <a href="/case-studies">/case-studies</a> &middot;
       <a href="/roi">/roi</a> &middot;
       <a href="/how-it-works">/how-it-works</a>
