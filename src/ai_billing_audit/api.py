@@ -1292,6 +1292,28 @@ def create_app() -> FastAPI:
                 request.method == "GET"
                 and request.url.path.startswith("/changelog/")
             )
+            or (
+                # Any GET to a non-API path is public-read so the
+                # branded 404 handler (and any future catch-all)
+                # can render without first being blocked by the
+                # bearer middleware. POST/PUT/DELETE are still
+                # auth-gated by the bearer check below. Marketing
+                # paths (anything that doesn't start with /api/,
+                # /audits, /encounter, /encounters, or /admin)
+                # are publicly browseable — same posture as a
+                # static site with a /404 fallback.
+                request.method == "GET"
+                and not any(
+                    request.url.path.startswith(prefix)
+                    for prefix in (
+                        "/api/",
+                        "/audits",
+                        "/encounter/",
+                        "/encounters/",
+                        "/admin",
+                    )
+                )
+            )
         ):
             return await call_next(request)
         if not _BEARER:
