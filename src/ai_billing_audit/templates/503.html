@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Maintenance — Zorva{% endblock %}
+{% block description %}Zorva is undergoing scheduled maintenance. We'll be back shortly.{% endblock %}
+{% block content %}
+<section class="error-page">
+  <div class="error-page__inner">
+    <p class="error-page__eyebrow">503 — scheduled maintenance</p>
+    <h1 class="error-page__headline">We're tuning the auditor.</h1>
+    <p class="error-page__sub">
+      Zorva is undergoing scheduled maintenance. The
+      auditor and the marketing site are both offline
+      for a short window. Check
+      <a href="/status">/status</a> for the live state, or
+      subscribe to the
+      <a href="/rss.xml">RSS feed</a> for the next release
+      note.
+    </p>
+    <div class="error-page__cta">
+      <a class="btn btn-primary" href="/status">Check status</a>
+      <a class="btn btn-ghost" href="/rss.xml">RSS feed</a>
+      <a class="btn btn-ghost" href="mailto:support@ashbi.ca?subject=503%20maintenance">Email support</a>
+    </div>
+    <p class="error-page__alt">
+      Routine maintenance windows are announced 7 days
+      in advance on the changelog. Emergency maintenance
+      is logged to
+      <a href="/status">/status</a> as it happens.
+    </p>
+  </div>
+</section>
+{% endblock %}

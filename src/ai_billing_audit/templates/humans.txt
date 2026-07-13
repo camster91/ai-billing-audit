@@ -1,0 +1,27 @@
+---
+Zorva is built and operated by:
+
+  Cameron Ashley
+  Founder, sole engineer, and (as of 2026-07) the only person
+  who has ever written a line of Zorva code.
+
+  Past collaborators who have contributed to Ashbi Design
+  (the studio that ships Zorva):
+
+    (none yet — this is a one-person operation)
+
+  Special thanks to:
+
+    The Alberta billers who sat through 30-minute walkthroughs
+    in early 2026 and told us what the auditor was missing.
+    The PCN operations directors who asked the privacy officer
+    questions we hadn't thought of. The privacy officers who
+    asked the next-level questions.
+
+---
+
+This site was last updated: 2026-07-13
+The marketing surface ships at:
+  https://ai-billing-audit.ashbi.ca
+The source is at:
+  https://github.com/camster91/ai-billing-audit

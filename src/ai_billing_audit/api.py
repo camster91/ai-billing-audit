@@ -4865,6 +4865,59 @@ def create_app() -> FastAPI:
             media_type="text/plain; charset=utf-8",
         )
 
+    @app.get("/humans.txt", response_class=Response)
+    def humans_txt(request: Request) -> Response:
+        """humans.txt credits the people behind the site.
+
+        Convention from humanstxt.org — a small plain-text
+        file that lives at /humans.txt so a curious human
+        (vs. a search bot) can find out who's responsible.
+        """
+        from pathlib import Path as _P
+        p = _P(__file__).resolve().parent / "templates" / "humans.txt"
+        return Response(
+            content=p.read_text(encoding="utf-8"),
+            media_type="text/plain; charset=utf-8",
+        )
+
+    @app.get("/security.txt", response_class=Response)
+    @app.get("/.well-known/security.txt", response_class=Response)
+    def security_txt(request: Request) -> Response:
+        """security.txt per RFC 9116.
+
+        Pointed at security@ashbi.ca. The standard path
+        is /.well-known/security.txt; we also serve
+        /security.txt as a courtesy for scanners that
+        don't follow the .well-known convention.
+        """
+        from pathlib import Path as _P
+        p = _P(__file__).resolve().parent / "templates" / "security.txt"
+        return Response(
+            content=p.read_text(encoding="utf-8"),
+            media_type="text/plain; charset=utf-8",
+        )
+
+    @app.get("/maintenance", response_class=HTMLResponse)
+    def maintenance(request: Request) -> HTMLResponse:
+        """503 maintenance page.
+
+        Served when the operator flips the maintenance flag
+        (env: ZORVA_MAINTENANCE=1) or via direct /maintenance
+        URL during a deploy. The 503 status code signals
+        to crawlers that the page is temporary.
+        """
+        from fastapi.responses import HTMLResponse as _HR
+        is_maintenance = _os.environ.get("ZORVA_MAINTENANCE", "") == "1"
+        return templates.TemplateResponse(
+            request,
+            "503.html",
+            {
+                "tenant_name": _TENANT_NAME,
+                "is_maintenance": is_maintenance,
+            },
+            status_code=503 if is_maintenance else 200,
+        )
+
     @app.get("/contact", response_class=HTMLResponse)
     @app.post("/contact", response_class=HTMLResponse)
     async def contact_sales(

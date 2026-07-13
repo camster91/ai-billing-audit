@@ -1,0 +1,18 @@
+# Zorva security disclosure channel
+#
+# If you found a security issue in Zorva, please email
+# security@ashbi.ca (PGP key on request). We respond within
+# 24 hours on weekdays. Responsible disclosure is appreciated
+# and credited in the changelog.
+#
+# For full details, see:
+#   https://ai-billing-audit.ashbi.ca/security
+#
+# Acknowledgement: this file follows the security.txt
+# convention (RFC 9116). It is served at
+# /.well-known/security.txt.
+
+Contact: mailto:security@ashbi.ca
+Expires: 2027-12-31T23:59:59Z
+Preferred-Languages: en
+Canonical: https://ai-billing-audit.ashbi.ca/.well-known/security.txt
