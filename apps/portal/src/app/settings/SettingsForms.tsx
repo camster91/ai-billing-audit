@@ -16,6 +16,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toUserFacingError } from "@/lib/ui-error";
 import styles from "./settings.module.css";
 
 interface SettingsFormsProps {
@@ -108,7 +109,7 @@ function ClinicProfileForm({
       setSaved(true);
       startTransition(() => router.refresh());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Network error");
+      setError(toUserFacingError(e, "Network error"));
     } finally {
       setBusy(false);
     }
@@ -211,7 +212,7 @@ function ResidencyForm({
       setSaved(true);
       startTransition(() => router.refresh());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Network error");
+      setError(toUserFacingError(e, "Network error"));
     } finally {
       setBusy(false);
     }
@@ -310,7 +311,7 @@ function PhiRedactionForm({ initial }: { initial: boolean }) {
       setSaved(true);
       startTransition(() => router.refresh());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Network error");
+      setError(toUserFacingError(e, "Network error"));
     } finally {
       setBusy(false);
     }

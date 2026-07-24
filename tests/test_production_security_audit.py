@@ -57,7 +57,13 @@ def test_denial_risk_remains_public_for_demo(secured_client):
     assert r.status_code != 401
 
 
-def test_webhook_ssrf_blocks_metadata_and_loopback():
+def test_metrics_and_docs_require_bearer(secured_client):
+    for path in ("/metrics", "/docs", "/openapi.json", "/redoc"):
+        assert secured_client.get(path).status_code == 401, path
+
+
+def test_webhook_ssrf_blocks_metadata_and_loopback(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("ZORVA_WEBHOOK_ALLOW_PRIVATE", raising=False)
     from ai_billing_audit.webhooks import validate_webhook_url
 
     with pytest.raises(ValueError):

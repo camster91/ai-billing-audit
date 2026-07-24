@@ -116,7 +116,7 @@ services:
     environment:
       POSTGRES_DB: ai_billing_audit
       POSTGRES_USER: audit
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-audit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
       - ai_billing_audit_dev_pgdata:/var/lib/postgresql/data
       - ./audit_trail.sql:/docker-entrypoint-initdb.d/01-audit_trail.sql:ro

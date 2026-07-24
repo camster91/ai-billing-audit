@@ -5,6 +5,11 @@
 // Outlook user can stop the weekly digest with a single click —
 // no login required, no email confirmation round-trip.
 //
+// Auth: requires a signed `token` query param (HMAC of email +
+// template + expiry). Raw `?email=` is rejected — anyone who knew
+// an address could previously suppress it without proof of inbox
+// access.
+//
 // Semantics:
 //   - "unsubscribe" reason goes into SuppressListEntry; future
 //     sends of marketing-adjacent templates (welcome, weekly_digest)
@@ -20,13 +25,11 @@
 //     for clients that use the List-Unsubscribe-Post header shape.
 //
 // We intentionally do NOT require a CSRF token here. The endpoint
-// is idempotent and the action it takes (unsubscribe) is what the
-// user just asked for by clicking the link. Adding a token would
-// force the user through a confirm page, which the spec explicitly
-// avoids.
+// is idempotent and the signed token IS the authorization.
 
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyUnsubscribeToken } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,21 +65,22 @@ const ERROR_HTML = `<!doctype html>
 <head><meta charset="utf-8"><title>Unsubscribe failed</title></head>
 <body style="font: 16px/1.45 -apple-system, sans-serif; max-width: 560px; margin: 60px auto; padding: 0 20px;">
   <h1>Unsubscribe failed</h1>
-  <p>The unsubscribe link is missing or malformed. Please reply to the original email and we'll handle it manually.</p>
+  <p>The unsubscribe link is missing, expired, or malformed. Please reply to the original email and we'll handle it manually.</p>
 </body>
 </html>`;
 
 async function handle(req: NextRequest): Promise<Response> {
   const url = new URL(req.url);
-  const email = url.searchParams.get("email");
-  const template = url.searchParams.get("t") ?? "weekly_digest";
-  if (!email) {
+  const token = url.searchParams.get("token");
+  const verified = token ? verifyUnsubscribeToken(token) : null;
+  if (!verified) {
     return new Response(ERROR_HTML, {
       status: 400,
       headers: { "content-type": "text/html; charset=utf-8" },
     });
   }
-  const normalized = email.toLowerCase().trim();
+  const normalized = verified.email;
+  const template = verified.templateId;
   // Idempotent: if the address is already suppressed, we still
   // return 200 with the "already unsubscribed" page so the user
   // sees confirmation.

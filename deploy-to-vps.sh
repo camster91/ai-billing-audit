@@ -181,8 +181,8 @@ if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
     POSTGRES_PASSWORD="$(grep -v '^[[:space:]]*#' "$POSTGRES_PASSWORD_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
     [ -n "$POSTGRES_PASSWORD" ] || { echo "POSTGRES_PASSWORD_FILE is empty" >&2; exit 1; }
 else
-    POSTGRES_PASSWORD="audit"
-    echo "warning: $POSTGRES_PASSWORD_FILE missing, using default 'audit' (dev only)" >&2
+    echo "ERROR: $POSTGRES_PASSWORD_FILE missing; refusing to deploy with a default password." >&2
+    exit 1
 fi
 
 # Hard-fail if POSTGRES_PASSWORD ended up empty rather than emitting a

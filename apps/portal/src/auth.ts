@@ -206,7 +206,10 @@ export const authConfig: NextAuthConfig = {
     },
   },
 
-  trustHost: true,
+  // Production: require AUTH_URL so callback URLs are pinned to the
+  // canonical host behind Traefik. trustHost:true would accept any
+  // Host / X-Forwarded-Host and is only safe for local/dev.
+  trustHost: process.env.NODE_ENV !== "production",
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);

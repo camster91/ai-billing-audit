@@ -1302,10 +1302,10 @@ def create_app() -> FastAPI:
                     "/contact",
                     "/legal/privacy",
                     "/legal/terms",
-                    "/metrics",
-                    "/openapi.json",
-                    "/docs",
-                    "/redoc",
+                    # /metrics, /docs, /redoc, /openapi.json require
+                    # bearer in production (Prometheus scrapes with
+                    # Authorization: Bearer). Dev (AUDIT_ALLOW_NO_AUTH=1)
+                    # still reaches them via the early bypass above.
                     "/pricing",
                     "/security",
                     "/try",
@@ -1369,6 +1369,10 @@ def create_app() -> FastAPI:
                         "/activity",
                         "/reports",
                         "/upload",
+                        "/metrics",
+                        "/docs",
+                        "/redoc",
+                        "/openapi.json",
                     )
                 )
             )
@@ -1445,10 +1449,19 @@ def create_app() -> FastAPI:
         if not is_limited:
             return await call_next(request)
 
-        # Pick a key for the requester. X-Forwarded-For is set by
-        # Traefik; fall back to the direct client.
+        # Pick a key for the requester. Prefer the direct socket peer
+        # (request.client.host). When behind Traefik, the peer is the
+        # proxy — then take the *rightmost* X-Forwarded-For hop, which
+        # is the address Traefik appended. Never trust the leftmost
+        # client-supplied hop (spoofable).
+        peer = request.client.host if request.client else None
         xff = request.headers.get("x-forwarded-for", "")
-        ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "unknown")
+        if xff:
+            hops = [h.strip() for h in xff.split(",") if h.strip()]
+            # Rightmost hop is the one added by the nearest trusted proxy.
+            ip = hops[-1] if hops else (peer or "unknown")
+        else:
+            ip = peer or "unknown"
         bucket_key = (method, path, ip)
         now = _time.monotonic()
         window_start = now - 60.0

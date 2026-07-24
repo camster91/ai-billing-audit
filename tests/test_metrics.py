@@ -1,8 +1,12 @@
 """Tests for ``/metrics`` (Prometheus text exposition) + the
 metrics module counters.
 
-The ``/metrics`` endpoint is on the public-read whitelist so
-Prometheus can scrape without a bearer token. Exposed metrics:
+The ``/metrics`` endpoint requires bearer auth in production
+(Prometheus scrapes with ``Authorization: Bearer``). These unit
+tests run under ``AUDIT_ALLOW_NO_AUTH=1`` so the endpoint is
+reachable without a token.
+
+Exposed metrics:
 
   * ``zorva_uptime_seconds`` — gauge, process uptime
   * ``zorva_version_info{version=...}`` — constant 1
