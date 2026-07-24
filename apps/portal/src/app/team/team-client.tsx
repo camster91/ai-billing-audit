@@ -11,6 +11,7 @@
 // the "last active owner" check in the API).
 
 import { useState, useTransition } from "react";
+import { toUserFacingError } from "@/lib/ui-error";
 import styles from "../shell.module.css";
 
 export interface MembershipRow {
@@ -130,7 +131,7 @@ export function TeamClient({
         }
         await refreshList();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Network error");
+        setError(toUserFacingError(e, "Network error"));
       }
     });
   }
@@ -158,7 +159,7 @@ export function TeamClient({
         setInfo(`Role updated for ${membership.email}.`);
         await refreshList();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Network error");
+        setError(toUserFacingError(e, "Network error"));
       } finally {
         setBusyMembershipId(null);
       }
@@ -192,7 +193,7 @@ export function TeamClient({
         setInfo(`${membership.email} has been disabled.`);
         await refreshList();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Network error");
+        setError(toUserFacingError(e, "Network error"));
       } finally {
         setBusyMembershipId(null);
       }
