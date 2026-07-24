@@ -39,11 +39,14 @@ records — registrations do NOT carry a ``_kind``.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import os
 import secrets
+import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -93,6 +96,84 @@ def _new_webhook_id() -> str:
     return "wh_" + secrets.token_hex(6)
 
 
+def _allow_private_webhook_urls() -> bool:
+    """Escape hatch for hermetic tests that spin up loopback receivers.
+
+    Production must leave this unset. Local webhook integration
+    tests set ``ZORVA_WEBHOOK_ALLOW_PRIVATE=1``.
+    """
+    return os.environ.get("ZORVA_WEBHOOK_ALLOW_PRIVATE", "") == "1"
+
+
+def validate_webhook_url(url: str) -> str:
+    """Return a sanitized absolute webhook URL or raise ``ValueError``.
+
+    SSRF controls (production):
+      * scheme must be ``https`` (``http`` only when private URLs
+        are explicitly allowed for tests)
+      * hostname must resolve; every resolved address must be a
+        public global unicast address (no loopback / link-local /
+        private / multicast / unspecified / reserved)
+      * literal IP hosts are checked the same way
+      * userinfo (``user:pass@host``) is rejected
+    """
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("url must be a non-empty string")
+    url = url.strip()
+    parsed = urllib.parse.urlparse(url)
+    scheme = (parsed.scheme or "").lower()
+    allow_private = _allow_private_webhook_urls()
+    if scheme == "https":
+        pass
+    elif scheme == "http" and allow_private:
+        pass
+    else:
+        raise ValueError("url must use https")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("url must not contain userinfo")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("url must include a hostname")
+    # Block obvious metadata / internal hostnames even before DNS.
+    blocked_hosts = {
+        "localhost",
+        "metadata.google.internal",
+        "metadata",
+        "kubernetes.default",
+        "kubernetes.default.svc",
+    }
+    if host.lower() in blocked_hosts and not allow_private:
+        raise ValueError("url host is not allowed")
+    try:
+        addrinfos = socket.getaddrinfo(host, parsed.port or 443, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError(f"url host could not be resolved: {exc}") from exc
+    if not addrinfos:
+        raise ValueError("url host could not be resolved")
+    for info in addrinfos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError as exc:
+            raise ValueError(f"url resolved to invalid address: {ip_str}") from exc
+        if allow_private:
+            continue
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+        ):
+            raise ValueError("url must not target a private or reserved address")
+    # Rebuild without fragment; keep query/path as provided.
+    cleaned = urllib.parse.urlunparse(
+        (scheme, parsed.netloc, parsed.path or "/", parsed.params, parsed.query, "")
+    )
+    return cleaned
+
+
 # ─── Registration ─────────────────────────────────────────────────────────
 
 
@@ -107,12 +188,11 @@ def register_webhook(
     Parameters
     ----------
     url:
-        Absolute http(s) URL the dispatcher will POST event
-        payloads to. We don't enforce a schema or a domain in
-        v1 — the operator is responsible for sanity-checking
-        the URL at registration time. (We do refuse empty
-        strings so a typo'd ``""`` doesn't register a webhook
-        that will silently 404 every dispatch.)
+        Absolute https URL the dispatcher will POST event
+        payloads to. Private / loopback / link-local / metadata
+        targets are rejected (SSRF defence). Tests may set
+        ``ZORVA_WEBHOOK_ALLOW_PRIVATE=1`` to exercise loopback
+        receivers.
     events:
         List of event names the webhook wants to receive.
         Empty list is allowed (the webhook exists but never
@@ -130,9 +210,7 @@ def register_webhook(
     ``created_at``, ``tenant_id`` — exactly what the caller
     will receive in the HTTP response body.
     """
-    if not isinstance(url, str) or not url.strip():
-        raise ValueError("url must be a non-empty string")
-    url = url.strip()
+    url = validate_webhook_url(url)
     record = {
         "webhook_id": _new_webhook_id(),
         "url": url,
@@ -218,12 +296,30 @@ def _deliver_one(
     ``requests`` to keep the public API self-contained
     (no third-party runtime deps).
     """
+    # Re-validate at delivery time so a stale JSONL row that
+    # somehow points at a private IP cannot SSRF either.
+    try:
+        target = validate_webhook_url(str(hook.get("url") or ""))
+    except ValueError as exc:
+        _append_delivery_log(
+            {
+                "_kind": "delivery",
+                "webhook_id": hook.get("webhook_id"),
+                "event": event,
+                "url": hook.get("url"),
+                "status_code": None,
+                "ok": False,
+                "error": f"ssrf_blocked: {exc}",
+                "attempted_at": _now_iso(),
+            }
+        )
+        return False
     body = json.dumps(
         {"event": event, "delivered_at": _now_iso(), "data": payload},
         separators=(",", ":"),
     ).encode("utf-8")
     req = urllib.request.Request(
-        hook["url"],
+        target,
         data=body,
         method="POST",
         headers={
@@ -240,7 +336,7 @@ def _deliver_one(
                     "_kind": "delivery",
                     "webhook_id": hook.get("webhook_id"),
                     "event": event,
-                    "url": hook.get("url"),
+                    "url": target,
                     "status_code": resp.status,
                     "ok": ok,
                     "attempted_at": _now_iso(),

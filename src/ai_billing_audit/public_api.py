@@ -341,7 +341,8 @@ def _audit_status_to_dict(job: Any) -> dict[str, Any]:
         "submitted_at": job.submitted_at,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
-        "error": job.error or None,
+        "error": (job.public_error() if hasattr(job, "public_error") else None)
+        or None,
         "has_discrepancy": bool(findings),
         "findings": findings or [],
         "summary": result.get("summary") if isinstance(result, dict) else None,
@@ -762,7 +763,7 @@ def register_public_api(
         try:
             raw = await request.json()
         except json.JSONDecodeError as exc:
-            raise HTTPException(status_code=400, detail={"errors": [f"malformed JSON: {exc}"]})
+            raise HTTPException(status_code=400, detail={"errors": ["malformed_json"]})
         if not isinstance(raw, dict):
             raise HTTPException(status_code=400, detail={"errors": ["body must be a JSON object"]})
 

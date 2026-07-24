@@ -38,6 +38,7 @@ which starts uvicorn on 127.0.0.1:8765.
 """
 from __future__ import annotations
 
+import hmac
 import io
 import json
 import os
@@ -179,12 +180,31 @@ def _coerce_role(raw: str | None) -> str | None:
     return None
 
 
+def _header_rbac_trusted() -> bool:
+    """Whether client-supplied ``X-User-Role`` may grant ``admin``.
+
+    Production uses a shared bearer token. Trusting ``X-User-Role``
+    from the client would let any bearer holder escalate to admin.
+    Header RBAC is therefore disabled unless explicitly opted in
+    (``AUDIT_ALLOW_HEADER_RBAC=1``) or we are in local-dev mode
+    (``AUDIT_ALLOW_NO_AUTH=1``).
+    """
+    env = _os_for_rbac.environ
+    return (
+        env.get("AUDIT_ALLOW_HEADER_RBAC", "") == "1"
+        or env.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
+    )
+
+
 def _resolve_user_from_request(request: Request) -> UserContext:
     """Extract ``UserContext`` from request headers or raise 401.
 
     Contract:
       * If ``X-User-Id`` and ``X-User-Role`` are both present and
         the role is valid, returns a populated :class:`UserContext`.
+        In production (header RBAC not trusted), ``admin`` from the
+        client is clamped to ``biller`` to block privilege escalation
+        via spoofed headers.
       * If the role is unknown, raises 403 (the caller is
         impersonating an invalid role — different from "missing").
       * If the headers are missing AND we're in production mode
@@ -199,6 +219,9 @@ def _resolve_user_from_request(request: Request) -> UserContext:
     user_role = request.headers.get("X-User-Role")
     role = _coerce_role(user_role)
     if user_id and role:
+        # Clamp admin escalation when header RBAC is untrusted.
+        if role == "admin" and not _header_rbac_trusted():
+            role = "biller"
         return UserContext(
             user_id=str(user_id).strip(),
             role=role,
@@ -451,10 +474,10 @@ def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, A
     so the biller never sees a misleading "HIGH" badge before we have
     real signal.
 
-    Cost: one full read of the feedback JSONL per call. The store is
-    tiny in dev (a few rows) and the encounter-detail page is not
-    called in any hot loop, so the O(n_feedback) cost is fine. If
-    volume grows we can add a per-rule index.
+    Cost: one full read of the feedback JSONL per call (shared across
+    every finding on the page). The store is tiny in dev and the
+    encounter-detail page is not a hot loop; if volume grows we can
+    add a per-rule index.
     """
     try:
         from .feedback import get_default_store
@@ -462,13 +485,23 @@ def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, A
     except Exception:
         store = None
 
+    entries = None
+    if store is not None:
+        try:
+            entries = store.read_all()
+        except Exception:
+            entries = None
+            store = None
+
     for f in findings:
         if not isinstance(f, dict):
             continue
         rule_id = str(f.get("rule_id", "") or "")
         if store is not None and rule_id:
             try:
-                f["model_confidence"] = store.confidence_for_rule(rule_id)
+                f["model_confidence"] = store.confidence_for_rule(
+                    rule_id, _entries=entries
+                )
             except Exception:
                 f["model_confidence"] = {
                     "bucket": "uncalibrated",
@@ -1105,12 +1138,35 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(500)
-    async def _server_error(request: Request, exc: Exception) -> HTMLResponse:
+    async def _server_error(request: Request, exc: Exception):
         # Log to the standard error log so the operator can correlate.
         import logging as _logging_err
+        import uuid as _uuid_err
+        request_id = _uuid_err.uuid4().hex[:12]
         _logging_err.getLogger("ai_billing_audit").exception(
-            "500 on %s %s: %s", request.method, request.url.path, exc
+            "500 on %s %s request_id=%s: %s",
+            request.method,
+            request.url.path,
+            request_id,
+            exc,
         )
+        # API / JSON clients must never receive HTML error pages (or
+        # exception text). Mirror the 404 wants_json branch.
+        path = request.url.path
+        accept = (request.headers.get("accept") or "").lower()
+        wants_json = (
+            "application/json" in accept
+            or path.startswith("/api/")
+            or path.startswith("/v1/")
+            or path.startswith("/encounters/")
+            or path.startswith("/encounter/")
+        )
+        if wants_json:
+            return JSONResponse(
+                {"error": "internal_error", "request_id": request_id},
+                status_code=500,
+                headers={"x-request-id": request_id},
+            )
         return templates.TemplateResponse(
             request,
             "500.html",
@@ -1198,11 +1254,10 @@ def create_app() -> FastAPI:
         # mutation endpoints (upload/preview, upload/submit,
         # upload/notes, upload/paste, /encounter/{id}/accept-all,
         # /encounter/{id}/dismiss, etc.) still require auth.
-        _PUBLIC_READ_ENDPOINTS = (
-            "/api/encounters/{id}/denial-risk",
-            "/api/encounters/{id}/appeal-letter",
-            "/api/encounters/{id}/appeal-letters",
-        )
+        #
+        # NOTE: `/appeal-letters` (list) is NOT public — it enumerates
+        # letter metadata / encounter IDs. Only the single-letter
+        # generate+read paths used by the marketing demo stay open.
         if _ALLOW_NO_AUTH:
             return await call_next(request)
         # Public-read bypass (GET-only): the portal at zorva.ashbi.ca
@@ -1225,7 +1280,6 @@ def create_app() -> FastAPI:
             for suffix in (
                 "/denial-risk",
                 "/appeal-letter",
-                "/appeal-letters",
             )
         ):
             return await call_next(request)
@@ -1293,24 +1347,28 @@ def create_app() -> FastAPI:
                 and request.url.path.startswith("/changelog/")
             )
             or (
-                # Any GET to a non-API path is public-read so the
-                # branded 404 handler (and any future catch-all)
-                # can render without first being blocked by the
-                # bearer middleware. POST/PUT/DELETE are still
-                # auth-gated by the bearer check below. Marketing
-                # paths (anything that doesn't start with /api/,
-                # /audits, /encounter, /encounters, or /admin)
-                # are publicly browseable — same posture as a
-                # static site with a /404 fallback.
+                # Any GET to a non-API / non-internal path is
+                # public-read so the branded 404 handler (and any
+                # future catch-all) can render without first being
+                # blocked by the bearer middleware. POST/PUT/DELETE
+                # are still auth-gated by the bearer check below.
+                #
+                # CRITICAL: /activity and /reports/* expose audit
+                # trail / clinic metrics — they MUST stay behind
+                # bearer auth. Do not widen this list without review.
                 request.method == "GET"
                 and not any(
                     request.url.path.startswith(prefix)
                     for prefix in (
                         "/api/",
+                        "/v1/",
                         "/audits",
                         "/encounter/",
                         "/encounters/",
                         "/admin",
+                        "/activity",
+                        "/reports",
+                        "/upload",
                     )
                 )
             )
@@ -1333,7 +1391,9 @@ def create_app() -> FastAPI:
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "missing bearer token"}, status_code=401)
         token = auth[len("Bearer "):].strip()
-        if token != _BEARER:
+        # Constant-time compare — plain `!=` leaks timing on the
+        # shared operator bearer.
+        if not hmac.compare_digest(token, _BEARER):
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
         return await call_next(request)
@@ -3372,9 +3432,13 @@ def create_app() -> FastAPI:
                 llm_complete=llm_complete,
             )
         except Exception as e:
+            import logging as _log_appeal
+            _log_appeal.getLogger("ai_billing_audit").exception(
+                "appeal-letter generation failed: %s", e
+            )
             raise HTTPException(
                 status_code=500,
-                detail=f"appeal-letter generation failed: {e}",
+                detail="appeal_letter_failed",
             )
         if letter is None:
             raise HTTPException(
@@ -5325,9 +5389,13 @@ def create_app() -> FastAPI:
                 llm_complete=llm_complete,
             )
         except Exception as e:
+            import logging as _log_appeal
+            _log_appeal.getLogger("ai_billing_audit").exception(
+                "appeal-letter generation failed: %s", e
+            )
             raise HTTPException(
                 status_code=500,
-                detail=f"appeal-letter generation failed: {e}",
+                detail="appeal_letter_failed",
             )
         if letter is None:
             raise HTTPException(

@@ -78,9 +78,12 @@ export async function computeCalibration(
   const now = opts.now ?? new Date();
   const staleMs = CALIBRATION_STALE_DAYS * 24 * 60 * 60 * 1000;
 
+  // Cap the signal set — a clinic should not have tens of thousands of
+  // distinct rule IDs. Unbounded findMany was a memory DoS surface.
   const rows = await prisma.calibrationSignal.findMany({
     where: { tenantId },
     orderBy: { lastSignalAt: "desc" },
+    take: 5_000,
   });
 
   const signals: CalibrationSignalResult[] = rows.map((r) => {

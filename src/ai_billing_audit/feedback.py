@@ -294,7 +294,12 @@ class FeedbackStore:
             "by_biller_id": dict(by_biller),
         }
 
-    def confidence_for_rule(self, rule_id: str) -> dict[str, Any]:
+    def confidence_for_rule(
+        self,
+        rule_id: str,
+        *,
+        _entries: list[FeedbackEntry] | None = None,
+    ) -> dict[str, Any]:
         """How much real-world signal do we have for ``rule_id``?
 
         Returns a small dict the encounter-detail template can render
@@ -320,10 +325,13 @@ class FeedbackStore:
         not "uncertain") and the per-rule precision panel surfaces that
         separately.  If we later want a "trust" KPI that mixes both,
         compose it on top of this primitive.
+
+        Pass ``_entries`` to avoid re-reading the JSONL when attaching
+        confidence to many findings on one page (N+1 fix).
         """
         accepts = 0
         dismisses = 0
-        for e in self.read_all():
+        for e in (_entries if _entries is not None else self.read_all()):
             if (e.rule_id or "") != rule_id:
                 continue
             if e.action == "accept":

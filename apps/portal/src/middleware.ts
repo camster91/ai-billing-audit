@@ -48,7 +48,14 @@ const SESSION_COOKIE_PLAIN = "authjs.session-token";
 // not at the marketing front door.
 const PUBLIC_PREFIXES = [
   "/api/auth",
-  "/api/billing",   // checkout + webhook + tiers + portal are public
+  // Billing: only the anonymous checkout + Stripe webhook + public
+  // tier catalog are public. Authenticated billing mutations
+  // (cancel, change-tier, portal session, invoices, subscription,
+  // PUT tiers) require a session cookie — do NOT widen this to
+  // `/api/billing` as a prefix.
+  "/api/billing/checkout",
+  "/api/billing/webhook",
+  "/api/billing/tiers", // GET is public; PUT enforces PLATFORM_ADMIN_EMAILS
   "/api/leads",     // public contact-form endpoint (t_fa2149e1) — pre-account visitors only
   "/api/onboarding", // first-run wizard — Stripe success_url lands here, must work w/o auth
   "/api/team/accept", // invite magic-link — works pre-session; the token IS the auth (t_23bfd49c)
@@ -62,6 +69,9 @@ const PUBLIC_PREFIXES = [
   // violation.
   "/api/email/webhook",     // Resend event webhook (Svix-signed)
   "/api/email/unsubscribe", // RFC 8058 one-click unsubscribe handler
+  "/api/analytics/event",   // public marketing analytics beacon
+  "/api/maintenance",       // public maintenance flag probe
+  "/api/cron",              // cron endpoints authenticate via CRON_SECRET, not cookies
   "/login",
   "/",              // marketing landing page, public (t_fa2149e1)
   "/pricing",       // marketing page, public
@@ -97,8 +107,11 @@ const PUBLIC_PREFIXES = [
 ];
 
 function isPublicPath(pathname: string): boolean {
+  // Exact match OR prefix with a path boundary. Special-case
+  // `/api/billing/tiers`: GET is public; PUT is still "public" at
+  // the cookie layer but the route handler enforces platform admin.
   return PUBLIC_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/") || pathname === p,
+    (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 }
 
@@ -138,6 +151,7 @@ export default function proxy(request: NextRequest) {
     "/settings",
     "/team",
     "/onboarding",
+    "/api",
   ];
   const looksAuthed = AUTHED_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),

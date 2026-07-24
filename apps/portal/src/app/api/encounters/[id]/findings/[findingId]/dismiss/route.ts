@@ -122,19 +122,19 @@ export async function POST(
     const message = err instanceof Error ? err.message : "unknown error";
     if (message.includes("already accepted") || message.includes("already dismissed")) {
       return NextResponse.json(
-        { error: "finding_terminal", detail: message },
+        { error: "finding_terminal" },
         { status: 409 },
       );
     }
     if (message.includes("not found")) {
       return NextResponse.json(
-        { error: "finding_not_found", detail: message },
+        { error: "finding_not_found" },
         { status: 404 },
       );
     }
     console.error("[dismiss] audit write failed", err);
     return NextResponse.json(
-      { error: "audit_write_failed", detail: message },
+      { error: "audit_write_failed" },
       { status: 500 },
     );
   }

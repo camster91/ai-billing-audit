@@ -36,6 +36,9 @@ from typing import Any
 # reason as test_public_api.py — we want to focus on the
 # v1 + webhook surface.
 os.environ.setdefault("AUDIT_ALLOW_NO_AUTH", "1")
+# Hermetic tests spin up a loopback HTTP receiver; allow private
+# webhook targets only in this suite (production refuses them).
+os.environ.setdefault("ZORVA_WEBHOOK_ALLOW_PRIVATE", "1")
 
 import pytest  # noqa: E402
 from starlette.testclient import TestClient  # noqa: E402

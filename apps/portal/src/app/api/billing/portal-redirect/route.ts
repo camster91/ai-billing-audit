@@ -75,6 +75,6 @@ export async function GET(request: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown Stripe error";
     console.error("[/api/billing/portal-redirect] Stripe error:", message);
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: "stripe_unavailable" }, { status: 502 });
   }
 }
