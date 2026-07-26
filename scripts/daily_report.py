@@ -10,13 +10,17 @@ from datetime import datetime, timezone
 base = Path('runs/acceptance')
 today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
-# Find latest multi-run
+# Find latest multi-run with a usable summary.json
 # Matches both the legacy multi-<ts>/ naming AND the new
 # multi-<split>-<prompt>-<ts>/ naming introduced 2026-06-27.
 # The freshest by mtime is the most recent run regardless of naming.
-multis = sorted(base.glob('multi-*'), key=lambda p: p.stat().st_mtime)
+# Skip any multi-* dirs that don't have a summary.json yet — a partially-
+# written or interrupted run leaves the dir present but unreadable.
+candidates = [p for p in base.glob('multi-*') if (p / 'summary.json').exists()]
+multis = sorted(candidates, key=lambda p: p.stat().st_mtime)
 if not multis:
-    print("No multi-run output. Run scripts/run_7x.py first.")
+    print("No usable multi-run output (every multi-* dir is missing summary.json). "
+          "Re-run scripts/run_7x.py to regenerate.")
     sys.exit(1)
 latest = multis[-1]
 summary = json.load(open(latest / 'summary.json'))
