@@ -51,6 +51,34 @@ from typing import Any, Callable, Iterable
 
 logger = logging.getLogger(__name__)
 
+# Finished jobs older than this are dropped from the in-memory map
+# (JSONL on disk remains the durable trail). Prevents unbounded
+# growth of `_jobs` under sustained upload load.
+_JOB_RETENTION_SECONDS = int(os.environ.get("ZORVA_JOB_RETENTION_SECONDS", "86400"))
+_JOB_MAX_IN_MEMORY = int(os.environ.get("ZORVA_JOB_MAX_IN_MEMORY", "2000"))
+
+# Stable client-facing error codes. Never ship raw exception text
+# (SDK / LLM / filesystem messages) to the poll API / UI.
+_CLIENT_SAFE_JOB_ERRORS: dict[str, str] = {
+    "failed": "audit_job_failed",
+}
+
+
+def _sanitize_job_error(exc: BaseException) -> str:
+    """Map an exception to a stable, non-leaky client error code.
+
+    Full exception details are logged server-side by the caller.
+    """
+    name = type(exc).__name__
+    # Keep a small allowlist of intentionally-safe codes for UI
+    # branching; everything else collapses to audit_job_failed.
+    if name in {"TimeoutError", "asyncio.TimeoutError"}:
+        return "audit_job_timeout"
+    if name in {"ValueError", "X12ParseError"}:
+        return "audit_job_invalid_input"
+    return _CLIENT_SAFE_JOB_ERRORS["failed"]
+
+
 # Local copy of _PKG_DIR — the runner is a module-level function
 # (the default closure for JobQueue), so it can't see the closure
 # variable defined in api.py's create_app(). Re-derive it here.
@@ -299,12 +327,27 @@ class Job:
             "status": self.status,
             "stage": self.status,
             "progress": self._STATUS_PROGRESS.get(self.status, 0),
-            "error": self.error,
+            # Never expose raw exception text to poll clients / UI.
+            "error": self.public_error(),
             "result": self.result,
             "submitted_at": self.submitted_at,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
         }
+
+    def public_error(self) -> str:
+        """Client-safe error string (never raw exception text)."""
+        if not self.error:
+            return ""
+        # Historical JSONL rows may still contain "Type: message".
+        # Collapse anything that looks like a Python exception to a
+        # stable code so old failed jobs don't leak on poll.
+        head = self.error.split(":", 1)[0].strip()
+        if head.endswith("Error") or head.endswith("Exception"):
+            return "audit_job_failed"
+        if self.error.startswith("audit_job_"):
+            return self.error
+        return "audit_job_failed"
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Job":
@@ -453,6 +496,7 @@ class JobQueue:
             tenant_id=tenant_id,
         )
         with self._lock:
+            self._prune_jobs_locked()
             self._jobs[jid] = job
             self._append_log(job)
         threading.Thread(
@@ -582,9 +626,15 @@ class JobQueue:
             try:
                 result = self._runner(encounter)
             except Exception as exc:  # noqa: BLE001 (deliberately broad)
+                logger.exception(
+                    "audit job %s failed: %s: %s",
+                    job.job_id,
+                    type(exc).__name__,
+                    exc,
+                )
                 with self._lock:
                     job.status = "failed"
-                    job.error = f"{type(exc).__name__}: {exc}"
+                    job.error = _sanitize_job_error(exc)
                     job.finished_at = time.time()
                     self._append_log(job)
                 return
@@ -595,6 +645,40 @@ class JobQueue:
                 self._append_log(job)
         finally:
             self._sem.release()
+
+    def _prune_jobs_locked(self) -> None:
+        """Drop finished jobs past retention / over the in-memory cap.
+
+        Caller MUST hold ``self._lock``. Durable history remains in
+        the JSONL log on disk.
+        """
+        now = time.time()
+        to_drop: list[str] = []
+        for jid, job in self._jobs.items():
+            if job.status not in ("done", "failed"):
+                continue
+            finished = job.finished_at or job.started_at or job.submitted_at or 0.0
+            if now - finished > _JOB_RETENTION_SECONDS:
+                to_drop.append(jid)
+        for jid in to_drop:
+            self._jobs.pop(jid, None)
+        # Hard cap: if still oversized, drop oldest finished first.
+        if len(self._jobs) <= _JOB_MAX_IN_MEMORY:
+            return
+        finished_jobs = [
+            (jid, job)
+            for jid, job in self._jobs.items()
+            if job.status in ("done", "failed")
+        ]
+        finished_jobs.sort(
+            key=lambda pair: pair[1].finished_at
+            or pair[1].started_at
+            or pair[1].submitted_at
+            or 0.0
+        )
+        overflow = len(self._jobs) - _JOB_MAX_IN_MEMORY
+        for jid, _job in finished_jobs[: max(0, overflow)]:
+            self._jobs.pop(jid, None)
 
 
 # --- default runner --------------------------------------------------------

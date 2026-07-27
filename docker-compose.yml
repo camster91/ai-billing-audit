@@ -134,7 +134,7 @@ services:
     environment:
       POSTGRES_DB: ai_billing_audit
       POSTGRES_USER: audit
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-audit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
       - ai_billing_audit_pgdata:/var/lib/postgresql/data
       # audit_trail.sql ships in the repo (Phase 4 hash-chained log
@@ -235,9 +235,8 @@ services:
   #
   # PORTAL_POSTGRES_PASSWORD is fail-closed (? syntax) — if the operator
   # forgets to set it in /opt/projects/ai-billing-audit/portal.env, the
-  # container refuses to start. The FastAPI's POSTGRES_PASSWORD still
-  # defaults to "audit" (the known-weak fail-open bug from
-  # AUDIT_DEPLOY_OPS.md); a follow-up fixes that symmetrically.
+  # container refuses to start. FastAPI's POSTGRES_PASSWORD is likewise
+  # fail-closed (no `:-audit` default).
   # -------------------------------------------------------------------------
   portal-postgres:
     image: postgres:16-alpine

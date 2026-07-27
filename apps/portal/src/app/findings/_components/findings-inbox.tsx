@@ -23,6 +23,7 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../../shell.module.css";
+import { toUserFacingError } from "@/lib/ui-error";
 import {
   FINDING_CATEGORY_LABEL,
   FINDING_STATUSES,
@@ -173,8 +174,7 @@ export function FindingsInbox({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(
-          (data as { error?: string; detail?: string }).detail ??
-            (data as { error?: string }).error ??
+          (data as { error?: string }).error ??
             `HTTP ${res.status}`,
         );
       }
@@ -182,7 +182,7 @@ export function FindingsInbox({
       setSelected(new Set());
       startTransition(() => router.refresh());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toUserFacingError(err, "Could not accept findings. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -214,8 +214,7 @@ export function FindingsInbox({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(
-          (data as { error?: string; detail?: string }).detail ??
-            (data as { error?: string }).error ??
+          (data as { error?: string }).error ??
             `HTTP ${res.status}`,
         );
       }
@@ -223,7 +222,7 @@ export function FindingsInbox({
       setSelected(new Set());
       startTransition(() => router.refresh());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toUserFacingError(err, "Could not dismiss findings. Please try again."));
     } finally {
       setBusy(false);
     }

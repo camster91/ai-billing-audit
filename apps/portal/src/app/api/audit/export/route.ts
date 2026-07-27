@@ -59,10 +59,15 @@ export async function GET(req: NextRequest) {
     if (until) where.timestamp.lte = new Date(until);
   }
 
+  // Hard cap — full-table dumps OOM the Node process on large tenants.
+  // Privacy officers with bigger chains should page via `since`/`until`
+  // (or a future cursor endpoint). 10k rows ≈ a year of busy-clinic
+  // activity at ~25 events/day.
+  const EXPORT_ROW_CAP = 10_000;
   const rows = await prisma.auditTrailEntry.findMany({
     where,
     orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-    take: 100_000, // hard cap for v1; large tenants use the paged endpoint
+    take: EXPORT_ROW_CAP,
   });
 
   // Log the export itself (best-effort; do not block the response).

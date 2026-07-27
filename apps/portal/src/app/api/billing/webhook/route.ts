@@ -667,7 +667,9 @@ export async function POST(request: Request) {
     // existing row and return alreadySeen=true, short-circuiting the
     // retry. To allow a real retry, the operator can manually delete
     // the ProcessedStripeEvent row.
-    return new Response(`Handler error: ${message}`, { status: 500 });
+    // Never echo internal exception text to Stripe (or logs' readers
+    // via response bodies).
+    return new Response("handler_error", { status: 500 });
   }
 
   return Response.json({ received: true });

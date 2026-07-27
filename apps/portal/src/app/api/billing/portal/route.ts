@@ -89,6 +89,6 @@ export async function POST(request: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown Stripe error";
     console.error("[/api/billing/portal] Stripe error:", message);
-    return Response.json({ error: message }, { status: 502 });
+    return Response.json({ error: "stripe_unavailable" }, { status: 502 });
   }
 }

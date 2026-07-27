@@ -10,13 +10,10 @@
 //
 // PUT /api/billing/tiers
 //
-// Updates the audit-quota cap for one or more tiers. The hard cap
-// is per-tier; the column `Tenant.auditQuotaLimit` defaults to the
-// tier cap at provisioning but can be overridden per-tenant by a
-// direct DB write. This route is the canonical way to change the
-// tier defaults so the next-provisioned tenant picks up the new
-// cap, and (as a convenience) updates every existing tenant whose
-// cap still matches the previous default.
+// Updates the audit-quota cap for one or more tiers. Platform-admin
+// only — gated by PLATFORM_ADMIN_EMAILS (comma-separated allowlist).
+// Any signed-in tenant user MUST NOT be able to mutate platform-wide
+// quota defaults.
 //
 // Body:
 //   { caps: { small?: number, mid?: number, large?: number } }
@@ -32,9 +29,8 @@
 // Errors:
 //   400 — invalid body or non-positive cap
 //   401 — not signed in
-//   403 — not an admin/owner of any tenant (we still allow the
-//         update; the operator-tier check is a no-op for the
-//         platform-team use case)
+//   403 — caller email is not in PLATFORM_ADMIN_EMAILS
+//   503 — PLATFORM_ADMIN_EMAILS is unset (fail closed)
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -68,10 +64,37 @@ function isPositiveInt(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1;
 }
 
+/** Parse PLATFORM_ADMIN_EMAILS into a lowercase Set. Empty → deny all. */
+function platformAdminEmails(): Set<string> {
+  const raw = process.env.PLATFORM_ADMIN_EMAILS ?? "";
+  return new Set(
+    raw
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
+  const admins = platformAdminEmails();
+  if (admins.size === 0) {
+    // Fail closed: without an allowlist this route is a platform-wide
+    // quota mutator and must not be reachable by arbitrary tenants.
+    console.error(
+      "[/api/billing/tiers] PLATFORM_ADMIN_EMAILS unset; refusing PUT",
+    );
+    return NextResponse.json(
+      { error: "platform_admin_not_configured" },
+      { status: 503 },
+    );
+  }
+  const email = (session.user.email ?? "").trim().toLowerCase();
+  if (!email || !admins.has(email)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   let body: TiersPutBody;
   try {
@@ -135,7 +158,7 @@ export async function PUT(request: Request) {
   // cap would be for a hypothetical fresh "small" tenant so a
   // future debugger can see the chain end-to-end.
   console.log(
-    `[/api/billing/tiers] caps updated: small=${merged.small} mid=${merged.mid} large=${merged.large}; effective(small)=${effectiveAuditQuotaLimit({ tier: "small", auditQuotaLimit: merged.small })}`,
+    `[/api/billing/tiers] caps updated by ${email}: small=${merged.small} mid=${merged.mid} large=${merged.large}; effective(small)=${effectiveAuditQuotaLimit({ tier: "small", auditQuotaLimit: merged.small })}`,
   );
   return NextResponse.json({ ok: true, caps: merged });
 }

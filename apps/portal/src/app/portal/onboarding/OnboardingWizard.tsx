@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toUserFacingError } from "@/lib/ui-error";
 import styles from "./onboarding.module.css";
 
 interface WizardState {
@@ -147,7 +148,7 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
         clinicTimezone: clinicTimezone.trim() || s.clinicTimezone,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save clinic profile");
+      setError(toUserFacingError(err, "Could not save clinic profile"));
     } finally {
       setBusy(false);
     }
@@ -175,7 +176,7 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
         dataResidencyRegion: data.region ?? region,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save region");
+      setError(toUserFacingError(err, "Could not save region"));
     } finally {
       setBusy(false);
     }
@@ -203,7 +204,7 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
         ehrConnectionMode: data.mode,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save EHR connection");
+      setError(toUserFacingError(err, "Could not save EHR connection"));
     } finally {
       setBusy(false);
     }
@@ -270,7 +271,7 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
         firstEncounterFileName: fileName ?? s.firstEncounterFileName,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save first encounter");
+      setError(toUserFacingError(err, "Could not save first encounter"));
     } finally {
       setBusy(false);
     }
@@ -298,7 +299,7 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
         residencyRegionLocked: true,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not complete wizard");
+      setError(toUserFacingError(err, "Could not complete wizard"));
       setCompleting(false);
     } finally {
       setBusy(false);

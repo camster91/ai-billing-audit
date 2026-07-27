@@ -44,6 +44,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/** Page size for the findings inbox. Keeps memory bounded while
+ *  still showing a useful work queue. */
+const FINDINGS_PAGE_SIZE = 50;
+
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -72,6 +76,29 @@ function toList(value: string | string[] | undefined): string[] {
   return value.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+function parsePage(value: string | undefined): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return Math.min(n, 10_000);
+}
+
+function buildFindingsHref(args: {
+  status: string;
+  categories: string[];
+  providers: string[];
+  payers: string[];
+  page: number;
+}): string {
+  const params = new URLSearchParams();
+  params.set("status", args.status);
+  for (const c of args.categories) params.append("category", c);
+  for (const p of args.providers) params.append("provider", p);
+  for (const p of args.payers) params.append("payer", p);
+  if (args.page > 1) params.set("page", String(args.page));
+  const qs = params.toString();
+  return qs ? `/findings?${qs}` : "/findings";
+}
+
 export default async function FindingsPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -86,6 +113,7 @@ export default async function FindingsPage({ searchParams }: PageProps) {
   const categories = toList(sp.category);
   const payers = toList(sp.payer);
   const providers = toList(sp.provider);
+  const page = parsePage(firstString(sp.page));
 
   const tenant = await getActiveTenant();
 
@@ -97,29 +125,41 @@ export default async function FindingsPage({ searchParams }: PageProps) {
     ? await prisma.encounter.count({ where: { tenantId: tenant.id } })
     : 0;
 
+  const findingWhere = tenant
+    ? {
+        status,
+        encounter: {
+          tenantId: tenant.id,
+          ...(payers.length > 0 ? { claim: { payer: { in: payers } } } : {}),
+          ...(providers.length > 0
+            ? {
+                claim: {
+                  ...(payers.length > 0 ? { payer: { in: payers } } : {}),
+                  providerName: { in: providers },
+                },
+              }
+            : {}),
+        },
+        ...(categories.length > 0 ? { category: { in: categories } } : {}),
+      }
+    : null;
+
+  const totalMatching = findingWhere
+    ? await prisma.finding.count({ where: findingWhere })
+    : 0;
+  const totalPages = Math.max(1, Math.ceil(totalMatching / FINDINGS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
   // Single Prisma round-trip: findings + their encounter's claim
   // (for provider/payer display). Eager-loaded so the inbox render
-  // is a single query, not N+1.
-  const findings = tenant
+  // is a single query, not N+1. Paginated so large tenants cannot
+  // pull unbounded rows into memory.
+  const findings = findingWhere
     ? await prisma.finding.findMany({
-        where: {
-          status,
-          encounter: {
-            tenantId: tenant.id,
-            ...(payers.length > 0 ? { claim: { payer: { in: payers } } } : {}),
-            ...(providers.length > 0
-              ? {
-                  claim: {
-                    ...(payers.length > 0 ? { payer: { in: payers } } : {}),
-                    providerName: { in: providers },
-                  },
-                }
-              : {}),
-          },
-          ...(categories.length > 0 ? { category: { in: categories } } : {}),
-        },
+        where: findingWhere,
         orderBy: [{ estFinancialImpactCents: "desc" }, { id: "asc" }],
-        take: 500,
+        skip: (safePage - 1) * FINDINGS_PAGE_SIZE,
+        take: FINDINGS_PAGE_SIZE,
         select: {
           id: true,
           encounterId: true,
@@ -183,6 +223,10 @@ export default async function FindingsPage({ searchParams }: PageProps) {
     payer: f.encounter.claim.payer,
   }));
 
+  const rangeStart =
+    totalMatching === 0 ? 0 : (safePage - 1) * FINDINGS_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * FINDINGS_PAGE_SIZE, totalMatching);
+
   return (
     <main id="main" className={styles.shell}>
       {tenant ? <PortalNav current="/findings" tenant={tenant} /> : null}
@@ -190,7 +234,7 @@ export default async function FindingsPage({ searchParams }: PageProps) {
       <h1 className={styles.heading}>Findings</h1>
       <p className={styles.subheading}>
         {tenant
-          ? `Showing ${findings.length} ${status} finding${findings.length === 1 ? "" : "s"} for ${tenant.name}. Sort: estimated impact, highest first. Select rows to bulk-accept or bulk-dismiss.`
+          ? `Showing ${rangeStart}–${rangeEnd} of ${totalMatching} ${status} finding${totalMatching === 1 ? "" : "s"} for ${tenant.name}. Sort: estimated impact, highest first. Select rows to bulk-accept or bulk-dismiss.`
           : "Tenant scope required to view findings."}
       </p>
 
@@ -221,16 +265,64 @@ export default async function FindingsPage({ searchParams }: PageProps) {
           }}
         />
       ) : (
-        <FindingsInbox
-          rows={initialRows}
-          categoryOptions={Object.keys(FINDING_CATEGORY_LABEL)}
-          providerOptions={providerOptions}
-          payerOptions={payerOptions}
-          initialStatus={status}
-          initialCategories={categories}
-          initialProviders={providers}
-          initialPayers={payers}
-        />
+        <>
+          <FindingsInbox
+            rows={initialRows}
+            categoryOptions={Object.keys(FINDING_CATEGORY_LABEL)}
+            providerOptions={providerOptions}
+            payerOptions={payerOptions}
+            initialStatus={status}
+            initialCategories={categories}
+            initialProviders={providers}
+            initialPayers={payers}
+          />
+          {totalPages > 1 ? (
+            <nav
+              aria-label="Findings pagination"
+              style={{
+                display: "flex",
+                gap: 16,
+                alignItems: "center",
+                marginTop: 24,
+                fontSize: 14,
+              }}
+            >
+              {safePage > 1 ? (
+                <Link
+                  href={buildFindingsHref({
+                    status,
+                    categories,
+                    providers,
+                    payers,
+                    page: safePage - 1,
+                  })}
+                >
+                  Previous
+                </Link>
+              ) : (
+                <span aria-disabled="true">Previous</span>
+              )}
+              <span>
+                Page {safePage} of {totalPages}
+              </span>
+              {safePage < totalPages ? (
+                <Link
+                  href={buildFindingsHref({
+                    status,
+                    categories,
+                    providers,
+                    payers,
+                    page: safePage + 1,
+                  })}
+                >
+                  Next
+                </Link>
+              ) : (
+                <span aria-disabled="true">Next</span>
+              )}
+            </nav>
+          ) : null}
+        </>
       )}
 
       <p className={styles.muted} style={{ marginTop: 32, fontSize: 12 }}>

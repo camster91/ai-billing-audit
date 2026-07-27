@@ -16,6 +16,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents } from "@/lib/encounter-format";
+import { toUserFacingError } from "@/lib/ui-error";
 import {
   DISMISS_REASONS,
   DISMISS_REASON_LABEL,
@@ -84,14 +85,14 @@ export function FindingCard(props: FindingCardProps) {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
-          (body && (body.error || body.detail)) || `Accept failed (${res.status})`,
+          (body && body.error) || `Accept failed (${res.status})`,
         );
       }
       startTransition(() => {
         router.refresh();
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toUserFacingError(err, "Could not accept this finding. Please try again."));
     }
   }
 
@@ -122,7 +123,7 @@ export function FindingCard(props: FindingCardProps) {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
-          (body && (body.error || body.detail)) || `Dismiss failed (${res.status})`,
+          (body && body.error) || `Dismiss failed (${res.status})`,
         );
       }
       setDismissOpen(false);
@@ -130,7 +131,7 @@ export function FindingCard(props: FindingCardProps) {
         router.refresh();
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toUserFacingError(err, "Could not dismiss this finding. Please try again."));
     }
   }
 

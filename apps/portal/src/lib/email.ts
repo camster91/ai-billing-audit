@@ -37,6 +37,7 @@
 // unsubscribe; Gmail / Outlook look for it together with
 // List-Unsubscribe.
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
@@ -54,6 +55,84 @@ const EMAIL_FROM =
 const BASE_URL = process.env["BASE_URL"] ?? "http://localhost:3000";
 
 const RESEND_KEY_PLACEHOLDER = "***";
+
+/** Secret used to HMAC one-click unsubscribe tokens. Prefer a
+ * dedicated key; fall back to AUTH_SECRET so prod always has one. */
+function unsubscribeSigningKey(): string {
+  const dedicated = process.env["UNSUBSCRIBE_SECRET"] ?? "";
+  if (dedicated.length >= 16) return dedicated;
+  const auth = process.env["AUTH_SECRET"] ?? "";
+  if (auth.length >= 16) return auth;
+  // Dev-only fallback — production must set AUTH_SECRET.
+  return "dev-unsubscribe-signing-key";
+}
+
+/**
+ * Build a signed one-click unsubscribe token.
+ * Format: base64url(email).base64url(templateId).expiryUnix.hex_hmac
+ * Expiry defaults to 90 days so weekly-digest links stay valid across
+ * a full quarter of digests.
+ */
+export function signUnsubscribeToken(
+  email: string,
+  templateId: string,
+  opts: { ttlSeconds?: number; now?: number } = {},
+): string {
+  const ttl = opts.ttlSeconds ?? 90 * 24 * 60 * 60;
+  const exp = Math.floor((opts.now ?? Date.now()) / 1000) + ttl;
+  const emailB64 = Buffer.from(email.trim().toLowerCase(), "utf8").toString(
+    "base64url",
+  );
+  const tmplB64 = Buffer.from(templateId, "utf8").toString("base64url");
+  const body = `${emailB64}.${tmplB64}.${exp}`;
+  const mac = createHmac("sha256", unsubscribeSigningKey())
+    .update(body)
+    .digest("hex");
+  return `${body}.${mac}`;
+}
+
+/**
+ * Verify a signed unsubscribe token. Returns the email + template
+ * on success, or null if the token is missing / expired / forged.
+ */
+export function verifyUnsubscribeToken(
+  token: string,
+  opts: { now?: number } = {},
+): { email: string; templateId: string } | null {
+  const parts = token.split(".");
+  if (parts.length !== 4) return null;
+  const [emailB64, tmplB64, expStr, mac] = parts;
+  if (!emailB64 || !tmplB64 || !expStr || !mac) return null;
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || exp < Math.floor((opts.now ?? Date.now()) / 1000)) {
+    return null;
+  }
+  const body = `${emailB64}.${tmplB64}.${expStr}`;
+  const expected = createHmac("sha256", unsubscribeSigningKey())
+    .update(body)
+    .digest("hex");
+  try {
+    const a = Buffer.from(mac, "utf8");
+    const b = Buffer.from(expected, "utf8");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const email = Buffer.from(emailB64, "base64url").toString("utf8").trim().toLowerCase();
+    const templateId = Buffer.from(tmplB64, "base64url").toString("utf8");
+    if (!email.includes("@") || !templateId) return null;
+    return { email, templateId };
+  } catch {
+    return null;
+  }
+}
+
+/** Build the HTTPS one-click unsubscribe URL for List-Unsubscribe. */
+export function buildUnsubscribeUrl(email: string, templateId: string): string {
+  const token = signUnsubscribeToken(email, templateId);
+  return `${BASE_URL.replace(/\/$/, "")}/api/email/unsubscribe?token=${encodeURIComponent(token)}`;
+}
 
 function isPlaceholder(value: string | undefined): boolean {
   if (!value) return true;
@@ -204,7 +283,7 @@ function buildHeaders(input: SendTemplateInput): TemplateHeaders {
     // mailto: URL is the documented fallback for clients that
     // don't follow the one-click link.
     const unsubMail = `mailto:${EMAIL_FROM.replace(/.*<|>.*/g, "").trim() || "unsubscribe@example.com"}?subject=unsubscribe`;
-    const unsubHttps = `${BASE_URL.replace(/\/$/, "")}/api/email/unsubscribe?email=${encodeURIComponent(input.to)}&t=${encodeURIComponent(input.templateId)}`;
+    const unsubHttps = buildUnsubscribeUrl(input.to, input.templateId);
     headers["List-Unsubscribe"] = `<${unsubHttps}>, <${unsubMail}>`;
     headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
   }

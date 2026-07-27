@@ -32,6 +32,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { escapeHtml } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,15 +45,18 @@ function acceptPageHtml(args: {
   ctaHref?: string;
   ctaLabel?: string;
 }): string {
+  const title = escapeHtml(args.title);
+  const ctaHref = args.ctaHref ? escapeHtml(args.ctaHref) : "";
+  const ctaLabel = escapeHtml(args.ctaLabel ?? "Continue");
   const cta = args.ctaHref
-    ? `<p style="margin-top:24px"><a href="${args.ctaHref}" style="background:#4f46e5;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">${args.ctaLabel ?? "Continue"}</a></p>`
+    ? `<p style="margin-top:24px"><a href="${ctaHref}" style="background:#4f46e5;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">${ctaLabel}</a></p>`
     : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${args.title}</title>
+<title>${title}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0b1020; color: #e6e9f2; margin: 0; padding: 0; }
   main { max-width: 520px; margin: 80px auto; padding: 32px; background: #131a30; border: 1px solid #28324f; border-radius: 12px; }
@@ -63,7 +67,7 @@ function acceptPageHtml(args: {
 </head>
 <body>
   <main>
-    <h1>${args.title}</h1>
+    <h1>${title}</h1>
     ${args.body}
     ${cta}
   </main>
@@ -104,10 +108,12 @@ export async function GET(request: Request) {
   }
 
   if (membership.status === "inactive") {
+    const email = escapeHtml(membership.email);
+    const tenantName = escapeHtml(membership.tenant.name);
     return new NextResponse(
       acceptPageHtml({
         title: "Invite revoked",
-        body: `<p>The invite for <code>${membership.email}</code> on <strong>${membership.tenant.name}</strong> has been revoked. Ask the team owner to send a fresh invite.</p>`,
+        body: `<p>The invite for <code>${email}</code> on <strong>${tenantName}</strong> has been revoked. Ask the team owner to send a fresh invite.</p>`,
       }),
       { status: 410, headers: { "content-type": "text/html; charset=utf-8" } },
     );
@@ -134,7 +140,7 @@ export async function GET(request: Request) {
       return new NextResponse(
         acceptPageHtml({
           title: "Wrong account",
-          body: `<p>You're signed in as <code>${session.user.email ?? "(unknown)"}</code>, but this invite is for <code>${membership.email}</code>.</p>
+          body: `<p>You're signed in as <code>${escapeHtml(session.user.email ?? "(unknown)")}</code>, but this invite is for <code>${escapeHtml(membership.email)}</code>.</p>
                  <p>Sign out and click the invite link from the original email, or ask the team owner to re-send it.</p>`,
         }),
         { status: 403, headers: { "content-type": "text/html; charset=utf-8" } },
@@ -166,7 +172,7 @@ export async function GET(request: Request) {
   return new NextResponse(
     acceptPageHtml({
       title: `Join ${membership.tenant.name}`,
-      body: `<p>You've been invited to <strong>${membership.tenant.name}</strong> on the AI Billing Portal as <code>${membership.email}</code>.</p>
+      body: `<p>You've been invited to <strong>${escapeHtml(membership.tenant.name)}</strong> on the AI Billing Portal as <code>${escapeHtml(membership.email)}</code>.</p>
              <p>Sign in to accept the invite. If you don't have an account yet, we'll create one with the email above.</p>`,
       ctaHref: loginUrl,
       ctaLabel: "Sign in to accept",

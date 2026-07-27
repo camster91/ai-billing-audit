@@ -160,9 +160,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
   } catch (err) {
     console.error("[bulk/accept] audit write failed", err);
-    const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json(
-      { error: "audit_write_failed", detail: message },
+      { error: "audit_write_failed" },
       { status: 500 },
     );
   }

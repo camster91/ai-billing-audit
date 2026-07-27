@@ -22,6 +22,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toUserFacingError } from "@/lib/ui-error";
 import styles from "./billing.module.css";
 
 type TierId = "small" | "mid" | "large";
@@ -129,7 +130,7 @@ export function BillingActions({
       startTransition(() => router.refresh());
     } catch (e) {
       setTierError(
-        e instanceof Error ? e.message : "Network error during tier change.",
+        toUserFacingError(e, "Network error during tier change."),
       );
     } finally {
       setTierBusy(false);
@@ -171,7 +172,7 @@ export function BillingActions({
       startTransition(() => router.refresh());
     } catch (e) {
       setCancelError(
-        e instanceof Error ? e.message : "Network error during cancel.",
+        toUserFacingError(e, "Network error during cancel."),
       );
     } finally {
       setCancelBusy(false);

@@ -20,8 +20,6 @@ import { prisma } from "@/lib/prisma";
 import {
   computeSignature,
   GENESIS_PREVIOUS_SIGNATURE,
-  verifyChain as verifyChainImpl,
-  walkChain,
   type ChainRow,
 } from "@/lib/audit-chain";
 import {
@@ -461,49 +459,82 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
  * Walk the full audit chain for a tenant and return the index of the
  * first broken row, or null when the chain is intact. Used by tests
  * and by the runbook verifier (out of scope for the portal page).
+ *
+ * Pages through the DB in chunks so a multi-year chain cannot OOM
+ * the Node process. Verification is streaming: only the running
+ * previous-signature is retained between pages.
  */
 export async function verifyTenantChain(
   tenantId: string,
   client: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<number | null> {
-  // Re-walk the chain after insert to confirm the new tail is intact.
-  // This is the test-time / smoke-time verification; the route layer
-  // doesn't re-verify on every request because the on-write chain is
-  // already deterministic (single-threaded per request + DB row lock).
-  const rows = await client.auditTrailEntry.findMany({
-    where: { tenantId },
-    orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-    select: {
-      eventId: true,
-      timestamp: true,
-      userIdentifier: true,
-      action: true,
-      patientHash: true,
-      dataElements: true,
-      modelRunId: true,
-      previousSignature: true,
-      cryptographicSignature: true,
-    },
-  });
-  const chainRows: ChainRow[] = rows.map((r) => ({
-    eventId: r.eventId,
-    timestamp: r.timestamp.toISOString(),
-    userIdentifier: r.userIdentifier,
-    action: r.action,
-    patientHash: r.patientHash,
-    dataElements: r.dataElements,
-    modelRunId: r.modelRunId,
-    previousSignature: r.previousSignature,
-    cryptographicSignature: r.cryptographicSignature,
-  }));
-  return walkAndVerify(chainRows);
-}
+  const PAGE = 1_000;
+  let previousSignature = GENESIS_PREVIOUS_SIGNATURE;
+  let absoluteIndex = 0;
+  let cursorTimestamp: Date | null = null;
+  let cursorEventId: string | null = null;
 
-function walkAndVerify(rows: ChainRow[]): number | null {
-  // Re-use the verify_chain implementation, going through walkChain
-  // for the canonical sort so the order matches the runbook.
-  const ordered = walkChain(rows);
-  return verifyChainImpl(ordered);
+  for (;;) {
+    const rows = await client.auditTrailEntry.findMany({
+      where: {
+        tenantId,
+        ...(cursorTimestamp && cursorEventId
+          ? {
+              OR: [
+                { timestamp: { gt: cursorTimestamp } },
+                {
+                  timestamp: cursorTimestamp,
+                  eventId: { gt: cursorEventId },
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
+      take: PAGE,
+      select: {
+        eventId: true,
+        timestamp: true,
+        userIdentifier: true,
+        action: true,
+        patientHash: true,
+        dataElements: true,
+        modelRunId: true,
+        previousSignature: true,
+        cryptographicSignature: true,
+      },
+    });
+    if (rows.length === 0) break;
+
+    for (const r of rows) {
+      const chainRow: ChainRow = {
+        eventId: r.eventId,
+        timestamp: r.timestamp.toISOString(),
+        userIdentifier: r.userIdentifier,
+        action: r.action,
+        patientHash: r.patientHash,
+        dataElements: r.dataElements,
+        modelRunId: r.modelRunId,
+        previousSignature: r.previousSignature,
+        cryptographicSignature: r.cryptographicSignature,
+      };
+      if (chainRow.previousSignature !== previousSignature) {
+        return absoluteIndex;
+      }
+      const expected = computeSignature(previousSignature, chainRow);
+      if (chainRow.cryptographicSignature !== expected) {
+        return absoluteIndex;
+      }
+      previousSignature = chainRow.cryptographicSignature;
+      absoluteIndex += 1;
+    }
+
+    const last = rows[rows.length - 1]!;
+    cursorTimestamp = last.timestamp;
+    cursorEventId = last.eventId;
+    if (rows.length < PAGE) break;
+  }
+  return null;
 }
 
 /** Serialize the `dataElements` column in a stable JSON shape. */
