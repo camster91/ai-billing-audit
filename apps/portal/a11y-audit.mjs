@@ -3,10 +3,11 @@
 import { chromium } from "playwright";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3102";
 const COOKIE = process.env.SESSION_TOKEN;
-const OUT = process.env.A11Y_OUT || "/Users/biancabienaime/projects/ai-billing-audit/docs/a11y";
+const OUT = process.env.A11Y_OUT || fileURLToPath(new URL("../../docs/a11y", import.meta.url));
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
 
 const ROUTES = [
@@ -110,7 +111,7 @@ async function main() {
     const url = BASE + route.path;
     process.stdout.write(`[${route.name}] ${url} ... `);
     try {
-      const resp = await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+      const resp = await page.goto(url, { waitUntil: "load", timeout: 30000 });
       const status = resp ? resp.status() : "no-response";
       // give dynamic content time
       await page.waitForTimeout(800);

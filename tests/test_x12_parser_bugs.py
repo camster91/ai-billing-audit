@@ -266,6 +266,47 @@ def test_two_claims_each_have_their_own_encounter_id() -> None:
     assert claims[1]["encounter_id"] == "ENC-MULTI-002"
 
 
+def test_provider_and_subscriber_context_is_scoped_to_hl_loop() -> None:
+    payload = _envelope(
+        "HL*1**20*1",
+        "NM1*85*2*PROVIDER A*****XX*1111111111",
+        "HL*2*1*22*0",
+        "NM1*IL*1*DOE*ONE****MI*MEMBER-1",
+        "CLM*ENC-HL-001*100.00***11:B:1*Y*A*Y*Y",
+        "DTP*472*D8*20240510",
+        "SV1*HC:99213*100.00*UN*1***1",
+        "HL*3**20*1",
+        "NM1*85*2*PROVIDER B*****XX*2222222222",
+        "HL*4*3*22*0",
+        "NM1*IL*1*DOE*TWO****MI*MEMBER-2",
+        "CLM*ENC-HL-002*200.00***11:B:1*Y*A*Y*Y",
+        "DTP*472*D8*20240511",
+        "SV1*HC:99214*200.00*UN*1***1",
+    )
+    claims = parse_837p(payload)
+    assert [(c["NPI"], c["patient_id"]) for c in claims] == [
+        ("1111111111", "MEMBER-1"),
+        ("2222222222", "MEMBER-2"),
+    ]
+
+
+def test_non_default_element_and_segment_separators_are_honoured() -> None:
+    payload = _envelope(
+        "BHT*0019*00*1*20240515*1200*CH",
+        "NM1*85*2*BILLING CLINIC*****XX*1234567890",
+        "NM1*IL*1*DOE*JOHN****MI*MBR-000123",
+        "CLM*ENC-SEPS-001*100.00***11:B:1*Y*A*Y*Y",
+        "HI*ABK:Z0000",
+        "DTP*472*D8*20240510",
+        "SV1*HC:99213*100.00*UN*1***1",
+    ).replace("*", "|").replace("~", "!")
+    claim = parse_837p(payload)[0]
+    assert claim["encounter_id"] == "ENC-SEPS-001"
+    assert claim["diagnosis_codes"] == ["Z0000"]
+    assert claim["CPT_codes"] == ["99213"]
+    assert claim["raw"].endswith("!")
+
+
 # ---------------------------------------------------------------------------
 # Sanity: the existing happy-path single-claim shape still works after
 # these fixes (no regressions on the baseline).

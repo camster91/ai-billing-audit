@@ -214,6 +214,22 @@
   font-size: 14px;
 }
 
+.findingsTableScroller {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.findingsTableScroller .table {
+  min-width: 900px;
+}
+
+.findingsTableScroller:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 3px;
+}
+
 .table th,
 .table td {
   text-align: left;

@@ -48,9 +48,11 @@ jobs:
           cache: pnpm
 
       - name: Install deps
+        working-directory: apps/portal
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
+        working-directory: apps/portal
         run: pnpm test:e2e:install
 
       - name: Apply Prisma migrations (SQLite)

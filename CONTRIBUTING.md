@@ -191,8 +191,9 @@ The Next.js / `apps/portal` tests live in `apps/portal/`:
 
 ```bash
 cd apps/portal
-pnpm test            # Vitest
-pnpm test:e2e        # Playwright (requires `pnpm exec playwright install`)
+pnpm test:e2e:install # Install Chromium for browser tests
+pnpm test:e2e         # Playwright smoke suite
+pnpm test:onboarding  # Focused Node test example
 ```
 
 A test that requires a real network endpoint MUST be marked
@@ -211,7 +212,7 @@ mypy src/ai_billing_audit
 
 # TypeScript / Next.js — in apps/portal/
 cd apps/portal
-pnpm lint            # next lint
+pnpm lint            # Next.js lint
 pnpm tsc --noEmit    # type-check
 ```
 

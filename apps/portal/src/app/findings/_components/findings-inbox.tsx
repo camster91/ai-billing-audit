@@ -19,7 +19,14 @@
 // reuses the existing query-param shape) so the three multi-selects
 // and the "Export CSV" link submit together.
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../../shell.module.css";
@@ -66,6 +73,57 @@ const DISMISS_REASONS: { value: DismissReason; label: string }[] = [
 
 const BULK_FINDING_ID_MAX_CLIENT = 200;
 
+function useModalAccessibility(onCancel: () => void, busy: boolean) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef(onCancel);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  cancelRef.current = onCancel;
+
+  useEffect(() => {
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = () =>
+      Array.from(
+        modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), input:not([disabled])',
+        ),
+      );
+    const first = focusable()[0];
+    first?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!busy) cancelRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = focusable();
+      if (controls.length === 0) return;
+      const firstControl = controls[0];
+      const lastControl = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === firstControl) {
+        event.preventDefault();
+        lastControl.focus();
+      } else if (!event.shiftKey && document.activeElement === lastControl) {
+        event.preventDefault();
+        firstControl.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [busy]);
+
+  return modalRef;
+}
+
 function formatImpact(cents: number): string {
   const sign = cents < 0 ? "-" : "+";
   const abs = Math.abs(cents);
@@ -104,6 +162,15 @@ export function FindingsInbox({
   // selectable set. The server already filtered; the client only
   // computes the totals + drives the checkbox state.
   const selectable = useMemo(() => rows.map((r) => r.id), [rows]);
+  useEffect(() => {
+    const visible = new Set(selectable);
+    setSelected((previous) => {
+      const next = new Set(
+        Array.from(previous).filter((findingId) => visible.has(findingId)),
+      );
+      return next.size === previous.size ? previous : next;
+    });
+  }, [selectable]);
   const allSelected =
     selectable.length > 0 && selectable.every((id) => selected.has(id));
   const someSelected = selected.size > 0;
@@ -370,6 +437,7 @@ export function FindingsInbox({
           </p>
         </section>
       ) : (
+        <div className={styles.findingsTableScroller} tabIndex={0} aria-label="Findings table; scroll horizontally">
         <table className={styles.table}>
           <thead>
             <tr>
@@ -430,6 +498,7 @@ export function FindingsInbox({
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       {acceptModal ? (
@@ -485,6 +554,7 @@ function AcceptModal({
   onCancel,
   onConfirm,
 }: AcceptModalProps) {
+  const modalRef = useModalAccessibility(onCancel, busy);
   const impactClassName =
     totalImpactCents < 0
       ? `${styles.impactTotal} ${styles.impactTotalNegative}`
@@ -496,7 +566,7 @@ function AcceptModal({
       aria-modal="true"
       aria-labelledby="accept-modal-title"
     >
-      <div className={styles.modal}>
+      <div ref={modalRef} className={styles.modal}>
         <h2 id="accept-modal-title">Bulk accept {count} findings</h2>
         <p>
           You&rsquo;re about to accept {count} finding{count === 1 ? "" : "s"}.
@@ -553,6 +623,7 @@ function DismissModal({
   onCancel,
   onConfirm,
 }: DismissModalProps) {
+  const modalRef = useModalAccessibility(onCancel, busy);
   return (
     <div
       className={styles.modalOverlay}
@@ -560,7 +631,7 @@ function DismissModal({
       aria-modal="true"
       aria-labelledby="dismiss-modal-title"
     >
-      <div className={styles.modal}>
+      <div ref={modalRef} className={styles.modal}>
         <h2 id="dismiss-modal-title">Bulk dismiss {count} findings</h2>
         <p>
           Dismissing {count} finding{count === 1 ? "" : "s"} with the same

@@ -142,14 +142,14 @@ def discover_separators(text: str) -> tuple[str, str]:
 # --- per-segment helpers ---------------------------------------------------
 
 
-def _split_segments(text: str, seg_term: str) -> list[list[str]]:
+def _split_segments(text: str, seg_term: str, element_separator: str = "*") -> list[list[str]]:
     """Split the X12 envelope into ``[[element, ...], ...]`` rows."""
     out: list[list[str]] = []
     for raw in text.split(seg_term):
         seg = raw.strip()
         if not seg:
             continue
-        out.append(seg.split("*"))  # element-separator split
+        out.append(seg.split(element_separator))
     return out
 
 
@@ -206,7 +206,7 @@ def _iso_date_from_dtp_472(elements: list[str]) -> str | None:
     return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
 
 
-def _cpt_codes_from_sv1(elements: list[str]) -> list[str]:
+def _cpt_codes_from_sv1(elements: list[str], component_separator: str = ":") -> list[str]:
     """Return a list of CPT/HCPCS code strings from an SV1 segment.
 
     SV1*<proc_code_with_qualifier>:<code>[:<mod1>:<mod2>:<mod3>:<mod4>]
@@ -228,7 +228,7 @@ def _cpt_codes_from_sv1(elements: list[str]) -> list[str]:
     # qualifier ("HC", "HCPCS", "N4" for NDC, "ZZ" for mutually
     # defined), the second is the actual procedure code. We only
     # care about HC/HCPCS for CPT-shaped codes.
-    parts = proc.split(":")
+    parts = proc.split(component_separator)
     if len(parts) < 2:
         return []
     qualifier = parts[0].upper()
@@ -243,7 +243,7 @@ def _cpt_codes_from_sv1(elements: list[str]) -> list[str]:
     return [code]
 
 
-def _diagnosis_codes_from_hi(elements: list[str]) -> list[str]:
+def _diagnosis_codes_from_hi(elements: list[str], component_separator: str = ":") -> list[str]:
     """Extract diagnosis codes from an ``HI`` segment (2300 loop).
 
     X12 5010 ``HI`` carries ICD-10-CM (qualifier ``ABK``/``ABF``/``ABJ``/
@@ -269,7 +269,7 @@ def _diagnosis_codes_from_hi(elements: list[str]) -> list[str]:
         # subsequent components are the actual codes. We surface every
         # code in document order and let the caller decide what to do
         # with qualifiers (the v1 upload form doesn't need them).
-        parts = elem.split(":")
+        parts = elem.split(component_separator)
         if len(parts) < 2:
             # No qualifier; the value itself is the code (rare but
             # legal for single-element composites).
@@ -285,7 +285,10 @@ def _diagnosis_codes_from_hi(elements: list[str]) -> list[str]:
 # --- per-claim assembly ---------------------------------------------------
 
 
-def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
+def _extract_claim(
+    claim_segments: list[list[str]], element_separator: str = "*",
+    segment_terminator: str = "~", component_separator: str = ":",
+) -> dict[str, Any]:
     """Project a 2000-loop (one claim) into the normalised dict."""
     encounter_id: str | None = None
     patient_id: str | None = None
@@ -301,7 +304,7 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
         tag = seg[0]
         # Serialise back to an X12-style string for the per-file
         # "raw" preview the upload form shows the user.
-        raw_segments.append("*".join(seg))
+        raw_segments.append(element_separator.join(seg))
 
         if tag == "CLM":
             # CLM01 = claim submitter's identifier. The portal uses
@@ -334,10 +337,10 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
                 date_of_service = d
 
         elif tag == "SV1":
-            cpt_codes.extend(_cpt_codes_from_sv1(seg))
+            cpt_codes.extend(_cpt_codes_from_sv1(seg, component_separator))
 
         elif tag == "HI":
-            diagnosis_codes.extend(_diagnosis_codes_from_hi(seg))
+            diagnosis_codes.extend(_diagnosis_codes_from_hi(seg, component_separator))
 
     return {
         "encounter_id": encounter_id,
@@ -350,7 +353,7 @@ def _extract_claim(claim_segments: list[list[str]]) -> dict[str, Any]:
         # misparsed line at a glance. We omit the envelope segments
         # (ISA/GS/ST/SE/GE/IEA/BHT) so the preview is focused on the
         # claim body.
-        "raw": "~".join(raw_segments) + "~",
+        "raw": segment_terminator.join(raw_segments) + segment_terminator,
     }
 
 
@@ -375,22 +378,39 @@ def _group_into_claims(segments: list[list[str]]) -> list[list[list[str]]]:
     """
     pre_clm: list[list[str]] = []
     groups: list[list[list[str]]] = []
+    provider_context: list[str] | None = None
+    patient_context: list[str] | None = None
+
+    def scoped_context() -> list[list[str]]:
+        return [s for s in (provider_context, patient_context) if s is not None]
+
     for seg in segments:
         if not seg:
             continue
         tag = seg[0]
+        if tag == "HL":
+            # A new hierarchy cannot inherit a subscriber from the
+            # preceding hierarchy. Provider context remains available to
+            # its child subscriber loop.
+            patient_context = None
+        elif tag == "NM1":
+            if _npi_from_nm1(seg):
+                provider_context = seg
+            elif _patient_id_from_nm1(seg):
+                patient_context = seg
+
         if tag == "CLM":
             # Every CLM gets a fresh copy of the file-level context
             # BEFORE its own CLM segment. Using ``list(pre_clm)`` is
             # important — if we reused the same list reference, the
             # following segments would mutate every claim group at
             # once.
-            groups.append(list(pre_clm) + [seg])
+            groups.append(list(pre_clm) + scoped_context() + [seg])
         elif groups:
             # After at least one CLM has been seen, append to the
             # current (last) claim group.
             groups[-1].append(seg)
-        elif tag in _FILE_LEVEL_SEGMENTS:
+        elif tag in _FILE_LEVEL_SEGMENTS and tag not in {"NM1", "HL"}:
             # Before any CLM: file-level context. Accumulate so we
             # can prepend a copy to each claim group.
             pre_clm.append(seg)
@@ -419,6 +439,11 @@ def parse_837p(text: str) -> list[dict[str, Any]]:
     if text is None or not text.strip():
         raise X12ParseError("input is empty")
     element, seg_term = discover_separators(text)
+    component = (
+        text[104]
+        if text.startswith("ISA") and len(text) >= _ISA_FIXED_WIDTH
+        else ":"
+    )
     if seg_term == element:
         # Both separators resolved to the same char; the file is
         # likely plain text, not X12.
@@ -426,7 +451,7 @@ def parse_837p(text: str) -> list[dict[str, Any]]:
             "no X12 segment terminator found (ISA header missing or "
             "segment terminator equals element separator)"
         )
-    segments = _split_segments(text, seg_term)
+    segments = _split_segments(text, seg_term, element)
     if not segments:
         raise X12ParseError("no segments found after split")
     # Light envelope check: if the file starts with ISA but no CLM
@@ -438,7 +463,10 @@ def parse_837p(text: str) -> list[dict[str, Any]]:
             "no CLM segment found; the file is not a recognisable "
             "837P payload"
         )
-    return [_extract_claim(group) for group in claim_groups]
+    return [
+        _extract_claim(group, element, seg_term, component)
+        for group in claim_groups
+    ]
 
 
 def validate_required_fields(claim: dict[str, Any]) -> list[str]:
