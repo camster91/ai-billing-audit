@@ -39,6 +39,8 @@ records — registrations do NOT carry a ``_kind``.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import ipaddress
 import json
 import logging
@@ -217,6 +219,7 @@ def register_webhook(
         "events": list(events or []),
         "created_at": _now_iso(),
         "tenant_id": tenant_id or "default",
+        "_signing_secret": secrets.token_urlsafe(32),
     }
     unknown = sorted(set(record["events"]) - _KNOWN_EVENTS)
     if unknown:
@@ -314,10 +317,21 @@ def _deliver_one(
             }
         )
         return False
+    timestamp = str(int(datetime.now(timezone.utc).timestamp()))
+    delivery_id = "dlv_" + secrets.token_hex(12)
     body = json.dumps(
         {"event": event, "delivered_at": _now_iso(), "data": payload},
         separators=(",", ":"),
     ).encode("utf-8")
+    signing_secret = str(hook.get("_signing_secret") or "")
+    signed_payload = timestamp.encode("ascii") + b"." + body
+    signature = (
+        hmac.new(
+            signing_secret.encode("utf-8"), signed_payload, hashlib.sha256
+        ).hexdigest()
+        if signing_secret
+        else ""
+    )
     req = urllib.request.Request(
         target,
         data=body,
@@ -326,6 +340,9 @@ def _deliver_one(
             "Content-Type": "application/json",
             "User-Agent": "zorva-webhook/1",
             "X-Zorva-Event": event,
+            "X-Zorva-Delivery": delivery_id,
+            "X-Zorva-Timestamp": timestamp,
+            "X-Zorva-Signature": f"v1={signature}",
         },
     )
     try:

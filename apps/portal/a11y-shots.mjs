@@ -1,10 +1,11 @@
 import { chromium } from "playwright";
 import { mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3102";
 const COOKIE = process.env.SESSION_TOKEN;
-const OUT = "/Users/biancabienaime/projects/ai-billing-audit/docs/a11y/screenshots";
+const OUT = process.env.A11Y_OUT || fileURLToPath(new URL("../../docs/a11y/screenshots", import.meta.url));
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
 
 const ROUTES = [
@@ -38,7 +39,7 @@ async function main() {
     const url = BASE + route.path;
     process.stdout.write(`[${route.name}] ${url} ... `);
     try {
-      const resp = await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+      const resp = await page.goto(url, { waitUntil: "load", timeout: 30000 });
       await page.waitForTimeout(1500);
       const shot = join(OUT, `${route.name}.png`);
       await page.screenshot({ path: shot, fullPage: false });

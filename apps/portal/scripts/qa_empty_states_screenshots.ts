@@ -91,7 +91,7 @@ async function main() {
       failedRequests.push(`${req.method()} ${req.url()} — ${req.failure()?.errorText ?? ""}`);
     });
 
-    const resp = await page.goto(url, { waitUntil: "networkidle" });
+    const resp = await page.goto(url, { waitUntil: "load" });
     await page.waitForLoadState("domcontentloaded");
     // Give the page a beat for any client-component hydration so the
     // empty state is fully rendered (not the loading skeleton).

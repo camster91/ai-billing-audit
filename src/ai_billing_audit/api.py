@@ -5724,6 +5724,7 @@ def create_app() -> FastAPI:
                     "NPI": c.get("NPI"),
                     "date_of_service": c.get("date_of_service"),
                     "CPT_codes": c.get("CPT_codes") or [],
+                    "diagnosis_codes": c.get("diagnosis_codes") or [],
                     "source_filename": inner_name,
                     "source": row_source,
                     "errors": errs,
@@ -5823,6 +5824,11 @@ def create_app() -> FastAPI:
                 "NPI": (row.get("NPI") or "").strip(),
                 "date_of_service": (row.get("date_of_service") or "").strip(),
                 "CPT_codes": list(row.get("CPT_codes") or []),
+                "diagnosis_codes": list(
+                    row.get("diagnosis_codes")
+                    or row.get("icd10_codes")
+                    or []
+                ),
             }
             errs2 = validate_required_fields(claim)
             if errs2:
@@ -6127,6 +6133,7 @@ def create_app() -> FastAPI:
             "NPI": claim.get("NPI"),
             "date_of_service": claim.get("date_of_service"),
             "CPT_codes": claim.get("CPT_codes") or [],
+            "diagnosis_codes": claim.get("diagnosis_codes") or [],
             "source_filename": "(paste form)",
             "source": "paste",
             "errors": errs,

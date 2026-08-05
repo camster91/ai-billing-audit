@@ -25,6 +25,8 @@ can be inspected after the fact.
 from __future__ import annotations
 
 import json
+import hashlib
+import hmac
 import os
 import threading
 import time
@@ -87,6 +89,7 @@ def _make_handler(capture: _Capture) -> type[BaseHTTPRequestHandler]:
                     "path": self.path,
                     "headers": {k: v for k, v in self.headers.items()},
                     "body": payload,
+                    "raw": raw,
                 }
             )
             self.send_response(200)
@@ -230,6 +233,7 @@ def test_register_webhook_returns_id_and_persists(
     assert body["webhook_id"].startswith("wh_")
     assert body["url"] == url
     assert body["events"] == ["audit_complete"]
+    assert len(body["signing_secret"]) >= 32
 
     log = tmp_log_dir / "webhooks.jsonl"
     rows = [json.loads(line) for line in log.read_text().splitlines() if line]
@@ -257,6 +261,7 @@ def test_audit_completion_fires_webhook(
         headers=_bearer(),
     )
     assert reg.status_code == 201, reg.text
+    signing_secret = reg.json()["signing_secret"]
 
     # 2. Submit an audit.
     post = client.post(
@@ -305,6 +310,16 @@ def test_audit_completion_fires_webhook(
     # Custom event header is set so consumers can route
     # without parsing the body.
     assert received[0]["headers"].get("X-Zorva-Event") == "audit_complete"
+    assert received[0]["headers"].get("X-Zorva-Delivery", "").startswith("dlv_")
+    assert received[0]["headers"].get("X-Zorva-Timestamp", "").isdigit()
+    assert received[0]["headers"].get("X-Zorva-Signature", "").startswith("v1=")
+    signed = (
+        received[0]["headers"]["X-Zorva-Timestamp"].encode("ascii")
+        + b"."
+        + received[0]["raw"]
+    )
+    expected = hmac.new(signing_secret.encode(), signed, hashlib.sha256).hexdigest()
+    assert received[0]["headers"]["X-Zorva-Signature"] == f"v1={expected}"
 
 
 def test_finding_acknowledged_helper_dispatches(

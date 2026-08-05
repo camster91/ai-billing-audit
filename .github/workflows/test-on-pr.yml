@@ -12,6 +12,8 @@ on:
     branches: [main]
     # Don't run on draft PRs — saves minutes for WIP.
     types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
 
 # Re-runs on force-push kill prior in-flight runs for the same PR.
 concurrency:
@@ -28,6 +30,9 @@ jobs:
     name: python (ruff + mypy + pytest)
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    outputs:
+      pytest_passed: ${{ steps.pytest_counts.outputs.passed }}
+      pytest_failed: ${{ steps.pytest_counts.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,26 +57,21 @@ jobs:
       - name: mypy
         # Strict on the audit package, lenient elsewhere — matches
         # the in-repo pyproject.toml [tool.mypy] overrides.
-        run: mypy ai_billing_audit tests || true
-        # `|| true` so mypy failures surface as a warning rather
-        # than blocking the merge while we finish migrating the
-        # remaining untyped modules. Flip to `mypy ...` (no `||`)
-        # once the audit core is fully typed.
-        continue-on-error: true
+        run: mypy src/ai_billing_audit tests
 
       - name: pytest
         id: pytest
         run: |
+          set -o pipefail
           {
             echo "## pytest"
             pytest --maxfail=1 -q --tb=short \
               --junitxml=/tmp/pytest-junit.xml 2>&1 | tee /tmp/pytest-out.txt
           }
-        continue-on-error: true
 
       - name: Extract pytest counts
         if: always()
-        id: pytest-counts
+        id: pytest_counts
         run: |
           PASS=$(grep -oE '[0-9]+ passed' /tmp/pytest-out.txt | tail -1 | grep -oE '[0-9]+' || echo 0)
           FAIL=$(grep -oE '[0-9]+ failed' /tmp/pytest-out.txt | tail -1 | grep -oE '[0-9]+' || echo 0)
@@ -93,10 +93,10 @@ jobs:
         run: |
           {
             echo "### python"
-            echo "- ruff check: ${{ steps.pytest.outputs.passed && 'passed' || 'see logs' }}"
+            echo "- pytest step: ${{ steps.pytest.outcome }}"
             echo "- ruff format --check: see logs"
-            echo "- mypy: see logs (non-blocking for now)"
-            echo "- pytest: ${{ steps.pytest-counts.outputs.passed }} passed, ${{ steps.pytest-counts.outputs.failed }} failed"
+            echo "- mypy: blocking"
+            echo "- pytest: ${{ steps.pytest_counts.outputs.passed }} passed, ${{ steps.pytest_counts.outputs.failed }} failed"
           } >> "$GITHUB_STEP_SUMMARY"
 
   portal-typecheck:
@@ -125,7 +125,6 @@ jobs:
       - name: pnpm tsc --noEmit
         id: tsc
         run: pnpm exec tsc --noEmit
-        continue-on-error: true
 
       - name: Portal summary
         if: always()
@@ -139,7 +138,7 @@ jobs:
     name: summary comment
     runs-on: ubuntu-latest
     needs: [python-checks, portal-typecheck]
-    if: always()
+    if: ${{ always() && github.event_name == 'pull_request' }}
     permissions:
       contents: read
       pull-requests: write
@@ -152,8 +151,8 @@ jobs:
             const tsStep   = "portal-typecheck";
             const pyStatus = "${{ needs.python-checks.result }}";
             const tsStatus = "${{ needs.portal-typecheck.result }}";
-            const pyPassed = "${{ steps.pytest-counts.outputs.passed }}" || "0";
-            const pyFailed = "${{ steps.pytest-counts.outputs.failed }}" || "0";
+            const pyPassed = "${{ needs.python-checks.outputs.pytest_passed }}" || "0";
+            const pyFailed = "${{ needs.python-checks.outputs.pytest_failed }}" || "0";
 
             const overall = (pyStatus === "success" && tsStatus === "success")
               ? "✅ all checks passed"

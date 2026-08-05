@@ -27,6 +27,8 @@ dependencies = [
 dev = [
     "pytest==9.1.0",
     "pytest-cov==7.1.0",
+    "ruff==0.12.10",
+    "mypy==1.17.1",
     "dspy[optuna]==3.2.1",  # the compile-mode tests exercise MIPROv2 end-to-end
 ]
 

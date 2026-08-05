@@ -797,7 +797,11 @@ def register_public_api(
                 "events": events,
             }
         )
-        return JSONResponse(record, status_code=201)
+        response_record = dict(record)
+        response_record["signing_secret"] = response_record.pop(
+            "_signing_secret", ""
+        )
+        return JSONResponse(response_record, status_code=201)
 
     # ── Zapier connector (t_cab76c0b) ────────────────────────────────
     # Two list/get endpoints and the existing /v1/webhooks route

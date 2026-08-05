@@ -79,6 +79,19 @@ def _sanitize_job_error(exc: BaseException) -> str:
     return _CLIENT_SAFE_JOB_ERRORS["failed"]
 
 
+def _public_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Return a client/log-safe copy of a job result.
+
+    Audit failures historically stored ``audit_error`` as the raw exception
+    message. Keep the field for UI compatibility, but expose only a stable
+    error code and never persist or return the original text.
+    """
+    public = dict(result or {})
+    if "audit_error" in public:
+        public["audit_error"] = "audit_job_failed"
+    return public
+
+
 # Local copy of _PKG_DIR — the runner is a module-level function
 # (the default closure for JobQueue), so it can't see the closure
 # variable defined in api.py's create_app(). Re-derive it here.
@@ -329,7 +342,7 @@ class Job:
             "progress": self._STATUS_PROGRESS.get(self.status, 0),
             # Never expose raw exception text to poll clients / UI.
             "error": self.public_error(),
-            "result": self.result,
+            "result": _public_result(self.result),
             "submitted_at": self.submitted_at,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
@@ -626,11 +639,10 @@ class JobQueue:
             try:
                 result = self._runner(encounter)
             except Exception as exc:  # noqa: BLE001 (deliberately broad)
-                logger.exception(
-                    "audit job %s failed: %s: %s",
+                logger.error(
+                    "audit job %s failed: %s",
                     job.job_id,
                     type(exc).__name__,
-                    exc,
                 )
                 with self._lock:
                     job.status = "failed"
@@ -741,7 +753,11 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             for li in (claim.get("line_items") or [])
             if (li.get("cpt_code") or "").strip()
         ]
-        icds = claim.get("diagnosis_codes") or []
+        icds = (
+            claim.get("diagnosis_codes")
+            or claim.get("icd10_codes")
+            or []
+        )
         # An 837I upload is the highest-fidelity data we have —
         # treat it as the hardest tier so the auditor doesn't
         # down-weight findings.
@@ -779,7 +795,11 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
                     "line_id": i + 1,
                     "cpt_code": str(c),
                     "modifiers": [],
-                    "dx_pointers": encounter.get("icd10_codes") or [],
+                    "dx_pointers": (
+                        encounter.get("diagnosis_codes")
+                        or encounter.get("icd10_codes")
+                        or []
+                    ),
                     "charge_amount": 150.00,
                     "units": 1,
                 }
@@ -794,7 +814,11 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
                 "payer_id": "",
                 "payer_name": "",
                 "line_items": line_items,
-                "diagnosis_codes": encounter.get("icd10_codes") or [],
+                "diagnosis_codes": (
+                    encounter.get("diagnosis_codes")
+                    or encounter.get("icd10_codes")
+                    or []
+                ),
             }
             # Force variant=flagged so the auditor doesn't bias toward
             # "this looks clean". The real-data path always audits a
@@ -804,7 +828,11 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             synth_out = {
                 "encounter_id": encounter_id,
                 "cpt_codes": [{"code": str(c)} for c in cpts],
-                "icd10_codes": encounter.get("icd10_codes") or [],
+                "icd10_codes": (
+                    encounter.get("diagnosis_codes")
+                    or encounter.get("icd10_codes")
+                    or []
+                ),
                 "flagged": True,
                 "difficulty_tier": tier,
                 "variant": variant,
@@ -934,7 +962,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             "seed": seed,
             "ran_via": "upload_portal",
             "audit_status": "failed",
-            "audit_error": str(e)[:500],
+            "audit_error": "audit_job_failed",
             # Persisted even on failure so re-audit can still
             # recover the originally-uploaded claim payload — see
             # t_10774785.
