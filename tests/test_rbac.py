@@ -96,6 +96,47 @@ def test_user_context_as_audit_kwargs_none_user():
     assert u.as_audit_kwargs() == {"user_id": None, "user_role": None}
 
 
+def test_readyz_is_public_and_reports_missing_configuration(client, monkeypatch, tmp_path):
+    """Readiness is load-balancer accessible and fails closed when incomplete."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("AUDIT_TRAIL_DB", raising=False)
+    monkeypatch.setenv("UPLOAD_AUDIT_LOG_PATH", str(tmp_path / "logs" / "jobs.jsonl"))
+
+    response = client.get("/readyz")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "checks": {
+            "database_url_configured": False,
+            "audit_trail_db_configured": False,
+            "upload_job_log_directory_writable": False,
+        },
+    }
+
+
+def test_readyz_returns_ready_for_configured_writable_baseline(
+    client, monkeypatch, tmp_path
+):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://audit@example.invalid/db")
+    monkeypatch.setenv("AUDIT_TRAIL_DB", "postgresql://audit@example.invalid/audit")
+    monkeypatch.setenv("UPLOAD_AUDIT_LOG_PATH", str(log_dir / "jobs.jsonl"))
+
+    response = client.get("/readyz")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "checks": {
+            "database_url_configured": True,
+            "audit_trail_db_configured": True,
+            "upload_job_log_directory_writable": True,
+        },
+    }
+
+
 def test_coerce_role_recognizes_known():
     assert api._coerce_role("admin") == "admin"
     assert api._coerce_role("BILLER") == "biller"

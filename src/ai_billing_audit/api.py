@@ -1205,7 +1205,8 @@ def create_app() -> FastAPI:
     )
 
     # Bearer-token auth middleware (F-3 fix from QA_API_HARDENING.md).
-    # The /healthz endpoint is whitelisted for load balancer health
+    # The liveness/readiness endpoints are whitelisted for load balancer
+    # health checks.
     # checks. All other routes require `Authorization: Bearer ***`
     # to match the AUDIT_BEARER_TOKEN env var, or to be in
     # AUDIT_ALLOW_NO_AUTH (set to "1" only for local dev).
@@ -1234,8 +1235,8 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def _bearer_auth(request, call_next):
-        # Whitelist: healthz + static
-        if request.url.path in ("/healthz",) or request.url.path.startswith("/static"):
+        # Whitelist: healthz/readyz + static
+        if request.url.path in ("/healthz", "/readyz") or request.url.path.startswith("/static"):
             return await call_next(request)
         # CORS preflight from the portal at zorva.ashbi.ca must pass
         # through without auth — the browser sends OPTIONS without
@@ -1283,13 +1284,13 @@ def create_app() -> FastAPI:
             )
         ):
             return await call_next(request)
-        # Legacy whitelists: /, /healthz, /static. GET-only on / + /healthz.
+        # Legacy whitelists: /, /healthz, /readyz, /static. GET-only on / + probes.
         # Marketing / funnel pages are also public-read (no PHI, no
         # claims data — just the ROI calculator, the case-study index,
         # the contact form, and the legal stubs). They're the top of
         # the conversion funnel and must not require a bearer token.
         if (
-            request.url.path in ("/", "/healthz")
+            request.url.path in ("/", "/healthz", "/readyz")
             or request.url.path.startswith("/static")
             or (
                 request.method == "GET"
@@ -4250,6 +4251,36 @@ def create_app() -> FastAPI:
             "title": app.title,
             "n_registered": len(list_demo_encounters()),
         }
+
+    @app.get("/readyz")
+    def readyz() -> JSONResponse:
+        """Report whether required deployment configuration is present.
+
+        ``/healthz`` intentionally remains a cheap liveness probe. This
+        endpoint adds the checks that can be evaluated without making a
+        database query or an LLM request: the two configured database URLs
+        and the parent directory used by the durable upload-job log. A
+        successful response is therefore a deployment baseline, not proof
+        that dependencies are reachable or that the worker is processing
+        jobs.
+        """
+        log_path = Path(
+            os.environ.get("UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl")
+        )
+        log_parent = log_path.parent
+        checks = {
+            "database_url_configured": bool(os.environ.get("DATABASE_URL")),
+            "audit_trail_db_configured": bool(os.environ.get("AUDIT_TRAIL_DB")),
+            "upload_job_log_directory_writable": (
+                log_parent.is_dir() and os.access(log_parent, os.W_OK)
+            ),
+        }
+        ready = all(checks.values())
+        payload = {
+            "status": "ready" if ready else "not_ready",
+            "checks": checks,
+        }
+        return JSONResponse(payload, status_code=200 if ready else 503)
 
     @app.get("/metrics")
     def metrics() -> Response:

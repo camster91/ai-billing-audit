@@ -71,7 +71,9 @@ services:
     networks:
       - ai_billing_audit_net
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      # Container health should include the required deployment baseline;
+      # /healthz remains available for process liveness probes.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/readyz"]
       interval: 30s
       timeout: 5s
       start_period: 30s
