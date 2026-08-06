@@ -94,6 +94,19 @@ a {
   text-decoration: none;
 }
 
+/* Consistent keyboard visibility across marketing and authenticated portal
+   surfaces. Component-specific focus treatments may refine the color, but
+   every native interactive control gets a visible 3px indicator by default. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary, #0D9488);
+  outline-offset: 3px;
+}
+
+button:disabled,
+button[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
@@ -257,7 +270,8 @@ a {
   z-index: 45;
   transform: translateX(100%);
   transition: transform 0.18s ease-out;
-  padding: 72px 20px 24px;
+  padding: max(72px, env(safe-area-inset-top))
+    20px max(24px, env(safe-area-inset-bottom));
   overflow-y: auto;
   visibility: hidden;
 }
@@ -295,8 +309,8 @@ a {
 }
 
 .mobile-menu-link:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
+  outline: 3px solid #7aa9ff;
+  outline-offset: 3px;
 }
 
 @keyframes mobile-menu-fade-in {
