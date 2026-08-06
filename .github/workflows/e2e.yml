@@ -3,8 +3,9 @@ name: e2e
 on:
   pull_request:
     branches: [main, feat/**]
+  # Keep the smoke gate observable after merges as well as on PRs.
   push:
-    branches: [feat/billing-page]
+    branches: [main, feat/billing-page]
 
 # Cancel in-progress runs for the same PR — the suite is short
 # enough that re-running on a force-push is the desired behavior.
@@ -46,6 +47,7 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
+          cache-dependency-path: apps/portal/pnpm-lock.yaml
 
       - name: Install deps
         working-directory: apps/portal
