@@ -48,6 +48,7 @@ from starlette.testclient import TestClient  # noqa: E402
 from ai_billing_audit import api  # noqa: E402
 from ai_billing_audit import public_api  # noqa: E402
 from ai_billing_audit import webhooks as webhooks_module  # noqa: E402
+from ai_billing_audit.webhooks import verify_webhook_signature  # noqa: E402
 from ai_billing_audit.job_queue import (  # noqa: E402
     JobQueue,
     reset_default_queue_for_tests,
@@ -447,3 +448,52 @@ def test_register_webhook_validates_input(
         headers=_bearer(),
     )
     assert r.status_code == 400
+
+
+def test_verify_webhook_signature_rejects_tamper_stale_and_replay() -> None:
+    """The reference verifier enforces the signed-body freshness contract."""
+    secret = "test-signing-secret"
+    body = b'{"event":"audit_complete","data":{"audit_id":"aud_1"}}'
+    timestamp = "1700000000"
+    delivery_id = "dlv_reference_1"
+    digest = hmac.new(
+        secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256
+    ).hexdigest()
+    seen: set[str] = set()
+
+    assert verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id=delivery_id,
+        signature=f"v1={digest}",
+        secret=secret,
+        now=1700000000,
+        seen_delivery_ids=seen,
+    )
+    assert not verify_webhook_signature(
+        body=body + b" ",
+        timestamp=timestamp,
+        delivery_id="dlv_reference_2",
+        signature=f"v1={digest}",
+        secret=secret,
+        now=1700000000,
+        seen_delivery_ids=seen,
+    )
+    assert not verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id="dlv_reference_3",
+        signature=f"v1={digest}",
+        secret=secret,
+        now=1700003600,
+        seen_delivery_ids=seen,
+    )
+    assert not verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id=delivery_id,
+        signature=f"v1={digest}",
+        secret=secret,
+        now=1700000000,
+        seen_delivery_ids=seen,
+    )

@@ -71,6 +71,7 @@ EVENT_FINDING_ACKNOWLEDGED = "finding_acknowledged"
 _KNOWN_EVENTS: frozenset[str] = frozenset(
     {EVENT_AUDIT_COMPLETE, EVENT_FINDING_ACKNOWLEDGED}
 )
+_SIGNATURE_MAX_AGE_SECONDS = 300
 
 
 def _log_path() -> Path:
@@ -96,6 +97,51 @@ def _new_webhook_id() -> str:
     so two registrations in the same microsecond still differ.
     """
     return "wh_" + secrets.token_hex(6)
+
+
+def verify_webhook_signature(
+    *,
+    body: bytes,
+    timestamp: str,
+    delivery_id: str,
+    signature: str,
+    secret: str,
+    now: int | None = None,
+    seen_delivery_ids: set[str] | None = None,
+    max_age_seconds: int = _SIGNATURE_MAX_AGE_SECONDS,
+) -> bool:
+    """Verify a Zorva v1 callback and optionally reject replay.
+
+    Consumers should pass the raw request body, the three ``X-Zorva-*``
+    headers, and the signing secret returned once during registration. A
+    caller-owned ``seen_delivery_ids`` set provides in-process replay
+    protection; durable consumers should back that set with their own
+    database or idempotency store.
+    """
+    if not secret or not delivery_id or not isinstance(body, bytes):
+        return False
+    if not timestamp.isdigit() or not signature.startswith("v1="):
+        return False
+    try:
+        timestamp_int = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    current = int(datetime.now(timezone.utc).timestamp()) if now is None else now
+    if max_age_seconds < 0 or abs(current - timestamp_int) > max_age_seconds:
+        return False
+    if seen_delivery_ids is not None and delivery_id in seen_delivery_ids:
+        return False
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        timestamp.encode("ascii") + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    supplied = signature[3:]
+    if not hmac.compare_digest(supplied, expected):
+        return False
+    if seen_delivery_ids is not None:
+        seen_delivery_ids.add(delivery_id)
+    return True
 
 
 def _allow_private_webhook_urls() -> bool:
@@ -421,4 +467,5 @@ __all__ = [
     "dispatch_event",
     "list_webhooks",
     "register_webhook",
+    "verify_webhook_signature",
 ]
