@@ -41,6 +41,15 @@ application version and registered-demo count; it does not prove LLM
 credentials, database migrations, backup freshness, or durable worker health.
 Do not use a green `/healthz` response as release qualification.
 
+`/readyz` is the dependency-configuration baseline for a load balancer or
+deployment smoke test. It returns 200 only when `DATABASE_URL`,
+`AUDIT_TRAIL_DB`, and the parent directory of `UPLOAD_AUDIT_LOG_PATH` (default
+`/app/logs/upload_jobs.jsonl`) are present and writable; otherwise it returns
+503 with per-check results. It does not make a database or LLM request, and it
+does not replace monitoring for connectivity, stalled workers, disk capacity,
+TLS, or backup freshness. Keep `/healthz` for liveness and use `/readyz` as the
+additional pre-traffic gate until those deeper checks are deployed.
+
 ## Backup and restore
 
 The supported checked-in scripts are `deploy/scripts/audit-backup.sh`,
