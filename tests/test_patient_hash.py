@@ -210,6 +210,17 @@ def test_assert_production_pepper_raises_in_prod(monkeypatch):
         assert_production_pepper()
 
 
+def test_assert_production_pepper_accepts_valid_rotation_file(monkeypatch, tmp_path):
+    """The startup guard accepts the file-backed rotation source."""
+    pepper_file = tmp_path / "pepper"
+    pepper_file.write_text("r" * MIN_PEPPER_LENGTH)
+    monkeypatch.delenv("PATIENT_HASH_PEPPER", raising=False)
+    monkeypatch.setenv("PATIENT_HASH_PEPPER_FILE", str(pepper_file))
+    monkeypatch.setenv("APP_ENV", "production")
+
+    assert_production_pepper()
+
+
 # ---- dev-mode fallback ----------------------------------------------------
 
 

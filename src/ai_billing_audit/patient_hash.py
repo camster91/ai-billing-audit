@@ -213,9 +213,14 @@ def assert_production_pepper() -> None:
     """
     if not _is_production():
         return
-    pepper = os.environ.get("PATIENT_HASH_PEPPER", "")
-    if len(pepper) < MIN_PEPPER_LENGTH:
+    try:
+        # Use the same source resolution as the write path. This permits
+        # a valid PATIENT_HASH_PEPPER_FILE rotation source instead of
+        # incorrectly requiring the older environment-variable source.
+        resolve_pepper()
+    except RuntimeError:
         raise RuntimeError(
             f"PATIENT_HASH_PEPPER must be set to a {MIN_PEPPER_LENGTH}+ "
-            "char secret in production. Refusing to start."
-        )
+            "char secret (or a valid PATIENT_HASH_PEPPER_FILE) in "
+            "production. Refusing to start."
+        ) from None
