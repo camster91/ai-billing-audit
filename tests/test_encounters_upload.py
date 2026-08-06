@@ -743,6 +743,39 @@ def test_job_queue_marks_failure_on_runner_exception(
     assert "synth exploded" in final.error
 
 
+def test_job_result_sanitizes_nested_exception_canaries(tmp_path: Path) -> None:
+    """Persisted/polled results must not expose nested provider text."""
+    q = JobQueue(
+        log_path=tmp_path / "jobs.jsonl",
+        runner=lambda enc: {
+            "audit_status": "failed",
+            "audit_error": "top-secret patient 123",
+            "provider": {
+                "exception_message": "sk-live-secret and patient 456",
+            },
+            "attempts": [
+                {"raw_exception": "credential=secret patient=789"},
+            ],
+        },
+    )
+    job = q.enqueue(
+        encounter={"encounter_id": "ENC-SANITIZE-1", "patient_id": "x"},
+        source="837p",
+        source_filename="x.837",
+    )
+    deadline = time.time() + 3.0
+    while time.time() < deadline and q.get(job.job_id).status not in ("done", "failed"):
+        time.sleep(0.05)
+
+    public = q.get(job.job_id).to_dict()
+    serialized = json.dumps(public)
+    assert "top-secret patient 123" not in serialized
+    assert "sk-live-secret and patient 456" not in serialized
+    assert "credential=secret patient=789" not in serialized
+    assert public["result"]["audit_error"] == "audit_job_failed"
+    assert public["result"]["provider"]["exception_message"] == "audit_job_failed"
+
+
 def test_default_queue_is_singleton() -> None:
     """The module-level get_default_queue() is a process-wide
     singleton so the dashboard and the worker threads agree on
