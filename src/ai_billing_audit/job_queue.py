@@ -49,6 +49,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from .claim_schema import normalize_claim
+
 logger = logging.getLogger(__name__)
 
 # Finished jobs older than this are dropped from the in-memory map
@@ -488,6 +490,9 @@ class JobQueue:
         caller can surface "we already audited this" in the
         response instead of running a fresh audit.
         """
+        # Normalize every new payload at the durable boundary. Legacy aliases
+        # remain readable, but persisted jobs use one versioned contract.
+        encounter = normalize_claim(encounter)
         jid = uuid.uuid4().hex[:12]
         encounter_id = str(encounter.get("encounter_id") or f"enc_{jid}")
         patient_id = str(encounter.get("patient_id") or "").strip()

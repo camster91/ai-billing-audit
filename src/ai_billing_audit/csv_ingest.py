@@ -12,7 +12,7 @@ system uses its own column names and date / currency formats, so the
   1. Detect the PM system by inspecting the header row.
   2. Map each PM's columns to Zorva's canonical schema:
         procedure_code, billed_amount, date_of_service, patient_id, NPI
-     (plus a few optional fields like ``modifiers``, ``dx_codes``,
+     (plus a few optional fields like ``modifiers``, ``diagnosis_codes``,
      ``encounter_id`` when the PM exports them).
   3. Convert each row to the same encounter + claim pair the
      ``/encounters/upload/submit`` endpoint feeds into the audit
@@ -68,6 +68,7 @@ CANONICAL_FIELDS = (
     "encounter_id",
     "modifiers",
     "dx_codes",
+    "diagnosis_codes",
 )
 
 
@@ -410,12 +411,14 @@ def normalize_row(row: dict[str, str], fmt: str) -> dict[str, Any]:
         "encounter_id": encounter_id,
         "modifiers": modifiers,
         "dx_codes": dx_codes,
+        "diagnosis_codes": dx_codes,
         "_encounter": {
             "encounter_id": encounter_id,
             "patient_id": _field("patient_id"),
             "NPI": _field("NPI"),
             "date_of_service": date_of_service,
             "CPT_codes": [cpt],
+            "diagnosis_codes": dx_codes,
         },
     }
 

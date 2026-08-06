@@ -5570,6 +5570,12 @@ def create_app() -> FastAPI:
             "NPI": str(payload.get("npi") or payload.get("NPI") or "").strip(),
             "date_of_service": str(payload.get("date_of_service") or "").strip(),
             "CPT_codes": list(cpts or []),
+            "diagnosis_codes": list(
+                payload.get("diagnosis_codes")
+                or payload.get("icd10_codes")
+                or payload.get("dx_codes")
+                or []
+            ),
             "difficulty_tier": str(payload.get("difficulty_tier") or "EASY").upper(),
             "variant": str(payload.get("variant") or "clean").lower(),
             "raw": json.dumps(payload, sort_keys=True),
