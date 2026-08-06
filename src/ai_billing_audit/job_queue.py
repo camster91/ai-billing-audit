@@ -81,6 +81,11 @@ def _sanitize_job_error(exc: BaseException) -> str:
     return _CLIENT_SAFE_JOB_ERRORS["failed"]
 
 
+_SENSITIVE_ERROR_KEYS = frozenset(
+    {"audit_error", "exception", "exception_message", "raw_error", "raw_exception"}
+)
+
+
 def _public_result(result: dict[str, Any]) -> dict[str, Any]:
     """Return a client/log-safe copy of a job result.
 
@@ -88,10 +93,21 @@ def _public_result(result: dict[str, Any]) -> dict[str, Any]:
     message. Keep the field for UI compatibility, but expose only a stable
     error code and never persist or return the original text.
     """
-    public = dict(result or {})
-    if "audit_error" in public:
-        public["audit_error"] = "audit_job_failed"
-    return public
+    def sanitize(value: Any, *, key: str = "") -> Any:
+        if key in _SENSITIVE_ERROR_KEYS:
+            return "audit_job_failed"
+        if isinstance(value, dict):
+            return {
+                str(child_key): sanitize(child_value, key=str(child_key))
+                for child_key, child_value in value.items()
+            }
+        if isinstance(value, list):
+            return [sanitize(child) for child in value]
+        if isinstance(value, tuple):
+            return [sanitize(child) for child in value]
+        return value
+
+    return sanitize(result or {})
 
 
 # Local copy of _PKG_DIR — the runner is a module-level function
