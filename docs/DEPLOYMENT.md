@@ -1,5 +1,10 @@
 # Deployment architecture
 
+> **Operational status:** This document contains historical architecture notes
+> and decision context. Use [`docs/OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md)
+> for the current repository-backed command and safety summary. Neither file
+> proves that a live host matches the checked-in configuration.
+
 > Captured 2026-06-24 after the first VPS deploy. The two sides of
 > Zorva are deployed separately; the marketing site is not yet wired
 > up to the deploy pipeline. See the audit task

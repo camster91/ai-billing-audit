@@ -46,7 +46,13 @@ mkdir -p /var/log/ai-billing-audit
 chmod 755 /var/log/ai-billing-audit
 ```
 
-## Retention policy (PHIPA)
+> This runbook describes the checked-in backup scripts only. Retention periods,
+> legal basis, production topology, and restore ownership require current
+> operator/privacy approval; do not treat the values below as legal advice or
+> proof of live configuration. See `docs/OPERATIONS_RUNBOOK.md` for the
+> repository-wide deployment boundary.
+
+## Repository default retention tiers (approval required)
 
 | Tier | Keep | Notes |
 | --- | --- | --- |
@@ -54,8 +60,9 @@ chmod 755 /var/log/ai-billing-audit
 | weekly | 12 months + 1 day (366d) | Sunday 02:00 UTC |
 | monthly | 7 years + 2 days (2557d) | First Sunday of each month |
 
-`audit_trail` rows live in the `public` schema and are included in every
-dump. The 7-year monthly retention is the binding policy for PHIPA records.
+`audit_trail` rows live in the `public` schema and are included in every dump.
+The configured tiers are operational defaults, not a substitute for the
+approved HIA/PIPEDA/PHIPA retention and deletion policy.
 
 ## Manual restore
 

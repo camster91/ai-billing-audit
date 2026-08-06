@@ -10,21 +10,19 @@ response-time commitments are.
 
 ## Supported versions
 
-The project is in pre-1.0 (`0.x.y`). Security patches are
-back-ported to the **latest minor release only**. The
-current supported release line is:
+The project is in pre-1.0 (`0.x.y`). The repository currently reports `0.4.0`
+in `pyproject.toml` and `0.1.0` from the package runtime; this version
+mismatch must be resolved before publishing a supported-release claim. Until
+then, treat the checked-in version metadata as a release blocker, not as a
+guarantee about a deployed image.
 
 | Release line | Status            | Notes                                  |
 |--------------|-------------------|----------------------------------------|
-| `0.5.x`      | **Supported**     | Current `main`; receives all patches.  |
-| `0.4.x`      | End-of-life       | Upgrade to `0.5.x` to receive fixes.   |
-| `0.3.x`      | End-of-life       | Upgrade to `0.5.x` to receive fixes.   |
-| `0.2.x`      | End-of-life       | Upgrade to `0.5.x` to receive fixes.   |
-| `0.1.x`      | End-of-life       | Upgrade to `0.5.x` to receive fixes.   |
+| Current checked-in metadata | **Unresolved** | Align package and build versions before release. |
 
-When `1.0.0` ships, the supported-version table will be expanded
-to cover the latest three minor releases, matching the de-facto
-LTS policy used by most FastAPI / Next.js projects.
+Do not publish a supported-version or backport promise until the version
+source of truth and release policy are approved. See
+`docs/OPERATIONS_RUNBOOK.md` and issue #15.
 
 ---
 
@@ -136,6 +134,11 @@ on `ai-billing-audit.ashbi.ca` (or any successor domain):
 If you self-host Zorva (the project is open source and the
 `docker-compose.yml` is the deployment manifest), please:
 
+> The backup instructions in this historical policy are superseded by
+> `deploy/scripts/audit-backup.sh`, `deploy/scripts/audit-restore-verify.sh`,
+> and `deploy/README.md`. Use the current scripts and retain restore evidence;
+> do not infer live retention or compliance status from this document.
+
 1. **Set `ZORVA_API_KEY` to a random ≥ 32-byte secret**
    before exposing `/v1/*` to the public internet.
    The endpoint returns `503 api_key_not_configured` if
@@ -189,4 +192,4 @@ they just don't get a public credit.
 
 ---
 
-_Last updated: 2026-06-24 — covers the `0.5.x` release line._
+_Last updated: 2026-08-06 - release-line support is unresolved pending version alignment._
