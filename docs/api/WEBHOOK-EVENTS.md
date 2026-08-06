@@ -72,16 +72,34 @@ curl -s -X POST https://zorva.ashbi.ca/v1/webhooks \
 | 400 | `{"errors": ["malformed JSON: ..."]}` | Body is not valid JSON |
 | 401 | `{"detail": "..."}` | Missing / bad API key |
 
-### 1.2 Delivery semantics
+### 1.2 Verify delivery signatures
+
+The response reveals `signing_secret` once. Store it in the consumer's secret
+manager; it is not returned by later reads. Every delivery includes:
+
+| Header | Meaning |
+|---|---|
+| `X-Zorva-Delivery` | Unique delivery ID; persist it for replay protection. |
+| `X-Zorva-Timestamp` | Unix timestamp in seconds. |
+| `X-Zorva-Signature` | `v1=` followed by `HMAC-SHA256(secret, timestamp + "." + raw_body)`. |
+| `X-Zorva-Event` | Event name; use it for routing only. |
+
+Verify the raw bytes before JSON parsing, require the timestamp to be within
+five minutes of the receiver clock, compare the HMAC in constant time, and
+reject a delivery ID already present in the consumer's idempotency store. The
+repository helper `verify_webhook_signature` implements this reference
+contract and returns `False` for tampered, stale, malformed, or replayed input.
+
+### 1.3 Delivery semantics
 
 - **Transport:** HTTP POST, `Content-Type: application/json`, `User-Agent: zorva-webhook/1`, `X-Zorva-Event: <event-name>`.
 - **Timeout:** 5 seconds per delivery attempt.
 - **Retries:** none in v1. Failed deliveries (network error, timeout, non-2xx) are logged to `/app/logs/webhooks.jsonl` with `_kind: "delivery"` and never retried. The audit pipeline is never blocked by a webhook failure — `dispatch_event` catches all exceptions internally.
-- **Idempotency:** every delivery carries an `audit_id` / `finding_id` you can dedupe on. There is no built-in event id; compute `sha256(audit_id + delivered_at)` if you need one.
+- **Idempotency:** every delivery carries `X-Zorva-Delivery`; persist that ID and reject it on replay. The payload also carries `audit_id` / `finding_id` for business-level deduplication.
 - **Ordering:** events for the same audit / finding are delivered in emission order, but deliveries to different webhooks are sequential per dispatch. There is no global ordering guarantee.
 - **Concurrency:** sequential (not parallel) by design. v1 has at most a handful of registered webhooks per tenant; parallelising would complicate error handling without a measurable latency win.
 
-### 1.3 What your endpoint should do
+### 1.4 What your endpoint should do
 
 1. Return 2xx as fast as possible — Zorva does not wait for slow handlers; a 5-second timeout will cut you off.
 2. Persist the payload (`audit_id` + `data`) to your own queue, then return 200.
