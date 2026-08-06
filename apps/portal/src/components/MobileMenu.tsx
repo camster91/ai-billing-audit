@@ -118,6 +118,7 @@ export function MobileMenu({ links }: MobileMenuProps) {
         className="mobile-menu-panel"
         data-open={open}
         role="dialog"
+        aria-hidden={!open}
         aria-modal={open ? "true" : undefined}
         aria-label="Site navigation"
       >
