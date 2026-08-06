@@ -186,6 +186,30 @@
   </div>
 
   <script>
+    // Keep the native details disclosure keyboard-complete. Native
+    // <details> supplies the semantics, while this adds the expected
+    // Escape-to-close and click-away behavior for the public nav.
+    (function () {
+      var menu = document.querySelector(".topbar-dropdown");
+      if (!menu) return;
+      var summary = menu.querySelector("summary");
+      if (!summary) return;
+      summary.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && menu.open) {
+          ev.preventDefault();
+          menu.open = false;
+          summary.focus();
+        }
+      });
+      document.addEventListener("click", function (ev) {
+        if (menu.open && ev.target && !menu.contains(ev.target)) {
+          menu.open = false;
+        }
+      });
+    })();
+  </script>
+
+  <script>
     // Cookie consent banner — show once per year unless dismissed.
     // Pure client-side disclosure. No cookies, no third-party,
     // no fingerprinting. localStorage stores the dismissal
