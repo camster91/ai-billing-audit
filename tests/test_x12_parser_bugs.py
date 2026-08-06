@@ -153,6 +153,25 @@ def test_hi_segment_does_not_invalidate_validate_required_fields() -> None:
     assert validate_required_fields(claims[0]) == []
 
 
+def test_alternative_x12_separators_match_canonical_claim() -> None:
+    """Legal non-asterisk/non-tilde delimiters preserve claim output."""
+    standard = _envelope(
+        "BHT*0019*00*1*20240515*1200*CH~",
+        "NM1*85*2*BILLING CLINIC*****XX*1234567890~",
+        "NM1*IL*1*DOE*JOHN****MI*MBR-000123~",
+        "CLM*ENC-ALT-001*100.00***11:B:1*Y*A*Y*Y~",
+        "HI*ABK:Z0000~",
+        "DTP*472*D8*20240510~",
+        "SV1*HC:99213*100.00*UN*1***1~",
+    )
+    alternative = standard.replace("*", "^").replace("~", "!")
+
+    canonical_claim = parse_837p(standard)[0]
+    alternative_claim = parse_837p(alternative)[0]
+
+    assert alternative_claim == canonical_claim
+
+
 # ---------------------------------------------------------------------------
 # Bug #1 — date_of_service is last-wins on multiple DTP*472
 # ---------------------------------------------------------------------------
