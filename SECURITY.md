@@ -10,19 +10,17 @@ response-time commitments are.
 
 ## Supported versions
 
-The project is in pre-1.0 (`0.x.y`). The repository currently reports `0.4.0`
-in `pyproject.toml` and `0.1.0` from the package runtime; this version
-mismatch must be resolved before publishing a supported-release claim. Until
-then, treat the checked-in version metadata as a release blocker, not as a
-guarantee about a deployed image.
+The project is in pre-1.0 (`0.x.y`). The API package, runtime health/metrics
+identity, and API image tag currently use `0.4.0`. A deployed image still
+requires commit and environment verification; a repository version is not
+proof of the live release.
 
 | Release line | Status            | Notes                                  |
 |--------------|-------------------|----------------------------------------|
-| Current checked-in metadata | **Unresolved** | Align package and build versions before release. |
+| `0.4.x` | **Repository-supported** | Current API release line; verify deployed commit before support decisions. |
 
-Do not publish a supported-version or backport promise until the version
-source of truth and release policy are approved. See
-`docs/OPERATIONS_RUNBOOK.md` and issue #15.
+Keep the supported-version policy aligned with the release tags and deployment
+runbook. See `docs/OPERATIONS_RUNBOOK.md` and issue #15.
 
 ---
 
@@ -192,4 +190,4 @@ they just don't get a public credit.
 
 ---
 
-_Last updated: 2026-08-06 - release-line support is unresolved pending version alignment._
+_Last updated: 2026-08-06 - API release metadata aligned to 0.4.0._
