@@ -215,8 +215,12 @@ def main() -> int:
     # Summary
     from collections import Counter
 
-    conf = Counter(e.get("confidence", "?") for e in updated.values() if isinstance(e, dict))
-    sources = Counter(e.get("source", "?") for e in updated.values() if isinstance(e, dict))
+    conf = Counter(
+        e.get("confidence", "?") for e in updated.values() if isinstance(e, dict)
+    )
+    sources = Counter(
+        e.get("source", "?") for e in updated.values() if isinstance(e, dict)
+    )
     mismatches = [c for c, n in _PER_CODE_NOTES.items() if "MISMATCH" in n]
     print(f"Wrote {len(updated)} entries to {SOMB_PATH}")
     print(f"  confidence: {dict(conf)}")

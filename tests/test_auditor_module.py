@@ -153,9 +153,7 @@ def test_audit_claim_input_is_frozen_dataclass_with_three_string_fields() -> Non
     # AttributeError subclass, so this is the right exception class
     # to assert.
     with pytest.raises(AttributeError):
-        instance = AuditClaimInput(
-            clinical_note="x", billed_claim="y", payer_rules="z"
-        )
+        instance = AuditClaimInput(clinical_note="x", billed_claim="y", payer_rules="z")
         instance.clinical_note = "mutated"  # type: ignore[misc]
 
 
@@ -242,7 +240,9 @@ def test_forward_populates_findings_as_list_of_strings() -> None:
     )
     module = AuditorModule()
     result = module.forward(_make_input())
-    assert hasattr(result, "findings"), "Prediction must expose 'findings' as an attribute"
+    assert hasattr(result, "findings"), (
+        "Prediction must expose 'findings' as an attribute"
+    )
     assert isinstance(result.findings, list), (
         f"findings must be a list; got {type(result.findings).__name__}"
     )

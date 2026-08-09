@@ -12,6 +12,7 @@ returns the original email only when the request is being
 reviewed by the demo sales lead (we don't have that role
 in v1; the privacy officer reads the log directly).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,6 +21,13 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+from ai_billing_audit.clinical_note_storage import (
+    decrypt_phi,
+    encrypt_phi,
+    PhiStorageIntegrityError,
+    store_clinical_note,
+)
 
 # Maximum upload size for /contact claims — matches the rest of
 # the upload portal (api.py: _MAX_UPLOAD_BYTES). 25 MB is enough
@@ -36,9 +44,18 @@ _DEFAULT_STAGE_DIR = "/app/logs/contact_uploads"
 # Same set as the main upload portal: 837P (the .edi/.txt variants
 # are legacy filenames for the same format), CSV, JSON, FHIR JSON
 # or XML, and ZIP archives of any of those.
-_ALLOWED_EXTENSIONS = frozenset({
-    ".837", ".edi", ".txt", ".csv", ".json", ".xml", ".fhir", ".zip",
-})
+_ALLOWED_EXTENSIONS = frozenset(
+    {
+        ".837",
+        ".edi",
+        ".txt",
+        ".csv",
+        ".json",
+        ".xml",
+        ".fhir",
+        ".zip",
+    }
+)
 
 
 def valid_email(email: str) -> bool:
@@ -74,6 +91,39 @@ def _stage_dir() -> Path:
     return Path(os.environ.get("CONTACT_UPLOAD_DIR", _DEFAULT_STAGE_DIR))
 
 
+def migrate_contact_uploads() -> int:
+    """Encrypt legacy plaintext uploads without changing manifest paths."""
+    directory = _stage_dir()
+    if not directory.is_dir():
+        return 0
+    migrated = 0
+    for path in sorted(directory.iterdir()):
+        if not path.is_file() or path.name.endswith(
+            (".plaintext.bak.enc", ".encrypted.tmp")
+        ):
+            continue
+        original = path.read_bytes()
+        try:
+            decrypt_phi(original)
+        except PhiStorageIntegrityError:
+            pass
+        else:
+            continue
+        backup = path.with_name(path.name + ".plaintext.bak.enc")
+        if backup.exists():
+            raise PhiStorageIntegrityError("encrypted plaintext backup already exists")
+        backup.write_bytes(encrypt_phi(original))
+        replacement = path.with_name(path.name + ".encrypted.tmp")
+        try:
+            store_clinical_note(replacement, original)
+            replacement.replace(path)
+        finally:
+            if replacement.exists():
+                replacement.unlink()
+        migrated += 1
+    return migrated
+
+
 async def _stage_contact_upload(file) -> dict[str, Any] | None:
     """Stage a /contact claims file to disk for the audit team.
 
@@ -107,8 +157,7 @@ async def _stage_contact_upload(file) -> dict[str, Any] | None:
     raw = await file.read()
     if len(raw) > _MAX_CONTACT_UPLOAD_BYTES:
         raise ValueError(
-            f"File is {len(raw):,} bytes; max is "
-            f"{_MAX_CONTACT_UPLOAD_BYTES:,}."
+            f"File is {len(raw):,} bytes; max is {_MAX_CONTACT_UPLOAD_BYTES:,}."
         )
     if not raw:
         raise ValueError("File is empty.")
@@ -125,17 +174,16 @@ async def _stage_contact_upload(file) -> dict[str, Any] | None:
     safe_name = filename.replace("/", "_").replace("\\", "_").strip() or "upload"
     staged_name = f"{digest[:12]}-{uuid.uuid4().hex[:8]}-{safe_name}"
     staged_path = staged_at / staged_name
-    staged_path.write_bytes(raw)
+    store_clinical_note(staged_path, raw)
 
     manifest = {
         "filename": filename,
         "staged_path": str(staged_path),
-        "staged_at_iso": time.strftime(
-            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-        ),
+        "staged_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "size_bytes": len(raw),
         "sha256": digest,
         "extension": suffix,
+        "encrypted_at_rest": True,
     }
     return manifest
 
@@ -159,11 +207,13 @@ def _append_contact_event(
     SHA-256 hash so the privacy officer can dedupe later.
     """
     from . import audit_actions as _aa
+
     email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
     # tenant_id is captured at app-init from TENANT_ID env var;
     # audit_actions._LOG_PATH is captured at module-import
     # time, so the test fixture must reload audit_actions.
     from .api import _TENANT_ID  # type: ignore[attr-defined]
+
     extra: dict[str, Any] = {
         # Store the full message (not PHI; it's a sales request)
         "message_excerpt": message[:500] if message else "",

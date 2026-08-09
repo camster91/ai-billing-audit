@@ -59,8 +59,16 @@ def test_audit_claim_fields_in_expected_order() -> None:
 
 def test_audit_claim_has_exactly_three_inputs_and_three_outputs() -> None:
     fields = AuditClaim.fields
-    inputs = [n for n, f in fields.items() if f.json_schema_extra["__dspy_field_type"] == "input"]
-    outputs = [n for n, f in fields.items() if f.json_schema_extra["__dspy_field_type"] == "output"]
+    inputs = [
+        n
+        for n, f in fields.items()
+        if f.json_schema_extra["__dspy_field_type"] == "input"
+    ]
+    outputs = [
+        n
+        for n, f in fields.items()
+        if f.json_schema_extra["__dspy_field_type"] == "output"
+    ]
     assert inputs == ["clinical_note", "billed_claim", "payer_rules"]
     assert outputs == ["has_discrepancy", "confidence_score", "findings"]
 
@@ -127,7 +135,9 @@ def test_findings_is_list_of_string() -> None:
     field = AuditClaim.fields["findings"]
     origin = typing.get_origin(field.annotation)
     args = typing.get_args(field.annotation)
-    assert origin is list, f"findings annotation should be list[X], got {field.annotation!r}"
+    assert origin is list, (
+        f"findings annotation should be list[X], got {field.annotation!r}"
+    )
     assert args == (str,), f"findings should be list[str], got list[{args}]"
     desc = field.json_schema_extra["desc"]
     # Findings must be concise and grounded — guard the two cues.
@@ -151,9 +161,9 @@ def test_audit_claim_has_a_descriptive_one_sentence_docstring() -> None:
     # signature actually has.
     lower = first_line.lower()
     assert "claim" in lower, f"docstring should mention 'claim'; got {first_line!r}"
-    assert "clinical note" in lower or "documentation" in lower or "encounter" in lower, (
-        f"docstring should mention the clinical note / documentation; got {first_line!r}"
-    )
+    assert (
+        "clinical note" in lower or "documentation" in lower or "encounter" in lower
+    ), f"docstring should mention the clinical note / documentation; got {first_line!r}"
     assert "rule" in lower or "payer" in lower, (
         f"docstring should mention the retrieved rules; got {first_line!r}"
     )

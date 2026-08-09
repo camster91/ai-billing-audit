@@ -10,9 +10,9 @@ What's pinned
 * The default `_one_sentence_reason` / `_default_fix_suggestion`
   functions still work when specialty is None or unknown.
 """
+
 from __future__ import annotations
 
-import pytest
 
 from ai_billing_audit.doctor_email import (
     specialty_from_cpt,
@@ -90,20 +90,29 @@ def test_specialty_fix_falls_back_to_default():
     # info rule has no specialty override, only high/critical ones do
     text = specialty_fix_suggestion("INFO-RULE", "99999", "primary_care")
     # Default fallback
-    assert "Medical decision making" in text or "document the medical decision" in text.lower()
+    assert (
+        "Medical decision making" in text
+        or "document the medical decision" in text.lower()
+    )
 
 
 def test_specialty_fix_no_specialty_falls_back():
     text = specialty_fix_suggestion("MOD-25", "99214-25", None)
     # Default fix for MOD-25
-    assert "separately identifiable" in text.lower() or "procedure performed" in text.lower()
+    assert (
+        "separately identifiable" in text.lower()
+        or "procedure performed" in text.lower()
+    )
 
 
 def test_specialty_fix_unknown_specialty_falls_back():
     """Unknown specialty id -> default."""
     text = specialty_fix_suggestion("MOD-25", "99214-25", "not_a_real_specialty")
     # Falls back to default
-    assert "separately identifiable" in text.lower() or "procedure performed" in text.lower()
+    assert (
+        "separately identifiable" in text.lower()
+        or "procedure performed" in text.lower()
+    )
 
 
 def test_build_summary_uses_specialty_fix():
@@ -126,7 +135,10 @@ def test_build_summary_uses_specialty_fix():
     )
     assert s is not None
     # Specialty override for primary care MOD-25
-    assert "separate concern" in s.body_text.lower() or "preventive visit" in s.body_text.lower()
+    assert (
+        "separate concern" in s.body_text.lower()
+        or "preventive visit" in s.body_text.lower()
+    )
 
 
 def test_build_summary_specialty_surgery():
@@ -148,4 +160,7 @@ def test_build_summary_specialty_surgery():
     )
     assert s is not None
     # Surgery override for MOD-25
-    assert "pre- and post-operative" in s.body_text.lower() or "above and beyond" in s.body_text.lower()
+    assert (
+        "pre- and post-operative" in s.body_text.lower()
+        or "above and beyond" in s.body_text.lower()
+    )

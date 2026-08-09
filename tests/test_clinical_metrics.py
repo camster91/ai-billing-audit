@@ -14,9 +14,7 @@ guards don't 404.
 
 from __future__ import annotations
 
-import json
 import os
-import tempfile
 from pathlib import Path
 from typing import Iterator
 
@@ -27,10 +25,14 @@ import pytest
 def tmp_logs(monkeypatch, tmp_path: Path) -> Iterator[None]:
     """Redirect the four JSONL log files into a tmp dir for the test."""
     monkeypatch.setenv("FEATURE_FLAG_LOG", str(tmp_path / "feature_flags.jsonl"))
-    monkeypatch.setenv("FEATURE_FLAG_REGISTRY", str(tmp_path / "feature_flags_registry.json"))
+    monkeypatch.setenv(
+        "FEATURE_FLAG_REGISTRY", str(tmp_path / "feature_flags_registry.json")
+    )
     monkeypatch.setenv("FEEDBACK_LOG", str(tmp_path / "feedback.jsonl"))
     monkeypatch.setenv("CLINIC_PROMPT_PIN_LOG", str(tmp_path / "clinic_pins.jsonl"))
-    monkeypatch.setenv("TEACHING_VERDICT_LOG", str(tmp_path / "teaching_verdicts.jsonl"))
+    monkeypatch.setenv(
+        "TEACHING_VERDICT_LOG", str(tmp_path / "teaching_verdicts.jsonl")
+    )
     monkeypatch.setenv("REAUDIT_QUEUE_LOG", str(tmp_path / "reaudit_queue.jsonl"))
     yield
 
@@ -66,7 +68,6 @@ def test_doctor_effectiveness_with_feedback(tmp_logs) -> None:
 
 
 def test_teaching_queue_and_verdict_round_trip(tmp_logs) -> None:
-    from ai_billing_audit import feedback
     from ai_billing_audit.clinical_metrics import (
         TeachingVerdict,
         list_do_not_flag_rules,
@@ -79,25 +80,24 @@ def test_teaching_queue_and_verdict_round_trip(tmp_logs) -> None:
     # not in its closed Literal set, but the teaching-signal queue
     # reads the log file directly so it can surface doctor-only rows.
     log_path = Path(os.environ["FEEDBACK_LOG"])
-    with log_path.open("a", encoding="utf-8") as fh:
-        fh.write(
-            json.dumps(
-                {
-                    "encounter_id": "e1",
-                    "finding_id": "f1",
-                    "action": "incorrect",
-                    "doctor_id": "doctor_1",
-                    "clinic_id": "clinic_a",
-                    "rule_id": "r1",
-                    "severity": "low",
-                    "category": "documentation",
-                    "biller_id": "doctor_1",
-                    "timestamp": "2026-06-25T00:00:00Z",
-                    "event_id": "fb_1",
-                }
-            )
-            + "\n"
-        )
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    append_encrypted_json_record(
+        log_path,
+        {
+            "encounter_id": "e1",
+            "finding_id": "f1",
+            "action": "incorrect",
+            "doctor_id": "doctor_1",
+            "clinic_id": "clinic_a",
+            "rule_id": "r1",
+            "severity": "low",
+            "category": "documentation",
+            "biller_id": "doctor_1",
+            "timestamp": "2026-06-25T00:00:00Z",
+            "event_id": "fb_1",
+        },
+    )
 
     rows = list_teaching_signal_queue(clinic_id="clinic_a")
     assert len(rows) == 1
@@ -154,8 +154,14 @@ def test_prompt_pin_round_trip(tmp_logs) -> None:
 @pytest.mark.parametrize(
     "route,flag_name",
     [
-        ("/api/doctor/doctor_1/effectiveness?clinic_id=clinic_a", "doctor_effectiveness_metric"),
-        ("/api/admin/teaching-signal-queue?clinic_id=clinic_a", "rejected_fix_teaching_signal"),
+        (
+            "/api/doctor/doctor_1/effectiveness?clinic_id=clinic_a",
+            "doctor_effectiveness_metric",
+        ),
+        (
+            "/api/admin/teaching-signal-queue?clinic_id=clinic_a",
+            "rejected_fix_teaching_signal",
+        ),
     ],
 )
 def test_routes_wired_and_flag_gated(tmp_logs, route: str, flag_name: str) -> None:
@@ -218,3 +224,19 @@ def test_prompt_version_put_flag_gated(tmp_logs) -> None:
     resp = client.put("/api/clinic/clinic_a/prompt-version?prompt_version_id=v12")
     assert resp.status_code == 200, resp.text
     assert resp.json()["prompt_version_id"] == "v12"
+
+
+def test_clinical_metric_jsonl_is_encrypted_at_rest(tmp_path):
+    from ai_billing_audit.clinical_metrics import _append_jsonl, _read_jsonl
+
+    path = tmp_path / "note_suggestions.jsonl"
+    row = {
+        "encounter_id": "ENC-PHI-SECRET",
+        "suggestion": "Patient Jane Doe should document E11.9",
+    }
+
+    _append_jsonl(path, row)
+
+    assert b"ENC-PHI-SECRET" not in path.read_bytes()
+    assert b"Jane Doe" not in path.read_bytes()
+    assert _read_jsonl(path) == [row]

@@ -11,6 +11,7 @@ Covers the four behaviours the task spec calls out:
 4. The function accepts both a list of records and a path to
    a JSONL file.
 """
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,10 @@ def family_medicine_records() -> list[dict]:
             "specialty": "cardiology",
             "timestamp": "2026-06-02T10:00:00Z",
             "findings": [
-                {"rule_id": "rule_ahcip_missing_modifier_25", "estimated_value": 9999.0},
+                {
+                    "rule_id": "rule_ahcip_missing_modifier_25",
+                    "estimated_value": 9999.0,
+                },
             ],
         },
     ]
@@ -87,9 +91,7 @@ def family_medicine_records() -> list[dict]:
 def test_specialty_filter_excludes_other_specialties(
     family_medicine_records: list[dict],
 ) -> None:
-    result = top_missed_revenue_patterns(
-        "family_medicine", family_medicine_records
-    )
+    result = top_missed_revenue_patterns("family_medicine", family_medicine_records)
     # cardiology record's $9999 finding must NOT be in any pattern.
     for p in result["patterns"]:
         assert p["total_dollars"] < 1000.0
@@ -98,10 +100,10 @@ def test_specialty_filter_excludes_other_specialties(
 def test_specialty_match_is_case_insensitive(
     family_medicine_records: list[dict],
 ) -> None:
-    result = top_missed_revenue_patterns(
-        "Family_Medicine", family_medicine_records
-    )
-    assert result["records_kept"] == 3  # 3 family-medicine records, 1 cardiology excluded
+    result = top_missed_revenue_patterns("Family_Medicine", family_medicine_records)
+    assert (
+        result["records_kept"] == 3
+    )  # 3 family-medicine records, 1 cardiology excluded
 
 
 def test_no_specialty_aggregates_everything() -> None:
@@ -142,9 +144,7 @@ def test_no_specialty_aggregates_everything() -> None:
 def test_score_is_count_times_total_dollars(
     family_medicine_records: list[dict],
 ) -> None:
-    result = top_missed_revenue_patterns(
-        "family_medicine", family_medicine_records
-    )
+    result = top_missed_revenue_patterns("family_medicine", family_medicine_records)
     patterns = {p["pattern"]: p for p in result["patterns"]}
     # rule_ahcip_missing_modifier_25: 4 findings × $50 = $200, score = 4 × 200 = 800
     assert patterns["rule_ahcip_missing_modifier_25"]["count"] == 4
@@ -159,9 +159,7 @@ def test_score_is_count_times_total_dollars(
 def test_ranking_is_descending_by_score(
     family_medicine_records: list[dict],
 ) -> None:
-    result = top_missed_revenue_patterns(
-        "family_medicine", family_medicine_records
-    )
+    result = top_missed_revenue_patterns("family_medicine", family_medicine_records)
     scores = [p["score"] for p in result["patterns"]]
     assert scores == sorted(scores, reverse=True)
     # Highest-score pattern is the modifier-25 one.
@@ -198,9 +196,7 @@ def test_insufficient_data_flag_when_under_min_months() -> None:
 def test_sufficient_data_flag_when_at_or_above_min_months(
     family_medicine_records: list[dict],
 ) -> None:
-    result = top_missed_revenue_patterns(
-        "family_medicine", family_medicine_records
-    )
+    result = top_missed_revenue_patterns("family_medicine", family_medicine_records)
     assert result["months_covered"] >= 3
     assert result["insufficient_data"] is False
 
@@ -223,8 +219,16 @@ def test_min_months_parameter_overrides_default() -> None:
         },
     ]
     # 2 months is "insufficient" at the default (3) but "sufficient" at 2.
-    assert top_missed_revenue_patterns("family_medicine", records)["insufficient_data"] is True
-    assert top_missed_revenue_patterns("family_medicine", records, min_months=2)["insufficient_data"] is False
+    assert (
+        top_missed_revenue_patterns("family_medicine", records)["insufficient_data"]
+        is True
+    )
+    assert (
+        top_missed_revenue_patterns("family_medicine", records, min_months=2)[
+            "insufficient_data"
+        ]
+        is False
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -249,13 +253,21 @@ def test_jsonl_skips_malformed_lines(tmp_path: Path) -> None:
     jsonl_path = tmp_path / "audit.jsonl"
     with jsonl_path.open("w") as fh:
         fh.write("not json\n")
-        fh.write(json.dumps({
-            "specialty": "family_medicine",
-            "timestamp": "2026-04-01T00:00:00Z",
-            "findings": [
-                {"rule_id": "rule_ahcip_missing_modifier_25", "estimated_value": 50.0}
-            ],
-        }) + "\n")
+        fh.write(
+            json.dumps(
+                {
+                    "specialty": "family_medicine",
+                    "timestamp": "2026-04-01T00:00:00Z",
+                    "findings": [
+                        {
+                            "rule_id": "rule_ahcip_missing_modifier_25",
+                            "estimated_value": 50.0,
+                        }
+                    ],
+                }
+            )
+            + "\n"
+        )
         fh.write("\n")  # blank line
     result = top_missed_revenue_patterns("family_medicine", jsonl_path)
     assert result["records_seen"] == 1
@@ -286,9 +298,7 @@ def test_findings_with_zero_amount_are_filtered() -> None:
             ],
         },
     ]
-    result = top_missed_revenue_patterns(
-        "family_medicine", records, min_months=1
-    )
+    result = top_missed_revenue_patterns("family_medicine", records, min_months=1)
     assert result["patterns"] == []
 
 

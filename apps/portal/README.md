@@ -40,7 +40,7 @@ configured `DATABASE_URL`.
 
 ## Stack
 
-- **Next.js 16.2.9** (App Router) on **React 19.2.4** — `next dev`, `next build`.
+- **Next.js 15.5.19** (App Router) on **React 19.2.4** — `next dev`, `next build`.
 - **Prisma 7.8** with the better-sqlite3 adapter (dev) and Postgres (prod),
   schema in `apps/portal/prisma/schema.prisma`.
 - **Stripe 22.2** for Checkout Sessions, the Customer Portal redirect, and
@@ -59,9 +59,9 @@ pnpm install
 # 2. point Prisma at the dev SQLite DB (copy .env.example to .env)
 cp apps/portal/.env.example apps/portal/.env
 
-# 3. apply migrations + generate the client
-pnpm --filter portal prisma migrate dev
-pnpm --filter portal prisma generate
+# 3. apply SQLite migrations + generate both database clients
+pnpm --filter portal exec prisma migrate deploy
+pnpm --filter portal prisma:generate
 
 # 4. run the app (http://localhost:3000)
 pnpm --filter portal dev
@@ -79,8 +79,16 @@ pnpm --filter portal build      # next build (Prisma generate is pre-build)
 pnpm --filter portal start      # next start, defaults to :3000
 ```
 
-The build step runs `prisma generate` automatically; `migrate deploy` must be
-run separately against the target database before the first production boot.
+The build step generates both SQLite and PostgreSQL clients automatically.
+Production refuses a missing or SQLite `DATABASE_URL`. Apply the committed
+PostgreSQL baseline before booting a release:
+
+```bash
+DATABASE_URL=postgresql://... pnpm --filter portal prisma:migrate:deploy:postgresql
+```
+
+The repository Docker Compose topology performs this through the one-shot
+`portal-migrate` service and starts `portal` only after it succeeds.
 
 ## Key files
 
@@ -99,7 +107,9 @@ run separately against the target database before the first production boot.
 | `src/lib/stripe.ts` | Stripe SDK singleton + tier-to-price-ID mapping. |
 | `src/lib/email.ts` + `src/lib/emails/` | Resend client and React Email templates. |
 | `src/lib/prisma.ts` | Prisma client singleton (better-sqlite3 in dev, Postgres in prod). |
-| `prisma/schema.prisma` | Tenant, user, subscription, encounter, finding, audit-trail models. |
+| `prisma/schema.prisma` | Canonical tenant, user, subscription, encounter, finding, and audit-trail models. |
+| `prisma/postgresql/migrations/` | Production PostgreSQL migration history. |
+| `scripts/prepare-postgresql-schema.mjs` | Derives the PostgreSQL schema/client from the canonical model. |
 
 ## Env vars
 
@@ -109,6 +119,13 @@ Defined in `apps/portal/.env.example`. The portal reads:
 - **`AUTH_SECRET`** — signs the NextAuth session cookie.
 - **`AUTH_RESEND_KEY`** + **`AUTH_EMAIL_FROM`** — Resend API key and sender used
   for magic-link sign-in and all transactional email.
+- **`FASTAPI_BASE_URL`**, **`FASTAPI_BEARER_TOKEN`**, and
+  **`FASTAPI_PRINCIPAL_SIGNING_SECRET`** — server-only audit API URL and shared
+  credentials used to sign five-minute, tenant-bound principals. Never expose
+  the credential variables with a `NEXT_PUBLIC_` prefix.
+- **`ZORVA_PHI_ENCRYPTION_KEY`** — URL-safe base64 encoding of exactly 32
+  random bytes, used for AES-256-GCM encryption of staged claims and stored EHR
+  credentials. The portal fails closed when it is missing or malformed.
 - **`STRIPE_SECRET_KEY`**, **`STRIPE_PUBLISHABLE_KEY`**, **`STRIPE_WEBHOOK_SECRET`**
   — Stripe API keys and the webhook signing secret for `/api/billing/webhook`.
 - **`PRICING_TIER_{SMALL,MID,LARGE}_{NAME,AUDIT_CAP,PRICE_CAD,PRICE_USD,STRIPE_PRICE_ID_CAD,STRIPE_PRICE_ID_USD}`**

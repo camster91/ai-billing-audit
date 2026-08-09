@@ -14,11 +14,11 @@ Acceptance criteria from the task body:
 The tests run in-process via ``starlette.testclient.TestClient`` so
 the route handlers execute the same code path as production.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
@@ -52,9 +52,10 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "csv"
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Starlette TestClient with AUTH off and a fresh job queue."""
     reset_default_queue_for_tests()
+    monkeypatch.setattr(api, "load_uploaded_note_for_encounter", lambda _id: "note")
     return TestClient(api.app)
 
 
@@ -129,12 +130,9 @@ def test_header_dictionary_has_all_three_systems() -> None:
     # Each system has the three required columns we test against.
     for fmt in ("kareo", "oscar", "office_ally"):
         required = REQUIRED_DICTIONARY[fmt]
-        assert "procedure_code" in [
-            _norm(h) for h in HEADER_DICTIONARY[fmt]
-        ] or any(
-            c.lower().replace(" ", "") in [
-                h.lower().replace(" ", "") for h in HEADER_DICTIONARY[fmt]
-            ]
+        assert "procedure_code" in [_norm(h) for h in HEADER_DICTIONARY[fmt]] or any(
+            c.lower().replace(" ", "")
+            in [h.lower().replace(" ", "") for h in HEADER_DICTIONARY[fmt]]
             for c in required
         ), f"{fmt!r} missing required column"
 
@@ -243,7 +241,11 @@ def test_normalize_row_missing_procedure_raises() -> None:
 def test_normalize_row_bad_amount_raises() -> None:
     with pytest.raises(ValueError, match="amount"):
         normalize_row(
-            {"Procedure Code": "99213", "Charge": "free", "Date Of Service": "2024-05-15"},
+            {
+                "Procedure Code": "99213",
+                "Charge": "free",
+                "Date Of Service": "2024-05-15",
+            },
             "kareo",
         )
 
@@ -381,7 +383,9 @@ def test_ingest_csv_partial_success_one_bad_row(tmp_log_queue: JobQueue) -> None
     assert len(result["enqueued"]) == 2
 
 
-def test_ingest_csv_per_row_errors_preserve_row_numbers(tmp_log_queue: JobQueue) -> None:
+def test_ingest_csv_per_row_errors_preserve_row_numbers(
+    tmp_log_queue: JobQueue,
+) -> None:
     """The ``row`` field in each error is the 1-based CSV row index,
     counting the header as row 0 (so the first data row is row 1).
     This matches the convention the /encounters/upload/submit
@@ -425,7 +429,9 @@ def test_ingest_csv_office_ally_format(tmp_log_queue: JobQueue) -> None:
     assert result["rejected_count"] == 0
 
 
-def test_ingest_csv_jobs_have_canonical_encounter_shape(tmp_log_queue: JobQueue) -> None:
+def test_ingest_csv_jobs_have_canonical_encounter_shape(
+    tmp_log_queue: JobQueue,
+) -> None:
     """The encounters enqueued onto the audit job-queue match the
     shape the rest of the pipeline expects."""
     raw = (FIXTURES_DIR / "kareo_sample.csv").read_bytes()
@@ -476,6 +482,26 @@ def test_upload_csv_kareo_returns_200_with_response_shape(
     assert len(body["enqueued"]) == 3
 
 
+def test_upload_csv_rejects_rows_without_clinical_notes_before_enqueue(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(api, "load_uploaded_note_for_encounter", lambda _id: None)
+    raw = (FIXTURES_DIR / "kareo_sample.csv").read_bytes()
+
+    response = client.post(
+        "/upload/csv",
+        files={"file": ("kareo_sample.csv", raw, "text/csv")},
+        data={"clinic_id": "clinic-no-notes"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["accepted_count"] == 0
+    assert body["rejected_count"] == 3
+    assert body["enqueued"] == []
+    assert all("clinical_note_required" in error["reason"] for error in body["errors"])
+
+
 def test_upload_csv_oscar_returns_200(client: TestClient) -> None:
     raw = (FIXTURES_DIR / "oscar_sample.csv").read_bytes()
     r = client.post(
@@ -523,10 +549,10 @@ def test_upload_csv_mixed_format_partial_success(client: TestClient) -> None:
     """A CSV with mostly good rows + one bad row → 200 with the
     per-row error in the response body (no 400, no abort)."""
     csv_text = (
-        "Procedure Code,Charge,Date Of Service,Patient ID\n"
-        "99213,150.00,2024-05-15,MBR-001\n"
-        "99214,not-a-number,2024-05-16,MBR-002\n"
-        "99215,75.00,2024-05-17,MBR-003\n"
+        "Procedure Code,Charge,Date Of Service,Patient ID,Encounter ID\n"
+        "99213,150.00,2024-05-15,MBR-001,ENC-MIX-001\n"
+        "99214,not-a-number,2024-05-16,MBR-002,ENC-MIX-002\n"
+        "99215,75.00,2024-05-17,MBR-003,ENC-MIX-003\n"
     )
     r = client.post(
         "/upload/csv",

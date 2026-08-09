@@ -25,29 +25,29 @@ import importlib
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    encrypt_phi,
+    read_encrypted_json_records,
+)
 
 
 def _seed_audit_trail(path: Path, rows: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
-        for r in rows:
-            f.write(json.dumps(r) + "\n")
+    for row in rows:
+        append_encrypted_json_record(path, row)
 
 
 def _seed_appeal_letters(path: Path, rows: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
-        for r in rows:
-            f.write(json.dumps(r) + "\n")
+    for row in rows:
+        append_encrypted_json_record(path, row)
 
 
 def _seed_upload_jobs(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
+    with path.open("wb") as f:
         for r in rows:
-            f.write(json.dumps(r) + "\n")
+            f.write(encrypt_phi(json.dumps(r).encode("utf-8")) + b"\n")
 
 
 def _make_app_for_tenant(monkeypatch, *, tmp_path: Path, tenant_id: str):
@@ -67,10 +67,13 @@ def _make_app_for_tenant(monkeypatch, *, tmp_path: Path, tenant_id: str):
     monkeypatch.setenv("TENANT_ID", tenant_id)
 
     import ai_billing_audit.audit_actions as aa_mod
+
     importlib.reload(aa_mod)
     import ai_billing_audit.appeal_letter as al_mod
+
     importlib.reload(al_mod)
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return app, audit_log, appeal_log, upload_log
@@ -80,29 +83,49 @@ def test_export_returns_jsonl_with_manifest(tmp_path, monkeypatch):
     app, audit_log, appeal_log, upload_log = _make_app_for_tenant(
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
-    _seed_audit_trail(audit_log, [
-        {"action": "accept_all", "tenant_id": "default",
-         "data_elements": {"encounter_id": "E-1"}},
-    ])
-    _seed_appeal_letters(appeal_log, [
-        {"encounter_id": "E-1", "tenant_id": "default",
-         "appeal_basis": "x", "cited_rule_ids": ["rule_1"]},
-    ])
-    _seed_upload_jobs(upload_log, [
-        {"job_id": "J-1", "encounter_id": "E-1",
-         "tenant_id": "default", "status": "done",
-         "result": {"audit_status": "ok", "findings": []}},
-    ])
+    _seed_audit_trail(
+        audit_log,
+        [
+            {
+                "action": "accept_all",
+                "tenant_id": "default",
+                "data_elements": {"encounter_id": "E-1"},
+            },
+        ],
+    )
+    _seed_appeal_letters(
+        appeal_log,
+        [
+            {
+                "encounter_id": "E-1",
+                "tenant_id": "default",
+                "appeal_basis": "x",
+                "cited_rule_ids": ["rule_1"],
+            },
+        ],
+    )
+    _seed_upload_jobs(
+        upload_log,
+        [
+            {
+                "job_id": "J-1",
+                "encounter_id": "E-1",
+                "tenant_id": "default",
+                "status": "done",
+                "result": {"audit_status": "ok", "findings": []},
+            },
+        ],
+    )
 
     client = TestClient(app)
     resp = client.get("/api/tenants/default/export.jsonl")
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("application/x-ndjson")
     body = resp.text
-    lines = [l for l in body.split("\n") if l]
+    lines = [line for line in body.split("\n") if line]
     # 1 audit_trail + 1 appeal_letter + 1 upload_job + 1 manifest = 4
     assert len(lines) == 4
-    parsed = [json.loads(l) for l in lines]
+    parsed = [json.loads(line) for line in lines]
     kinds = [p.get("kind", "manifest") for p in parsed]
     assert "audit_trail" in kinds
     assert "appeal_letter" in kinds
@@ -126,7 +149,7 @@ def test_export_records_event_in_audit_trail(tmp_path, monkeypatch):
     resp = client.get("/api/tenants/default/export.jsonl")
     assert resp.status_code == 200
     # The audit log should have a new data_export event
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    events = read_encrypted_json_records(audit_log)
     export_events = [e for e in events if e.get("action") == "data_export"]
     assert len(export_events) == 1
     assert export_events[0]["tenant_id"] == "default"
@@ -145,21 +168,28 @@ def test_export_other_tenant_403(tmp_path, monkeypatch):
 def test_export_manifest_hashes_verify(tmp_path, monkeypatch):
     """Caller can re-hash the rows and verify the manifest matches."""
     import hashlib
+
     app, audit_log, appeal_log, upload_log = _make_app_for_tenant(
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
     rows = [
-        {"action": "accept_all", "tenant_id": "default",
-         "data_elements": {"encounter_id": "E-1"}},
-        {"action": "dismiss", "tenant_id": "default",
-         "data_elements": {"encounter_id": "E-2"}},
+        {
+            "action": "accept_all",
+            "tenant_id": "default",
+            "data_elements": {"encounter_id": "E-1"},
+        },
+        {
+            "action": "dismiss",
+            "tenant_id": "default",
+            "data_elements": {"encounter_id": "E-2"},
+        },
     ]
     _seed_audit_trail(audit_log, rows)
 
     client = TestClient(app)
     resp = client.get("/api/tenants/default/export.jsonl")
     body = resp.text
-    lines = [json.loads(l) for l in body.split("\n") if l]
+    lines = [json.loads(line) for line in body.split("\n") if line]
     manifest = lines[-1]
 
     # Re-hash the rows the caller would receive
@@ -175,17 +205,26 @@ def test_export_filters_by_tenant(tmp_path, monkeypatch):
     app, audit_log, _, _ = _make_app_for_tenant(
         monkeypatch, tmp_path=tmp_path, tenant_id="acme"
     )
-    _seed_audit_trail(audit_log, [
-        {"action": "accept_all", "tenant_id": "acme",
-         "data_elements": {"encounter_id": "A-1"}},
-        {"action": "accept_all", "tenant_id": "north_york",
-         "data_elements": {"encounter_id": "B-1"}},
-    ])
+    _seed_audit_trail(
+        audit_log,
+        [
+            {
+                "action": "accept_all",
+                "tenant_id": "acme",
+                "data_elements": {"encounter_id": "A-1"},
+            },
+            {
+                "action": "accept_all",
+                "tenant_id": "north_york",
+                "data_elements": {"encounter_id": "B-1"},
+            },
+        ],
+    )
     client = TestClient(app)
     resp = client.get("/api/tenants/acme/export.jsonl")
-    lines = [json.loads(l) for l in resp.text.split("\n") if l]
+    lines = [json.loads(line) for line in resp.text.split("\n") if line]
     # Only the acme row, plus the manifest
-    audit_events = [l for l in lines if l.get("kind") == "audit_trail"]
+    audit_events = [line for line in lines if line.get("kind") == "audit_trail"]
     assert len(audit_events) == 1
     assert audit_events[0]["data_elements"]["encounter_id"] == "A-1"
 
@@ -214,9 +253,7 @@ def test_delete_with_correct_phrase_returns_ok(tmp_path, monkeypatch):
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
     client = TestClient(app)
-    resp = client.delete(
-        "/api/tenants/default?confirmation=delete-all-my-data"
-    )
+    resp = client.delete("/api/tenants/default?confirmation=delete-all-my-data")
     assert resp.status_code == 200
     data = resp.json()
     assert data["ok"] is True
@@ -229,11 +266,9 @@ def test_delete_records_purge_event_in_audit_trail(tmp_path, monkeypatch):
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
     client = TestClient(app)
-    resp = client.delete(
-        "/api/tenants/default?confirmation=delete-all-my-data"
-    )
+    resp = client.delete("/api/tenants/default?confirmation=delete-all-my-data")
     assert resp.status_code == 200
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    events = read_encrypted_json_records(audit_log)
     purge_events = [e for e in events if e.get("action") == "tenant_purge"]
     assert len(purge_events) == 1
     assert purge_events[0]["tenant_id"] == "default"
@@ -245,13 +280,13 @@ def test_delete_other_tenant_403(tmp_path, monkeypatch):
         monkeypatch, tmp_path=tmp_path, tenant_id="acme"
     )
     client = TestClient(app)
-    resp = client.delete(
-        "/api/tenants/other-tenant?confirmation=delete-all-my-data"
-    )
+    resp = client.delete("/api/tenants/other-tenant?confirmation=delete-all-my-data")
     assert resp.status_code == 403
 
 
-def test_export_attachment_filename_includes_tenant_and_timestamp(tmp_path, monkeypatch):
+def test_export_attachment_filename_includes_tenant_and_timestamp(
+    tmp_path, monkeypatch
+):
     app, _, _, _ = _make_app_for_tenant(
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
@@ -270,7 +305,7 @@ def test_export_empty_logs_returns_minimal_manifest(tmp_path, monkeypatch):
     client = TestClient(app)
     resp = client.get("/api/tenants/default/export.jsonl")
     assert resp.status_code == 200
-    lines = [json.loads(l) for l in resp.text.split("\n") if l]
+    lines = [json.loads(line) for line in resp.text.split("\n") if line]
     manifest = lines[-1]
     assert manifest["n_audit_trail"] == 0
     assert manifest["n_appeal_letters"] == 0
@@ -286,13 +321,20 @@ def test_export_writes_event_with_sha256_in_extra(tmp_path, monkeypatch):
     app, audit_log, _, _ = _make_app_for_tenant(
         monkeypatch, tmp_path=tmp_path, tenant_id="default"
     )
-    _seed_audit_trail(audit_log, [
-        {"action": "accept_all", "tenant_id": "default",
-         "data_elements": {"encounter_id": "E-1"}},
-    ])
+    _seed_audit_trail(
+        audit_log,
+        [
+            {
+                "action": "accept_all",
+                "tenant_id": "default",
+                "data_elements": {"encounter_id": "E-1"},
+            },
+        ],
+    )
     client = TestClient(app)
     resp = client.get("/api/tenants/default/export.jsonl")
+    assert resp.status_code == 200
     # The data_export event in audit trail
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    events = read_encrypted_json_records(audit_log)
     export_event = next(e for e in events if e.get("action") == "data_export")
     assert "sha256_audit_trail" in export_event["data_elements"]

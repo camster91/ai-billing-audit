@@ -32,9 +32,9 @@ No auth required: ``/metrics`` is on the public-read whitelist
 so a Prometheus scraper doesn't need a bearer token. The data
 exposed is aggregate counters / gauges, no PHI, no claims data.
 """
+
 from __future__ import annotations
 
-import os
 import threading
 import time
 from typing import Iterable
@@ -133,6 +133,7 @@ def _read_job_queue_counts() -> dict[str, int]:
     running)."""
     try:
         from .job_queue import get_default_queue
+
         q = get_default_queue()
         # The queue keeps jobs in a dict; count by state
         counts: dict[str, int] = {}
@@ -148,6 +149,7 @@ def _read_version() -> str:
     """Resolve the running version from the package metadata."""
     try:
         from . import __version__
+
         return str(__version__)
     except Exception:
         return "unknown"
@@ -182,15 +184,13 @@ def render_metrics() -> str:
     out.write("# HELP zorva_http_requests_total HTTP requests served.\n")
     out.write("# TYPE zorva_http_requests_total counter\n")
     with _LOCK:
-        items: Iterable[tuple[tuple[str, str, int], int]] = list(
-            _HTTP_COUNTER.items()
-        )
+        items: Iterable[tuple[tuple[str, str, int], int]] = list(_HTTP_COUNTER.items())
     for (path, method, status), n in sorted(items):
         # Label values are Prometheus-safe; escape quotes if any.
         safe_path = path.replace("\\", "\\\\").replace('"', '\\"')
         safe_method = method.replace("\\", "\\\\").replace('"', '\\"')
         out.write(
-            f'zorva_http_requests_total'
+            f"zorva_http_requests_total"
             f'{{path="{safe_path}",method="{safe_method}",'
             f'status="{status}"}} {n}\n'
         )

@@ -111,7 +111,6 @@ function devRedactEmail(email: string | null | undefined): string {
 // address in any environment.
 function debugNormalizer(email: string): string {
   if (isDev()) {
-    // eslint-disable-next-line no-console
     console.log(
       `[auth-debug] normalize identifier=${devRedactEmail(email)} useResendMock=${useResendMock}`,
     );
@@ -122,7 +121,8 @@ function debugNormalizer(email: string): string {
   if (trimmedEmail.includes('"')) {
     throw new Error("Invalid email address format.");
   }
-  let [local, domain] = trimmedEmail.split("@");
+  const [local, rawDomain] = trimmedEmail.split("@");
+  let domain = rawDomain;
   if (!local || !domain || trimmedEmail.split("@").length !== 2) {
     throw new Error("Invalid email address format.");
   }
@@ -148,7 +148,6 @@ export const authConfig: NextAuthConfig = {
               // one-shot token. We log only the redacted identifier
               // (sha256 prefix) and the fact that a link was generated.
               if (isDev()) {
-                // eslint-disable-next-line no-console
                 console.log(
                   `[auth-debug] sendVerificationRequest identifier=${devRedactEmail(identifier)} useResendMock=${useResendMock} (link suppressed — paste the URL from the request handler's return to test signin in dev)`,
                 );
@@ -168,7 +167,6 @@ export const authConfig: NextAuthConfig = {
       // Dev-only log: redacted identifier + user id presence. Never
       // log the full user object (it carries email, name, image).
       if (isDev()) {
-        // eslint-disable-next-line no-console
         console.log(
           `[auth-debug] signIn callback identifier=${devRedactEmail(user?.email ?? null)} hasUserId=${Boolean(user?.id)}`,
         );

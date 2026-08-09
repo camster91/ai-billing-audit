@@ -15,6 +15,7 @@ The end-to-end smoke (load fixture + run LLM + assert) is exercised
 in CI by ``scripts/smartness_test.main()`` itself and is not in scope
 for these unit tests.
 """
+
 from __future__ import annotations
 
 import sys
@@ -51,22 +52,26 @@ def _finding(rule_id: str, rule_ids: list[str] | None = None) -> dict:
 
 # ---------- The known answer is what we expect ----------
 
+
 def test_expected_rule_ids_is_complete_set() -> None:
     """The smoke fixture must cover all 4 of enc_10000's gold rule_ids.
 
     If the fixture changes, update ``SMOKE_EXPECTED_RULE_IDS``
     deliberately — don't let it silently desync from val.json.
     """
-    assert SMOKE_EXPECTED_RULE_IDS == frozenset({
-        "rule_em_002",
-        "rule_icd_002",
-        "rule_ecg_001",
-        "rule_missing_dx_001",
-    })
+    assert SMOKE_EXPECTED_RULE_IDS == frozenset(
+        {
+            "rule_em_002",
+            "rule_icd_002",
+            "rule_ecg_001",
+            "rule_missing_dx_001",
+        }
+    )
     assert SMOKE_ENC_ID == "enc_10000"
 
 
 # ---------- Passing cases ----------
+
 
 def test_exact_match_passes() -> None:
     """When the model emits exactly the expected rule_ids, no error."""
@@ -84,7 +89,11 @@ def test_exact_match_with_rule_id_only_singular_passes() -> None:
         {"rule_id": "rule_em_002", "rule_ids": [], "quote": "x"},
         {"rule_id": "", "rule_ids": ["rule_icd_002"], "quote": "x"},
         {"rule_id": "rule_ecg_001", "rule_ids": ["rule_ecg_001"], "quote": "x"},
-        {"rule_id": "rule_missing_dx_001", "rule_ids": ["rule_missing_dx_001"], "quote": "x"},
+        {
+            "rule_id": "rule_missing_dx_001",
+            "rule_ids": ["rule_missing_dx_001"],
+            "quote": "x",
+        },
     ]
     _assert_smoke_test_passes(preds)
 
@@ -106,6 +115,7 @@ def test_extra_unrelated_predictions_pass() -> None:
 
 
 # ---------- Failing cases ----------
+
 
 def test_missing_rule_raises() -> None:
     """If a known-good rule_id is dropped, smoke fails loudly."""
@@ -179,9 +189,9 @@ def test_custom_expected_set_overrides_default() -> None:
     """
     custom = frozenset({"rule_a", "rule_b"})
     # Match against custom
-    _assert_smoke_test_passes([_finding("rule_a"), _finding("rule_b")], expected_rule_ids=custom)
+    _assert_smoke_test_passes(
+        [_finding("rule_a"), _finding("rule_b")], expected_rule_ids=custom
+    )
     # Mismatch against custom (would have passed against the default)
     with pytest.raises(SmokeTestError):
-        _assert_smoke_test_passes(
-            [_finding("rule_em_002")], expected_rule_ids=custom
-        )
+        _assert_smoke_test_passes([_finding("rule_em_002")], expected_rule_ids=custom)

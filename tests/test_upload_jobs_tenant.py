@@ -25,14 +25,15 @@ from pathlib import Path
 
 import pytest
 
-from ai_billing_audit.api import read_latest_real_audit
+from ai_billing_audit.api import read_latest_completed_audit, read_latest_real_audit
+from ai_billing_audit.clinical_note_storage import encrypt_phi
 
 
 def _seed_log(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
+    with path.open("wb") as f:
         for row in rows:
-            f.write(json.dumps(row) + "\n")
+            f.write(encrypt_phi(json.dumps(row).encode("utf-8")) + b"\n")
 
 
 def _make_job_row(
@@ -74,20 +75,25 @@ def log_path(tmp_path):
 
 def test_two_tenants_same_encounter_id_returns_only_mine(log_path):
     """Two clinics upload the same encounter_id. Clinic A only sees A's row."""
-    _seed_log(log_path, [
-        _make_job_row(
-            "aaaa11111111",
-            "shared-encounter",
-            "clinic_a",
-            findings=[{"rule_id": "rule_a_001", "quote": "x", "severity": "high"}],
-        ),
-        _make_job_row(
-            "bbbb22222222",
-            "shared-encounter",
-            "clinic_b",
-            findings=[{"rule_id": "rule_b_001", "quote": "y", "severity": "critical"}],
-        ),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row(
+                "aaaa11111111",
+                "shared-encounter",
+                "clinic_a",
+                findings=[{"rule_id": "rule_a_001", "quote": "x", "severity": "high"}],
+            ),
+            _make_job_row(
+                "bbbb22222222",
+                "shared-encounter",
+                "clinic_b",
+                findings=[
+                    {"rule_id": "rule_b_001", "quote": "y", "severity": "critical"}
+                ],
+            ),
+        ],
+    )
     audit = read_latest_real_audit(
         encounter_id="shared-encounter",
         tenant_id="clinic_a",
@@ -101,13 +107,16 @@ def test_two_tenants_same_encounter_id_returns_only_mine(log_path):
 
 def test_other_tenant_audit_returns_none(log_path):
     """Clinic A asks for an encounter_id owned by Clinic B → None."""
-    _seed_log(log_path, [
-        _make_job_row(
-            "bbbb22222222",
-            "clinic-b-only",
-            "clinic_b",
-        ),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row(
+                "bbbb22222222",
+                "clinic-b-only",
+                "clinic_b",
+            ),
+        ],
+    )
     audit = read_latest_real_audit(
         encounter_id="clinic-b-only",
         tenant_id="clinic_a",
@@ -141,14 +150,17 @@ def test_empty_log_returns_none(log_path):
 
 def test_audit_status_failed_excluded(log_path):
     """Failed audits are not surfaced even for the right tenant."""
-    _seed_log(log_path, [
-        _make_job_row(
-            "ffff44444444",
-            "enc-failed",
-            "clinic_a",
-            audit_status="failed",
-        ),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row(
+                "ffff44444444",
+                "enc-failed",
+                "clinic_a",
+                audit_status="failed",
+            ),
+        ],
+    )
     audit = read_latest_real_audit(
         encounter_id="enc-failed",
         tenant_id="clinic_a",
@@ -159,10 +171,13 @@ def test_audit_status_failed_excluded(log_path):
 
 def test_returns_most_recent_when_multiple_match(log_path):
     """Two OK rows for the same encounter: caller gets the most recent."""
-    _seed_log(log_path, [
-        _make_job_row("older", "enc-multi", "clinic_a"),
-        _make_job_row("newer", "enc-multi", "clinic_a"),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row("older", "enc-multi", "clinic_a"),
+            _make_job_row("newer", "enc-multi", "clinic_a"),
+        ],
+    )
     audit = read_latest_real_audit(
         encounter_id="enc-multi",
         tenant_id="clinic_a",
@@ -174,14 +189,23 @@ def test_returns_most_recent_when_multiple_match(log_path):
 def test_cross_tenant_pollution_kept_separate(log_path):
     """The realistic attack: clinic A knows clinic B's encounter_id
     and tries to pull the audit. The filter must block."""
-    _seed_log(log_path, [
-        _make_job_row(
-            "b1",
-            "enc-b1",
-            "clinic_b",
-            findings=[{"rule_id": "leaked_data", "quote": "secret", "severity": "critical"}],
-        ),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row(
+                "b1",
+                "enc-b1",
+                "clinic_b",
+                findings=[
+                    {
+                        "rule_id": "leaked_data",
+                        "quote": "secret",
+                        "severity": "critical",
+                    }
+                ],
+            ),
+        ],
+    )
     audit = read_latest_real_audit(
         encounter_id="enc-b1",
         tenant_id="clinic_a",
@@ -207,12 +231,15 @@ def test_status_not_done_excluded(log_path):
 def test_finds_most_recent_across_mixed_tenants(log_path):
     """When logs from multiple tenants exist for an encounter_id,
     the matching tenant gets its own most-recent row, in order."""
-    _seed_log(log_path, [
-        _make_job_row("a_old", "enc-x", "clinic_a"),
-        _make_job_row("b_old", "enc-x", "clinic_b"),
-        _make_job_row("a_new", "enc-x", "clinic_a"),
-        _make_job_row("b_new", "enc-x", "clinic_b"),
-    ])
+    _seed_log(
+        log_path,
+        [
+            _make_job_row("a_old", "enc-x", "clinic_a"),
+            _make_job_row("b_old", "enc-x", "clinic_b"),
+            _make_job_row("a_new", "enc-x", "clinic_a"),
+            _make_job_row("b_new", "enc-x", "clinic_b"),
+        ],
+    )
     a_audit = read_latest_real_audit(
         encounter_id="enc-x", tenant_id="clinic_a", log_path=log_path
     )
@@ -231,3 +258,23 @@ def test_missing_log_path_returns_none(tmp_path):
         log_path=tmp_path / "does_not_exist.jsonl",
     )
     assert audit is None
+
+
+def test_latest_completed_audit_is_encrypted_and_tenant_scoped(log_path):
+    _seed_log(
+        log_path,
+        [
+            _make_job_row("a-latest", "enc-a", "clinic_a"),
+            _make_job_row("b-latest", "enc-b", "clinic_b"),
+        ],
+    )
+
+    audit = read_latest_completed_audit(
+        tenant_id="clinic_a",
+        log_path=log_path,
+    )
+
+    assert audit is not None
+    assert audit["job_id"] == "a-latest"
+    assert audit["encounter_id"] == "enc-a"
+    assert audit["tenant_id"] == "clinic_a"

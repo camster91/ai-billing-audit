@@ -33,6 +33,7 @@ Everything from ``extra={...}`` is merged into the top-level JSON
 object. Use snake_case keys so the shipper can index them
 predictably.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -74,13 +75,33 @@ class JsonFormatter(logging.Formatter):
     # Fields that the standard ``LogRecord`` populates and that
     # we want to expose explicitly in JSON. Anything else is
     # treated as user-provided ``extra=`` data.
-    _STANDARD_FIELDS = frozenset({
-        "name", "msg", "args", "levelname", "levelno", "pathname",
-        "filename", "module", "exc_info", "exc_text", "stack_info",
-        "lineno", "funcName", "created", "msecs", "relativeCreated",
-        "thread", "threadName", "processName", "process", "message",
-        "asctime", "taskName",
-    })
+    _STANDARD_FIELDS = frozenset(
+        {
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
+            "asctime",
+            "taskName",
+        }
+    )
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {

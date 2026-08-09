@@ -115,7 +115,9 @@ def test_empty_env_returns_smoke_sentinel(optimize_module, monkeypatch):
 # factory performs (``if not self.api_key: raise RuntimeError``). The
 # actual value is irrelevant because ``_TEST_PROVIDER_OVERRIDES``
 # short-circuits the real provider class entirely.
-_FAKE_API_KEY="test-key-doesnt-need-to-be-real-because-the-override-bypasses-the-network"
+_FAKE_API_KEY = (
+    "test-key-doesnt-need-to-be-real-because-the-override-bypasses-the-network"
+)
 
 # Provider → expected ``dspy.LM`` model string, as declared in
 # ``_DEV_LOOP_PROVIDER_MODEL``. The four rows are also the four
@@ -148,7 +150,9 @@ class _FakeProviderClient:
 
     api_key_env = "OVERRIDDEN_BY_TEST_HOOK"
 
-    def __init__(self, *, model: str = "fake/model", api_key: str | None = None) -> None:
+    def __init__(
+        self, *, model: str = "fake/model", api_key: str | None = None
+    ) -> None:
         self.model = model
         # Mirror the real classes: ``api_key`` is sourced from the
         # provider-specific env var when not passed explicitly. The
@@ -176,7 +180,9 @@ def fake_provider_registry(monkeypatch):
     # lazily; we need to mutate the same module object).
     import llm_client  # src/llm_client.py — the factory.
 
-    registry: dict[str, type] = {name: _FakeProviderClient for name in _PROVIDER_TO_MODEL}
+    registry: dict[str, type] = {
+        name: _FakeProviderClient for name in _PROVIDER_TO_MODEL
+    }
     monkeypatch.setattr(llm_client, "_TEST_PROVIDER_OVERRIDES", registry)
     yield registry
     # ``monkeypatch.setattr`` restores the original attribute on
@@ -306,7 +312,9 @@ def test_missing_api_key_surfaces_factory_runtime_error(
 # artifact metadata.
 
 
-def test_main_smoke_run_still_completes_and_records_provider(optimize_module, monkeypatch, tmp_path):
+def test_main_smoke_run_still_completes_and_records_provider(
+    optimize_module, monkeypatch, tmp_path
+):
     """``main()`` with no env vars still runs to completion and stamps
     ``llm_provider == "smoke"`` in the metadata JSON.
 
@@ -319,7 +327,6 @@ def test_main_smoke_run_still_completes_and_records_provider(optimize_module, mo
       3. The MIPROv2 summary is non-empty (i.e. the run reached the
          end of ``main()`` rather than crashing midway).
     """
-    import shutil
 
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
     # Redirect ``PROJECT_ROOT`` so ``artifacts/`` lands in tmp_path.
@@ -463,7 +470,10 @@ class _SpyRealLM(dspy.BaseLM):
         if not messages:
             return "findings_json"
         joined = " ".join(str(m.get("content", "")) for m in messages)
-        if "proposed_instruction" in joined or "proposed_prefix_for_output_field" in joined:
+        if (
+            "proposed_instruction" in joined
+            or "proposed_prefix_for_output_field" in joined
+        ):
             return "proposer"
         return "findings_json"
 
@@ -490,9 +500,7 @@ class _SpyRealLM(dspy.BaseLM):
             canned = json.dumps({"summary": "No findings.", "findings": []})
             content = f"[[ ## findings_json ## ]]\n{canned}\n"
 
-        choice = _Namespace(
-            message=_Namespace(role="assistant", content=content)
-        )
+        choice = _Namespace(message=_Namespace(role="assistant", content=content))
         return _Namespace(model=self.model, choices=[choice])
 
 
@@ -520,7 +528,12 @@ def spy_lm_installed(monkeypatch):
 
 @pytest.mark.parametrize("provider_name", sorted(_PROVIDER_TO_MODEL))
 def test_dev_loop_drives_real_lm_end_to_end(
-    optimize_module, fake_provider_registry, spy_lm_installed, monkeypatch, tmp_path, provider_name
+    optimize_module,
+    fake_provider_registry,
+    spy_lm_installed,
+    monkeypatch,
+    tmp_path,
+    provider_name,
 ):
     """End-to-end: the dev loop invokes the real-LM code path for each
     canonical provider.

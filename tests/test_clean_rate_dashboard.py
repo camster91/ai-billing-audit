@@ -14,6 +14,7 @@ What's pinned
 * Still-running claims (finished_at=0) excluded
 * Delta is positive when this month beats last month
 """
+
 from __future__ import annotations
 
 from ai_billing_audit.api import (
@@ -59,7 +60,11 @@ def test_half_clean():
     out = compute_clean_rate_metrics(
         [
             {"encounter_id": "C1", "findings": [], "finished_at": now - 100},
-            {"encounter_id": "C2", "findings": [{"severity": "high"}], "finished_at": now - 200},
+            {
+                "encounter_id": "C2",
+                "findings": [{"severity": "high"}],
+                "finished_at": now - 200,
+            },
         ],
         now=now,
     )
@@ -100,7 +105,11 @@ def test_delta_positive_when_improving():
             {"encounter_id": "T1", "findings": [], "finished_at": now - 5 * 86400},
             # Last month: 50% clean
             {"encounter_id": "L1", "findings": [], "finished_at": now - 35 * 86400},
-            {"encounter_id": "L2", "findings": [{"severity": "high"}], "finished_at": now - 40 * 86400},
+            {
+                "encounter_id": "L2",
+                "findings": [{"severity": "high"}],
+                "finished_at": now - 40 * 86400,
+            },
         ],
         now=now,
     )
@@ -115,7 +124,11 @@ def test_delta_negative_when_regressing():
         [
             # This month: 50% clean
             {"encounter_id": "T1", "findings": [], "finished_at": now - 5 * 86400},
-            {"encounter_id": "T2", "findings": [{"severity": "high"}], "finished_at": now - 6 * 86400},
+            {
+                "encounter_id": "T2",
+                "findings": [{"severity": "high"}],
+                "finished_at": now - 6 * 86400,
+            },
             # Last month: 100% clean
             {"encounter_id": "L1", "findings": [], "finished_at": now - 35 * 86400},
         ],

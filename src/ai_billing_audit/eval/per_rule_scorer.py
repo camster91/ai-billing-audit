@@ -17,6 +17,7 @@ Usage:
 
 Exit code 0 on success, non-zero on schema/file errors.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,7 +44,13 @@ RULE_FAMILY_PREFIXES: Dict[str, str] = {
 
 # Modifier sub-rules we care about for the breakdown.
 MODIFIER_SUBRULES: Set[str] = {
-    "MOD-25", "MOD-59", "MOD-24", "MOD-57", "MOD-50", "MOD-26", "MOD-TC",
+    "MOD-25",
+    "MOD-59",
+    "MOD-24",
+    "MOD-57",
+    "MOD-50",
+    "MOD-26",
+    "MOD-TC",
 }
 
 CODE_LEVELS: Set[str] = {"E/M", "procedural", "imaging", "lab", "other"}
@@ -144,7 +151,7 @@ def _aggregate(
         fp += r_fp
         fn += r_fn
         n += 1
-    out = {"tp": tp, "fp": fp, "fn": fn, "n": n}
+    out: Dict[str, Any] = {"tp": tp, "fp": fp, "fn": fn, "n": n}
     out.update(_safe_pr(tp, fp, fn))
     return out
 
@@ -213,7 +220,9 @@ def score(
         "zero_tp_count": zero_tp,
         "overall": overall,
         "by_rule_family": {k: _aggregate(v) for k, v in sorted(by_family.items())},
-        "by_modifier_subrule": {k: _aggregate(v) for k, v in sorted(by_modifier.items())},
+        "by_modifier_subrule": {
+            k: _aggregate(v) for k, v in sorted(by_modifier.items())
+        },
         "by_code_level": {k: _aggregate(v) for k, v in sorted(by_code_level.items())},
         "per_encounter": per_encounter,
     }
@@ -224,8 +233,10 @@ def _render_text(report: Dict[str, Any]) -> str:
     lines.append("=" * 72)
     lines.append("PER-RULE-FAMILY RECALL BREAKDOWN")
     lines.append("=" * 72)
-    lines.append(f"Encounters: {report['n_encounters']} "
-                 f"(OK={report['n_ok']}, errors={report['n_errors']})")
+    lines.append(
+        f"Encounters: {report['n_encounters']} "
+        f"(OK={report['n_ok']}, errors={report['n_errors']})"
+    )
     overall = report["overall"]
     lines.append(
         f"Overall: P={overall['precision']:.3f}  R={overall['recall']:.3f}  "
@@ -263,10 +274,10 @@ def _render_text(report: Dict[str, Any]) -> str:
 def main(argv: List[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--val", required=True, type=Path, help="Path to data/val.json")
-    p.add_argument("--preds", required=True, type=Path,
-                   help="Path to predictions.jsonl")
-    p.add_argument("--out", required=True, type=Path,
-                   help="Path to write JSON report")
+    p.add_argument(
+        "--preds", required=True, type=Path, help="Path to predictions.jsonl"
+    )
+    p.add_argument("--out", required=True, type=Path, help="Path to write JSON report")
     args = p.parse_args(argv)
 
     if not args.val.exists():

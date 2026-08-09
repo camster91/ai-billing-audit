@@ -16,6 +16,7 @@ What's NOT tested here
 * Push notifications / secure storage / biometric auth — those
   are out of scope for the v1 scaffold.
 """
+
 from __future__ import annotations
 
 import json
@@ -124,7 +125,9 @@ def test_capacitor_config_app_id_is_set() -> None:
 
 def test_capacitor_config_app_name_is_set() -> None:
     data = json.loads(CAPACITOR_CONFIG.read_text(encoding="utf-8"))
-    assert data.get("appName"), "appName is required so the App Store label isn't 'My App'"
+    assert data.get("appName"), (
+        "appName is required so the App Store label isn't 'My App'"
+    )
 
 
 def test_capacitor_config_web_dir_is_www() -> None:
@@ -140,8 +143,7 @@ def test_capacitor_config_server_url_is_live_dashboard() -> None:
     data = json.loads(CAPACITOR_CONFIG.read_text(encoding="utf-8"))
     server = data.get("server", {}) or {}
     assert server.get("url") == EXPECTED_DASHBOARD_URL, (
-        f"server.url {server.get('url')!r} != expected "
-        f"{EXPECTED_DASHBOARD_URL!r}"
+        f"server.url {server.get('url')!r} != expected {EXPECTED_DASHBOARD_URL!r}"
     )
 
 
@@ -183,7 +185,7 @@ def test_www_index_html_has_viewport_meta() -> None:
     980px-wide desktop layout — useless on a phone.
     """
     body = WWW_INDEX.read_text(encoding="utf-8")
-    assert "name=\"viewport\"" in body
+    assert 'name="viewport"' in body
 
 
 # --- 6. README documents the build path -------------------------------

@@ -14,11 +14,11 @@ What's pinned
 * NPI lookup raises (offline/timeout) -> 0 sent (don't crash the audit)
 * Opted-out doctor -> 0 sent (respect the opt-out)
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 from ai_billing_audit import job_queue
 
@@ -47,7 +47,9 @@ def test_no_provider_no_npi_returns_zero():
 
 def test_synth_path_returns_zero_even_with_email():
     """The synth/demo path never emails even if the encounter has an email."""
-    with patch.object(job_queue, "_send_doctor_emails", wraps=job_queue._send_doctor_emails) as spy:
+    with patch.object(
+        job_queue, "_send_doctor_emails", wraps=job_queue._send_doctor_emails
+    ):
         sent = job_queue._send_doctor_emails(
             encounter={
                 "encounter_id": "E2",
@@ -62,9 +64,11 @@ def test_synth_path_returns_zero_even_with_email():
 
 def test_provider_email_field_takes_priority():
     """When provider_email is on the encounter, use it directly without NPI lookup."""
-    with patch("ai_billing_audit.doctor_email.build_doctor_summary") as build, \
-         patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-         patch("ai_billing_audit.doctor_email.doctor_email_for_provider") as npi_lookup:
+    with (
+        patch("ai_billing_audit.doctor_email.build_doctor_summary") as build,
+        patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True),
+        patch("ai_billing_audit.doctor_email.doctor_email_for_provider") as npi_lookup,
+    ):
         build.return_value = MagicMock()
         sent = job_queue._send_doctor_emails(
             encounter={
@@ -93,10 +97,19 @@ def test_npi_fallback_resolves_doctor_email():
         sm.to_email = kwargs.get("encounter", {}).get("doctor_email", "?")
         return sm
 
-    with patch("ai_billing_audit.doctor_email.build_doctor_summary",
-               side_effect=capture_build) as build, \
-         patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-         patch("ai_billing_audit.doctor_email.doctor_email_for_provider", return_value="dr.from.npi@example.com") as npi_lookup:
+    with (
+        patch(
+            "ai_billing_audit.doctor_email.build_doctor_summary",
+            side_effect=capture_build,
+        ),
+        patch(
+            "ai_billing_audit.doctor_email.send_doctor_summary", return_value=True
+        ) as send,
+        patch(
+            "ai_billing_audit.doctor_email.doctor_email_for_provider",
+            return_value="dr.from.npi@example.com",
+        ) as npi_lookup,
+    ):
         sent = job_queue._send_doctor_emails(
             encounter={
                 "encounter_id": "E4",
@@ -117,10 +130,16 @@ def test_npi_fallback_resolves_doctor_email():
 
 def test_npi_lookup_failure_returns_zero_without_crashing():
     """If the NPI registry is offline, don't crash the audit — just skip the email."""
-    with patch("ai_billing_audit.doctor_email.build_doctor_summary") as build, \
-         patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-         patch("ai_billing_audit.doctor_email.doctor_email_for_provider",
-               side_effect=ConnectionError("NPI registry offline")):
+    with (
+        patch("ai_billing_audit.doctor_email.build_doctor_summary") as build,
+        patch(
+            "ai_billing_audit.doctor_email.send_doctor_summary", return_value=True
+        ) as send,
+        patch(
+            "ai_billing_audit.doctor_email.doctor_email_for_provider",
+            side_effect=ConnectionError("NPI registry offline"),
+        ),
+    ):
         build.return_value = MagicMock()
         sent = job_queue._send_doctor_emails(
             encounter={"encounter_id": "E5", "NPI": "1992039481"},
@@ -136,9 +155,15 @@ def test_npi_lookup_failure_returns_zero_without_crashing():
 
 def test_npi_returns_none_returns_zero():
     """NPI is valid but registry has no email for that provider -> 0 sent."""
-    with patch("ai_billing_audit.doctor_email.build_doctor_summary") as build, \
-         patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-         patch("ai_billing_audit.doctor_email.doctor_email_for_provider", return_value=None):
+    with (
+        patch("ai_billing_audit.doctor_email.build_doctor_summary") as build,
+        patch(
+            "ai_billing_audit.doctor_email.send_doctor_summary", return_value=True
+        ) as send,
+        patch(
+            "ai_billing_audit.doctor_email.doctor_email_for_provider", return_value=None
+        ),
+    ):
         build.return_value = MagicMock()
         sent = job_queue._send_doctor_emails(
             encounter={"encounter_id": "E6", "NPI": "1992039481"},
@@ -152,9 +177,11 @@ def test_npi_returns_none_returns_zero():
 
 def test_npi_garbage_skipped_gracefully():
     """Non-numeric NPI value (e.g. '12345') should be ignored, not crash."""
-    with patch("ai_billing_audit.doctor_email.build_doctor_summary") as build, \
-         patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-         patch("ai_billing_audit.doctor_email.doctor_email_for_provider") as npi_lookup:
+    with (
+        patch("ai_billing_audit.doctor_email.build_doctor_summary") as build,
+        patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True),
+        patch("ai_billing_audit.doctor_email.doctor_email_for_provider") as npi_lookup,
+    ):
         build.return_value = MagicMock()
         sent = job_queue._send_doctor_emails(
             # NPI of 5 digits — invalid per the doctor_email helper's own check.
@@ -170,9 +197,9 @@ def test_npi_garbage_skipped_gracefully():
 
 def test_opt_out_doctor_is_respected_even_via_npi_lookup():
     """Doctor opted out -> email skipped silently even if NPI lookup found an email."""
-    import json
     import tempfile
     from pathlib import Path
+
     captured = []
 
     def capture_build(**kwargs):
@@ -182,19 +209,30 @@ def test_opt_out_doctor_is_respected_even_via_npi_lookup():
         class FakeSummary:
             def __init__(self, to_email):
                 self.to_email = to_email
+
         summary = FakeSummary(kwargs.get("encounter", {}).get("doctor_email", "?"))
         captured.append(summary)
         return summary
 
     with tempfile.TemporaryDirectory() as tmp:
         from ai_billing_audit import doctor_email
+
         with patch.object(doctor_email, "_LOGS_DIR", Path(tmp)):
             doctor_email.opt_out_doctor("dr.optout@example.com")
-            with patch("ai_billing_audit.doctor_email.build_doctor_summary",
-                       side_effect=capture_build) as build, \
-                 patch("ai_billing_audit.doctor_email.send_doctor_summary", return_value=True) as send, \
-                 patch("ai_billing_audit.doctor_email.doctor_email_for_provider",
-                       return_value="dr.optout@example.com"):
+            with (
+                patch(
+                    "ai_billing_audit.doctor_email.build_doctor_summary",
+                    side_effect=capture_build,
+                ),
+                patch(
+                    "ai_billing_audit.doctor_email.send_doctor_summary",
+                    return_value=True,
+                ) as send,
+                patch(
+                    "ai_billing_audit.doctor_email.doctor_email_for_provider",
+                    return_value="dr.optout@example.com",
+                ),
+            ):
                 sent = job_queue._send_doctor_emails(
                     encounter={"encounter_id": "E8", "NPI": "1992039481"},
                     clinical_note="note",

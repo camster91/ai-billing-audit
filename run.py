@@ -43,7 +43,6 @@ Why a shim, not a symlink or a direct call site? Two reasons:
 
 from __future__ import annotations
 
-import os
 import runpy
 import sys
 from pathlib import Path

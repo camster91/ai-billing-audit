@@ -17,6 +17,7 @@ The test is DB-agnostic — it operates on plain dicts, so the same
 harness exercises the production chain, the live verifier, and the
 SQL backfill without spinning up Postgres.
 """
+
 from __future__ import annotations
 
 import sys
@@ -92,16 +93,19 @@ def _build_chain(rows_in: list[dict[str, object]]) -> list[dict[str, object]]:
 
 
 def test_compute_signature_is_64_hex_lower():
-    sig = compute_signature(GENESIS_PREVIOUS_SIGNATURE, _row(
-        event_id="e-0001",
-        timestamp="2026-06-16T18:00:00.000000Z",
-        user_identifier="auditor@ashbi.ca",
-        action="READ_CLAIM",
-        patient_hash="ab" * 32,
-        data_elements='{"claim_id":"c-001"}',
-        model_run_id="run-0001",
-        previous_signature=GENESIS_PREVIOUS_SIGNATURE,
-    ))
+    sig = compute_signature(
+        GENESIS_PREVIOUS_SIGNATURE,
+        _row(
+            event_id="e-0001",
+            timestamp="2026-06-16T18:00:00.000000Z",
+            user_identifier="auditor@ashbi.ca",
+            action="READ_CLAIM",
+            patient_hash="ab" * 32,
+            data_elements='{"claim_id":"c-001"}',
+            model_run_id="run-0001",
+            previous_signature=GENESIS_PREVIOUS_SIGNATURE,
+        ),
+    )
     assert len(sig) == 64
     assert sig == sig.lower()
     int(sig, 16)  # raises if not pure hex
@@ -130,7 +134,10 @@ def test_compute_signature_concatenation_order_matters():
         previous_signature=GENESIS_PREVIOUS_SIGNATURE,
     )
     # Swap two fields; the digests must differ.
-    swapped["action"], swapped["model_run_id"] = swapped["model_run_id"], swapped["action"]
+    swapped["action"], swapped["model_run_id"] = (
+        swapped["model_run_id"],
+        swapped["action"],
+    )
     assert compute_signature(GENESIS_PREVIOUS_SIGNATURE, base) != compute_signature(
         GENESIS_PREVIOUS_SIGNATURE, swapped
     )
@@ -155,20 +162,36 @@ def test_compute_signature_chains_to_previous():
 
 def test_compute_signature_rejects_wrong_length_previous():
     with pytest.raises(ValueError):
-        compute_signature("abcd", _row(
-            event_id="e", timestamp="t", user_identifier="u", action="a",
-            patient_hash="h", data_elements="d", model_run_id="m",
-            previous_signature=GENESIS_PREVIOUS_SIGNATURE,
-        ))
+        compute_signature(
+            "abcd",
+            _row(
+                event_id="e",
+                timestamp="t",
+                user_identifier="u",
+                action="a",
+                patient_hash="h",
+                data_elements="d",
+                model_run_id="m",
+                previous_signature=GENESIS_PREVIOUS_SIGNATURE,
+            ),
+        )
 
 
 def test_compute_signature_rejects_non_string_previous():
     with pytest.raises(TypeError):
-        compute_signature(1234567890123456789012345678901234567890123456789012345678901234, _row(  # 64-char int-looking value
-            event_id="e", timestamp="t", user_identifier="u", action="a",
-            patient_hash="h", data_elements="d", model_run_id="m",
-            previous_signature=GENESIS_PREVIOUS_SIGNATURE,
-        ))
+        compute_signature(
+            1234567890123456789012345678901234567890123456789012345678901234,
+            _row(  # 64-char int-looking value
+                event_id="e",
+                timestamp="t",
+                user_identifier="u",
+                action="a",
+                patient_hash="h",
+                data_elements="d",
+                model_run_id="m",
+                previous_signature=GENESIS_PREVIOUS_SIGNATURE,
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +371,9 @@ def test_verify_chain_detects_break_in_row_2_of_3():
     assert verify_chain(broken) == 1
 
 
-def _build_chain_with_links(rows_in: list[dict[str, object]]) -> list[dict[str, object]]:
+def _build_chain_with_links(
+    rows_in: list[dict[str, object]],
+) -> list[dict[str, object]]:
     """Build a chain in row order, threading previous_signature forward.
 
     Helper for the per-row break test above.  Mirrors the production
@@ -374,21 +399,33 @@ def _build_chain_with_links(rows_in: list[dict[str, object]]) -> list[dict[str, 
 def test_walk_chain_sorts_by_timestamp_then_event_id():
     rows = [
         _row(
-            event_id="e-C", timestamp="2026-06-16T18:00:02.000000Z",
-            user_identifier="u", action="A", patient_hash="h",
-            data_elements="d", model_run_id="m",
+            event_id="e-C",
+            timestamp="2026-06-16T18:00:02.000000Z",
+            user_identifier="u",
+            action="A",
+            patient_hash="h",
+            data_elements="d",
+            model_run_id="m",
             previous_signature=GENESIS_PREVIOUS_SIGNATURE,
         ),
         _row(
-            event_id="e-A", timestamp="2026-06-16T18:00:00.000000Z",
-            user_identifier="u", action="A", patient_hash="h",
-            data_elements="d", model_run_id="m",
+            event_id="e-A",
+            timestamp="2026-06-16T18:00:00.000000Z",
+            user_identifier="u",
+            action="A",
+            patient_hash="h",
+            data_elements="d",
+            model_run_id="m",
             previous_signature=GENESIS_PREVIOUS_SIGNATURE,
         ),
         _row(
-            event_id="e-B", timestamp="2026-06-16T18:00:01.000000Z",
-            user_identifier="u", action="A", patient_hash="h",
-            data_elements="d", model_run_id="m",
+            event_id="e-B",
+            timestamp="2026-06-16T18:00:01.000000Z",
+            user_identifier="u",
+            action="A",
+            patient_hash="h",
+            data_elements="d",
+            model_run_id="m",
             previous_signature=GENESIS_PREVIOUS_SIGNATURE,
         ),
     ]
@@ -399,15 +436,23 @@ def test_walk_chain_sorts_by_timestamp_then_event_id():
 def test_walk_chain_tie_break_by_event_id():
     rows = [
         _row(
-            event_id="e-B", timestamp="2026-06-16T18:00:00.000000Z",
-            user_identifier="u", action="A", patient_hash="h",
-            data_elements="d", model_run_id="m",
+            event_id="e-B",
+            timestamp="2026-06-16T18:00:00.000000Z",
+            user_identifier="u",
+            action="A",
+            patient_hash="h",
+            data_elements="d",
+            model_run_id="m",
             previous_signature=GENESIS_PREVIOUS_SIGNATURE,
         ),
         _row(
-            event_id="e-A", timestamp="2026-06-16T18:00:00.000000Z",
-            user_identifier="u", action="A", patient_hash="h",
-            data_elements="d", model_run_id="m",
+            event_id="e-A",
+            timestamp="2026-06-16T18:00:00.000000Z",
+            user_identifier="u",
+            action="A",
+            patient_hash="h",
+            data_elements="d",
+            model_run_id="m",
             previous_signature=GENESIS_PREVIOUS_SIGNATURE,
         ),
     ]
@@ -423,7 +468,8 @@ def test_walk_chain_tie_break_by_event_id():
 def test_module_exports_match_documented_surface():
     """Anything the runbook and SQL reference must be importable here."""
     from audit_log import compute_signature, verify_chain, walk_chain
-    from audit_log import CHAIN_FIELDS, GENESIS_PREVIOUS_SIGNATURE
+    from audit_log import GENESIS_PREVIOUS_SIGNATURE
+
     assert CHAIN_FIELDS == (
         "event_id",
         "timestamp",

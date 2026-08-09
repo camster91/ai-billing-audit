@@ -12,13 +12,12 @@ The pre-fix behaviour was: every state-changing click walked
 the entire feedback / audit-trail log. At 50k+ events (real
 production scale) that's a 200ms+ latency hit on every click.
 """
+
 from __future__ import annotations
 
 import sys
-import time
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
@@ -31,6 +30,7 @@ def test_audit_actions_last_signature_is_cached(monkeypatch, tmp_path):
     globals are populated after the first read AND that a
     second read returns the cached value (not re-walking)."""
     from ai_billing_audit import audit_actions as aa
+
     log = tmp_path / "audit_trail.jsonl"
     monkeypatch.setenv("AUDIT_TRAIL_LOG", str(log))
     aa._reset_last_signature_cache()
@@ -59,8 +59,7 @@ def test_audit_actions_last_signature_is_cached(monkeypatch, tmp_path):
     cached_value = aa._LAST_SIG_CACHE
     sig2 = aa._read_last_signature()
     assert sig2 == cached_value, (
-        "cache hit should return the cached value without "
-        "re-reading the file"
+        "cache hit should return the cached value without re-reading the file"
     )
 
     # And the cache state is preserved across the hit.
@@ -68,12 +67,11 @@ def test_audit_actions_last_signature_is_cached(monkeypatch, tmp_path):
     assert aa._LAST_SIG_PATH == log
 
 
-def test_audit_actions_cache_invalidates_on_mtime_change(
-    monkeypatch, tmp_path
-):
+def test_audit_actions_cache_invalidates_on_mtime_change(monkeypatch, tmp_path):
     """When another process writes to the log (mtime changes),
     the cache must invalidate and re-read."""
     from ai_billing_audit import audit_actions as aa
+
     log = tmp_path / "audit_trail.jsonl"
     monkeypatch.setenv("AUDIT_TRAIL_LOG", str(log))
     aa._reset_last_signature_cache()
@@ -99,8 +97,11 @@ def test_feedback_store_last_signature_is_cached(monkeypatch, tmp_path):
     A second read on an unchanged file returns the cached value
     without re-walking the log."""
     from ai_billing_audit.feedback import (
-        FeedbackStore, FeedbackEntry, _FEEDBACK_LAST_SIG_CACHE,
+        FeedbackStore,
+        FeedbackEntry,
+        _FEEDBACK_LAST_SIG_CACHE,
     )
+
     log = tmp_path / "feedback.jsonl"
     monkeypatch.setenv("FEEDBACK_LOG", str(log))
     _FEEDBACK_LAST_SIG_CACHE.clear()

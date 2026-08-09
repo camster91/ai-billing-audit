@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   } catch {
     payload = { raw: "<unparseable>" };
   }
-  // eslint-disable-next-line no-console
+
   console.log("[analytics-event]", JSON.stringify(payload));
   return new NextResponse(null, { status: 204 });
 }

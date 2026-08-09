@@ -41,7 +41,7 @@ export default function Home() {
           </p>
           <div className={styles.ctaRow}>
             <Link href="/contact" className={styles.primary}>
-              Book a demo
+              Talk to sales
             </Link>
             <Link href="/how-it-works" className={styles.secondary}>
               Calculate your revenue opportunity →

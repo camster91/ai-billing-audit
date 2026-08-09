@@ -30,6 +30,7 @@ import {
   loadQuotaSnapshot,
   resetAuditQuota,
 } from "../src/lib/audit-quota";
+import * as quotaModule from "../src/lib/audit-quota";
 
 function uniq(): string {
   return randomBytes(6).toString("hex");
@@ -456,4 +457,131 @@ test("buildUpgradeUrl: composes URL from origin (or falls back to localhost)", (
     buildUpgradeUrl(undefined),
     "http://localhost:3000/billing",
   );
+});
+
+test("audit dispatch reservation converts to one quota charge after durable enqueue", async () => {
+  const reserve = (quotaModule as Record<string, unknown>)["reserveAuditDispatch"];
+  const finalize = (quotaModule as Record<string, unknown>)["finalizeAuditDispatch"];
+  assert.equal(typeof reserve, "function");
+  assert.equal(typeof finalize, "function");
+
+  const fx = await makeFixture({ cap: 5, used: 0 });
+  const claim = await prisma.encounterClaim.create({
+    data: {
+      payer: "AHCIP",
+      providerNpi: "1234567890",
+      providerName: "Dr Test",
+      cptCodesJson: JSON.stringify([{ code: "03.03A", units: 1 }]),
+      billedCents: 4200,
+    },
+  });
+  const encounter = await prisma.encounter.create({
+    data: {
+      tenantId: fx.tenantId,
+      patientHash: "a".repeat(64),
+      dateOfService: new Date("2026-08-08T00:00:00.000Z"),
+      specialty: "family_medicine",
+      clinicalNote: "encrypted-note-placeholder",
+      claimId: claim.id,
+      status: "pending",
+    },
+  });
+  try {
+    const reserved = await (reserve as (args: {
+      tenantId: string;
+      encounterId: string;
+    }) => Promise<{ kind: string }>)({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+    });
+    assert.equal(reserved.kind, "ready");
+    let tenant = await prisma.tenant.findUniqueOrThrow({
+      where: { id: fx.tenantId },
+    });
+    assert.equal((tenant as unknown as { auditQuotaReserved: number }).auditQuotaReserved, 1);
+    assert.equal(tenant.auditQuotaUsed, 0);
+
+    const finalizeFn = finalize as (args: {
+      tenantId: string;
+      encounterId: string;
+      engineJobId: string;
+      engineStatusUrl: string;
+    }) => Promise<{ kind: string }>;
+    const finalized = await finalizeFn({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+      engineJobId: "engine-job-1",
+      engineStatusUrl: "/encounters/upload/jobs/engine-job-1",
+    });
+    assert.equal(finalized.kind, "queued");
+    tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: fx.tenantId } });
+    assert.equal((tenant as unknown as { auditQuotaReserved: number }).auditQuotaReserved, 0);
+    assert.equal(tenant.auditQuotaUsed, 1);
+
+    await finalizeFn({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+      engineJobId: "engine-job-1",
+      engineStatusUrl: "/encounters/upload/jobs/engine-job-1",
+    });
+    tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: fx.tenantId } });
+    assert.equal(tenant.auditQuotaUsed, 1, "idempotent finalize did not double-charge");
+  } finally {
+    await prisma.encounter.delete({ where: { id: encounter.id } }).catch(() => {});
+    await prisma.encounterClaim.delete({ where: { id: claim.id } }).catch(() => {});
+    await fx.cleanup();
+  }
+});
+
+test("a pre-enqueue validation failure releases its reservation idempotently", async () => {
+  const release = (quotaModule as Record<string, unknown>)["releaseAuditDispatchReservation"];
+  assert.equal(typeof release, "function");
+  const fx = await makeFixture({ cap: 2, used: 0 });
+  const claim = await prisma.encounterClaim.create({
+    data: {
+      payer: "AHCIP",
+      providerNpi: "1234567890",
+      providerName: "Dr Test",
+      cptCodesJson: "malformed",
+    },
+  });
+  const encounter = await prisma.encounter.create({
+    data: {
+      tenantId: fx.tenantId,
+      patientHash: "c".repeat(64),
+      dateOfService: new Date("2026-08-08T00:00:00Z"),
+      specialty: "family_medicine",
+      clinicalNote: "invalid-ciphertext",
+      claimId: claim.id,
+      status: "pending",
+    },
+  });
+  try {
+    await quotaModule.reserveAuditDispatch({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+    });
+    const releaseFn = release as (args: {
+      tenantId: string;
+      encounterId: string;
+      reason: string;
+    }) => Promise<{ kind: string }>;
+    assert.equal((await releaseFn({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+      reason: "encounter_data_unavailable",
+    })).kind, "released");
+    assert.equal((await releaseFn({
+      tenantId: fx.tenantId,
+      encounterId: encounter.id,
+      reason: "encounter_data_unavailable",
+    })).kind, "already_released");
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: fx.tenantId } });
+    assert.equal(tenant.auditQuotaReserved, 0);
+    assert.equal(tenant.auditQuotaUsed, 0);
+  } finally {
+    await prisma.encounter.delete({ where: { id: encounter.id } }).catch(() => {});
+    await prisma.encounterClaim.delete({ where: { id: claim.id } }).catch(() => {});
+    await fx.cleanup();
+  }
 });

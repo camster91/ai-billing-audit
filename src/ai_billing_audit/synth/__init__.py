@@ -18,7 +18,13 @@ The package must stay pure: it imports only stdlib + intra-package.
 from __future__ import annotations
 
 from .content_table import DEFAULT_CONTENT
-from .render import _build_easy, _build_hard, _build_medium, _enc_id, _rng_for
+from .render import (
+    _build_easy as _build_easy,
+    _build_hard as _build_hard,
+    _build_medium as _build_medium,
+    _enc_id as _enc_id,
+    _rng_for as _rng_for,
+)
 from .template import ContentTable, Scenario, Template, TemplateSequence
 
 __all__ = [

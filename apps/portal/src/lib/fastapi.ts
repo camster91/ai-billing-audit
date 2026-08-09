@@ -11,19 +11,22 @@
 //   - GET /api/encounters/{id}/appeal-letter  → AppealLetterPanel
 //   - GET /api/encounters/{id}/appeal-letters → AppealLettersList
 //
-// All three are public-read endpoints (the FastAPI's bearer-auth
-// middleware whitelists them; they operate on the demo encounter
-// registry, no PHI). The POST endpoints (generate appeal letter,
-// log outcome) require a service-to-service bearer token that
-// the portal doesn't have yet — those are out of scope here.
+// Every request carries a short-lived tenant principal signed by the portal
+// plus the service bearer token. The wrapper also owns audit enqueue and
+// result polling, so credentials remain server-side.
 //
-// The wrapper handles the 404 case gracefully: many portal-side
-// encounter IDs don't exist in the FastAPI's audit registry
-// (separate data stores), so the UI shows "deep audit not
-// available" instead of a hard error.
+// Legacy and pre-dispatch 404s become a graceful unavailable state.
+
+import {
+  buildFastApiAuthHeaders,
+  type FastApiPrincipal,
+} from "@/lib/fastapi-principal";
+import { createHash } from "node:crypto";
 
 const FASTAPI_BASE_URL =
-  process.env.NEXT_PUBLIC_FASTAPI_URL ?? "https://ai-billing-audit.ashbi.ca";
+  process.env.FASTAPI_BASE_URL ??
+  process.env.NEXT_PUBLIC_FASTAPI_URL ??
+  "https://ai-billing-audit.ashbi.ca";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,17 +89,63 @@ export type FastApiResult<T> =
   | { kind: "not_found" } // FastAPI has no record of this encounter_id
   | { kind: "error"; status: number; message: string };
 
+export interface PortalAuditSubmission {
+  encounterId: string;
+  patientHash: string;
+  providerNpi: string;
+  dateOfService: string;
+  cptCodes: string[];
+  diagnosisCodes: string[];
+  clinicalNote: string;
+}
+
+export interface EngineFinding {
+  finding_id: string;
+  category: string;
+  severity: number;
+  rule_id?: string;
+  rule_ids?: string[];
+  suggested_code?: string | null;
+  quote: string;
+  explanation: string;
+}
+
+export interface PortalAuditJob {
+  job_id: string;
+  encounter_id: string;
+  status: "queued" | "running" | "done" | "failed" | "canceled";
+  error: string | null;
+  result: { summary?: string; findings: EngineFinding[] } | null;
+}
+
+interface EngineRequestOptions {
+  fetchImpl?: typeof fetch;
+  bearerToken?: string;
+  signingSecret?: string;
+}
+
+export type PortalAuditSubmitResult =
+  | { kind: "ok"; jobId: string; statusUrl: string; dedupHit: boolean }
+  | { kind: "error"; status: number; message: string };
+
+export type PortalAuditJobResult =
+  | { kind: "ok"; job: PortalAuditJob }
+  | { kind: "not_found" }
+  | { kind: "error"; status: number; message: string };
+
 // ---------------------------------------------------------------------------
 // Fetch helpers
 // ---------------------------------------------------------------------------
 
 async function fastapiFetch<T>(
   path: string,
+  principal: FastApiPrincipal,
   init: RequestInit = {},
 ): Promise<FastApiResult<T>> {
   const url = `${FASTAPI_BASE_URL}${path}`;
   let res: Response;
   try {
+    const authHeaders = buildFastApiAuthHeaders(principal);
     res = await fetch(url, {
       ...init,
       // The portal's session cookie is httpOnly + SameSite=Lax by
@@ -105,6 +154,7 @@ async function fastapiFetch<T>(
       credentials: "omit",
       headers: {
         Accept: "application/json",
+        ...authHeaders,
         ...(init.headers ?? {}),
       },
       // Next.js fetch cache: revalidate every 5 min so a re-audit on
@@ -162,9 +212,11 @@ async function fastapiFetch<T>(
  */
 export async function fetchDenialRisk(
   encounterId: string,
+  principal: FastApiPrincipal,
 ): Promise<FastApiResult<DenialRisk>> {
   return fastapiFetch<DenialRisk>(
     `/api/encounters/${encodeURIComponent(encounterId)}/denial-risk`,
+    principal,
   );
 }
 
@@ -179,8 +231,9 @@ export async function fetchDenialRisk(
  */
 export async function fetchLatestAppealLetter(
   encounterId: string,
+  principal: FastApiPrincipal,
 ): Promise<FastApiResult<AppealLetterSummary | null>> {
-  const result = await fetchAppealLetters(encounterId);
+  const result = await fetchAppealLetters(encounterId, principal);
   if (result.kind !== "ok") {
     // Propagate not_found / error so the caller can render the right
     // fallback. We can't distinguish "no letters yet" from
@@ -198,10 +251,94 @@ export async function fetchLatestAppealLetter(
  */
 export async function fetchAppealLetters(
   encounterId: string,
+  principal: FastApiPrincipal,
 ): Promise<FastApiResult<AppealLetterSummary[]>> {
   return fastapiFetch<AppealLetterSummary[]>(
     `/api/encounters/${encodeURIComponent(encounterId)}/appeal-letters`,
+    principal,
   );
+}
+
+export async function submitPortalAudit(
+  submission: PortalAuditSubmission,
+  principal: FastApiPrincipal,
+  options: EngineRequestOptions = {},
+): Promise<PortalAuditSubmitResult> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const authHeaders = buildFastApiAuthHeaders(principal, {
+    bearerToken: options.bearerToken,
+    signingSecret: options.signingSecret,
+  });
+  const idempotencyDigest = createHash("sha256")
+    .update(`${principal.tenantId}\0${submission.encounterId}`, "utf8")
+    .digest("hex");
+  const response = await fetchImpl(`${FASTAPI_BASE_URL}/api/audits`, {
+    method: "POST",
+    credentials: "omit",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "Idempotency-Key": `portal-audit-${idempotencyDigest}`,
+      ...authHeaders,
+    },
+    body: JSON.stringify({
+      encounter_id: submission.encounterId,
+      patient_id: submission.patientHash,
+      NPI: submission.providerNpi,
+      date_of_service: submission.dateOfService,
+      CPT_codes: submission.cptCodes,
+      diagnosis_codes: submission.diagnosisCodes,
+      clinical_note: submission.clinicalNote,
+    }),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return {
+      kind: "error",
+      status: response.status,
+      message: (await response.text()).slice(0, 500),
+    };
+  }
+  const body = (await response.json()) as {
+    job_id: string;
+    status_url: string;
+    dedup_hit?: boolean;
+  };
+  return {
+    kind: "ok",
+    jobId: body.job_id,
+    statusUrl: body.status_url,
+    dedupHit: Boolean(body.dedup_hit),
+  };
+}
+
+export async function fetchPortalAuditJob(
+  jobId: string,
+  principal: FastApiPrincipal,
+  options: EngineRequestOptions = {},
+): Promise<PortalAuditJobResult> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const authHeaders = buildFastApiAuthHeaders(principal, {
+    bearerToken: options.bearerToken,
+    signingSecret: options.signingSecret,
+  });
+  const response = await fetchImpl(
+    `${FASTAPI_BASE_URL}/encounters/upload/jobs/${encodeURIComponent(jobId)}`,
+    {
+      credentials: "omit",
+      headers: { Accept: "application/json", ...authHeaders },
+      cache: "no-store",
+    },
+  );
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) {
+    return {
+      kind: "error",
+      status: response.status,
+      message: (await response.text()).slice(0, 500),
+    };
+  }
+  return { kind: "ok", job: (await response.json()) as PortalAuditJob };
 }
 
 /** The configured FastAPI origin. Useful for the "Open in FastAPI"

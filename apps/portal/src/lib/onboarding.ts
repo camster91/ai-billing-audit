@@ -38,6 +38,7 @@
 // in the lib (not just the UI) so the API surface is safe to expose.
 
 import { prisma } from "@/lib/prisma";
+import { encryptPortalString } from "@/lib/data-encryption";
 import { getStripe, isDemoMode } from "@/lib/stripe";
 import { isValidTierId } from "@/lib/pricing";
 import { z } from "zod";
@@ -609,9 +610,6 @@ export async function saveEhrConnection(params: {
     );
   }
 
-  // For SFTP mode we'd normally envelope-encrypt the password via KMS
-  // in production. In dev we just write it raw with a clear note.
-  // The field is never returned by any API.
   const data: Record<string, unknown> = {
     ehrConnectionMode: parsed.data.mode,
   };
@@ -619,7 +617,7 @@ export async function saveEhrConnection(params: {
     data.ehrSftpHost = parsed.data.host;
     data.ehrSftpPort = parsed.data.port;
     data.ehrSftpUsername = parsed.data.username;
-    data.ehrSftpPasswordCiphertext = parsed.data.password;
+    data.ehrSftpPasswordCiphertext = encryptPortalString(parsed.data.password!);
   } else {
     // "manual" — clear any prior SFTP details so the tenant row
     // doesn't carry stale credentials.

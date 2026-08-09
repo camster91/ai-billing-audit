@@ -28,9 +28,9 @@ and use two patches:
   The real LLM is exercised by the end-to-end smoke on the live
   URL, not here.
 """
+
 from __future__ import annotations
 
-import json
 import os
 import time
 from pathlib import Path
@@ -44,11 +44,13 @@ from typing import Any
 os.environ.setdefault("AUDIT_ALLOW_NO_AUTH", "1")
 
 import pytest  # noqa: E402
+from cryptography.fernet import Fernet  # noqa: E402
 from starlette.testclient import TestClient  # noqa: E402
 
 from ai_billing_audit import api  # noqa: E402
 from ai_billing_audit import auditor as auditor_module  # noqa: E402
 from ai_billing_audit.auditor import AuditResult, Finding  # noqa: E402
+from ai_billing_audit.clinical_note_storage import store_clinical_note  # noqa: E402
 from ai_billing_audit.job_queue import (  # noqa: E402
     JobQueue,
     reset_default_queue_for_tests,
@@ -136,8 +138,10 @@ def _enqueue_done_job(
         # Delegate to the real runner so the cached synth
         # metadata is what the audit route's re-run will produce.
         from ai_billing_audit.job_queue import _default_runner
+
         runner = _default_runner
     else:
+
         def _runner(enc: dict[str, Any]) -> dict[str, Any]:
             return {
                 "synth_encounter_id": synth_encounter_id,
@@ -150,7 +154,28 @@ def _enqueue_done_job(
                 "findings_count": 0,
                 "findings": [],
                 "summary": "(prior run summary placeholder)",
+                "claim": {
+                    "encounter_id": encounter_id,
+                    "patient_id": "PT-001",
+                    "rendering_provider_npi": "1234567890",
+                    "billing_provider_tax_id": "",
+                    "date_of_service": "2024-06-01",
+                    "payer_id": "",
+                    "payer_name": "",
+                    "line_items": [
+                        {
+                            "line_id": 1,
+                            "cpt_code": "99213",
+                            "modifiers": [],
+                            "dx_pointers": [],
+                            "charge_amount": 0,
+                            "units": 1,
+                        }
+                    ],
+                    "diagnosis_codes": [],
+                },
             }
+
         runner = _runner
 
     q = JobQueue(log_path=log, worker_count=2, runner=runner)
@@ -272,7 +297,10 @@ def test_audit_reuses_cached_job(
     # Send a body WITHOUT a clinical_note so the route falls back
     # to the stub — proves the claim side is recovered from the
     # cache, not from the body.
-    response = client.post("/encounters/enc_reuse_42/audit", json={})
+    response = client.post(
+        "/encounters/enc_reuse_42/audit",
+        json={"clinical_note": "Clinic-supplied note for re-audit."},
+    )
     assert response.status_code == 200, response.text
     body = response.json()
 
@@ -296,14 +324,13 @@ def test_audit_reuses_cached_job(
     # ("PT_AUDIT"), not the upload's "PT-001" — proves the
     # claim was reconstructed from the synth, not from the
     # upload payload.
-    assert audit_in["claim"]["patient_id"] == "PT_AUDIT"
-    assert audit_in["claim"]["patient_id"] != "PT-001"
+    assert audit_in["claim"]["patient_id"] == "PT-001"
 
 
 # --- 4. stub-note fallback -------------------------------------------------
 
 
-def test_audit_falls_back_to_stub_note_when_omitted(
+def test_audit_rejects_missing_note_when_omitted(
     client: TestClient,
     tmp_path: Path,
     fake_audit_run: list[dict[str, Any]],
@@ -319,17 +346,12 @@ def test_audit_falls_back_to_stub_note_when_omitted(
         # No clinical_note at all
         json={},
     )
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["note_source"] == "stub"
-
-    # The fake auditor received the stub note as the clinical_note.
-    assert len(fake_audit_run) == 1
-    audit_in = fake_audit_run[0]
-    assert "routine follow-up" in audit_in["clinical_note"]
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "clinical_note_required"
+    assert fake_audit_run == []
 
 
-def test_audit_falls_back_to_stub_via_form_body(
+def test_audit_rejects_missing_note_via_form_body(
     client: TestClient,
     tmp_path: Path,
     fake_audit_run: list[dict[str, Any]],
@@ -345,9 +367,8 @@ def test_audit_falls_back_to_stub_via_form_body(
         # Empty form, no clinical_note
         data={},
     )
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["note_source"] == "stub"
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "clinical_note_required"
 
 
 def test_audit_uses_uploaded_text_note_when_present(
@@ -359,8 +380,8 @@ def test_audit_uses_uploaded_text_note_when_present(
     """An on-disk text-note uploaded via /encounters/upload/text-note wins
     over the stub when the request omits the clinical_note.
 
-    Mirrors the runner's filename convention:
-    ``<safe_encounter_id>.<note_id>.txt`` under logs/uploaded_notes/.
+    Mirrors the runner's encrypted filename convention:
+    ``<safe_encounter_id>.<note_id>.txt.enc`` under logs/uploaded_notes/.
     """
     # The route computes the notes dir from
     # ``Path(__file__).resolve().parent.parent.parent / "logs" / "uploaded_notes"``
@@ -377,17 +398,21 @@ def test_audit_uses_uploaded_text_note_when_present(
     notes_dir = tmp_path / "logs" / "uploaded_notes"
     notes_dir.mkdir(parents=True)
     # First write: the older note.
-    (notes_dir / "enc_uploaded_001.abc123.txt").write_text(
-        "Earlier uploaded note: should be ignored in favour of the newer.",
-        encoding="utf-8",
+    monkeypatch.setenv(
+        "ZORVA_PHI_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii")
+    )
+    store_clinical_note(
+        notes_dir / "enc_uploaded_001.abc123.txt.enc",
+        b"Earlier uploaded note: should be ignored in favour of the newer.",
     )
     # Bump the mtime so the most recent sort puts def456 first.
     import time as _t
+
     _t.sleep(0.05)
     # Second write: the newer note (newer mtime -> wins).
-    (notes_dir / "enc_uploaded_001.def456.txt").write_text(
-        "Uploaded clinical note: patient stable, no acute findings.",
-        encoding="utf-8",
+    store_clinical_note(
+        notes_dir / "enc_uploaded_001.def456.txt.enc",
+        b"Uploaded clinical note: patient stable, no acute findings.",
     )
     monkeypatch.setattr(api, "__file__", str(fake_file))
 
@@ -479,7 +504,7 @@ def test_audit_returns_409_when_job_still_running(
         return {"synth_encounter_id": "enc_running", "difficulty_tier": "EASY"}
 
     q = JobQueue(log_path=log, worker_count=1, runner=_slow_runner)
-    job = q.enqueue(
+    q.enqueue(
         encounter={
             "encounter_id": "enc_running_001",
             "patient_id": "PT",
@@ -596,7 +621,8 @@ def test_reaudit_reconstructs_persisted_claim(
     api.get_default_queue = lambda: queue  # type: ignore[assignment]
 
     response = client.post(
-        "/encounters/enc_persist_001/audit", json={}
+        "/encounters/enc_persist_001/audit",
+        json={"clinical_note": "Real clinic note for the persisted claim."},
     )
     assert response.status_code == 200, response.text
 
@@ -606,14 +632,57 @@ def test_reaudit_reconstructs_persisted_claim(
     audit_in = fake_audit_run[0]
     assert audit_in["claim"]["patient_id"] == "PT_REAL"
     assert audit_in["claim"]["patient_id"] != "PT_REAUDIT"
-    # The line items carry the originally-uploaded CPTs.
-    assert audit_in["claim"]["line_items"]
     assert audit_in["claim"]["line_items"][0]["cpt_code"] == "99213"
-    # No "_reaudit_note" sentinel — the reconstruction succeeded.
     assert "_reaudit_note" not in audit_in["claim"]
 
 
-def test_reaudit_placeholder_when_no_persisted_claim(
+def test_reaudit_requires_real_clinical_note(
+    client: TestClient,
+    tmp_path: Path,
+    fake_audit_run: list[dict[str, Any]],
+) -> None:
+    queue = _enqueue_done_job_with_persisted_claim(
+        tmp_path,
+        "enc_no_note",
+        persisted_claim={
+            "encounter_id": "enc_no_note",
+            "patient_id": "PT_REAL",
+            "line_items": [{"line_id": 1, "cpt_code": "99213"}],
+            "diagnosis_codes": [],
+        },
+    )
+    api.get_default_queue = lambda: queue  # type: ignore[assignment]
+
+    response = client.post("/encounters/enc_no_note/audit", json={})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "clinical_note_required"
+    assert fake_audit_run == []
+
+
+def test_reaudit_requires_persisted_real_claim(
+    client: TestClient,
+    tmp_path: Path,
+    fake_audit_run: list[dict[str, Any]],
+) -> None:
+    queue = _enqueue_done_job_with_persisted_claim(
+        tmp_path,
+        "enc_no_claim",
+        persisted_claim={},
+    )
+    api.get_default_queue = lambda: queue  # type: ignore[assignment]
+
+    response = client.post(
+        "/encounters/enc_no_claim/audit",
+        json={"clinical_note": "Real clinical note supplied by the clinic."},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "reaudit_claim_unavailable"
+    assert fake_audit_run == []
+    # The line items carry the originally-uploaded CPTs.
+    # No "_reaudit_note" sentinel — the reconstruction succeeded.
+
+
+def test_reaudit_rejects_legacy_job_without_persisted_claim(
     client: TestClient,
     tmp_path: Path,
     fake_audit_run: list[dict[str, Any]],
@@ -622,18 +691,20 @@ def test_reaudit_placeholder_when_no_persisted_claim(
     ``result['claim']``) still surface the legacy PT_REAUDIT
     placeholder rather than fabricating data.
     """
-    queue = _enqueue_done_job(
+    queue = _enqueue_done_job_with_persisted_claim(
         tmp_path,
         "enc_old_001",
-        synth_encounter_id="enc_synth_old",
+        persisted_claim={},
     )
     api.get_default_queue = lambda: queue  # type: ignore[assignment]
 
-    response = client.post("/encounters/enc_old_001/audit", json={})
-    assert response.status_code == 200, response.text
+    response = client.post(
+        "/encounters/enc_old_001/audit",
+        json={"clinical_note": "Real note, but the old job lost its claim."},
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["detail"] == "reaudit_claim_unavailable"
+    assert fake_audit_run == []
     # No reaudit reconstruction happens for the legacy synth path;
     # the audit route re-runs the synth and the patient_id is the
     # synth default ("PT_AUDIT"), not the placeholder.
-    assert len(fake_audit_run) == 1
-    audit_in = fake_audit_run[0]
-    assert audit_in["claim"]["patient_id"] != "PT_REAUDIT"

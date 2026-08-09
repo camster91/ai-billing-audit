@@ -28,6 +28,7 @@ translate UI strings. Quebec Law 25 / BAA template translations
 live in ``baa_templates.py`` and are out of scope for this
 module.
 """
+
 from __future__ import annotations
 
 import json
@@ -96,6 +97,7 @@ _TABLES: dict[Locale, dict[str, str]] = {
 # takes effect immediately.
 _LOG_PATH = Path(os.environ.get("TENANT_LOCALE_LOG", "/app/logs/tenant_locale.jsonl"))
 
+
 def tenant_locale_log_path() -> Path:
     """Return the audit-trail JSONL path.
 
@@ -107,6 +109,8 @@ def tenant_locale_log_path() -> Path:
     back to ``/app/logs/tenant_locale.jsonl`` (the production layout).
     """
     return _LOG_PATH
+
+
 _GENESIS_SIG = "0" * 64
 
 
@@ -185,7 +189,11 @@ def _last_signature(path: Path) -> str:
 def _sign(previous: str, row: dict[str, object]) -> str:
     import hashlib
 
-    payload = "|".join(str(row.get(k, "")) for k in sorted(row.keys()) if k != "cryptographic_signature")
+    payload = "|".join(
+        str(row.get(k, ""))
+        for k in sorted(row.keys())
+        if k != "cryptographic_signature"
+    )
     return hashlib.sha256(f"{previous}|{payload}".encode("utf-8")).hexdigest()
 
 
@@ -195,9 +203,7 @@ def set_locale(tenant_id: str, locale: Locale) -> dict[str, object]:
     Append-only JSONL. The most-recent row per tenant wins.
     """
     if not is_supported_locale(locale):
-        raise ValueError(
-            f"locale must be one of {SUPPORTED_LOCALES}, got {locale!r}"
-        )
+        raise ValueError(f"locale must be one of {SUPPORTED_LOCALES}, got {locale!r}")
     path = Path(os.environ.get("TENANT_LOCALE_LOG", str(tenant_locale_log_path())))
     path.parent.mkdir(parents=True, exist_ok=True)
     prev_sig = _last_signature(path)
@@ -239,6 +245,8 @@ def get_locale(tenant_id: str, *, log_path: Path | str | None = None) -> Locale:
 def locale_for_tenant(tenant_id: str, *, log_path: Path | str | None = None) -> Locale:
     """Alias for ``get_locale`` (clearer at call sites)."""
     return get_locale(tenant_id, log_path=log_path)
+
+
 # Module-level ``__getattr__`` (Python 3.7+) defers legacy
 # ``module._LOG_PATH`` reads to the accessor function so late-set
 # env vars (the bulk_actions / rbac / monthly_report test suites

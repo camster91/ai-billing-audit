@@ -49,10 +49,19 @@ __all__ = [
 
 SCHEMA_PATH: Path = Path(__file__).parent / "scenario_schema.json"
 
-_OFFICE_OUTPATIENT_EM_CODES: frozenset[str] = frozenset({
-    "99202", "99203", "99204", "99205",
-    "99211", "99212", "99213", "99214", "99215",
-})
+_OFFICE_OUTPATIENT_EM_CODES: frozenset[str] = frozenset(
+    {
+        "99202",
+        "99203",
+        "99204",
+        "99205",
+        "99211",
+        "99212",
+        "99213",
+        "99214",
+        "99215",
+    }
+)
 
 
 def _load_schema_from_disk() -> dict[str, Any]:
@@ -91,7 +100,9 @@ def _format_jsonschema_error(exc: jsonschema.ValidationError) -> str:
     return f"{path}: {exc.message}"
 
 
-def validate_scenario(payload: Any, schema: dict[str, Any] | None = None) -> dict[str, Any]:
+def validate_scenario(
+    payload: Any, schema: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Validate a parsed scenario dict.
 
     Args:
@@ -126,10 +137,7 @@ def validate_scenario(payload: Any, schema: dict[str, Any] | None = None) -> dic
 
     metadata = payload.get("metadata") or {}
     em_code = metadata.get("em_code")
-    if (
-        isinstance(em_code, str)
-        and em_code not in _OFFICE_OUTPATIENT_EM_CODES
-    ):
+    if isinstance(em_code, str) and em_code not in _OFFICE_OUTPATIENT_EM_CODES:
         # The 9,450-cell variability matrix uses office/outpatient codes
         # only. Inpatient / discharge codes are valid in the schema (so
         # the rubric / gold set can cover them) but the sampler is
@@ -142,7 +150,9 @@ def validate_scenario(payload: Any, schema: dict[str, Any] | None = None) -> dic
             "range 99202-99215 used by the v1 variability matrix"
         )
 
-    diagnosis_codes = (payload.get("expected_output") or {}).get("diagnosis_codes") or []
+    diagnosis_codes = (payload.get("expected_output") or {}).get(
+        "diagnosis_codes"
+    ) or []
     num_problems = metadata.get("num_problems")
     if (
         isinstance(num_problems, int)
@@ -167,11 +177,14 @@ def validate_scenario(payload: Any, schema: dict[str, Any] | None = None) -> dic
     # at least one code_selection line must carry modifier '25' on the
     # E/M code. The schema already requires E/M to be present (via
     # minItems=1 on code_selection), so we just check the modifier.
-    surgery_flag = (payload.get("expected_output") or {}).get("surgery_with_global_period")
+    surgery_flag = (payload.get("expected_output") or {}).get(
+        "surgery_with_global_period"
+    )
     code_selection = (payload.get("expected_output") or {}).get("code_selection") or []
     if surgery_flag is True and isinstance(code_selection, list):
         em_with_modifier = [
-            c for c in code_selection
+            c
+            for c in code_selection
             if isinstance(c, dict)
             and c.get("code", "").startswith("992")
             and c.get("modifier") == "25"

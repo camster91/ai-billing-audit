@@ -54,6 +54,7 @@ deliberate, conservative signature: the future direction (when
 encounter-level features are exposed via the feedback log) is to swap
 in a richer signature without changing the module's surface.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -100,9 +101,7 @@ class PatternAdjustmentConfig:
                 f"min_dismissal_rate must be in [0, 1], got {self.min_dismissal_rate}"
             )
         if not 0.0 <= self.min_weight <= 1.0:
-            raise ValueError(
-                f"min_weight must be in [0, 1], got {self.min_weight}"
-            )
+            raise ValueError(f"min_weight must be in [0, 1], got {self.min_weight}")
 
 
 @dataclass
@@ -137,7 +136,9 @@ class PatternAdjustmentReport:
     )
 
 
-def _bucket_key(entry: FeedbackEntry, clinic_for_biller: Callable[[str], str]) -> tuple[str, str, tuple[str, str]]:
+def _bucket_key(
+    entry: FeedbackEntry, clinic_for_biller: Callable[[str], str]
+) -> tuple[str, str, tuple[str, str]]:
     """Reduce a feedback entry to a (clinic, rule, signature) tuple.
 
     The signature is ``(category, severity)`` today. When richer
@@ -200,7 +201,9 @@ def compute_clinic_pattern_adjustments(
     cfg = config or PatternAdjustmentConfig()
     clinic_lookup: Callable[[str], str] = clinic_for_biller or (lambda b: b)
 
-    buckets: dict[tuple[str, str, tuple[str, str]], _BucketStats] = defaultdict(_BucketStats)
+    buckets: dict[tuple[str, str, tuple[str, str]], _BucketStats] = defaultdict(
+        _BucketStats
+    )
     for entry in entries:
         key = _bucket_key(entry, clinic_lookup)
         buckets[key].total += 1
@@ -215,9 +218,7 @@ def compute_clinic_pattern_adjustments(
             continue
         weight = _compute_weight(stats.dismissal_rate, cfg)
         report.weights.setdefault(clinic, {})[rule] = weight
-        report.adjusted.append(
-            (clinic, rule, signature, stats.dismissal_rate, weight)
-        )
+        report.adjusted.append((clinic, rule, signature, stats.dismissal_rate, weight))
     return report
 
 

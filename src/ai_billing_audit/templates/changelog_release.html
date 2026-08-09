@@ -10,7 +10,7 @@
     <h1>{{ release.title }}</h1>
     <p class="muted">
       <time datetime="{{ release.published.isoformat() }}">
-        {{ release.published.strftime("%B %-d, %Y") }}
+        {{ release.published.strftime("%B") }} {{ release.published.day }}, {{ release.published.year }}
       </time>
     </p>
   </header>

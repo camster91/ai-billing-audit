@@ -26,15 +26,14 @@ Each sample is paired with an optional ``expect`` dict that names the
 fields the source payload *did* contain — the harness uses that dict
 to detect silently-dropped data and accepted-invalid state.
 """
+
 from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import random
 import re
 import sys
-import textwrap
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -420,9 +419,7 @@ def _build_truncated() -> list[Sample]:
     )
 
     # A segment with a missing element (CLM with no encounter id).
-    clm_orphan = BASE_837P.replace(
-        "CLM*ENC-PORTAL-001*250.00", "CLM**250.00"
-    )
+    clm_orphan = BASE_837P.replace("CLM*ENC-PORTAL-001*250.00", "CLM**250.00")
     samples.append(
         Sample(
             idx=len(samples),
@@ -577,9 +574,7 @@ def _build_missing_envelope() -> list[Sample]:
     )
 
     # ISA + GS + ST + BHT only — no claim, no patient.
-    header_only = "~".join(
-        _split_segments(BASE_837P)[:4]
-    ) + "~"
+    header_only = "~".join(_split_segments(BASE_837P)[:4]) + "~"
     samples.append(
         Sample(
             idx=len(samples),
@@ -708,7 +703,9 @@ def _build_wrong_order() -> list[Sample]:
     segs = _split_segments(BASE_837P)
     base_clm = next(s for s in segs if s.startswith("CLM*"))
     extra_clm = "CLM*ENC-PORTAL-002*300.00***11:B:1*Y*A*Y*Y~"
-    reordered = segs[: segs.index(base_clm)] + [extra_clm] + segs[segs.index(base_clm):]
+    reordered = (
+        segs[: segs.index(base_clm)] + [extra_clm] + segs[segs.index(base_clm) :]
+    )
     samples.append(
         Sample(
             idx=len(samples),
@@ -975,7 +972,7 @@ def _build_bad_cpt() -> list[Sample]:
         "SV1*HC:99214*150*UN*1***1",  # valid
     ]
     last_sv1_idx = max(i for i, s in enumerate(segs) if s.startswith("SV1*"))
-    segs = segs[: last_sv1_idx + 1] + extra_sv1 + segs[last_sv1_idx + 1:]
+    segs = segs[: last_sv1_idx + 1] + extra_sv1 + segs[last_sv1_idx + 1 :]
     samples.append(
         Sample(
             idx=len(samples),
@@ -1086,7 +1083,12 @@ def _build_units_out_of_range() -> list[Sample]:
     )
 
     # Multiple SV1s with various unit/charge combos.
-    for units, charge in (("1000", "100"), ("5", "999999999999"), ("", ""), ("10", "1e6")):
+    for units, charge in (
+        ("1000", "100"),
+        ("5", "999999999999"),
+        ("", ""),
+        ("10", "1e6"),
+    ):
         segs = _split_segments(BASE_837P)
         for i, s in enumerate(segs):
             if s.startswith("SV1*"):
@@ -1206,15 +1208,6 @@ def _build_samples() -> list[Sample]:
     rng = random.Random(SEED)
     samples: list[Sample] = []
     builder_counts: dict[str, int] = {}
-    builder_to_category: dict[str, str] = {
-        "_build_truncated": "truncated_segment",
-        "_build_missing_envelope": "missing_envelope",
-        "_build_wrong_order": "wrong_order",
-        "_build_invalid_date": "invalid_date",
-        "_build_bad_cpt": "bad_cpt",
-        "_build_units_out_of_range": "units_out_of_range",
-        "_build_bad_currency": "bad_currency",
-    }
     for builder in (
         _build_truncated,
         _build_missing_envelope,
@@ -1298,7 +1291,6 @@ def _build_samples() -> list[Sample]:
         return extra
 
     for category, target in CATEGORY_SIZES.items():
-        builder_name = "_build_" + category
         got = sum(1 for s in samples if s.category == category)
         if got < target:
             deficit = target - got
@@ -1306,7 +1298,9 @@ def _build_samples() -> list[Sample]:
 
     if len(samples) > N_SAMPLES:
         samples = samples[:N_SAMPLES]
-    assert len(samples) == N_SAMPLES, f"got {len(samples)} samples; counts={builder_counts}"
+    assert len(samples) == N_SAMPLES, (
+        f"got {len(samples)} samples; counts={builder_counts}"
+    )
     # Shuffle the order so the report isn't dominated by one category.
     rng.shuffle(samples)
     # Reassign idx after shuffle so report ordering matches execution.
@@ -1336,7 +1330,9 @@ def _run_one(sample: Sample) -> Finding:
         # missing envelope). It's a real bug only if the source *did*
         # contain valid claim data.
         if sample.expect:
-            f.notes.append("X12ParseError raised on a sample that did contain claim data")
+            f.notes.append(
+                "X12ParseError raised on a sample that did contain claim data"
+            )
         f.parsed = {"error": "X12ParseError", "msg": str(e)}
         return f
     except Exception as e:  # noqa: BLE001 — we want to catch *anything*
@@ -1365,9 +1361,7 @@ def _run_one(sample: Sample) -> Finding:
         actual = claim.get(field_name)
         if actual != expected:
             f.signals.append(f"silent_drop:{field_name}")
-            f.notes.append(
-                f"{field_name}: expected {expected!r}, got {actual!r}"
-            )
+            f.notes.append(f"{field_name}: expected {expected!r}, got {actual!r}")
 
     # date_of_service: source had a date (DTP*472) but the parser
     # returned None. Only flag if source had a *valid* CCYYMMDD —
@@ -1478,18 +1472,22 @@ def main() -> int:
     out = _write_findings(findings)
 
     # Print a human-readable summary.
-    print(f"=== x12_parser.py fuzz harness ===")
+    print("=== x12_parser.py fuzz harness ===")
     print(f"seed: {SEED}, samples: {N_SAMPLES}")
     print()
     print("by category:")
-    print(f"  {'category':<22} {'total':>5} {'exc':>4} {'drop':>5} {'invalid':>7} {'clean':>5}")
+    print(
+        f"  {'category':<22} {'total':>5} {'exc':>4} {'drop':>5} {'invalid':>7} {'clean':>5}"
+    )
     for c in CATEGORIES:
         b = by_category[c]
         print(
             f"  {c:<22} {b['total']:>5} {b['exc']:>4} {b['drop']:>5} {b['invalid']:>7} {b['clean']:>5}"
         )
     print()
-    print(f"totals: exceptions={n_exc}  silent_drops={n_drop}  accepted_invalid={n_invalid}  clean={n_clean}")
+    print(
+        f"totals: exceptions={n_exc}  silent_drops={n_drop}  accepted_invalid={n_invalid}  clean={n_clean}"
+    )
     print(f"findings JSON: {out}")
     print()
     # Print the first 12 distinct failure signatures so the BUGS doc

@@ -41,7 +41,8 @@ Endpoints
 ---------
 ``POST /v1/audits``
     Accept an 837P claim object (JSON, parsed from the existing
-    encounter-upload shape) and enqueue an audit. Returns **202**
+    encounter-upload shape) plus a required ``clinical_note`` and enqueue
+    an audit. Returns **202**
     with ``{"audit_id", "status", "status_url"}``. ``status_url``
     is the relative path the caller polls to fetch the result.
 
@@ -59,6 +60,7 @@ mirrors :func:`ai_billing_audit.api.encounters_audit` but is wired
 straight at the v1 surface so external callers don't see the
 ``/encounters/{id}/audit`` RBAC / session shape.
 """
+
 from __future__ import annotations
 
 import json
@@ -72,15 +74,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from ai_billing_audit.clinical_note_storage import (
+    PhiStorageConfigurationError,
+    store_clinical_note,
+)
 from ai_billing_audit.job_queue import JobQueue, get_default_queue
 from ai_billing_audit.webhooks import (
     EVENT_AUDIT_COMPLETE,
     EVENT_FINDING_ACKNOWLEDGED,
     dispatch_event,
     register_webhook,
+)
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
 )
 
 _log = logging.getLogger(__name__)
@@ -136,6 +147,7 @@ _REQUIRED_CLAIM_FIELDS: tuple[str, ...] = (
 # Format: one JSON object per line, ``{"audit_id", "job_id",
 # "submitted_at", "tenant_id"}``. The file is append-only.
 
+
 def _audit_index_path() -> Path:
     """Path to the audit_id ↔ job_id index file.
 
@@ -151,15 +163,13 @@ def _audit_index_path() -> Path:
 def _append_audit_index(audit_id: str, job_id: str, tenant_id: str) -> None:
     """Persist the ``audit_id → job_id`` mapping for later GETs."""
     path = _audit_index_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
     row = {
         "audit_id": audit_id,
         "job_id": job_id,
         "tenant_id": tenant_id,
         "submitted_at": _now_iso(),
     }
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(row, separators=(",", ":")) + "\n")
+    append_encrypted_json_record(path, row)
 
 
 def _find_audit_index(audit_id: str) -> dict[str, Any] | None:
@@ -174,17 +184,9 @@ def _find_audit_index(audit_id: str) -> dict[str, Any] | None:
     if not path.exists():
         return None
     match: dict[str, Any] | None = None
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if rec.get("audit_id") == audit_id:
-                match = rec
+    for rec in read_encrypted_json_records(path):
+        if rec.get("audit_id") == audit_id:
+            match = rec
     return match
 
 
@@ -214,11 +216,15 @@ def _append_usage_log(row: dict[str, Any]) -> None:
     """
     path = Path(os.environ.get(_ENV_USAGE_LOG_PATH, _DEFAULT_USAGE_LOG))
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row, separators=(",", ":")) + "\n")
+        append_encrypted_json_record(path, row)
     except OSError as exc:  # pragma: no cover - defensive
         _log.warning("usage_log append failed: %s", exc)
+
+
+def migrate_public_api_logs() -> tuple[int, int]:
+    """Encrypt legacy usage and audit-index logs in place."""
+    usage = Path(os.environ.get(_ENV_USAGE_LOG_PATH, _DEFAULT_USAGE_LOG))
+    return migrate_plaintext_jsonl(usage), migrate_plaintext_jsonl(_audit_index_path())
 
 
 def _auth_kind(request: Request) -> str:
@@ -235,7 +241,7 @@ def _auth_kind(request: Request) -> str:
     return "missing"
 
 
-def _check_api_key(request: Request) -> Response | None:
+def _check_api_key(request: Request) -> JSONResponse | None:
     """Validate the request's API key.
 
     Returns ``None`` if the request is allowed, or a
@@ -258,7 +264,7 @@ def _check_api_key(request: Request) -> Response | None:
     x_key = request.headers.get("x-api-key", "").strip()
     presented = ""
     if auth.lower().startswith("bearer "):
-        presented = auth[len("Bearer "):].strip()
+        presented = auth[len("Bearer ") :].strip()
     elif x_key:
         presented = x_key
     if presented != expected:
@@ -287,7 +293,7 @@ def _coerce_claim(body: dict[str, Any]) -> dict[str, Any]:
     errs: list[str] = []
     out: dict[str, Any] = {}
 
-    encounter_id = (body.get("encounter_id") or "")
+    encounter_id = body.get("encounter_id") or ""
     if not isinstance(encounter_id, str) or not encounter_id.strip():
         errs.append("encounter_id is required")
     else:
@@ -341,8 +347,7 @@ def _audit_status_to_dict(job: Any) -> dict[str, Any]:
         "submitted_at": job.submitted_at,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
-        "error": (job.public_error() if hasattr(job, "public_error") else None)
-        or None,
+        "error": (job.public_error() if hasattr(job, "public_error") else None) or None,
         "has_discrepancy": bool(findings),
         "findings": findings or [],
         "summary": result.get("summary") if isinstance(result, dict) else None,
@@ -400,12 +405,13 @@ def _job_zapier_summary(
     """
     result = job.result if isinstance(job.result, dict) else {}
     findings = result.get("findings") or []
-    n_findings = (
-        result.get("findings_count")
-        if isinstance(result.get("findings_count"), int)
-        else len(findings) if isinstance(findings, list)
-        else 0
-    )
+    findings_count = result.get("findings_count")
+    if isinstance(findings_count, int):
+        n_findings = findings_count
+    elif isinstance(findings, list):
+        n_findings = len(findings)
+    else:
+        n_findings = 0
     # Compute the opportunity tally. The caller is expected to
     # pass the precomputed list; if they didn't, we run it here
     # (cheap — the list is per-encounter, not global).
@@ -415,12 +421,11 @@ def _job_zapier_summary(
     elif isinstance(findings, list) and findings:
         try:
             from .api import compute_revenue_opportunities
+
             opps = compute_revenue_opportunities(findings)
         except Exception:  # pragma: no cover - defensive
             opps = []
-    total_dollars = sum(
-        float(o.get("estimated_dollar") or 0.0) for o in opps
-    )
+    total_dollars = sum(float(o.get("estimated_dollar") or 0.0) for o in opps)
     # External status: "done" → "complete" to match the rest of
     # the v1 surface; "queued" / "running" / "failed" pass
     # through unchanged so a Zap can branch on them.
@@ -471,8 +476,8 @@ def _run_audit_synchronously(queue: JobQueue, audit_id: str) -> None:
     running: we wait up to ``_SYNC_POLL_TIMEOUT_SECONDS`` so a
     caller polling right after a POST gets the result without
     needing to loop client-side. The timeout is conservative
-    because the v1 auditor (synth-stub) finishes in <1s; a real
-    LLM-backed audit can exceed this, in which case we surface
+    because test runners finish in <1s; a real LLM-backed audit can
+    exceed this, in which case we surface
     the running status and let the caller retry.
     """
     idx = _find_audit_index(audit_id)
@@ -584,28 +589,56 @@ def register_public_api(
                 detail={"errors": ["body must be a JSON object"]},
             )
 
-        # Optional clinical note on the same body. EHRs that
-        # already capture the chart can ship it; otherwise
-        # the runner's stub path takes over.
+        claim = _coerce_claim(raw)
+
+        # A real claim must always be paired with real clinical evidence.
+        # Reject synchronously rather than accepting a job that can only fail
+        # later or silently auditing fabricated narrative.
         clinical_note = raw.get("clinical_note")
-        if isinstance(clinical_note, str) and clinical_note.strip():
+        if not isinstance(clinical_note, str) or not clinical_note.strip():
+            raise HTTPException(status_code=422, detail="clinical_note_required")
+        clinical_note = clinical_note.strip()
+        if clinical_note:
             # Persist so the runner picks it up. The runner
             # reads notes from logs/uploaded_notes/ via
             # _load_uploaded_note — see job_queue.py.
             try:
                 from pathlib import Path as _P
 
-                notes_dir = _P(__file__).resolve().parent.parent.parent / "logs" / "uploaded_notes"
+                notes_dir = _P(
+                    os.environ.get(
+                        "ZORVA_UPLOADED_NOTES_DIR",
+                        str(
+                            _P(__file__).resolve().parent.parent.parent
+                            / "logs"
+                            / "uploaded_notes"
+                        ),
+                    )
+                )
                 notes_dir.mkdir(parents=True, exist_ok=True)
-                safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw.get("encounter_id") or "anon").strip("._")[:80] or "anon"
-                # v1- prefix so the runner can distinguish v1
-                # API notes from operator-dashboard ones when
-                # it picks the most-recent note.
-                (notes_dir / f"{safe}.v1.txt").write_text(clinical_note, encoding="utf-8")
+                safe = (
+                    re.sub(
+                        r"[^A-Za-z0-9_.-]+", "_", raw.get("encounter_id") or "anon"
+                    ).strip("._")[:80]
+                    or "anon"
+                )
+                note_id = secrets.token_hex(12)
+                store_clinical_note(
+                    notes_dir / f"{safe}.{note_id}.txt.enc",
+                    clinical_note.encode("utf-8"),
+                )
+            except PhiStorageConfigurationError:
+                raise HTTPException(
+                    status_code=503,
+                    detail="phi_storage_not_configured",
+                ) from None
             except OSError as exc:  # pragma: no cover - defensive
-                _log.warning("could not persist v1 clinical note: %s", exc)
+                _log.error("could not persist v1 clinical note: %s", exc)
+                raise HTTPException(
+                    status_code=503,
+                    detail="phi_storage_unavailable",
+                ) from exc
 
-        claim = _coerce_claim(raw)
         audit_id = _AUDIT_ID_PREFIX + _new_audit_hex()
         job = queue_resolver().enqueue(
             encounter=claim,
@@ -762,10 +795,12 @@ def register_public_api(
 
         try:
             raw = await request.json()
-        except json.JSONDecodeError as exc:
+        except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail={"errors": ["malformed_json"]})
         if not isinstance(raw, dict):
-            raise HTTPException(status_code=400, detail={"errors": ["body must be a JSON object"]})
+            raise HTTPException(
+                status_code=400, detail={"errors": ["body must be a JSON object"]}
+            )
 
         url = raw.get("url")
         events = raw.get("events")
@@ -798,9 +833,7 @@ def register_public_api(
             }
         )
         response_record = dict(record)
-        response_record["signing_secret"] = response_record.pop(
-            "_signing_secret", ""
-        )
+        response_record["signing_secret"] = response_record.pop("_signing_secret", "")
         return JSONResponse(response_record, status_code=201)
 
     # ── Zapier connector (t_cab76c0b) ────────────────────────────────
@@ -842,13 +875,15 @@ def register_public_api(
         """
         auth_err = _check_api_key(request)
         if auth_err is not None:
-            _append_usage_log({
-                "ts": _now_iso(),
-                "endpoint": "GET /v1/zapier/encounters",
-                "status": auth_err.status_code,
-                "auth": _auth_kind(request),
-                "tenant_id": tenant_id,
-            })
+            _append_usage_log(
+                {
+                    "ts": _now_iso(),
+                    "endpoint": "GET /v1/zapier/encounters",
+                    "status": auth_err.status_code,
+                    "auth": _auth_kind(request),
+                    "tenant_id": tenant_id,
+                }
+            )
             return auth_err
 
         # 1. Parse + clamp the look-back window.
@@ -869,7 +904,10 @@ def register_public_api(
             offset_int = int(offset) if offset is not None else 0
         except (TypeError, ValueError):
             return JSONResponse(
-                {"detail": "offset must be a non-negative integer", "code": "bad_request"},
+                {
+                    "detail": "offset must be a non-negative integer",
+                    "code": "bad_request",
+                },
                 status_code=400,
             )
         if offset_int < 0:
@@ -883,53 +921,57 @@ def register_public_api(
             # No queue → empty list. Don't 500 — Zapier would
             # treat a 5xx as a transient error and retry
             # forever; an empty list is a clean "no data yet".
-            return JSONResponse({
-                "encounters": [],
-                "count": 0,
-                "offset": offset_int,
-                "limit": _ZAPIER_PAGE_SIZE,
-                "has_more": False,
-            })
+            return JSONResponse(
+                {
+                    "encounters": [],
+                    "count": 0,
+                    "offset": offset_int,
+                    "limit": _ZAPIER_PAGE_SIZE,
+                    "has_more": False,
+                }
+            )
         cutoff = time.time() - days_int * 86400.0
         try:
             all_jobs = list(queue.list_jobs())
         except Exception:
             all_jobs = []
-        in_window = [
-            j for j in all_jobs
-            if (j.submitted_at or 0.0) >= cutoff
-        ]
+        in_window = [j for j in all_jobs if (j.submitted_at or 0.0) >= cutoff]
         in_window.sort(
             key=lambda j: j.submitted_at or 0.0,
             reverse=True,
         )
 
         # 4. Page the slice.
-        page = in_window[offset_int: offset_int + _ZAPIER_PAGE_SIZE]
+        page = in_window[offset_int : offset_int + _ZAPIER_PAGE_SIZE]
         summaries = [_job_zapier_summary(j) for j in page]
         has_more = (offset_int + len(page)) < len(in_window)
 
-        _append_usage_log({
-            "ts": _now_iso(),
-            "endpoint": "GET /v1/zapier/encounters",
-            "status": 200,
-            "auth": _auth_kind(request),
-            "tenant_id": tenant_id,
-            "count": len(summaries),
-            "days": days_int,
-            "offset": offset_int,
-        })
-        return JSONResponse({
-            "encounters": summaries,
-            "count": len(summaries),
-            "offset": offset_int,
-            "limit": _ZAPIER_PAGE_SIZE,
-            "has_more": has_more,
-        })
+        _append_usage_log(
+            {
+                "ts": _now_iso(),
+                "endpoint": "GET /v1/zapier/encounters",
+                "status": 200,
+                "auth": _auth_kind(request),
+                "tenant_id": tenant_id,
+                "count": len(summaries),
+                "days": days_int,
+                "offset": offset_int,
+            }
+        )
+        return JSONResponse(
+            {
+                "encounters": summaries,
+                "count": len(summaries),
+                "offset": offset_int,
+                "limit": _ZAPIER_PAGE_SIZE,
+                "has_more": has_more,
+            }
+        )
 
     @app.get("/v1/zapier/encounters/{encounter_id}")
     async def v1_zapier_get_encounter(
-        request: Request, encounter_id: str,
+        request: Request,
+        encounter_id: str,
     ) -> JSONResponse:
         """Return a single encounter in the Zapier summary shape.
 
@@ -940,13 +982,15 @@ def register_public_api(
         """
         auth_err = _check_api_key(request)
         if auth_err is not None:
-            _append_usage_log({
-                "ts": _now_iso(),
-                "endpoint": "GET /v1/zapier/encounters/{id}",
-                "status": auth_err.status_code,
-                "auth": _auth_kind(request),
-                "tenant_id": tenant_id,
-            })
+            _append_usage_log(
+                {
+                    "ts": _now_iso(),
+                    "endpoint": "GET /v1/zapier/encounters/{id}",
+                    "status": auth_err.status_code,
+                    "auth": _auth_kind(request),
+                    "tenant_id": tenant_id,
+                }
+            )
             return auth_err
 
         job = _resolve_job_for_zapier(
@@ -954,14 +998,16 @@ def register_public_api(
             queue_resolver=queue_resolver,
         )
         if job is None:
-            _append_usage_log({
-                "ts": _now_iso(),
-                "endpoint": "GET /v1/zapier/encounters/{id}",
-                "status": 404,
-                "auth": _auth_kind(request),
-                "tenant_id": tenant_id,
-                "encounter_id": encounter_id,
-            })
+            _append_usage_log(
+                {
+                    "ts": _now_iso(),
+                    "endpoint": "GET /v1/zapier/encounters/{id}",
+                    "status": 404,
+                    "auth": _auth_kind(request),
+                    "tenant_id": tenant_id,
+                    "encounter_id": encounter_id,
+                }
+            )
             return JSONResponse(
                 {
                     "detail": f"encounter {encounter_id!r} not found",
@@ -970,15 +1016,17 @@ def register_public_api(
                 status_code=404,
             )
         summary = _job_zapier_summary(job)
-        _append_usage_log({
-            "ts": _now_iso(),
-            "endpoint": "GET /v1/zapier/encounters/{id}",
-            "status": 200,
-            "auth": _auth_kind(request),
-            "tenant_id": tenant_id,
-            "encounter_id": encounter_id,
-            "status_value": summary["status"],
-        })
+        _append_usage_log(
+            {
+                "ts": _now_iso(),
+                "endpoint": "GET /v1/zapier/encounters/{id}",
+                "status": 200,
+                "auth": _auth_kind(request),
+                "tenant_id": tenant_id,
+                "encounter_id": encounter_id,
+                "status_value": summary["status"],
+            }
+        )
         return JSONResponse(summary)
 
 

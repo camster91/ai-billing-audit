@@ -18,6 +18,7 @@ Matches the exact 6-line shape:
 
 Idempotent: skips files already migrated (have internalErrorResponse).
 """
+
 from __future__ import annotations
 from pathlib import Path
 
@@ -50,7 +51,7 @@ def fix_one(rel: str) -> tuple[bool, str]:
     # Find the catch block by anchor: 'const message = e instanceof Error'
     catch_start = -1
     for i, ln in enumerate(lines):
-        if 'const message = e instanceof Error' in ln:
+        if "const message = e instanceof Error" in ln:
             catch_start = i - 1  # the line above is '} catch (e) {'
             break
     if catch_start < 0:
@@ -58,10 +59,14 @@ def fix_one(rel: str) -> tuple[bool, str]:
     # Find the close brace: walk forward to find the line containing only "  }"
     # at the indentation of the catch line.
     catch_indent_len = len(lines[catch_start]) - len(lines[catch_start].lstrip())
-    expected_close_indent = " " * (catch_indent_len - 2) + "}"  # two spaces less than catch
+    expected_close_indent = (
+        " " * (catch_indent_len - 2) + "}"
+    )  # two spaces less than catch
     catch_end = -1
     for i in range(catch_start + 6, min(catch_start + 20, len(lines))):
-        if lines[i].strip() == "}" and lines[i].startswith(expected_close_indent[: len(lines[i]) - len(lines[i].lstrip())]):
+        if lines[i].strip() == "}" and lines[i].startswith(
+            expected_close_indent[: len(lines[i]) - len(lines[i].lstrip())]
+        ):
             catch_end = i
             break
     if catch_end < 0:
@@ -69,21 +74,23 @@ def fix_one(rel: str) -> tuple[bool, str]:
     # Extract the route from the console.error line.
     # Format: console.error("[<ROUTE>] error:", message);
     console_line = lines[catch_start + 2]
-    if '] error:' not in console_line:
+    if "] error:" not in console_line:
         return (False, f"unexpected console.error line: {console_line!r}")
-    route_in_log = console_line.split('] error:')[0].rsplit('"', 1)[-1]
+    route_in_log = console_line.split("] error:")[0].rsplit('"', 1)[-1]
     # Build the replacement: preserve the leading indentation of the catch line.
-    indent = lines[catch_start][: len(lines[catch_start]) - len(lines[catch_start].lstrip())]
+    indent = lines[catch_start][
+        : len(lines[catch_start]) - len(lines[catch_start].lstrip())
+    ]
     new_block_lines = [
         f"{indent}}} catch (e) {{",
-        f"{indent}  return internalErrorResponse(request, e, \"{route_in_log}\");",
+        f'{indent}  return internalErrorResponse(request, e, "{route_in_log}");',
         f"{indent}}}",
     ]
-    new_lines = lines[:catch_start] + new_block_lines + lines[catch_end + 1:]
+    new_lines = lines[:catch_start] + new_block_lines + lines[catch_end + 1 :]
     new_src = "\n".join(new_lines)
     # Make sure the import is added (idempotent: only if missing).
     import_line = 'import { internalErrorResponse } from "@/lib/api-errors";'
-    if "from \"@/lib/api-errors\"" not in new_src:
+    if 'from "@/lib/api-errors"' not in new_src:
         new_lines = new_src.split("\n")
         last_lib_import = -1
         for i, ln in enumerate(new_lines):

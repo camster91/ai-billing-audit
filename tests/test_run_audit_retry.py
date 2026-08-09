@@ -26,13 +26,13 @@ These tests pin the retry contract:
    message; the new content is appended as a third message with
    role="user" (not replacing any prior turn).
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 from typing import Any
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -54,7 +54,9 @@ class _ScriptedLLM:
         self._payloads = list(payloads)
         self.calls: list[tuple[list[dict[str, Any]], dict[str, Any]]] = []
 
-    def complete(self, *, messages: list[dict[str, Any]], **kwargs: Any) -> dict[str, Any]:
+    def complete(
+        self, *, messages: list[dict[str, Any]], **kwargs: Any
+    ) -> dict[str, Any]:
         self.calls.append((list(messages), dict(kwargs)))
         if not self._payloads:
             raise AssertionError("ScriptedLLM exhausted; no payload left")
@@ -66,6 +68,7 @@ class _ScriptedLLM:
 
 def _json_dumps(obj: Any) -> str:
     import json
+
     return json.dumps(obj)
 
 
@@ -217,10 +220,12 @@ def test_temperature_passed_through_to_provider():
     deterministic-leaning default). If the temperature default is
     removed, this test fails loud so the calibration contract is
     visible in CI."""
-    fake = _ScriptedLLM([
-        {"findings": [], "summary": "no"},
-        {"findings": [], "summary": "no on retry"},
-    ])
+    fake = _ScriptedLLM(
+        [
+            {"findings": [], "summary": "no"},
+            {"findings": [], "summary": "no on retry"},
+        ]
+    )
     client = LLMClient(complete=fake.complete)
     run_audit(_encounter_with_note(), llm=client, max_retries=1)
     assert fake.calls[0][1].get("temperature") == 0.2, (
@@ -236,21 +241,23 @@ def test_response_format_passed_to_provider():
     decoding envelope. If a future refactor drops this, the model
     is unconstrained and may emit malformed JSON that fails
     validation downstream."""
-    fake = _ScriptedLLM([
-        {
-            "findings": [
-                {
-                    "rule_id": "rule_ahcip_em_level",
-                    "severity": "info",
-                    "category": "evaluation",
-                    "suggested_code": "03.04A",
-                    "quote": "BP 152/94",
-                    "explanation": "ok",
-                }
-            ],
-            "summary": "ok",
-        }
-    ])
+    fake = _ScriptedLLM(
+        [
+            {
+                "findings": [
+                    {
+                        "rule_id": "rule_ahcip_em_level",
+                        "severity": "info",
+                        "category": "evaluation",
+                        "suggested_code": "03.04A",
+                        "quote": "BP 152/94",
+                        "explanation": "ok",
+                    }
+                ],
+                "summary": "ok",
+            }
+        ]
+    )
     client = LLMClient(complete=fake.complete)
     run_audit(_encounter_with_note(), llm=client, max_retries=1)
     sent_kwargs = fake.calls[0][1]

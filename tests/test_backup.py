@@ -13,9 +13,9 @@ Covers the three acceptance criteria from the task body:
 We use a fresh ``tmp_path`` per test and a tmp env var for
 the key so nothing leaks into the production logs/ directory.
 """
+
 from __future__ import annotations
 
-import os
 import tarfile
 from pathlib import Path
 
@@ -95,14 +95,12 @@ def test_create_then_restore_round_trip(
     # there so a restore into the project root never pollutes
     # the cwd; operators can ``mv`` the prefix out, or pass
     # ``--strip-prefix`` (v2 follow-up).
-    assert (
-        (dest / "zorva-backup" / "logs" / "audit.jsonl").read_bytes()
-        == (fake_source_dir / "logs" / "audit.jsonl").read_bytes()
-    )
-    assert (
-        (dest / "zorva-backup" / "data" / "encounters.json").read_bytes()
-        == (fake_source_dir / "data" / "encounters.json").read_bytes()
-    )
+    assert (dest / "zorva-backup" / "logs" / "audit.jsonl").read_bytes() == (
+        fake_source_dir / "logs" / "audit.jsonl"
+    ).read_bytes()
+    assert (dest / "zorva-backup" / "data" / "encounters.json").read_bytes() == (
+        fake_source_dir / "data" / "encounters.json"
+    ).read_bytes()
 
 
 def test_create_backup_summarises_files_and_sizes(

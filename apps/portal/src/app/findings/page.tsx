@@ -167,7 +167,6 @@ export default async function FindingsPage({ searchParams }: PageProps) {
           billingRuleReference: true,
           currentCode: true,
           suggestedCode: true,
-          evidenceQuote: true,
           estFinancialImpactCents: true,
           status: true,
           encounter: {

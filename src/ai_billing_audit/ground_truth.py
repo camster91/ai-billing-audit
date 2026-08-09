@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 __all__ = [
     "get_train",
@@ -194,14 +192,26 @@ _TEMPLATES: list[tuple[bool, str, list[str]]] = [
         "Documentation supports a separately identifiable E/M; "
         "modifier 25 applied. Lipid panel ordered for cardiovascular "
         "risk stratification.",
-        ["rule_em_001", "rule_ecg_001", "rule_icd_001", "rule_modifier_25_001", "rule_lab_001"],
+        [
+            "rule_em_001",
+            "rule_ecg_001",
+            "rule_icd_001",
+            "rule_modifier_25_001",
+            "rule_lab_001",
+        ],
     ),
     (
         True,
         "New patient low complexity visit. Patient reports chest pain on "
         "exertion. ECG performed in office; rhythm strip reviewed. "
         "Echocardiogram ordered for further workup.",
-        ["rule_em_002", "rule_icd_002", "rule_ecg_001", "rule_ecg_002", "rule_imaging_002"],
+        [
+            "rule_em_002",
+            "rule_icd_002",
+            "rule_ecg_001",
+            "rule_ecg_002",
+            "rule_imaging_002",
+        ],
     ),
     (
         True,
@@ -304,7 +314,9 @@ _train_cache: list[dict] | None = None
 _val_cache: list[dict] | None = None
 
 
-def _build_encounter(idx: int, is_flagged: bool, note: str, rule_ids: list[str]) -> dict:
+def _build_encounter(
+    idx: int, is_flagged: bool, note: str, rule_ids: list[str]
+) -> dict:
     rules = []
     for rid in rule_ids:
         rule = next((r for r in RULES if r["rule_id"] == rid), None)
@@ -316,8 +328,14 @@ def _build_encounter(idx: int, is_flagged: bool, note: str, rule_ids: list[str])
         "is_flagged": is_flagged,
         "clinical_note": note,
         "claim": {
-            "cpt_codes": [r["suggested_code"] for r in rules if r["suggested_code"][0].isdigit()],
-            "icd10_codes": [r["suggested_code"] for r in rules if r["suggested_code"].startswith(("R", "I", "E"))],
+            "cpt_codes": [
+                r["suggested_code"] for r in rules if r["suggested_code"][0].isdigit()
+            ],
+            "icd10_codes": [
+                r["suggested_code"]
+                for r in rules
+                if r["suggested_code"].startswith(("R", "I", "E"))
+            ],
         },
         "rules": rules,
     }
@@ -346,7 +364,7 @@ def _split_data(
             # so the optimizer has real work to do.
             if rng.random() < 0.15 and len(rule_ids) > 1:
                 drop = rng.randrange(len(rule_ids) - 1)
-                rule_ids = rule_ids[:drop] + rule_ids[drop + 1:]
+                rule_ids = rule_ids[:drop] + rule_ids[drop + 1 :]
             out.append(_build_encounter(i + offset, is_flagged, note, rule_ids))
         return out
 

@@ -27,7 +27,13 @@ from typing import Any, Callable
 
 import litellm
 
-__all__ = ["LLMClient", "provider", "default_model", "PINNED_DEFAULT_MODEL", "SchemaValidationError"]
+__all__ = [
+    "LLMClient",
+    "provider",
+    "default_model",
+    "PINNED_DEFAULT_MODEL",
+    "SchemaValidationError",
+]
 
 # Pinned default model id.
 #
@@ -101,10 +107,14 @@ class LLMClient:
         timeout: float | None = 60.0,
     ) -> None:
         if timeout is not None and timeout <= 0:
-            raise ValueError(f"timeout must be a positive number of seconds; got {timeout!r}")
+            raise ValueError(
+                f"timeout must be a positive number of seconds; got {timeout!r}"
+            )
         self._model_override = model
         self._timeout = timeout
-        self._complete: Callable[..., Any] = complete if complete is not None else _default_complete
+        self._complete: Callable[..., Any] = (
+            complete if complete is not None else _default_complete
+        )
 
     def _resolve_model(self, kwargs: dict[str, Any]) -> str:
         """Pick a model name: explicit override > LLM_MODEL env > PINNED_DEFAULT_MODEL."""
@@ -185,13 +195,17 @@ class LLMClient:
             "type": "json_schema",
             "json_schema": {"name": "response", "schema": json_schema},
         }
-        response = self.complete(messages, response_format=json_schema_envelope, **kwargs)
+        response = self.complete(
+            messages, response_format=json_schema_envelope, **kwargs
+        )
         content = response["choices"][0]["message"]["content"]
         # Strip markdown fences if the model wraps the JSON in ```json ... ```
         # (common with reasoning models and some local servers). Without
         # this, json.loads raises on the first ``` line. Fixes BUG-LLM-02.
         if content is not None:
-            fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
+            fence_match = re.search(
+                r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL
+            )
             if fence_match:
                 content = fence_match.group(1).strip()
         parsed = json.loads(content)

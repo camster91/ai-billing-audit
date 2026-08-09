@@ -38,8 +38,8 @@ from typing import Any, Iterable, Optional
 try:  # pragma: no cover - import path differs by openai SDK version
     from openai import APIError, OpenAI
 except ImportError as _exc:  # pragma: no cover - guard for missing dep
-    OpenAI = None  # type: ignore[assignment]
-    APIError = None  # type: ignore[assignment]
+    OpenAI = None  # type: ignore[misc,assignment]
+    APIError = None  # type: ignore[misc,assignment]
     _IMPORT_ERROR: Optional[ImportError] = _exc
 else:
     _IMPORT_ERROR = None
@@ -100,8 +100,12 @@ class MiniMaxClient:
         timeout: Optional[float] = 60.0,
     ) -> None:
         if timeout is not None and timeout <= 0:
-            raise ValueError(f"timeout must be a positive number of seconds; got {timeout!r}")
-        self._api_key = api_key if api_key is not None else os.environ.get("OPENAI_API_KEY")
+            raise ValueError(
+                f"timeout must be a positive number of seconds; got {timeout!r}"
+            )
+        self._api_key = (
+            api_key if api_key is not None else os.environ.get("OPENAI_API_KEY")
+        )
         self._base_url = base_url
         self._transport = transport
         self._timeout = timeout
@@ -118,7 +122,9 @@ class MiniMaxClient:
             # The OpenAI SDK reads OPENAI_API_KEY / OPENAI_BASE_URL from the
             # process env when not passed positionally, so we only forward
             # api_key here and let base_url flow through the constructor.
-            self._client = OpenAI(api_key=self._api_key, base_url=self._base_url, timeout=timeout)
+            self._client = OpenAI(
+                api_key=self._api_key, base_url=self._base_url, timeout=timeout
+            )
 
     @property
     def base_url(self) -> str:
@@ -213,7 +219,11 @@ class MiniMaxClient:
                 # the target is a real openai.OpenAI client, so existing
                 # tests that don't construct with timeout keep working.
                 call_kwargs = dict(kwargs)
-                if target is self._client and self._timeout is not None and "timeout" not in call_kwargs:
+                if (
+                    target is self._client
+                    and self._timeout is not None
+                    and "timeout" not in call_kwargs
+                ):
                     call_kwargs["timeout"] = self._timeout
                 return target.chat.completions.create(
                     model=model,
@@ -224,7 +234,11 @@ class MiniMaxClient:
             except BaseException as exc:  # noqa: BLE001 - we re-raise translated
                 # The transport/SDK raised. Decide whether to retry, and
                 # if not, translate to the project hierarchy.
-                if APIError is not None and isinstance(exc, APIError) and should_retry(exc):
+                if (
+                    APIError is not None
+                    and isinstance(exc, APIError)
+                    and should_retry(exc)
+                ):
                     last_sdk_exc = exc
                     if attempt < MINIMAX_MAX_ATTEMPTS:
                         _sleep(compute_backoff(attempt))

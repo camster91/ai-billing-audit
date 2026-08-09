@@ -28,7 +28,6 @@ import { loadEncounterDetail } from "@/lib/encounter-data";
 import { formatCents, formatDate, wrapEvidenceQuotes } from "@/lib/encounter-format";
 import {
   ENCOUNTER_STATUSES,
-  FINDING_CATEGORY_LABEL,
   isDismissReason,
   isFindingCategory,
   type EncounterStatus,
@@ -43,6 +42,8 @@ import {
 import { ClinicalNote } from "./_components/clinical-note";
 import { FindingCard } from "./_components/finding-card";
 import { DeepAuditPanel } from "./_components/deep-audit-panel";
+import { AuditRunControl } from "./_components/audit-run-control";
+import { hasCapability } from "@/lib/roles";
 import styles from "./_components/split-review.module.css";
 
 interface PageProps {
@@ -87,15 +88,17 @@ export default async function EncounterDetailPage({ params }: PageProps) {
     evidenceToCard[m.id] = `finding-${m.id}`;
   }
 
-  // Fetch the FastAPI's denial-risk + appeal-letter data in parallel.
-  // These are public-read endpoints (no bearer required) — see
-  // api.py:1049 (the OPTIONS+public-read bypass in _bearer_auth) and
-  // src/lib/fastapi.ts. Failures degrade gracefully: the DeepAuditPanel
-  // shows "deep audit unavailable" instead of breaking the page.
+  // Fetch the FastAPI data with a short-lived principal bound to the
+  // verified portal membership. Credentials remain server-side.
+  const fastApiPrincipal = {
+    subject: tenant.userId,
+    tenantId: tenant.id,
+    portalRole: tenant.role,
+  };
   const [denialRiskRes, appealLetterRes, appealLettersRes] = await Promise.all([
-    fetchDenialRisk(encounter.id),
-    fetchLatestAppealLetter(encounter.id),
-    fetchAppealLetters(encounter.id),
+    fetchDenialRisk(encounter.id, fastApiPrincipal),
+    fetchLatestAppealLetter(encounter.id, fastApiPrincipal),
+    fetchAppealLetters(encounter.id, fastApiPrincipal),
   ]);
   const deepAudit = {
     denialRisk:
@@ -191,9 +194,17 @@ export default async function EncounterDetailPage({ params }: PageProps) {
           </p>
         </header>
 
+        <AuditRunControl
+          encounterId={encounter.id}
+          initialStatus={encounter.auditDispatch?.status ?? null}
+          canWrite={hasCapability(tenant.role, "write")}
+        />
+
         {encounter.findings.length === 0 ? (
           <p className={styles.emptyState}>
-            No findings for this encounter. The auditor ran clean.
+            {status === "completed"
+              ? "No findings for this encounter. The auditor ran clean."
+              : "No findings are available because this audit has not completed."}
           </p>
         ) : (
           encounter.findings.map((f) => (

@@ -20,8 +20,6 @@ What's pinned
 from __future__ import annotations
 
 import importlib
-import json
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,6 +28,7 @@ from ai_billing_audit.contact import (
     valid_email,
     valid_volume,
 )
+from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
 
 
 # ---------- pure-validation tests ----------
@@ -81,8 +80,10 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.audit_actions as aa_mod
+
     importlib.reload(aa_mod)
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app), audit_log
@@ -103,19 +104,22 @@ def test_contact_get_renders_form(client):
 
 def test_contact_post_valid_submission_writes_audit_event(client):
     test_client, audit_log = client
-    resp = test_client.post("/contact", data={
-        "name": "Dr. Jane Smith",
-        "clinic": "North York Medical",
-        "email": "doctor@example.com",
-        "monthly_claims": "1500",
-        "message": "We're looking for tools that catch modifier-25 issues.",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr. Jane Smith",
+            "clinic": "North York Medical",
+            "email": "doctor@example.com",
+            "monthly_claims": "1500",
+            "message": "We're looking for tools that catch modifier-25 issues.",
+        },
+    )
     assert resp.status_code == 200
     # Success page
     assert "Thanks" in resp.text
     assert "doctor@example.com" not in resp.text  # email never echoed back
     # The audit trail has the event
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    events = read_encrypted_json_records(audit_log)
     contact_events = [e for e in events if e.get("action") == "contact_request"]
     assert len(contact_events) == 1
     assert contact_events[0]["tenant_id"] == "default"
@@ -132,21 +136,27 @@ def test_contact_post_hashes_email_lowercase(client):
     """Email is normalized to lowercase before hashing so 'A@x' and
     'a@x' produce the same SHA-256 — useful for dedupe."""
     test_client, audit_log = client
-    test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "MixedCase@Example.COM",
-        "monthly_claims": "100",
-        "message": "x",
-    })
-    test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "mixedcase@example.com",
-        "monthly_claims": "100",
-        "message": "x",
-    })
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "MixedCase@Example.COM",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
+    test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "mixedcase@example.com",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
+    events = read_encrypted_json_records(audit_log)
     contact_events = [e for e in events if e.get("action") == "contact_request"]
     # Both should hash to the same SHA-256 prefix
     assert len(contact_events) == 2
@@ -155,44 +165,53 @@ def test_contact_post_hashes_email_lowercase(client):
 
 def test_contact_post_invalid_email_returns_form_with_error(client):
     test_client, audit_log = client
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "not-an-email",
-        "monthly_claims": "100",
-        "message": "x",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "not-an-email",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
     assert resp.status_code == 200
     assert "valid email" in resp.text.lower() or "couldn't submit" in resp.text.lower()
     # No audit event written
     if audit_log.exists():
-        events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+        events = read_encrypted_json_records(audit_log)
         contact_events = [e for e in events if e.get("action") == "contact_request"]
         assert len(contact_events) == 0
 
 
 def test_contact_post_missing_name_returns_form_with_error(client):
     test_client, _ = client
-    resp = test_client.post("/contact", data={
-        "name": "",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "100",
-        "message": "x",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
     assert resp.status_code == 200
     assert "name" in resp.text.lower()
 
 
 def test_contact_post_missing_volume_returns_form_with_error(client):
     test_client, _ = client
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "",
-        "message": "x",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "",
+            "message": "x",
+        },
+    )
     assert resp.status_code == 200
     assert "claim volume" in resp.text.lower() or "monthly" in resp.text.lower()
 
@@ -201,15 +220,18 @@ def test_contact_post_message_truncation(client):
     """A 500-char message gets stored as a 500-char excerpt."""
     test_client, audit_log = client
     long_msg = "x" * 500
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "100",
-        "message": long_msg,
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "100",
+            "message": long_msg,
+        },
+    )
     assert resp.status_code == 200
-    events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+    events = read_encrypted_json_records(audit_log)
     contact_events = [e for e in events if e.get("action") == "contact_request"]
     assert len(contact_events) == 1
     assert len(contact_events[0]["data_elements"]["message_excerpt"]) == 500
@@ -218,32 +240,39 @@ def test_contact_post_message_truncation(client):
 def test_contact_post_oversized_message_rejected(client):
     test_client, audit_log = client
     overlong_msg = "x" * 2001
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "100",
-        "message": overlong_msg,
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "100",
+            "message": overlong_msg,
+        },
+    )
     assert resp.status_code == 200
     assert "too long" in resp.text.lower()
     if audit_log.exists():
-        events = [json.loads(l) for l in audit_log.read_text().split("\n") if l]
+        events = read_encrypted_json_records(audit_log)
         contact_events = [e for e in events if e.get("action") == "contact_request"]
         assert len(contact_events) == 0
 
 
 def test_contact_success_page_has_email_hash_prefix(client):
     test_client, _ = client
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "100",
-        "message": "x",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
     # The success page shows a hash prefix for confirmation
     import re
+
     assert re.search(r"[0-9a-f]{16}\.\.\.", resp.text), (
         "Success page should show the SHA-256 hash prefix"
     )
@@ -253,13 +282,16 @@ def test_contact_success_page_has_follow_up_ctas(client):
     """After successful submit, the page should drive the prospect
     toward case studies + ROI calculator."""
     test_client, _ = client
-    resp = test_client.post("/contact", data={
-        "name": "Dr",
-        "clinic": "Clinic",
-        "email": "doctor@example.com",
-        "monthly_claims": "100",
-        "message": "x",
-    })
+    resp = test_client.post(
+        "/contact",
+        data={
+            "name": "Dr",
+            "clinic": "Clinic",
+            "email": "doctor@example.com",
+            "monthly_claims": "100",
+            "message": "x",
+        },
+    )
     assert "/case-studies" in resp.text
     assert "/roi" in resp.text
 
@@ -291,13 +323,12 @@ def test_contact_post_with_claims_file_stages_and_records(client, tmp_path):
     """A contact submit with a claims file stages the file to
     ``CONTACT_UPLOAD_DIR`` and writes the manifest to the audit
     trail."""
-    from pathlib import Path
-    import json
     test_client, audit_log = client
     monkey_dir = tmp_path / "staged"
     monkey_dir.mkdir()
     monkeypatch_dir = str(monkey_dir)
     import os
+
     os.environ["CONTACT_UPLOAD_DIR"] = monkeypatch_dir
 
     # Minimal-but-valid-looking 837P-ish payload (we don't validate
@@ -321,32 +352,28 @@ def test_contact_post_with_claims_file_stages_and_records(client, tmp_path):
 
     # The file should be on disk in the staged directory.
     staged_files = list(monkey_dir.iterdir())
-    assert len(staged_files) == 1, (
-        f"expected 1 staged file, found {staged_files}"
-    )
-    assert staged_files[0].read_bytes() == claims_content
+    assert len(staged_files) == 1, f"expected 1 staged file, found {staged_files}"
+    assert claims_content not in staged_files[0].read_bytes()
+    from ai_billing_audit.clinical_note_storage import load_clinical_note
+
+    assert load_clinical_note(staged_files[0]) == claims_content
 
     # And the audit-trail row should record the manifest.
     if audit_log.exists():
-        events = [
-            json.loads(l)
-            for l in audit_log.read_text().splitlines()
-            if l.strip()
-        ]
-        contact_events = [
-            e for e in events if e.get("action") == "contact_request"
-        ]
+        from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
+
+        events = read_encrypted_json_records(audit_log)
+        contact_events = [e for e in events if e.get("action") == "contact_request"]
         assert len(contact_events) == 1
         # audit_actions.append() merges `extra=` into
         # `data_elements` — that's where the upload manifest lives.
-        upload_meta = (
-            contact_events[0].get("data_elements", {}).get("upload")
-        )
+        upload_meta = contact_events[0].get("data_elements", {}).get("upload")
         assert upload_meta is not None
         assert upload_meta["filename"] == "claims.837"
         assert upload_meta["size_bytes"] == len(claims_content)
         assert len(upload_meta["sha256"]) == 64
         assert upload_meta["extension"] == ".837"
+        assert upload_meta["encrypted_at_rest"] is True
         assert upload_meta["staged_path"].startswith(monkeypatch_dir)
 
 
@@ -397,3 +424,21 @@ def test_contact_button_no_longer_says_walkthrough(client):
     assert "Book a walkthrough" not in resp.text
     assert "Request a walkthrough" not in resp.text
     assert "Send the 100 claims" in resp.text
+
+
+def test_migrate_contact_uploads_encrypts_legacy_files(tmp_path, monkeypatch):
+    from ai_billing_audit.contact import migrate_contact_uploads
+    from ai_billing_audit.clinical_note_storage import load_clinical_note
+
+    upload_dir = tmp_path / "contact_uploads"
+    upload_dir.mkdir()
+    legacy = upload_dir / "legacy-claims.837"
+    plaintext = b"CLM*PATIENT-SECRET*100~"
+    legacy.write_bytes(plaintext)
+    monkeypatch.setenv("CONTACT_UPLOAD_DIR", str(upload_dir))
+
+    assert migrate_contact_uploads() == 1
+    assert plaintext not in legacy.read_bytes()
+    assert load_clinical_note(legacy) == plaintext
+    assert legacy.with_name(legacy.name + ".plaintext.bak.enc").exists()
+    assert migrate_contact_uploads() == 0

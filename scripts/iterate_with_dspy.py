@@ -28,6 +28,7 @@ _iterate_with_miprov2() below — wire it to your litellm/DSPy setup.
 Exit code: 0 if any round improves on the previous best F1 OR if the
 acceptance criterion is met; 1 otherwise.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,8 +49,11 @@ def _next_version(out_dir: Path) -> int:
     p = out_dir / "prompts"
     if not p.exists():
         return 0
-    existing = sorted(int(d.name.lstrip("v")) for d in p.iterdir()
-                      if d.is_dir() and d.name.startswith("v"))
+    existing = sorted(
+        int(d.name.lstrip("v"))
+        for d in p.iterdir()
+        if d.is_dir() and d.name.startswith("v")
+    )
     return (existing[-1] + 1) if existing else 0
 
 
@@ -70,12 +74,18 @@ def _run_audit(prompt_path: Path, val_path: Path, out_path: Path) -> None:
         "ZORVA_AUDITOR_PROMPT_PATH": str(prompt_path),
     }
     argv = [
-        sys.executable, "scripts/run_ollama_audit.py",
-        "--val", str(val_path),
-        "--out", str(out_path),
+        sys.executable,
+        "scripts/run_ollama_audit.py",
+        "--val",
+        str(val_path),
+        "--out",
+        str(out_path),
     ]
-    print(f"[iterate] running: {' '.join(argv)} (with ZORVA_AUDITOR_PROMPT_PATH={prompt_path})")
+    print(
+        f"[iterate] running: {' '.join(argv)} (with ZORVA_AUDITOR_PROMPT_PATH={prompt_path})"
+    )
     import os
+
     full_env = {**os.environ, **env_overlay}
     subprocess.run(argv, check=True, cwd=PROJECT_ROOT, env=full_env)
 
@@ -83,10 +93,15 @@ def _run_audit(prompt_path: Path, val_path: Path, out_path: Path) -> None:
 def _score(val_path: Path, preds_path: Path, scores_path: Path) -> dict:
     """Score predictions using the per-rule scorer (A2)."""
     cmd = [
-        sys.executable, "-m", "ai_billing_audit.eval.per_rule_scorer",
-        "--val", str(val_path),
-        "--preds", str(preds_path),
-        "--out", str(scores_path),
+        sys.executable,
+        "-m",
+        "ai_billing_audit.eval.per_rule_scorer",
+        "--val",
+        str(val_path),
+        "--preds",
+        str(preds_path),
+        "--out",
+        str(scores_path),
     ]
     print(f"[iterate] scoring: {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=PROJECT_ROOT)
@@ -152,18 +167,32 @@ def _append_log(log_path: Path, entry: dict) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--val", required=True, type=Path,
-                   help="Path to the val or holdout JSON")
-    p.add_argument("--base-prompt", required=True, type=Path,
-                   help="Path to the starting prompt (e.g. prompts/v12/auditor_prompt.txt)")
-    p.add_argument("--rounds", type=int, default=5,
-                   help="Max iteration rounds (default 5)")
-    p.add_argument("--n-variations", type=int, default=5,
-                   help="Number of MIPROv2 prompt variations per round")
+    p.add_argument(
+        "--val", required=True, type=Path, help="Path to the val or holdout JSON"
+    )
+    p.add_argument(
+        "--base-prompt",
+        required=True,
+        type=Path,
+        help="Path to the starting prompt (e.g. prompts/v12/auditor_prompt.txt)",
+    )
+    p.add_argument(
+        "--rounds", type=int, default=5, help="Max iteration rounds (default 5)"
+    )
+    p.add_argument(
+        "--n-variations",
+        type=int,
+        default=5,
+        help="Number of MIPROv2 prompt variations per round",
+    )
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     p.add_argument("--log", type=Path, default=DEFAULT_LOG_PATH)
-    p.add_argument("--target-recall", type=float, default=0.70,
-                   help="Acceptance: stop when R >= this")
+    p.add_argument(
+        "--target-recall",
+        type=float,
+        default=0.70,
+        help="Acceptance: stop when R >= this",
+    )
     p.add_argument("--seed", type=int, default=1729)
     args = p.parse_args(argv)
 
@@ -174,13 +203,20 @@ def main(argv: list[str] | None = None) -> int:
     base_pred = args.out_dir / f"round{base_v}" / "predictions.jsonl"
     base_pred.parent.mkdir(parents=True, exist_ok=True)
     _run_audit(args.base_prompt, args.val, base_pred)
-    base_scores = _score(args.val, base_pred,
-                         args.out_dir / f"round{base_v}" / "scores.json")
+    base_scores = _score(
+        args.val, base_pred, args.out_dir / f"round{base_v}" / "scores.json"
+    )
     base_summary = _summarize(base_scores)
-    _append_log(args.log, {
-        "round": base_v, "phase": "baseline", "prompt": str(args.base_prompt),
-        "metrics": base_summary, "ts": int(time.time()),
-    })
+    _append_log(
+        args.log,
+        {
+            "round": base_v,
+            "phase": "baseline",
+            "prompt": str(args.base_prompt),
+            "metrics": base_summary,
+            "ts": int(time.time()),
+        },
+    )
     print(f"[iterate] baseline: {base_summary}")
 
     best_f1 = base_summary["f1"]
@@ -190,13 +226,17 @@ def main(argv: list[str] | None = None) -> int:
 
     for r in range(1, args.rounds + 1):
         if best_recall >= args.target_recall:
-            print(f"[iterate] R={best_recall:.3f} >= target {args.target_recall}; stopping")
+            print(
+                f"[iterate] R={best_recall:.3f} >= target {args.target_recall}; stopping"
+            )
             break
         if no_improve_count >= 2:
             print("[iterate] no improvement for 2 rounds; stopping")
             break
 
-        variations = _iterate_with_miprov2(args.base_prompt, args.n_variations, args.seed)
+        variations = _iterate_with_miprov2(
+            args.base_prompt, args.n_variations, args.seed
+        )
         round_best_f1 = best_f1
         round_best_v = None
 
@@ -206,13 +246,20 @@ def main(argv: list[str] | None = None) -> int:
             pred_path = args.out_dir / f"round{v}" / "predictions.jsonl"
             pred_path.parent.mkdir(parents=True, exist_ok=True)
             _run_audit(prompt_path, args.val, pred_path)
-            scores = _score(args.val, pred_path,
-                            args.out_dir / f"round{v}" / "scores.json")
+            scores = _score(
+                args.val, pred_path, args.out_dir / f"round{v}" / "scores.json"
+            )
             summary = _summarize(scores)
-            _append_log(args.log, {
-                "round": v, "phase": "variation", "prompt": str(prompt_path),
-                "metrics": summary, "ts": int(time.time()),
-            })
+            _append_log(
+                args.log,
+                {
+                    "round": v,
+                    "phase": "variation",
+                    "prompt": str(prompt_path),
+                    "metrics": summary,
+                    "ts": int(time.time()),
+                },
+            )
             print(f"[iterate] round {r} variation {i}: v{v} → {summary}")
             if summary["f1"] > round_best_f1:
                 round_best_f1 = summary["f1"]

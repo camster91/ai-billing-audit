@@ -44,6 +44,7 @@ What's intentionally NOT in v0
   narrowly focused; v2 will consolidate)
 - Foreign-language letters (Spanish for MX/CO is the next round)
 """
+
 from __future__ import annotations
 
 import json
@@ -52,12 +53,15 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
+from .clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 from .zorva_context import (
-    MARKETS,
     appeal_recipient_for,
-    ZORVA_VISION,
 )
 
 
@@ -146,41 +150,41 @@ Do not include any text outside the JSON object.
 # mapping is keyed by rule_id (the same rule_id the auditor emits).
 _BUILTIN_RULES: dict[str, str] = {
     "MOD-25": "Modifier -25 is appropriately appended to the E/M "
-              "code when a significant, separately identifiable "
-              "evaluation is performed on the same day as a "
-              "procedure. The clinical documentation must support "
-              "the additional E/M work; the note here documents "
-              "the separate history, exam, and medical decision "
-              "making that drove the modifier.",
+    "code when a significant, separately identifiable "
+    "evaluation is performed on the same day as a "
+    "procedure. The clinical documentation must support "
+    "the additional E/M work; the note here documents "
+    "the separate history, exam, and medical decision "
+    "making that drove the modifier.",
     "DX_LINKAGE_REQUIRED": "Each billed procedure code must be "
-              "linked to at least one ICD-10-CM diagnosis code "
-              "that establishes medical necessity. The clinical "
-              "documentation supports a reportable condition "
-              "that was not linked to the billed procedure on the "
-              "original claim; we are appending the diagnosis code "
-              "to establish the linkage on appeal.",
+    "linked to at least one ICD-10-CM diagnosis code "
+    "that establishes medical necessity. The clinical "
+    "documentation supports a reportable condition "
+    "that was not linked to the billed procedure on the "
+    "original claim; we are appending the diagnosis code "
+    "to establish the linkage on appeal.",
     "E/M-LEVEL": "The E/M level billed is supported by the "
-              "documentation of medical decision making (MDM). "
-              "The note documents [problem complexity], "
-              "[data reviewed], and [risk of complications] "
-              "consistent with the level billed.",
+    "documentation of medical decision making (MDM). "
+    "The note documents [problem complexity], "
+    "[data reviewed], and [risk of complications] "
+    "consistent with the level billed.",
     "NCCI": "The National Correct Coding Initiative (NCCI) "
-              "allows separate payment for two procedures when "
-              "the documentation supports that they are "
-              "clinically distinct. The note documents the "
-              "distinct clinical rationale for each procedure.",
+    "allows separate payment for two procedures when "
+    "the documentation supports that they are "
+    "clinically distinct. The note documents the "
+    "distinct clinical rationale for each procedure.",
     "TIME": "Time-based codes (counselling, prolonged services) "
-              "require explicit documentation of the time spent. "
-              "The note documents [X] minutes of counselling on "
-              "[topic], satisfying the threshold for the code "
-              "billed.",
+    "require explicit documentation of the time spent. "
+    "The note documents [X] minutes of counselling on "
+    "[topic], satisfying the threshold for the code "
+    "billed.",
     "MED-NEC": "Medical necessity is established when the "
-              "documentation supports that the service was "
-              "reasonable and necessary for the diagnosis or "
-              "treatment of the patient's condition. The clinical "
-              "note documents the patient's presentation, the "
-              "diagnostic workup, and the management plan that "
-              "establish necessity.",
+    "documentation supports that the service was "
+    "reasonable and necessary for the diagnosis or "
+    "treatment of the patient's condition. The clinical "
+    "note documents the patient's presentation, the "
+    "diagnostic workup, and the management plan that "
+    "establish necessity.",
 }
 
 _DEFAULT_RULE_CITATION = (
@@ -226,7 +230,9 @@ def _format_billed_codes(claim: dict[str, Any] | None) -> str:
     return " · ".join(parts)
 
 
-def _pseudonymize_patient(claim: dict[str, Any] | None, encounter: dict[str, Any]) -> str:
+def _pseudonymize_patient(
+    claim: dict[str, Any] | None, encounter: dict[str, Any]
+) -> str:
     """Return the salted SHA-256 pseudonym for the patient identifier.
 
     Mirrors the audit_actions.patient_hash logic so the letter
@@ -246,11 +252,7 @@ def _pseudonymize_patient(claim: dict[str, Any] | None, encounter: dict[str, Any
     """
     from .patient_hash import hash_patient_id
 
-    seed = (
-        (claim or {}).get("encounter_id")
-        or encounter.get("encounter_id")
-        or ""
-    )
+    seed = (claim or {}).get("encounter_id") or encounter.get("encounter_id") or ""
     return hash_patient_id(seed)[:12]
 
 
@@ -262,13 +264,9 @@ def _scrub_phi(letter_markdown: str) -> str:
     the letter before sending. v1: replace with NER model.
     """
     # 10-digit US/CA-style numbers (NPI, health card, MRN)
-    letter_markdown = re.sub(
-        r"\b\d{10}\b", "[PATIENT_ID]", letter_markdown
-    )
+    letter_markdown = re.sub(r"\b\d{10}\b", "[PATIENT_ID]", letter_markdown)
     # 9-digit US SSN format
-    letter_markdown = re.sub(
-        r"\b\d{3}-\d{2}-\d{4}\b", "[SSN]", letter_markdown
-    )
+    letter_markdown = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN]", letter_markdown)
     # Email addresses
     letter_markdown = re.sub(
         r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", "[EMAIL]", letter_markdown
@@ -322,7 +320,7 @@ def build_appeal_prompt(
         f"Rule: {primary_rule_id or '(unspecified)'}\n"
         f"Severity: {finding.get('severity', 'unspecified')}\n"
         f"Suggested code: {finding.get('suggested_code', '—')}\n"
-        f"Evidence (verbatim from clinical note): \"{finding.get('quote', '')}\"\n"
+        f'Evidence (verbatim from clinical note): "{finding.get("quote", "")}"\n'
         f"Explanation: {finding.get('explanation', '')}"
     )
 
@@ -331,7 +329,9 @@ def build_appeal_prompt(
         compliance_law=compliance_law,
         appeal_recipient=recipient,
         patient_hash=_pseudonymize_patient(claim, encounter),
-        date_of_service=claim.get("date_of_service") or encounter.get("date_of_service") or "—",
+        date_of_service=claim.get("date_of_service")
+        or encounter.get("date_of_service")
+        or "—",
         billed_codes=_format_billed_codes(claim),
         provider_npi=claim.get("rendering_provider_npi") or encounter.get("NPI") or "—",
         denial_reason=denial_reason or "—",
@@ -343,7 +343,12 @@ def build_appeal_prompt(
 
 # The expected JSON shape the generator returns. Kept as a tuple
 # so the validation function can check it without an extra import.
-_REQUIRED_LETTER_KEYS = ("letter_markdown", "appeal_basis", "cited_rule_ids", "requested_action")
+_REQUIRED_LETTER_KEYS = (
+    "letter_markdown",
+    "appeal_basis",
+    "cited_rule_ids",
+    "requested_action",
+)
 
 
 def parse_appeal_response(raw: str) -> dict[str, Any] | None:
@@ -384,7 +389,10 @@ def parse_appeal_response(raw: str) -> dict[str, Any] | None:
     for key in _REQUIRED_LETTER_KEYS:
         if key not in parsed:
             return None
-    if not isinstance(parsed["letter_markdown"], str) or not parsed["letter_markdown"].strip():
+    if (
+        not isinstance(parsed["letter_markdown"], str)
+        or not parsed["letter_markdown"].strip()
+    ):
         return None
     if not isinstance(parsed["cited_rule_ids"], list):
         parsed["cited_rule_ids"] = []
@@ -442,8 +450,7 @@ def generate_appeal_letter(
         # rule citation is the resolved citation text.
         zctx = zorva_context or {}
         market = zctx.get("market") or "CA"
-        rule_id = (finding.get("rule_id") or
-                   (finding.get("rule_ids") or [None])[0])
+        rule_id = finding.get("rule_id") or (finding.get("rule_ids") or [None])[0]
         template_letter = (
             f"Re: Appeal of denied claim\n\n"
             f"To: {appeal_recipient_for(market)}\n\n"
@@ -543,8 +550,7 @@ def log_appeal_letter(
             "template_only": letter.get("template_only", False),
             "generated_at": letter.get("generated_at"),
         }
-        with _APPEAL_LOG.open("a") as f:
-            f.write(json.dumps(record) + "\n")
+        append_encrypted_json_record(_APPEAL_LOG, record)
     except OSError:
         # Don't crash the audit pipeline over a logging failure.
         pass
@@ -569,25 +575,10 @@ def read_appeal_letters(
     """
     if not _APPEAL_LOG.exists():
         return []
-    out: list[dict[str, Any]] = []
-    try:
-        with _APPEAL_LOG.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(row, dict):
-                    continue
-                if encounter_id and row.get("encounter_id") != encounter_id:
-                    continue
-                out.append(row)
-    except OSError:
-        return []
-    return out
+    rows = read_encrypted_json_records(_APPEAL_LOG)
+    if encounter_id is None:
+        return rows
+    return [row for row in rows if row.get("encounter_id") == encounter_id]
 
 
 # --- Appeal outcome tracking ---------------------------------------------
@@ -604,7 +595,12 @@ def read_appeal_letters(
 # hasn't responded yet (re-issued when the biller follows up).
 
 AppealOutcomeStatus = Literal[
-    "filed", "won", "lost", "withdrawn", "pending", "did_not_file",
+    "filed",
+    "won",
+    "lost",
+    "withdrawn",
+    "pending",
+    "did_not_file",
 ]
 
 
@@ -656,8 +652,7 @@ def log_appeal_outcome(outcome: AppealOutcome) -> None:
     """
     try:
         _LOGS_DIR.mkdir(parents=True, exist_ok=True)
-        with _APPEAL_OUTCOMES_LOG.open("a") as f:
-            f.write(json.dumps(asdict(outcome)) + "\n")
+        append_encrypted_json_record(_APPEAL_OUTCOMES_LOG, asdict(outcome))
     except OSError:
         pass
 
@@ -677,42 +672,48 @@ def read_appeal_outcomes(
     if not _APPEAL_OUTCOMES_LOG.exists():
         return out
     try:
-        with _APPEAL_OUTCOMES_LOG.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    raw = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(raw, dict):
-                    continue
-                # Required fields must be present and non-empty —
-                # rows missing them are not valid outcome records
-                # and would corrupt any aggregation that joins on
-                # appeal_id or encounter_id.
-                if not raw.get("appeal_id") or not raw.get("encounter_id"):
-                    continue
-                if not raw.get("timestamp") or not raw.get("status"):
-                    continue
-                try:
-                    outcome = AppealOutcome(
-                        appeal_id=str(raw["appeal_id"]),
-                        encounter_id=str(raw["encounter_id"]),
-                        status=str(raw["status"]),
-                        timestamp=str(raw["timestamp"]),
-                        biller_id=raw.get("biller_id"),
-                        notes=str(raw.get("notes", "")),
-                    )
-                except Exception:
-                    continue
-                if encounter_id and outcome.encounter_id != encounter_id:
-                    continue
-                out.append(outcome)
+        for raw in read_encrypted_json_records(_APPEAL_OUTCOMES_LOG):
+            # Required fields must be present and non-empty —
+            # rows missing them are not valid outcome records.
+            if not raw.get("appeal_id") or not raw.get("encounter_id"):
+                continue
+            if not raw.get("timestamp") or not raw.get("status"):
+                continue
+            status = str(raw["status"])
+            if status not in {
+                "filed",
+                "won",
+                "lost",
+                "withdrawn",
+                "pending",
+                "did_not_file",
+            }:
+                continue
+            try:
+                outcome = AppealOutcome(
+                    appeal_id=str(raw["appeal_id"]),
+                    encounter_id=str(raw["encounter_id"]),
+                    status=cast(AppealOutcomeStatus, status),
+                    timestamp=str(raw["timestamp"]),
+                    biller_id=raw.get("biller_id"),
+                    notes=str(raw.get("notes", "")),
+                )
+            except Exception:
+                continue
+            if encounter_id and outcome.encounter_id != encounter_id:
+                continue
+            out.append(outcome)
     except OSError:
         return out
     return out
+
+
+def migrate_appeal_logs() -> tuple[int, int]:
+    """Encrypt legacy appeal-letter and appeal-outcome logs in place."""
+    return (
+        migrate_plaintext_jsonl(_APPEAL_LOG),
+        migrate_plaintext_jsonl(_APPEAL_OUTCOMES_LOG),
+    )
 
 
 def appeal_win_rate() -> dict[str, Any]:

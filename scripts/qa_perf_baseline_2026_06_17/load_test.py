@@ -31,6 +31,7 @@ Notes on the pipeline shape (verified 2026-06-17):
 
 Raw results land in run_*.json files alongside this script.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,8 +50,8 @@ BASE_URL = os.environ.get("ABA_BASE_URL", "https://ai-billing-audit.ashbi.ca")
 SUBMIT_PATH = "/encounters/upload/submit"
 JOB_PATH_TMPL = "/encounters/upload/jobs/{job_id}"
 
-POLL_INTERVAL_S = 0.05       # 50ms between status polls per job
-POLL_DEADLINE_S = 120.0      # a single job gets 2min before we call it stuck
+POLL_INTERVAL_S = 0.05  # 50ms between status polls per job
+POLL_DEADLINE_S = 120.0  # a single job gets 2min before we call it stuck
 
 
 def make_paste_row(seq: int) -> dict:
@@ -141,7 +142,9 @@ def submit_one(seq: int, *, session: requests.Session) -> dict:
     }
 
 
-def poll_job(job_id: str, *, session: requests.Session, deadline_s: float = POLL_DEADLINE_S) -> dict:
+def poll_job(
+    job_id: str, *, session: requests.Session, deadline_s: float = POLL_DEADLINE_S
+) -> dict:
     """Poll /encounters/upload/jobs/<id> until terminal status. Return the final record."""
     url = f"{BASE_URL}{JOB_PATH_TMPL.format(job_id=job_id)}"
     t0 = time.monotonic()
@@ -192,7 +195,6 @@ def poll_job(job_id: str, *, session: requests.Session, deadline_s: float = POLL
 
 def per_request_record(submit: dict, job: dict) -> dict:
     """Compute per-stage timings for a single accepted job."""
-    submitted = submit.get("submit_responded_at")
     sa = job.get("submitted_at")
     sta = job.get("started_at")
     fa = job.get("finished_at")
@@ -231,11 +233,19 @@ def percentile(values: list[float], p: float) -> float:
 
 def summarize(records: list[dict]) -> dict:
     """Build the per-stage summary for a list of per-request records."""
-    ok_records = [r for r in records if r.get("ok") and r.get("end_to_end_ms") is not None]
+    ok_records = [
+        r for r in records if r.get("ok") and r.get("end_to_end_ms") is not None
+    ]
     end_to_ends = [r["end_to_end_ms"] for r in ok_records]
-    queue_waits = [r["queue_wait_ms"] for r in ok_records if r["queue_wait_ms"] is not None]
+    queue_waits = [
+        r["queue_wait_ms"] for r in ok_records if r["queue_wait_ms"] is not None
+    ]
     runners = [r["runner_ms"] for r in ok_records if r["runner_ms"] is not None]
-    submits = [r["submit_latency_ms"] for r in records if r.get("submit_latency_ms") is not None]
+    submits = [
+        r["submit_latency_ms"]
+        for r in records
+        if r.get("submit_latency_ms") is not None
+    ]
     n = len(records)
     n_ok = len(ok_records)
     n_failed = n - n_ok
@@ -274,16 +284,22 @@ def summarize(records: list[dict]) -> dict:
     return summary
 
 
-def run_shape(shape_name: str, n: int, *, parallel: bool, run_id: str, out_dir: Path) -> dict:
+def run_shape(
+    shape_name: str, n: int, *, parallel: bool, run_id: str, out_dir: Path
+) -> dict:
     """Run one load shape. Returns the run record (per-request + summary + wall clock)."""
-    print(f"\n=== {shape_name}: n={n} parallel={parallel} run_id={run_id} ===", flush=True)
+    print(
+        f"\n=== {shape_name}: n={n} parallel={parallel} run_id={run_id} ===", flush=True
+    )
     session = requests.Session()
     started_wall = time.monotonic()
 
     submit_results: list[dict] = []
     if parallel:
         with ThreadPoolExecutor(max_workers=n) as pool:
-            futures = [pool.submit(submit_one, i, session=session) for i in range(1, n + 1)]
+            futures = [
+                pool.submit(submit_one, i, session=session) for i in range(1, n + 1)
+            ]
             for f in as_completed(futures):
                 submit_results.append(f.result())
     else:
@@ -294,7 +310,10 @@ def run_shape(shape_name: str, n: int, *, parallel: bool, run_id: str, out_dir: 
     submit_window_ms = (submit_done_wall - started_wall) * 1000.0
 
     successful_submits = [r for r in submit_results if r.get("ok")]
-    print(f"  submit phase: {len(successful_submits)}/{n} accepted in {submit_window_ms:.0f}ms", flush=True)
+    print(
+        f"  submit phase: {len(successful_submits)}/{n} accepted in {submit_window_ms:.0f}ms",
+        flush=True,
+    )
     if not successful_submits:
         return {
             "shape": shape_name,
@@ -310,12 +329,17 @@ def run_shape(shape_name: str, n: int, *, parallel: bool, run_id: str, out_dir: 
     # Poll all jobs to terminal
     job_results: list[dict] = []
     with ThreadPoolExecutor(max_workers=min(32, n)) as pool:
-        futures = {r["job_id"]: pool.submit(poll_job, r["job_id"], session=session) for r in successful_submits}
+        futures = {
+            r["job_id"]: pool.submit(poll_job, r["job_id"], session=session)
+            for r in successful_submits
+        }
         for jid, f in futures.items():
             try:
                 job_results.append(f.result())
             except Exception as exc:
-                job_results.append({"job_id": jid, "ok": False, "error": f"poll_exception: {exc}"})
+                job_results.append(
+                    {"job_id": jid, "ok": False, "error": f"poll_exception: {exc}"}
+                )
 
     all_done_wall = time.monotonic()
     poll_window_ms = (all_done_wall - submit_done_wall) * 1000.0
@@ -328,7 +352,13 @@ def run_shape(shape_name: str, n: int, *, parallel: bool, run_id: str, out_dir: 
         sr = submit_by_id.get(jr["job_id"])
         if sr is None:
             # shouldn't happen, but keep the record for inspection
-            records.append({"ok": jr.get("ok", False), "error": "submit_record_missing", "job_id": jr["job_id"]})
+            records.append(
+                {
+                    "ok": jr.get("ok", False),
+                    "error": "submit_record_missing",
+                    "job_id": jr["job_id"],
+                }
+            )
             continue
         records.append(per_request_record(sr, jr))
 
@@ -382,11 +412,21 @@ def main() -> int:
 
     runs = []
     for shape_name, n, parallel in shapes:
-        runs.append(run_shape(shape_name, n, parallel=parallel, run_id=args.run_id, out_dir=out_dir))
+        runs.append(
+            run_shape(
+                shape_name, n, parallel=parallel, run_id=args.run_id, out_dir=out_dir
+            )
+        )
 
     print("\n=== aggregate across this invocation ===", flush=True)
     agg_path = out_dir / f"aggregate_{args.run_id}.json"
-    agg_path.write_text(json.dumps({"run_id": args.run_id, "base_url": BASE_URL, "runs": runs}, indent=2, default=str))
+    agg_path.write_text(
+        json.dumps(
+            {"run_id": args.run_id, "base_url": BASE_URL, "runs": runs},
+            indent=2,
+            default=str,
+        )
+    )
     print(f"  aggregate -> {agg_path}", flush=True)
 
     for r in runs:

@@ -48,6 +48,7 @@ shape — X12 is positional, CSV is header-keyed, and a CSV
 encounter can never become an 837P segment. Keeping the two
 ingest paths separate makes each one's test surface smaller.
 """
+
 from __future__ import annotations
 
 import csv
@@ -378,17 +379,17 @@ def normalize_row(row: dict[str, str], fmt: str) -> dict[str, Any]:
     # Modifiers and dx_codes are comma- or pipe-separated in most
     # PM exports. We split on comma or pipe and trim whitespace.
     modifiers_raw = _field("modifiers")
-    modifiers = [
-        m.strip()
-        for m in re.split(r"[,|;]", modifiers_raw)
-        if m.strip()
-    ] if modifiers_raw else []
+    modifiers = (
+        [m.strip() for m in re.split(r"[,|;]", modifiers_raw) if m.strip()]
+        if modifiers_raw
+        else []
+    )
     dx_codes_raw = _field("dx_codes")
-    dx_codes = [
-        d.strip()
-        for d in re.split(r"[,|;]", dx_codes_raw)
-        if d.strip()
-    ] if dx_codes_raw else []
+    dx_codes = (
+        [d.strip() for d in re.split(r"[,|;]", dx_codes_raw) if d.strip()]
+        if dx_codes_raw
+        else []
+    )
 
     # Build the CPT code the audit pipeline expects. The
     # canonical shape is ``["99213"]`` or ``["99213-25"]`` when a
@@ -557,9 +558,11 @@ def ingest_csv(
             job_id = getattr(job, "job_id", None) or (
                 job.get("job_id") if isinstance(job, dict) else None
             )
-            encounter_id = getattr(job, "encounter_id", None) or (
-                job.get("encounter_id") if isinstance(job, dict) else None
-            ) or encounter["encounter_id"]
+            encounter_id = (
+                getattr(job, "encounter_id", None)
+                or (job.get("encounter_id") if isinstance(job, dict) else None)
+                or encounter["encounter_id"]
+            )
             enqueued.append({"job_id": job_id or "", "encounter_id": encounter_id})
     out["accepted_count"] = accepted
     out["rejected_count"] = rejected

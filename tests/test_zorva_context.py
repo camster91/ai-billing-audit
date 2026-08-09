@@ -13,9 +13,9 @@ What's pinned
 * appeal_recipient_for: returns a sensible per-market string
 * MARKETS is the single source of truth — no duplicates elsewhere
 """
+
 from __future__ import annotations
 
-import pytest
 
 from ai_billing_audit import zorva_context
 
@@ -57,7 +57,9 @@ def test_infer_market_payer_id_colombia_prefix():
 def test_infer_market_health_number_heuristic():
     """9-12 digits default to CA (best-effort)."""
     assert zorva_context.infer_market(health_number="1234567890") == "CA"
-    assert zorva_context.infer_market(health_number="12345") == "CA"  # too short, default
+    assert (
+        zorva_context.infer_market(health_number="12345") == "CA"
+    )  # too short, default
 
 
 def test_infer_market_no_info_defaults_to_ca():
@@ -68,9 +70,7 @@ def test_infer_market_no_info_defaults_to_ca():
 
 
 def test_context_ca_ontario_has_billing_authority():
-    ctx = zorva_context.build_context_for_encounter(
-        country_code="CA", province="ON"
-    )
+    ctx = zorva_context.build_context_for_encounter(country_code="CA", province="ON")
     assert ctx["market"] == "CA"
     assert ctx["province"] == "ON"
     assert "OHIP" in ctx["billing_authority"]
@@ -80,17 +80,13 @@ def test_context_ca_ontario_has_billing_authority():
 
 
 def test_context_ca_alberta_has_billing_authority():
-    ctx = zorva_context.build_context_for_encounter(
-        country_code="CA", province="AB"
-    )
+    ctx = zorva_context.build_context_for_encounter(country_code="CA", province="AB")
     assert "AHCIP" in ctx["billing_authority"]
     assert "SOMB" in ctx["billing_authority"]
 
 
 def test_context_ca_bc_has_billing_authority():
-    ctx = zorva_context.build_context_for_encounter(
-        country_code="CA", province="BC"
-    )
+    ctx = zorva_context.build_context_for_encounter(country_code="CA", province="BC")
     assert "MSP" in ctx["billing_authority"]
 
 
@@ -124,15 +120,14 @@ def test_context_colombia_has_dian_compliance():
 def test_context_province_ignored_outside_canada():
     """Province is a CA concept; for US encounters it stays None."""
     ctx = zorva_context.build_context_for_encounter(
-        country_code="US", province="ON"  # province is irrelevant in US
+        country_code="US",
+        province="ON",  # province is irrelevant in US
     )
     assert ctx["province"] is None
 
 
 def test_context_province_normalized_uppercase():
-    ctx = zorva_context.build_context_for_encounter(
-        country_code="CA", province="on"
-    )
+    ctx = zorva_context.build_context_for_encounter(country_code="CA", province="on")
     assert ctx["province"] == "ON"
 
 
@@ -160,8 +155,9 @@ def test_context_empty_when_unclassifiable():
 
 
 def test_appeal_recipient_per_market():
-    assert "OHIP" in zorva_context.appeal_recipient_for("CA") or \
-           "Provincial" in zorva_context.appeal_recipient_for("CA")
+    assert "OHIP" in zorva_context.appeal_recipient_for(
+        "CA"
+    ) or "Provincial" in zorva_context.appeal_recipient_for("CA")
     assert "Payer" in zorva_context.appeal_recipient_for("US")
     assert "IMSS" in zorva_context.appeal_recipient_for("MX")
     assert "EPS" in zorva_context.appeal_recipient_for("CO")

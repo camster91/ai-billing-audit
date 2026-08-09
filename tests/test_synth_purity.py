@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import ast
 import importlib
-import sys
 from pathlib import Path
 
 import pytest
@@ -111,10 +110,7 @@ def _is_llm_import(name: str) -> bool:
     """
     if name in LLM_MODULE_NAMES:
         return True
-    return any(
-        name == m or name.startswith(m + ".")
-        for m in LLM_MODULE_NAMES
-    )
+    return any(name == m or name.startswith(m + ".") for m in LLM_MODULE_NAMES)
 
 
 # ---------------------------------------------------------------------------
@@ -174,13 +170,11 @@ def test_synth_imports_only_stdlib_and_intra_package():
         third_party = [
             name.split(".")[0]
             for name in imports
-            if not name.startswith("ai_billing_audit")
-            and not name.startswith(".")
+            if not name.startswith("ai_billing_audit") and not name.startswith(".")
         ]
         leaked = sorted(set(third_party) & forbidden_third_party)
         assert not leaked, (
-            f"{entry} imports forbidden third-party modules: {leaked}\n"
-            f"file: {path}"
+            f"{entry} imports forbidden third-party modules: {leaked}\nfile: {path}"
         )
 
 
@@ -203,6 +197,7 @@ def test_synth_imports_only_stdlib_and_intra_package():
 def test_generate_suite_smoke():
     """generate_suite is callable end-to-end and returns 6 encounters."""
     from ai_billing_audit.synth_agent import generate_suite
+
     suite = generate_suite(seed=42)
     assert len(suite) == 6
     for enc in suite:

@@ -12,10 +12,10 @@ For each parent task it:
   - Optionally adds a comment on the parent task describing the decomposition
   - Optionally re-blocks the parent with a sharper reason
 """
+
 from __future__ import annotations
 
 import argparse
-import os
 import sqlite3
 import sys
 import time
@@ -95,7 +95,9 @@ def link_to_parent(
     )
 
 
-def add_comment(cur: sqlite3.Cursor, task_id: str, body: str, author: str = "hermes") -> None:
+def add_comment(
+    cur: sqlite3.Cursor, task_id: str, body: str, author: str = "hermes"
+) -> None:
     cur.execute(
         """
         INSERT INTO task_comments (task_id, author, body, created_at)
@@ -120,10 +122,20 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("board")
     p.add_argument("--decompose", action="append", help="parent id (repeatable)")
-    p.add_argument("--subtask", action="append", default=[], help="sub-task title (repeatable)")
-    p.add_argument("--body", action="append", default=[], help="sub-task body (matches subtask order)")
+    p.add_argument(
+        "--subtask", action="append", default=[], help="sub-task title (repeatable)"
+    )
+    p.add_argument(
+        "--body",
+        action="append",
+        default=[],
+        help="sub-task body (matches subtask order)",
+    )
     p.add_argument("--priority", type=int, default=3)
-    p.add_argument("--from-json", help="path to JSON list of {parent, title, body, priority, status}")
+    p.add_argument(
+        "--from-json",
+        help="path to JSON list of {parent, title, body, priority, status}",
+    )
     p.add_argument("--board-default", help="when using --from-json, board name")
     p.add_argument("--status", default="ready", choices=["ready", "blocked", "todo"])
     p.add_argument("--comment", help="parent comment describing decomposition")
@@ -133,6 +145,7 @@ def main() -> None:
 
     if args.from_json:
         import json as _json
+
         items = _json.loads(Path(args.from_json).read_text())
         args.board = args.board_default or args.board
         ops: list[tuple[str, str, str, int, str]] = []
@@ -150,7 +163,9 @@ def main() -> None:
         if not args.decompose:
             sys.exit("--decompose required when not using --from-json")
         if len(args.subtask) != len(args.decompose):
-            sys.exit(f"--subtask count {len(args.subtask)} != --decompose count {len(args.decompose)}")
+            sys.exit(
+                f"--subtask count {len(args.subtask)} != --decompose count {len(args.decompose)}"
+            )
         ops = [
             (pid, t, b or f"Decomposed from {pid}", args.priority, args.status)
             for pid, t, b in zip(args.decompose, args.subtask, args.body)
@@ -167,7 +182,9 @@ def main() -> None:
         if args.dry_run:
             print(f"[dry] {args.board} {parent_id} -> sub: {title}")
             continue
-        child_id = create_subtask(cur, parent, title, body, priority=priority, status=status)
+        child_id = create_subtask(
+            cur, parent, title, body, priority=priority, status=status
+        )
         link_to_parent(cur, parent_id, child_id, "decomposes")
         print(f"{args.board}\t{parent_id}\t->\t{child_id}\t{title}")
 

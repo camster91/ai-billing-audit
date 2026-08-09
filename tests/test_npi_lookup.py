@@ -13,13 +13,12 @@ What's pinned
 * Found -> email returned, cache populated
 * Cache file is corrupted -> treated as empty cache
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 from ai_billing_audit.doctor_email import doctor_email_for_provider
 
@@ -35,13 +34,15 @@ def _mock_response(payload: dict, status: int = 200) -> MagicMock:
 
 def test_cache_hit_no_http_call(tmp_path, monkeypatch):
     """If the NPI is in the cache, no HTTP call is made."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     cache_path = tmp_path / "npi_email_cache.json"
-    cache_path.write_text(json.dumps({
-        "1234567890": "dr.cached@example.com",
-    }))
+    cache_path.write_text(
+        json.dumps(
+            {
+                "1234567890": "dr.cached@example.com",
+            }
+        )
+    )
 
     # Mock urlopen — if it's called, the test fails.
     mock_urlopen = MagicMock()
@@ -54,9 +55,8 @@ def test_cache_hit_no_http_call(tmp_path, monkeypatch):
 def test_network_error_returns_none(tmp_path, monkeypatch):
     """Network errors don't crash; we get None."""
     import urllib.error
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     mock_urlopen = MagicMock(side_effect=urllib.error.URLError("connection refused"))
     with patch("urllib.request.urlopen", mock_urlopen):
         result = doctor_email_for_provider("1234567890")
@@ -65,9 +65,7 @@ def test_network_error_returns_none(tmp_path, monkeypatch):
 
 def test_not_found_returns_none(tmp_path, monkeypatch):
     """NPI not in registry -> None."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     payload = {"results": []}
     mock_urlopen = MagicMock(return_value=_mock_response(payload))
     with patch("urllib.request.urlopen", mock_urlopen):
@@ -77,20 +75,20 @@ def test_not_found_returns_none(tmp_path, monkeypatch):
 
 def test_found_returns_email(tmp_path, monkeypatch):
     """Found NPI -> email returned and cached for next time."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     payload = {
-        "results": [{
-            "addresses": [
-                {
-                    "address_purpose": "MAILING",
-                    "email": "dr.smith@example.com",
-                },
-                # Non-mailing addresses should be skipped
-                {"address_purpose": "LOCATION", "email": "ignored@example.com"},
-            ],
-        }]
+        "results": [
+            {
+                "addresses": [
+                    {
+                        "address_purpose": "MAILING",
+                        "email": "dr.smith@example.com",
+                    },
+                    # Non-mailing addresses should be skipped
+                    {"address_purpose": "LOCATION", "email": "ignored@example.com"},
+                ],
+            }
+        ]
     }
     mock_urlopen = MagicMock(return_value=_mock_response(payload))
     with patch("urllib.request.urlopen", mock_urlopen):
@@ -106,15 +104,15 @@ def test_found_returns_email(tmp_path, monkeypatch):
 
 def test_no_mailing_address_returns_none(tmp_path, monkeypatch):
     """Provider has addresses but none are MAILING -> None."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     payload = {
-        "results": [{
-            "addresses": [
-                {"address_purpose": "LOCATION", "email": "ignored@example.com"},
-            ],
-        }]
+        "results": [
+            {
+                "addresses": [
+                    {"address_purpose": "LOCATION", "email": "ignored@example.com"},
+                ],
+            }
+        ]
     }
     mock_urlopen = MagicMock(return_value=_mock_response(payload))
     with patch("urllib.request.urlopen", mock_urlopen):
@@ -124,16 +122,16 @@ def test_no_mailing_address_returns_none(tmp_path, monkeypatch):
 
 def test_corrupt_cache_treated_as_empty(tmp_path, monkeypatch):
     """A corrupt cache file shouldn't crash the lookup."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     cache_path = tmp_path / "npi_email_cache.json"
     cache_path.write_text("not valid json {")
 
     # Should fall back to making the HTTP call
-    payload = {"results": [{"addresses": [
-        {"address_purpose": "MAILING", "email": "dr.x@example.com"}
-    ]}]}
+    payload = {
+        "results": [
+            {"addresses": [{"address_purpose": "MAILING", "email": "dr.x@example.com"}]}
+        ]
+    }
     mock_urlopen = MagicMock(return_value=_mock_response(payload))
     with patch("urllib.request.urlopen", mock_urlopen):
         result = doctor_email_for_provider("1234567890")

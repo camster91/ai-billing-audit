@@ -1,132 +1,81 @@
 # Deployment architecture
 
-> **Operational status:** This document contains historical architecture notes
-> and decision context. Use [`docs/OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md)
-> for the current repository-backed command and safety summary. Neither file
-> proves that a live host matches the checked-in configuration.
+This document describes the checked-in deployment topology. It does not prove
+that a public host is running the same revision. A release operator must verify
+the deployed revision, trusted HTTPS, health endpoints, database migration,
+provider credentials, and user workflows after every authorized deployment.
 
-> Captured 2026-06-24 after the first VPS deploy. The two sides of
-> Zorva are deployed separately; the marketing site is not yet wired
-> up to the deploy pipeline. See the audit task
-> `zorva-post-deploy-2026-06-24 / t_c63938d1` for the gap.
+## Applications
 
-This repo ships two distinct applications:
+| Side | Location | Repository-backed deployment path | Live-state claim |
+| --- | --- | --- | --- |
+| FastAPI auditor and worker | `src/ai_billing_audit/`, root `Dockerfile`, `docker-compose.yml` | `deploy-to-vps.sh` and the API/worker services | No current live revision is established by this repository. |
+| Next.js billing portal | `apps/portal/` | Portal image, one-shot `portal-migrate` service, PostgreSQL, and portal service in `docker-compose.yml` | No current public portal deployment is established by this repository. |
 
-| Side | What it is | Location | Status |
-| ---- | ---------- | -------- | ------ |
-| **FastAPI / API** | The auditor, denial-risk scorer, missed-revenue detector, SOMB fees, hash-chained audit trail, demo dashboard. | repo root (`src/ai_billing_audit/`, `Dockerfile`, `docker-compose.yml`) | **Deployed** to `https://ai-billing-audit.ashbi.ca` via `deploy-to-vps.sh` |
-| **Next.js marketing portal** | The user-facing marketing site — hero ("Find the revenue..."), `/pricing` with CAD tiers, `/what-zorva-finds` with 8 finding cards, `/security` controls matrix, `/robots.txt` with split rules, plus `/contact`, `/pilot`, `/how-it-works`, etc. | `apps/portal/` (Next.js 15 + Tailwind + shadcn) | **Built locally**, **not deployed** — the rsync step in `deploy-to-vps.sh` excludes `apps/` |
+The applications have separate runtimes and databases. They may share a host
+and edge proxy, but a successful local build does not establish that either
+application is publicly deployed.
 
-## Why the gap exists
+## Portal database contract
 
-The VPS deploy (`deploy-to-vps.sh`) rsyncs the FastAPI source tree to
-`/opt/projects/ai-billing-audit/` on the host, then `docker compose
-build` + `up -d` runs the four services (api, worker, postgres,
-caddy). The marketing portal in `apps/portal/` is a separate Next.js
-15 application with its own build pipeline (`pnpm install` +
-`pnpm build`) and a different runtime (Node.js + a Prisma-managed
-SQLite DB). It requires its own port (the dev server runs on 3000,
-the production build on 3000 or 3020 depending on config), its own
-Traefik router, and its own upstream — it does not sit behind the
-FastAPI `/api` routes.
+- SQLite is supported for local development and tests.
+- Production mode requires a PostgreSQL `DATABASE_URL` and fails closed for a
+  missing, SQLite, or unsupported URL.
+- `pnpm prisma:generate` generates both the development SQLite client and the
+  PostgreSQL client used in production.
+- `pnpm prisma:migrate:deploy:postgresql` derives the PostgreSQL schema and
+  applies the checked-in migration history.
+- Docker Compose waits for PostgreSQL health and a successful
+  `portal-migrate` completion before starting the portal.
 
-The deploy script explicitly excludes `apps/` from the rsync:
+The first authorized rollout must back up any existing production data, test
+the migration against a disposable copy, apply the migration, and confirm the
+expected schema before traffic is switched.
 
+## Local release gates
+
+Run the repository gates before creating a release candidate:
+
+```bash
+python -m pytest
+ruff check .
+ruff format --check .
+mypy src/ai_billing_audit
+
+cd apps/portal
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm test:database-runtime
+pnpm build
 ```
---exclude='apps/'
-```
 
-so even the marketing-side source isn't on the VPS host, let alone
-running. There is no second service in `docker-compose.yml` for the
-Next.js app.
+The portal production build requires a syntactically valid PostgreSQL URL for
+Prisma generation. It does not need a reachable database until migration or a
+database-backed runtime path is exercised.
 
-## What lives at `https://ai-billing-audit.ashbi.ca` today
+## Production and operator gates
 
-Only the FastAPI app. The HTML at `/` is the demo dashboard
-rendered by the FastAPI templates (not the polished Next.js
-marketing pages). Anyone landing on the public URL right now sees
-the working dashboard, not the marketing pitch.
+Local validation cannot clear these gates:
 
-## The marketing site's current state
+- GitHub Actions must be enabled and the required workflows must pass on the
+  exact release revision.
+- Production secrets must be supplied and validated without committing them:
+  auth secret, PostgreSQL credentials, Stripe credentials/webhook secret,
+  Resend credentials, and any selected LLM-provider credentials.
+- Payment, email, authentication, webhook, legal/compliance, backup/restore,
+  and rollback workflows require authorized staging or production validation.
+- The edge router, DNS, trusted certificate, public health/readiness endpoint,
+  reported application version, desktop/mobile workflows, and browser console
+  must be checked after deployment.
 
-`apps/portal/` is fully built and tested locally. The route tree
-includes:
+Do not infer production readiness from a container build, a local test pass, or
+historical deployment notes.
 
-- `/` — marketing hero, "Find the revenue..." pitch
-- `/pricing` — three CAD tiers ($499 / $1,499 / $2,999)
-- `/what-zorva-finds` — 8 finding cards
-- `/security` — controls matrix
-- `/how-it-works`, `/compare`, `/case-studies`, `/careers`
-- `/pilot`, `/contact` — lead-capture forms
-- `/robots.ts` — split rules (allows crawlers on marketing,
-  disallows on portal)
-- `/dashboard`, `/billing`, `/encounters`, `/findings`, `/settings`,
-  `/team` — authenticated portal pages (separate from the FastAPI
-  dashboard; would consume the FastAPI `/api/...` endpoints)
-- `/portal-nav.tsx` — the auth-aware nav
+## Related operations material
 
-It depends on `@auth/prisma-adapter`, `@prisma/adapter-better-sqlite3`,
-and a local SQLite file for its own auth session store. None of that
-is wired into the current docker-compose stack.
-
-## Possible paths to close the gap
-
-Three approaches, ranked by how clean they are:
-
-1. **Second service in docker-compose.yml.** Add a `portal` service
-   that builds `apps/portal/` (multi-stage Dockerfile: `pnpm
-   install` → `pnpm build` → `next start` on port 3020), expose
-   `127.0.0.1:3020` on the host loopback, and add a Traefik router
-   for `portal.ai-billing-audit.ashbi.ca` (or a path prefix on the
-   existing host). Keep the FastAPI dashboard at the apex or under
-   `/app/`. Pros: single repo, single deploy script. Cons: the
-   Next.js build (pnpm + Prisma generate) needs to run inside the
-   Docker build, which is slower than the current FastAPI-only
-   image; SQLite + Prisma in a container needs a named volume.
-
-2. **Static export of the marketing pages only.** Run
-   `pnpm build` + `next export` for just the marketing routes
-   (`/`, `/pricing`, `/what-zorva-finds`, `/security`,
-   `/how-it-works`, `/compare`, `/careers`, `/robots.txt`) and
-   serve the static `out/` directory via Traefik's file provider
-   or a tiny `caddy file_server` block. The authenticated portal
-   routes (`/dashboard`, `/billing`, `/encounters`, ...) move to a
-   separate `portal.ai-billing-audit.ashbi.ca` host or stay
-   un-deployed for now. Pros: no Node runtime needed on the VPS,
-   fastest cold-start, smallest image. Cons: dynamic routes (auth,
-   contact form, lead capture) become client-only and need a
-   small API for any server actions; the portal's Prisma auth
-   store needs to either move to the FastAPI Postgres or be
-   dropped.
-
-3. **Move `apps/portal/` to a separate repo (`camster91/zorva-web`)
-   and deploy independently.** The marketing site gets its own
-   CI/CD, its own Vercel/Hosting account, its own preview deploys
-   per PR. Pros: cleanest separation of concerns, marketing
-   iteration speed decoupled from auditor release cadence.
-   Cons: two repos, two deploy pipelines, harder to keep the
-   pricing copy in sync with the auditor capabilities.
-
-The current kanban doesn't have an acceptance criterion for which
-path to take; this doc captures the trade-offs so the decision is
-explicit when picked up.
-
-## Until the gap is closed
-
-- The FastAPI dashboard at `/` is the only public surface.
-- The marketing site at `apps/portal/` runs locally for design
-  review (`cd apps/portal && pnpm dev`).
-- The 12-clinic prospect list (`docs/ALBERTA_PROSPECT_LIST.md`) gets
-  a demo URL pointing at the dashboard, with a footnote that the
-  marketing site is "coming soon".
-- All pricing copy, finding-card copy, and security-control copy is
-  reviewed against `apps/portal/` source, not against what is live.
-
-## Related
-
-- `deploy-to-vps.sh` — the FastAPI-only deploy script
-- `docker-compose.yml` — the four-service stack (no Next.js yet)
-- `apps/portal/package.json` — the marketing-side build config
-- `docs/PROJECT_AUDIT_2026-06-22.md` — the audit that surfaced the
-  marketing / API two-sided architecture
-- kanban: `zorva-post-deploy-2026-06-24 / t_c63938d1`
+- `docs/OPERATIONS_RUNBOOK.md` — command and operational safety summary
+- `deploy/README.md` — backup installation and restore guidance
+- `deploy-to-vps.sh` — FastAPI deployment entry point
+- `deploy-portal.sh` — portal deployment entry point
+- `docker-compose.yml` — local/host service topology and migration ordering

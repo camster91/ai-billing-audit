@@ -1,4 +1,5 @@
 """Tests for the encounter_detail page handling uploaded encounters."""
+
 from __future__ import annotations
 
 import json
@@ -7,12 +8,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ai_billing_audit import api as api_mod
 from ai_billing_audit.api import create_app
+from ai_billing_audit.clinical_note_storage import encrypt_phi
 
 
 class _Fixture:
     """Test fixture bag: app, log path, and a TestClient."""
+
     def __init__(self, app, log, client):
         self.app = app
         self.log = log
@@ -37,8 +39,13 @@ def fx(tmp_path, monkeypatch):
     return _Fixture(app, log, TestClient(app))
 
 
-def _write_log_row(log: Path, encounter_id: str, ran_via: str,
-                  audit_status: str = "ok", findings_count: int = 1):
+def _write_log_row(
+    log: Path,
+    encounter_id: str,
+    ran_via: str,
+    audit_status: str = "ok",
+    findings_count: int = 1,
+):
     row = {
         "job_id": f"job-{encounter_id}",
         "encounter_id": encounter_id,
@@ -55,14 +62,16 @@ def _write_log_row(log: Path, encounter_id: str, ran_via: str,
                     "quote": "Documentation lacks diagnosis linkage",
                     "explanation": "Test explanation",
                 }
-            ] if findings_count else [],
+            ]
+            if findings_count
+            else [],
             "summary": f"Test audit summary for {encounter_id}",
             "difficulty_tier": "HARD",
             "variant": "flagged",
         },
     }
-    with log.open("a") as f:
-        f.write(json.dumps(row) + "\n")
+    with log.open("ab") as f:
+        f.write(encrypt_phi(json.dumps(row).encode("utf-8")) + b"\n")
 
 
 def test_uploaded_encounter_returns_200_with_audit(fx):

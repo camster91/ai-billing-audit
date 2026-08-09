@@ -13,6 +13,7 @@ URL returned a generic white page. Added:
     some paths; the catch-all ensures the branded 404 always
     shows for marketing routes)
 """
+
 from __future__ import annotations
 
 import importlib
@@ -25,6 +26,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -38,7 +40,11 @@ def test_unknown_html_path_returns_branded_404(client):
     body = resp.text
     # Branded 404 page
     assert "404" in body
-    assert "not found" in body.lower() or "isn&#x2019;t here" in body or "isn’t here" in body
+    assert (
+        "not found" in body.lower()
+        or "isn&#x2019;t here" in body
+        or "isn’t here" in body
+    )
     # Extends base.html (topbar with brand SVG)
     assert 'aria-label="Zorva home"' in body
     # CTA buttons point at real pages

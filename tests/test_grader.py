@@ -35,7 +35,6 @@ from ai_billing_audit.grader import (  # noqa: E402
     build_messages,
     load_grader_config,
 )
-from ai_billing_audit.llm import LLMClient  # noqa: E402
 
 
 CONFIG_PATH = PROJECT_ROOT / "prompts" / DEFAULT_CONFIG_NAME
@@ -77,8 +76,16 @@ def test_resolve_prompt_path_rejects_missing_file(tmp_path):
 
 def test_build_messages_is_deterministic():
     prompt = "You are the grader."
-    pred = {"category": "missing_dx", "suggested_code": "R00.2", "quote": "palpitations"}
-    gt = {"category": "missing_dx", "suggested_code": "R00.2", "quote": "palpitations reported"}
+    pred = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": "palpitations",
+    }
+    gt = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": "palpitations reported",
+    }
     m1 = build_messages(pred, gt, prompt=prompt, context="enc-001")
     m2 = build_messages(pred, gt, prompt=prompt, context="enc-001")
     assert m1 == m2, "build_messages must be byte-identical for the same input"
@@ -107,7 +114,9 @@ def test_grader_pins_model_temperature_seed():
 
 
 def test_grader_grade_returns_typed_verdict():
-    fake = FakeLLM(json.dumps({"verdict": "match", "score": 0.9, "rationale": "all match"}))
+    fake = FakeLLM(
+        json.dumps({"verdict": "match", "score": 0.9, "rationale": "all match"})
+    )
     grader = Grader(llm=fake)
     v = grader.grade(
         {"category": "c", "suggested_code": "X", "quote": "q"},
@@ -142,8 +151,16 @@ def test_grader_rejects_out_of_range_score():
 
 def test_two_graders_produce_byte_identical_verdicts():
     canned = json.dumps({"verdict": "match", "score": 1.0, "rationale": "ok"})
-    sample_pred = {"category": "missing_dx", "suggested_code": "R00.2", "quote": "palpitations"}
-    sample_gt = {"category": "missing_dx", "suggested_code": "R00.2", "quote": "palpitations"}
+    sample_pred = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": "palpitations",
+    }
+    sample_gt = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": "palpitations",
+    }
     g1 = Grader(llm=FakeLLM(canned))
     g2 = Grader(llm=FakeLLM(canned))
     v1 = g1.grade(sample_pred, sample_gt, context="ctx")

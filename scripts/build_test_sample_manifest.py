@@ -39,6 +39,7 @@ authoritative encounter-id list).
 Run from the project root:
     python scripts/build_test_sample_manifest.py
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -110,8 +111,6 @@ def main() -> int:
             if not line:
                 continue
             sample_records.append(json.loads(line))
-    sample_ids = [r["encounter_id"] for r in sample_records]
-
     # Read both source splits.
     train = json.loads(TRAIN_PATH.read_text())
     val = json.loads(VAL_PATH.read_text())
@@ -163,9 +162,7 @@ def main() -> int:
         "test_sample_jsonl_sha256": _sha256_of(TEST_SAMPLE_PATH),
         "train_json_sha256": _sha256_of(TRAIN_PATH),
         "val_json_sha256": _sha256_of(VAL_PATH),
-        "category_distribution": dict(
-            sorted(cat_counter.items(), key=lambda x: -x[1])
-        ),
+        "category_distribution": dict(sorted(cat_counter.items(), key=lambda x: -x[1])),
         "entries": entries,
         "built_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

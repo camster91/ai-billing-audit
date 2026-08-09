@@ -17,14 +17,18 @@ Covers the three required behaviours from the task spec:
 Uses a tmp JSONL path so it never touches the production
 ``/app/logs/feedback.jsonl``.
 """
+
 from __future__ import annotations
 
-import importlib
-import json
 import sys
 from pathlib import Path
 
 import pytest
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    read_encrypted_json_records,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -133,6 +137,20 @@ def test_modify_entry_records_billers_override(store: FeedbackStore) -> None:
     assert r.modify_category == "documentation_gap"
 
 
+def test_feedback_log_encrypts_encounter_and_biller_note_at_rest(
+    store: FeedbackStore,
+) -> None:
+    entry = _entry(encounter_id="ENC-PHI-SECRET", finding_id="finding-secret")
+    entry.note = "Patient Jane Doe has E11.9"
+
+    store.append(entry)
+
+    stored = store._path.read_bytes()  # noqa: SLF001
+    assert b"ENC-PHI-SECRET" not in stored
+    assert b"Jane Doe" not in stored
+    assert store.read_all()[0].note == "Patient Jane Doe has E11.9"
+
+
 # ---------------------------------------------------------------------------
 # 2. chain verification
 # ---------------------------------------------------------------------------
@@ -152,11 +170,11 @@ def test_verify_chain_detects_mutated_signature(store: FeedbackStore) -> None:
 
     # Tamper with the middle row's signature in place.
     path = store._path  # noqa: SLF001 — test-internal
-    lines = path.read_text().splitlines()
-    row = json.loads(lines[1])
-    row["cryptographic_signature"] = "0" * 64
-    lines[1] = json.dumps(row)
-    path.write_text("\n".join(lines) + "\n")
+    rows = read_encrypted_json_records(path)
+    rows[1]["cryptographic_signature"] = "0" * 64
+    path.unlink()
+    for row in rows:
+        append_encrypted_json_record(path, row)
 
     assert store.verify_chain() is False
 
@@ -180,10 +198,14 @@ def test_chain_links_each_row_to_prior(store: FeedbackStore) -> None:
         [r.previous_signature for r in rows],
         [
             {
-                "event_id": r.event_id, "timestamp": r.timestamp,
-                "encounter_id": r.encounter_id, "finding_id": r.finding_id,
-                "action": r.action, "biller_id": r.biller_id,
-                "rule_id": r.rule_id, "category": r.category,
+                "event_id": r.event_id,
+                "timestamp": r.timestamp,
+                "encounter_id": r.encounter_id,
+                "finding_id": r.finding_id,
+                "action": r.action,
+                "biller_id": r.biller_id,
+                "rule_id": r.rule_id,
+                "category": r.category,
                 "severity": r.severity,
             }
             for r in rows
@@ -199,10 +221,24 @@ def test_chain_links_each_row_to_prior(store: FeedbackStore) -> None:
 
 
 def test_stats_counts_by_action_rule_category_and_biller(store: FeedbackStore) -> None:
-    store.append(_entry(action="accept", finding_id="f-1", rule_id="R-A", category="cat-x"))
-    store.append(_entry(action="accept", finding_id="f-2", rule_id="R-A", category="cat-x"))
-    store.append(_entry(action="dismiss", finding_id="f-3", rule_id="R-B", category="cat-y", biller_id="biller-B"))
-    store.append(_entry(action="modify", finding_id="f-4", rule_id="R-A", category="cat-x"))
+    store.append(
+        _entry(action="accept", finding_id="f-1", rule_id="R-A", category="cat-x")
+    )
+    store.append(
+        _entry(action="accept", finding_id="f-2", rule_id="R-A", category="cat-x")
+    )
+    store.append(
+        _entry(
+            action="dismiss",
+            finding_id="f-3",
+            rule_id="R-B",
+            category="cat-y",
+            biller_id="biller-B",
+        )
+    )
+    store.append(
+        _entry(action="modify", finding_id="f-4", rule_id="R-A", category="cat-x")
+    )
 
     s = store.stats()
     assert s["total"] == 4

@@ -19,6 +19,7 @@ per the task body). The two breakpoint sizes (768px tablet,
 480px phone) are exercised by parsing the CSS text directly,
 which is cheap and deterministic.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ from fastapi.testclient import TestClient
 
 from ai_billing_audit import api as api_mod
 from ai_billing_audit.api import create_app
+from ai_billing_audit.clinical_note_storage import encrypt_phi
 
 
 class _Fixture:
@@ -54,7 +56,9 @@ def fx(tmp_path, monkeypatch):
     return _Fixture(app, log, TestClient(app))
 
 
-def _write_log_row(log: Path, encounter_id: str, ran_via: str = "upload_portal_with_user_note") -> None:
+def _write_log_row(
+    log: Path, encounter_id: str, ran_via: str = "upload_portal_with_user_note"
+) -> None:
     """Write a single demo row with one medium-severity finding.
 
     Mirrors the helper from test_encounter_detail_uploaded.py so
@@ -85,8 +89,8 @@ def _write_log_row(log: Path, encounter_id: str, ran_via: str = "upload_portal_w
             "variant": "flagged",
         },
     }
-    with log.open("a") as f:
-        f.write(json.dumps(row) + "\n")
+    with log.open("ab") as f:
+        f.write(encrypt_phi(json.dumps(row).encode("utf-8")) + b"\n")
 
 
 def test_encounter_detail_renders_with_findings(fx):
@@ -129,11 +133,7 @@ def test_responsive_css_present_in_stylesheet():
     split) fails this test instead of being caught by a
     biller on their phone.
     """
-    css_path = (
-        Path(api_mod.__file__).resolve().parent
-        / "static"
-        / "dashboard.css"
-    )
+    css_path = Path(api_mod.__file__).resolve().parent / "static" / "dashboard.css"
     css = css_path.read_text(encoding="utf-8")
     # The two new breakpoints
     assert "@media (max-width: 768px)" in css
@@ -156,16 +156,10 @@ def test_each_responsive_selector_targets_a_real_class():
     common regressions of "renamed the class in CSS but not
     in the template" and vice versa.
     """
-    css_path = (
-        Path(api_mod.__file__).resolve().parent
-        / "static"
-        / "dashboard.css"
-    )
+    css_path = Path(api_mod.__file__).resolve().parent / "static" / "dashboard.css"
     css = css_path.read_text(encoding="utf-8")
     tmpl_path = (
-        Path(api_mod.__file__).resolve().parent
-        / "templates"
-        / "encounter_detail.html"
+        Path(api_mod.__file__).resolve().parent / "templates" / "encounter_detail.html"
     )
     tmpl = tmpl_path.read_text(encoding="utf-8")
     for cls in (
@@ -183,9 +177,13 @@ def test_each_responsive_selector_targets_a_real_class():
         # Template check: the class should appear in at least
         # one of the templates this dashboard renders. We
         # check encounter_detail.html + the base for safety.
-        assert cls in tmpl or cls in (Path(api_mod.__file__).resolve().parent / "templates" / "base.html").read_text(), (
-            f"class .{cls} not referenced from any template"
-        )
+        assert (
+            cls in tmpl
+            or cls
+            in (
+                Path(api_mod.__file__).resolve().parent / "templates" / "base.html"
+            ).read_text()
+        ), f"class .{cls} not referenced from any template"
 
 
 def test_320px_baseline_no_horizontal_scroll_rules():
@@ -200,17 +198,13 @@ def test_320px_baseline_no_horizontal_scroll_rules():
     remove these one by one, they're not used" edit gets
     caught.
     """
-    css_path = (
-        Path(api_mod.__file__).resolve().parent
-        / "static"
-        / "dashboard.css"
-    )
+    css_path = Path(api_mod.__file__).resolve().parent / "static" / "dashboard.css"
     css = css_path.read_text(encoding="utf-8")
     # Find the 480px block and assert each badge class is wrapped.
     start = css.find("@media (max-width: 480px)")
     assert start != -1, "no @media (max-width: 480px) block"
     end = css.find("@media", start + 1)
-    block = css[start:end if end != -1 else len(css)]
+    block = css[start : end if end != -1 else len(css)]
     # All severity badge variants + the chip-rule + confidence badge
     # appear inside the 480px block as flex-basis: 100% targets.
     for token in (

@@ -47,23 +47,27 @@ def test_one_per_difficulty_band():
 
 def test_each_case_study_has_required_fields():
     required_fields = [
-        "slug", "title", "difficulty", "specialty", "encounter_id",
-        "clinical_scenario", "claim_summary", "findings",
-        "what_biller_would_have_done", "dollar_impact",
+        "slug",
+        "title",
+        "difficulty",
+        "specialty",
+        "encounter_id",
+        "clinical_scenario",
+        "claim_summary",
+        "findings",
+        "what_biller_would_have_done",
+        "dollar_impact",
     ]
     for cs in CASE_STUDIES:
         for field in required_fields:
-            assert getattr(cs, field), (
-                f"CaseStudy {cs.slug} missing field {field}"
-            )
+            assert getattr(cs, field), f"CaseStudy {cs.slug} missing field {field}"
 
 
 def test_each_case_study_has_at_least_one_high_or_critical_finding():
     """The story needs teeth — at least one HIGH/CRITICAL finding."""
     for cs in CASE_STUDIES:
         high_or_critical = [
-            f for f in cs.findings
-            if f.get("severity") in ("high", "critical")
+            f for f in cs.findings if f.get("severity") in ("high", "critical")
         ]
         assert len(high_or_critical) >= 1, (
             f"{cs.slug} needs at least one HIGH or CRITICAL finding; "
@@ -77,9 +81,9 @@ def test_each_finding_has_rule_id_and_quote():
             assert f.get("rule_id"), f"{cs.slug}: finding missing rule_id"
             assert f.get("quote"), f"{cs.slug}: finding missing quote"
             assert f.get("severity"), f"{cs.slug}: finding missing severity"
-            assert f.get("severity") in (
-                "info", "low", "medium", "high", "critical"
-            ), f"{cs.slug}: bad severity {f.get('severity')}"
+            assert f.get("severity") in ("info", "low", "medium", "high", "critical"), (
+                f"{cs.slug}: bad severity {f.get('severity')}"
+            )
 
 
 def test_slugs_are_url_safe():
@@ -108,19 +112,25 @@ def test_encounter_ids_correspond_to_real_data():
     encounter_ids as a special case.
     """
     import json
-    val = {e["encounter_id"] for e in json.loads(
-        (Path(__file__).parent.parent / "data" / "synth" / "val.json").read_text()
-    )}
-    train = {e["encounter_id"] for e in json.loads(
-        (Path(__file__).parent.parent / "data" / "synth" / "train.json").read_text()
-    )}
+
+    val = {
+        e["encounter_id"]
+        for e in json.loads(
+            (Path(__file__).parent.parent / "data" / "synth" / "val.json").read_text()
+        )
+    }
+    train = {
+        e["encounter_id"]
+        for e in json.loads(
+            (Path(__file__).parent.parent / "data" / "synth" / "train.json").read_text()
+        )
+    }
     for cs in CASE_STUDIES:
         # AHCIP-illustrative case studies don't need a backing encounter
         if cs.encounter_id.startswith("enc_ahcip_"):
             continue
         assert cs.encounter_id in val or cs.encounter_id in train, (
-            f"{cs.slug}: encounter_id {cs.encounter_id} not in val.json "
-            f"or train.json"
+            f"{cs.slug}: encounter_id {cs.encounter_id} not in val.json or train.json"
         )
 
 
@@ -149,8 +159,13 @@ def test_case_studies_index_returns_three():
         # Index shape: slug, title, difficulty, specialty,
         # n_findings, encounter_link, summary, encounter_id
         for key in (
-            "slug", "title", "difficulty", "specialty",
-            "n_findings", "encounter_link", "summary",
+            "slug",
+            "title",
+            "difficulty",
+            "specialty",
+            "n_findings",
+            "encounter_link",
+            "summary",
             "encounter_id",
         ):
             assert key in item
@@ -176,15 +191,17 @@ def test_dollar_impact_uses_specialty_overrides():
 def test_clinical_scenarios_are_anonymized():
     """No patient names, addresses, or other PHI in the prose."""
     for cs in CASE_STUDIES:
-        text = " ".join([
-            cs.clinical_scenario, cs.claim_summary,
-            cs.what_biller_would_have_done, cs.dollar_impact,
-        ])
+        text = " ".join(
+            [
+                cs.clinical_scenario,
+                cs.claim_summary,
+                cs.what_biller_would_have_done,
+                cs.dollar_impact,
+            ]
+        )
         # Common PHI patterns
         for pattern in ["John", "Jane", "123 Main", "555-"]:
-            assert pattern not in text, (
-                f"{cs.slug} contains potential PHI: {pattern}"
-            )
+            assert pattern not in text, f"{cs.slug} contains potential PHI: {pattern}"
 
 
 def test_finding_count_matches_dollar_impact_text():
@@ -210,6 +227,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -256,9 +274,7 @@ def test_case_study_detail_returns_200(client):
 
 
 def test_case_study_detail_shows_scenario_and_findings(client):
-    resp = client.get(
-        "/case-studies/enc_0000-hard-modifier-25-chest-pain"
-    )
+    resp = client.get("/case-studies/enc_0000-hard-modifier-25-chest-pain")
     html = resp.text
     # Title
     assert "Modifier-25" in html
@@ -271,9 +287,7 @@ def test_case_study_detail_shows_scenario_and_findings(client):
 
 
 def test_case_study_detail_includes_quote_highlights(client):
-    resp = client.get(
-        "/case-studies/enc_0000-hard-modifier-25-chest-pain"
-    )
+    resp = client.get("/case-studies/enc_0000-hard-modifier-25-chest-pain")
     html = resp.text
     # Blockquote with verbatim quote from clinical note
     assert "<blockquote" in html
@@ -287,18 +301,14 @@ def test_case_study_detail_unknown_slug_returns_404(client):
 
 def test_case_study_detail_has_cta_to_roi(client):
     """Each case study should drive the prospect toward the ROI calc."""
-    resp = client.get(
-        "/case-studies/enc_10032-easy-duplicate-service"
-    )
+    resp = client.get("/case-studies/enc_10032-easy-duplicate-service")
     html = resp.text
     assert "/roi" in html
 
 
 def test_case_study_detail_links_back_to_index(client):
     """Each detail page should have a 'back to all case studies' link."""
-    resp = client.get(
-        "/case-studies/enc_0011-medium-imaging-coverage"
-    )
+    resp = client.get("/case-studies/enc_0011-medium-imaging-coverage")
     html = resp.text
     assert "/case-studies" in html
     assert "All case studies" in html or "case-studies" in html

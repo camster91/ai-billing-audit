@@ -26,12 +26,12 @@ Tests cover:
 We use tmp-path backed stores / log files so the tests don't
 touch the production JSONL files at /app/logs/*.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -50,9 +50,7 @@ if str(SRC_ROOT) not in sys.path:
 
 def _iso(ts: float) -> str:
     """Format a POSIX timestamp as the feedback log's ISO-8601 UTC."""
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _append_feedback(
@@ -95,11 +93,11 @@ def _write_audit_actions(path: Path, rows: list[dict]) -> None:
 
 
 def _write_appeal_outcomes(path: Path, rows: list[dict]) -> None:
-    """Write appeal-outcome rows as JSONL to ``path``."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as fh:
-        for r in rows:
-            fh.write(json.dumps(r) + "\n")
+    """Write encrypted appeal-outcome rows to ``path``."""
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    for row in rows:
+        append_encrypted_json_record(path, row)
 
 
 def _audit_action_row(
@@ -341,9 +339,7 @@ def test_time_to_act_uses_audit_action_gap(
         eid = f"enc-{i}"
         fid = f"f-{i}"
         audit_rows.append(
-            _audit_action_row(
-                encounter_id=eid, finding_id=fid, ts=created_ts
-            )
+            _audit_action_row(encounter_id=eid, finding_id=fid, ts=created_ts)
         )
         _append_feedback(
             feedback_store,
@@ -508,9 +504,7 @@ def test_missed_revenue_only_counts_accepted_findings(
     )
     # Only the accepted finding (f-mod-25, $45) counts.
     assert payload["missed_revenue_count"] == 1
-    assert payload["missed_revenue_dollars"] == pytest.approx(
-        45.0, abs=1e-6
-    )
+    assert payload["missed_revenue_dollars"] == pytest.approx(45.0, abs=1e-6)
 
 
 def test_denial_rate_from_lost_and_withdrawn_outcomes(

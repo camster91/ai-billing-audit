@@ -11,6 +11,7 @@ glossary.html template iterates over ``list_terms()`` to
 render the index; /glossary/{slug} serves the per-term
 detail page from ``get_term(slug)``.
 """
+
 from __future__ import annotations
 
 from typing import Any

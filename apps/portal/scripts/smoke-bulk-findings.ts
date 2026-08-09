@@ -55,7 +55,7 @@ async function main() {
   //    date-of-service order. If the inbox is short on pending rows
   //    (e.g. a prior smoke run already accepted them) we re-seed
   //    enough to satisfy the contract.
-  let pending = await prisma.finding.findMany({
+  const pending = await prisma.finding.findMany({
     where: { status: "pending", encounter: { tenantId: tenant.id } },
     take: 10,
     orderBy: { encounter: { dateOfService: "desc" } },

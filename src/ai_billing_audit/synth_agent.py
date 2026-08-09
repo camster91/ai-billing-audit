@@ -153,9 +153,7 @@ def generate(
     return _BUILDERS[template.tier](rng, scenario, template.variant)
 
 
-def generate_encounter(
-    tier: str, variant: str, *, seed: int
-) -> dict[str, Any]:
+def generate_encounter(tier: str, variant: str, *, seed: int) -> dict[str, Any]:
     """Generate a single encounter. Thin wrapper around ``generate``.
 
     Kept for backwards compatibility with the pre-refactor API

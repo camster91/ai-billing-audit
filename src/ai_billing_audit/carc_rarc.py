@@ -49,6 +49,7 @@ The lookup is a tiny module — no caching needed, no network,
 no LLM. A claim comes in with a CARC, the biller clicks it,
 and the UI shows the description + suggested next step.
 """
+
 from __future__ import annotations
 
 import csv
@@ -135,9 +136,7 @@ def _load_csv(path: Path) -> dict[str, CodeEntry]:
                 continue
             description = (row.get("description") or "").strip()
             payer_types = _split_pipe(row.get("payer_types") or "")
-            common_resolutions = _split_pipe(
-                row.get("common_resolutions") or ""
-            )
+            common_resolutions = _split_pipe(row.get("common_resolutions") or "")
             out[code] = CodeEntry(
                 code=code,
                 description=description,

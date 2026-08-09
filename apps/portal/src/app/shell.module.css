@@ -584,7 +584,7 @@
 .filterBar {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: flex-end;
   gap: 12px;
   margin-bottom: 16px;
   background: #131a2e;

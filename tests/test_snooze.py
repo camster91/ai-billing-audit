@@ -27,6 +27,7 @@ What's pinned
 No LLM, no network. Test logs redirected to tmp JSONL files so
 the real /app/logs/* never gets touched.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -37,6 +38,8 @@ from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
+
+from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -78,23 +81,13 @@ def client(fresh_logs) -> TestClient:
 
 
 def _read_jsonl(path: Path) -> list[dict]:
-    if not path.is_file():
-        return []
-    out: list[dict] = []
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            out.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return out
+    return read_encrypted_json_records(path)
 
 
 def _iso(ts: float) -> str:
     """Render a Unix timestamp as ISO-8601 UTC with trailing Z."""
     import time as t
+
     return t.strftime("%Y-%m-%dT%H:%M:%SZ", t.gmtime(ts))
 
 
@@ -125,6 +118,7 @@ def test_snooze_store_append_and_read(fresh_logs: dict[str, Path]) -> None:
     assert entry.encounter_id == "enc_1"
     assert entry.finding_id == "f_1"
     assert entry.action == "snooze"
+    assert b"needs review" not in fresh_logs["snooze_log"].read_bytes()
     rows = store.entries_for("enc_1")
     assert len(rows) == 1
     assert rows[0].reason == "needs review"
@@ -178,7 +172,7 @@ def test_later_snooze_supersedes_earlier(fresh_logs: dict[str, Path]) -> None:
     assert active.reason == "second"
 
 
-def test_unsnooze_clears_active(fresh_logs: dict[str, Path]) -> None:
+def test_store_unsnooze_clears_active(fresh_logs: dict[str, Path]) -> None:
     store = snooze_mod.SnoozeStore()
     store.snooze(
         encounter_id="enc_1",
@@ -203,15 +197,9 @@ def test_unsnooze_no_active_returns_none(fresh_logs: dict[str, Path]) -> None:
 def test_active_snoozes_for_encounter(fresh_logs: dict[str, Path]) -> None:
     """active_snoozes_for_encounter returns {finding_id: SnoozeEntry}."""
     store = snooze_mod.SnoozeStore()
-    store.snooze(
-        "enc_1", "f_1", _iso(time_mod.time() + 3600), reason="r1"
-    )
-    store.snooze(
-        "enc_1", "f_2", _iso(time_mod.time() + 60), reason="r2"
-    )
-    store.snooze(
-        "enc_2", "f_1", _iso(time_mod.time() + 3600), reason="r3"
-    )
+    store.snooze("enc_1", "f_1", _iso(time_mod.time() + 3600), reason="r1")
+    store.snooze("enc_1", "f_2", _iso(time_mod.time() + 60), reason="r2")
+    store.snooze("enc_2", "f_1", _iso(time_mod.time() + 3600), reason="r3")
     active = store.active_snoozes_for_encounter("enc_1")
     assert set(active.keys()) == {"f_1", "f_2"}
     assert active["f_1"].reason == "r1"
@@ -220,9 +208,7 @@ def test_active_snoozes_for_encounter(fresh_logs: dict[str, Path]) -> None:
 def test_filter_findings_by_snooze_drops_active(fresh_logs: dict[str, Path]) -> None:
     """Default filter drops active snoozes; include_snoozed=True keeps them."""
     store = snooze_mod.SnoozeStore()
-    store.snooze(
-        "enc_1", "f_1", _iso(time_mod.time() + 3600)
-    )
+    store.snooze("enc_1", "f_1", _iso(time_mod.time() + 3600))
     findings = [
         {"finding_id": "f_1", "severity": "high"},
         {"finding_id": "f_2", "severity": "high"},
@@ -362,16 +348,18 @@ def test_expired_snooze_does_not_block(
     """
     store = snooze_mod.SnoozeStore()
     past = time_mod.time() - 60
-    store.append(snooze_mod.SnoozeEntry(
-        event_id="x" * 32,
-        encounter_id=_REAL_ENC,
-        finding_id=_REAL_FINDING,
-        snooze_until=_iso(past),
-        reason="",
-        action="snooze",
-        user_identifier="test",
-        created_at=_iso(past - 60),
-    ))
+    store.append(
+        snooze_mod.SnoozeEntry(
+            event_id="x" * 32,
+            encounter_id=_REAL_ENC,
+            finding_id=_REAL_FINDING,
+            snooze_until=_iso(past),
+            reason="",
+            action="snooze",
+            user_identifier="test",
+            created_at=_iso(past - 60),
+        )
+    )
     active = store.active_snooze_for(_REAL_ENC, _REAL_FINDING)
     assert active is None  # expired
     # And the page returns 200 without issue.

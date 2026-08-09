@@ -49,10 +49,10 @@ the same window bucketed by ISO week, oldest first. An empty
 window returns empty dicts — the dashboard renders an explicit
 empty-state.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
-import json
 import os
 import time
 from collections import defaultdict
@@ -200,6 +200,7 @@ def per_rule_metrics(
     if store is None:
         try:
             from .feedback import get_default_store
+
             store = get_default_store()
         except Exception:
             return {}
@@ -281,6 +282,7 @@ def weekly_f1(
     if store is None:
         try:
             from .feedback import get_default_store
+
             store = get_default_store()
         except Exception:
             return []
@@ -345,23 +347,27 @@ def weekly_f1(
     for week_start in sorted(buckets):
         tp, fp, sup = buckets[week_start]
         if sup == 0:
-            out.append({
-                "week_start": week_start,
-                "f1": 0.0,
-                "support": 0,
-                "tp": 0.0,
-                "fp": 0.0,
-            })
+            out.append(
+                {
+                    "week_start": week_start,
+                    "f1": 0.0,
+                    "support": 0,
+                    "tp": 0.0,
+                    "fp": 0.0,
+                }
+            )
             continue
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         # Recall: same within-clinic proxy as per_rule_metrics.
-        out.append({
-            "week_start": week_start,
-            "f1": round(_safe_f1(precision, min(1.0, sup / 5.0)), 4),
-            "support": sup,
-            "tp": round(tp, 2),
-            "fp": round(fp, 2),
-        })
+        out.append(
+            {
+                "week_start": week_start,
+                "f1": round(_safe_f1(precision, min(1.0, sup / 5.0)), 4),
+                "support": sup,
+                "tp": round(tp, 2),
+                "fp": round(fp, 2),
+            }
+        )
     return out
 
 
@@ -381,6 +387,7 @@ def list_clinics(
     if store is None:
         try:
             from .feedback import get_default_store
+
             store = get_default_store()
         except Exception:
             return []
@@ -405,11 +412,13 @@ def list_clinics(
         billers[c].add(e.biller_id)
     out: list[dict[str, Any]] = []
     for clinic_id, n in sorted(counts.items(), key=lambda kv: -kv[1]):
-        out.append({
-            "clinic_id": clinic_id,
-            "feedback_count": n,
-            "biller_count": len(billers[clinic_id]),
-        })
+        out.append(
+            {
+                "clinic_id": clinic_id,
+                "feedback_count": n,
+                "biller_count": len(billers[clinic_id]),
+            }
+        )
     return out
 
 
@@ -566,9 +575,9 @@ def _parse_iso_to_epoch(ts: str) -> float | None:
 
 def _epoch_to_iso(epoch: float) -> str:
     """Format a POSIX epoch as ``YYYY-MM-DDTHH:MM:SSZ`` (UTC, second-res)."""
-    return _dt.datetime.fromtimestamp(
-        float(epoch), tz=_dt.timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return _dt.datetime.fromtimestamp(float(epoch), tz=_dt.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
 
 
 def _percentile(values: list[float], pct: float) -> float | None:
@@ -665,23 +674,15 @@ def _read_appeal_outcomes_window(
         return []
     out: list[dict[str, Any]] = []
     try:
-        with log.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(rec, dict):
-                    continue
-                ep = _parse_iso_to_epoch(str(rec.get("timestamp", "")))
-                if ep is None:
-                    continue
-                if ep < start_ts or ep > end_ts:
-                    continue
-                out.append(rec)
+        from .clinical_note_storage import read_encrypted_json_records
+
+        for rec in read_encrypted_json_records(log):
+            ep = _parse_iso_to_epoch(str(rec.get("timestamp", "")))
+            if ep is None:
+                continue
+            if ep < start_ts or ep > end_ts:
+                continue
+            out.append(rec)
     except OSError:
         return []
     return out
@@ -713,11 +714,13 @@ def _compute_top_flagged_rules(
         return []
     out: list[dict[str, Any]] = []
     for rid, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
-        out.append({
-            "rule_id": rid,
-            "count": c,
-            "pct": round(100.0 * c / total, 2),
-        })
+        out.append(
+            {
+                "rule_id": rid,
+                "count": c,
+                "pct": round(100.0 * c / total, 2),
+            }
+        )
     return out
 
 
@@ -922,7 +925,9 @@ def _compute_denial_rate(
     )
 
     return {
-        "denial_rate": round(float(denial_rate), 4) if denial_rate is not None else None,
+        "denial_rate": round(float(denial_rate), 4)
+        if denial_rate is not None
+        else None,
         "denied_encounters": denied_encounters,
         "decided_encounters": decided_encounters,
         "n_lost": n_lost,
@@ -959,7 +964,8 @@ def aggregate_clinic_dashboard(
     clinic_for_biller: Callable[[str], str] | None = None,
     audit_actions_reader: Callable[..., list[dict[str, Any]]] | None = None,
     outcomes_log: Path | None = None,
-    load_findings_for_clinic: Callable[[str, float, float], list[dict[str, Any]]] | None = None,
+    load_findings_for_clinic: Callable[[str, float, float], list[dict[str, Any]]]
+    | None = None,
 ) -> dict[str, Any]:
     """Compute the 4 headline clinic-dashboard metrics in one pass.
 
@@ -1014,6 +1020,7 @@ def aggregate_clinic_dashboard(
     if store is None:
         try:
             from .feedback import get_default_store
+
             store = get_default_store()
         except Exception:
             store = None  # type: ignore[assignment]
@@ -1097,19 +1104,24 @@ def aggregate_clinic_dashboard(
                 if "estimated_dollar" in f and "opportunity_rule_id" in f:
                     key = (str(f.get("encounter_id", "")), str(f.get("finding_id", "")))
                     if key in accepted_keys:
-                        missed_revenue_dollars += float(f.get("estimated_dollar") or 0.0)
+                        missed_revenue_dollars += float(
+                            f.get("estimated_dollar") or 0.0
+                        )
                         missed_revenue_count += 1
                 else:
                     # Raw-finding path: re-run the revenue-opp
                     # filter inline to keep the contract uniform.
                     from .api import compute_revenue_opportunities  # type: ignore
+
                     for opp in compute_revenue_opportunities([f]):
                         key = (
                             str(f.get("encounter_id", "")),
                             str(f.get("finding_id", "")),
                         )
                         if key in accepted_keys:
-                            missed_revenue_dollars += float(opp.get("estimated_dollar") or 0.0)
+                            missed_revenue_dollars += float(
+                                opp.get("estimated_dollar") or 0.0
+                            )
                             missed_revenue_count += 1
             except Exception:
                 continue

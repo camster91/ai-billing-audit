@@ -17,7 +17,7 @@ on:
 
 # Re-runs on force-push kill prior in-flight runs for the same PR.
 concurrency:
-  group: test-on-pr-${{ github.event.pull_request.number }}
+  group: test-on-pr-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -57,7 +57,7 @@ jobs:
       - name: mypy
         # Strict on the audit package, lenient elsewhere — matches
         # the in-repo pyproject.toml [tool.mypy] overrides.
-        run: mypy src/ai_billing_audit tests
+        run: mypy src/ai_billing_audit
 
       - name: pytest
         id: pytest
@@ -100,9 +100,25 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   portal-typecheck:
-    name: portal (tsc --noEmit)
+    name: portal (PostgreSQL + lint + types + build)
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
+    env:
+      DATABASE_URL: postgresql://zorva:zorva_ci_password@127.0.0.1:5432/zorva
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: zorva
+          POSTGRES_PASSWORD: zorva_ci_password
+          POSTGRES_DB: zorva
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zorva -d zorva"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: apps/portal
@@ -122,16 +138,32 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
+      - name: Apply PostgreSQL migrations
+        run: pnpm prisma:migrate:deploy:postgresql
+
+      - name: Database runtime tests
+        run: pnpm test:database-runtime
+
+      - name: ESLint
+        run: pnpm lint
+
       - name: pnpm tsc --noEmit
         id: tsc
         run: pnpm exec tsc --noEmit
+
+      - name: Production build
+        id: build
+        run: pnpm build
 
       - name: Portal summary
         if: always()
         run: |
           {
             echo "### portal"
+            echo "- PostgreSQL migration: blocking"
+            echo "- ESLint: blocking"
             echo "- tsc --noEmit: ${{ steps.tsc.outcome == 'success' && 'passed' || 'failed (see logs)' }}"
+            echo "- production build: ${{ steps.build.outcome == 'success' && 'passed' || 'failed (see logs)' }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   comment:
@@ -166,7 +198,7 @@ jobs:
               "| job | result |",
               "|---|---|",
               `| python (ruff + mypy + pytest) | ${pyStatus} |`,
-              `| portal (tsc --noEmit) | ${tsStatus} |`,
+              `| portal (PostgreSQL + lint + types + build) | ${tsStatus} |`,
               "",
               "**pytest:** " + pyPassed + " passed, " + pyFailed + " failed",
               "",

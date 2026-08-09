@@ -19,7 +19,6 @@ The tests run in-process via ``starlette.testclient.TestClient``.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 # Set dev-mode allow-no-auth BEFORE importing api so the module-level
@@ -49,6 +48,7 @@ from ai_billing_audit import audit_actions  # noqa: E402
 # Test fixtures
 # --------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def client():
     """A TestClient against the module-level app."""
@@ -75,9 +75,36 @@ def _hdr(user_id: str | None, role: str | None) -> dict[str, str]:
     return out
 
 
+@pytest.mark.parametrize(
+    ("path", "kwargs"),
+    [
+        ("/encounters/upload/preview", {}),
+        ("/encounters/upload/submit", {}),
+        ("/encounters/upload/paste", {}),
+        ("/encounters/upload/notes", {}),
+        ("/encounters/upload/text-note", {}),
+        ("/upload/837i", {"json": {}}),
+        ("/api/audits", {"json": {}}),
+    ],
+)
+def test_viewer_cannot_use_claim_or_note_upload_mutations(client, path, kwargs):
+    response = client.post(path, headers=_hdr("viewer-1", "viewer"), **kwargs)
+
+    assert response.status_code == 403, (path, response.text)
+
+
+def test_viewer_cannot_poll_audit_job_results(client):
+    response = client.get(
+        "/encounters/upload/jobs/unknown-job",
+        headers=_hdr("viewer-1", "viewer"),
+    )
+    assert response.status_code == 403
+
+
 # --------------------------------------------------------------------
 # Unit tests on the helpers (no HTTP)
 # --------------------------------------------------------------------
+
 
 def test_user_context_str_round_trips():
     u = api.UserContext(user_id="u-1", role="admin", user_identifier="dev:u-1")
@@ -96,10 +123,14 @@ def test_user_context_as_audit_kwargs_none_user():
     assert u.as_audit_kwargs() == {"user_id": None, "user_role": None}
 
 
-def test_readyz_is_public_and_reports_missing_configuration(client, monkeypatch, tmp_path):
+def test_readyz_is_public_and_reports_missing_configuration(
+    client, monkeypatch, tmp_path
+):
     """Readiness is load-balancer accessible and fails closed when incomplete."""
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("AUDIT_TRAIL_DB", raising=False)
+    monkeypatch.delenv("ZORVA_PHI_ENCRYPTION_KEY", raising=False)
+    monkeypatch.delenv("ZORVA_PRINCIPAL_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("UPLOAD_AUDIT_LOG_PATH", str(tmp_path / "logs" / "jobs.jsonl"))
 
     response = client.get("/readyz")
@@ -110,6 +141,8 @@ def test_readyz_is_public_and_reports_missing_configuration(client, monkeypatch,
         "checks": {
             "database_url_configured": False,
             "audit_trail_db_configured": False,
+            "phi_encryption_key_configured": False,
+            "principal_signing_secret_configured": False,
             "upload_job_log_directory_writable": False,
         },
     }
@@ -132,6 +165,8 @@ def test_readyz_returns_ready_for_configured_writable_baseline(
         "checks": {
             "database_url_configured": True,
             "audit_trail_db_configured": True,
+            "phi_encryption_key_configured": True,
+            "principal_signing_secret_configured": True,
             "upload_job_log_directory_writable": True,
         },
     }
@@ -151,6 +186,7 @@ def test_coerce_role_recognizes_known():
 # admin endpoint requires admin role)
 # --------------------------------------------------------------------
 
+
 def test_healthz_works_for_all_roles_when_dev_mode(client):
     """When AUDIT_ALLOW_NO_AUTH is set, missing headers fall through
     to a synthetic (dev_user, admin) identity, so healthz works for
@@ -163,6 +199,26 @@ def test_healthz_works_for_all_roles_when_dev_mode(client):
 def test_admin_endpoint_with_admin_role_works(client):
     r = client.get("/admin/users", headers=_hdr("u-admin", "admin"))
     assert r.status_code == 200
+
+
+def test_production_bearer_holder_cannot_promote_self_to_admin(monkeypatch):
+    """Caller-controlled role headers must not grant production admin access."""
+    monkeypatch.setenv("AUDIT_BEARER_TOKEN", "production-test-token")
+    monkeypatch.delenv("AUDIT_ALLOW_NO_AUTH", raising=False)
+    monkeypatch.delenv("AUDIT_ALLOW_HEADER_RBAC", raising=False)
+    production_client = TestClient(api.create_app())
+
+    response = production_client.get(
+        "/admin/users",
+        headers={
+            "Authorization": "Bearer production-test-token",
+            "X-User-Id": "attacker",
+            "X-User-Role": "admin",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "verified_principal_required"
 
 
 def test_admin_endpoint_with_biller_role_returns_403(client):
@@ -191,6 +247,7 @@ def test_unknown_role_returns_403(client):
 # are the most shape-stable write paths. A "no encounters found" 200/404
 # is acceptable — what we're testing is the gate, not the body.
 
+
 def _post_bulk_dismiss(client, role: str | None):
     return client.post(
         "/encounters/bulk-dismiss",
@@ -211,12 +268,16 @@ def test_biller_allowed_on_bulk_dismiss(client):
     # rejected an empty encounter_ids list (which is the natural
     # response when no demo data is loaded). Anything other than 401/403
     # proves the gate allowed biller through.
-    assert r.status_code not in (401, 403), f"biller should pass gate, got {r.status_code}: {r.text}"
+    assert r.status_code not in (401, 403), (
+        f"biller should pass gate, got {r.status_code}: {r.text}"
+    )
 
 
 def test_admin_allowed_on_bulk_dismiss(client):
     r = _post_bulk_dismiss(client, "admin")
-    assert r.status_code not in (401, 403), f"admin should pass gate, got {r.status_code}: {r.text}"
+    assert r.status_code not in (401, 403), (
+        f"admin should pass gate, got {r.status_code}: {r.text}"
+    )
 
 
 def test_viewer_blocked_from_bulk_accept(client):
@@ -241,6 +302,7 @@ def test_viewer_blocked_from_bulk_flag(client):
 # Audit chain integration: when a write succeeds as biller, the
 # audit_actions row records user_id + user_role.
 # --------------------------------------------------------------------
+
 
 def test_audit_row_records_user_id_and_role_when_admin_writes(tmp_path: Path):
     """Manually call audit_actions.append() with user_id + user_role

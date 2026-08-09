@@ -30,6 +30,7 @@ import {
   type DismissReason,
 } from "@/lib/encounter-types";
 import { upsertCalibrationSignal } from "@/lib/calibration-write";
+import { encryptPortalNullableString } from "@/lib/data-encryption";
 
 /**
  * Inputs to the audit-trail writer. The Finding's own state is
@@ -74,6 +75,8 @@ export interface WriteAuditResult {
    */
   bulkActionId: string | null;
 }
+
+type AuditChainDbRow = Omit<ChainRow, "timestamp"> & { timestamp: Date };
 
 /**
  * Inputs to the bulk audit-trail writer. Used by the /findings
@@ -201,10 +204,11 @@ export async function writeAuditBatch(
     }
     seen.add(eventId);
 
+    const encryptedReasonText = encryptPortalNullableString(item.reasonText);
     const dataElements = serializeDataElements({
       findingId: item.findingId,
       reason: item.reason,
-      reasonText: item.reasonText,
+      reasonText: encryptedReasonText,
       bulkActionId,
     });
 
@@ -229,7 +233,7 @@ export async function writeAuditBatch(
       action,
       findingId: item.findingId,
       reason: item.reason,
-      reasonText: item.reasonText,
+      reasonText: encryptedReasonText,
       patientHash: item.patientHash,
       dataElements,
       modelRunId: "portal-review",
@@ -277,7 +281,9 @@ export async function writeAuditBatch(
   if (newFindingStatus === "dismissed") {
     const commonReason = items[0]?.reason ?? null;
     const commonText =
-      commonReason === "other_with_text" ? items[0]?.reasonText ?? null : null;
+      commonReason === "other_with_text"
+        ? encryptPortalNullableString(items[0]?.reasonText ?? null)
+        : null;
     if (commonReason) {
       await tx.finding.updateMany({
         where: { id: { in: affectedFindingIds } },
@@ -370,6 +376,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
   const timestamp = new Date();
   const isoTimestamp = timestamp.toISOString();
 
+  const encryptedReasonText = encryptPortalNullableString(input.reasonText);
   const chainPayload: ChainRow = {
     eventId,
     timestamp: isoTimestamp,
@@ -379,7 +386,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
     dataElements: serializeDataElements({
       findingId,
       reason: input.reason,
-      reasonText: input.reasonText,
+      reasonText: encryptedReasonText,
       bulkActionId: input.bulkActionId ?? null,
     }),
     modelRunId: input.modelRunId,
@@ -406,7 +413,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
       action,
       findingId,
       reason: input.reason,
-      reasonText: input.reasonText,
+      reasonText: encryptedReasonText,
       patientHash: input.patientHash,
       dataElements: chainPayload.dataElements,
       modelRunId: input.modelRunId,
@@ -425,7 +432,7 @@ export async function writeAuditEntry(input: WriteAuditInput): Promise<WriteAudi
       dismissReason: newFindingStatus === "dismissed" ? input.reason : null,
       dismissText:
         newFindingStatus === "dismissed" && input.reason === "other_with_text"
-          ? input.reasonText
+          ? encryptedReasonText
           : null,
       actionedByUserId: input.userIdentifier,
       actionedAt: timestamp,
@@ -475,7 +482,7 @@ export async function verifyTenantChain(
   let cursorEventId: string | null = null;
 
   for (;;) {
-    const rows = await client.auditTrailEntry.findMany({
+    const rows: AuditChainDbRow[] = await client.auditTrailEntry.findMany({
       where: {
         tenantId,
         ...(cursorTimestamp && cursorEventId

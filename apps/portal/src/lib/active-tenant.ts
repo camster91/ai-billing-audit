@@ -14,11 +14,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export interface ActiveTenant {
+  userId: string;
   id: string;
   name: string;
   slug: string;
   tier: string;
   subscriptionStatus: string;
+  role: string;
 }
 
 /**
@@ -69,7 +71,11 @@ export async function requireTenantById(
   if (!membership) {
     throw new Error(`user ${userId} is not a member of tenant ${tenantId}`);
   }
-  return membership.tenant;
+  return {
+    ...membership.tenant,
+    userId,
+    role: membership.role,
+  };
 }
 
 /** True if the caller is signed in. Convenience wrapper. */

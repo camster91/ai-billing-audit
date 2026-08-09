@@ -18,7 +18,6 @@
 // current step, the captured fields, and the user identity.
 
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -169,6 +168,8 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
             you used at checkout.
           </p>
           <div className={styles.actions}>
+            {/* A full navigation is required to invoke the auth sign-out endpoint. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a className={styles.btnGhost} href="/api/auth/signout">Sign out</a>
             <a className={styles.link} href="/pricing">Back to pricing</a>
           </div>

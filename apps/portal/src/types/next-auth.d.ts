@@ -2,7 +2,6 @@
 // Without this, TypeScript only knows about session.user.{name,email,image}
 // and our session callback assignment fails to typecheck.
 import type { DefaultSession } from "next-auth";
-import type { SubscriptionStatus, TenantRole, TenantTier } from "@/lib/tenant";
 
 declare module "next-auth" {
   interface Session {

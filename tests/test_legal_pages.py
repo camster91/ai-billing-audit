@@ -20,7 +20,6 @@ What's pinned
 from __future__ import annotations
 
 import importlib
-import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,6 +31,7 @@ def client(monkeypatch):
     monkeypatch.setenv("TENANT_ID", "default")
     monkeypatch.setenv("TENANT_NAME", "Acme Family Practice")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)

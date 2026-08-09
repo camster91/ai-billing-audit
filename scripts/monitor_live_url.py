@@ -37,6 +37,7 @@ Usage::
     /opt/vps/bin/monitor_live_url.py --dry-run      # local test
     /opt/vps/bin/monitor_live_url.py --once --verbose  # manual check
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,7 +45,6 @@ import json
 import os
 import socket
 import sys
-import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -73,18 +73,12 @@ CONFIG = {
     "webhook_url": os.environ.get("ZORVA_MONITOR_WEBHOOK", ""),
     # File locations — overridable for --dry-run and tests.
     "state_file": Path(
-        os.environ.get(
-            "ZORVA_MONITOR_STATE_FILE", "/var/lib/zorva/monitor_state.json"
-        )
+        os.environ.get("ZORVA_MONITOR_STATE_FILE", "/var/lib/zorva/monitor_state.json")
     ),
     "log_file": Path(
-        os.environ.get(
-            "ZORVA_MONITOR_LOG_FILE", "/var/log/zorva-monitor.log"
-        )
+        os.environ.get("ZORVA_MONITOR_LOG_FILE", "/var/log/zorva-monitor.log")
     ),
-    "alert_marker_dir": Path(
-        os.environ.get("ZORVA_MONITOR_ALERT_DIR", "/var/run")
-    ),
+    "alert_marker_dir": Path(os.environ.get("ZORVA_MONITOR_ALERT_DIR", "/var/run")),
 }
 
 
@@ -224,9 +218,7 @@ def run_once(*, dry_run: bool = False, verbose: bool = False) -> int:
     # Should we fire? Only on the crossing — not on every check past the
     # threshold, and only if no marker exists from a prior alert.
     threshold = cfg["fail_threshold"]
-    should_alert = (
-        state["consecutive_failures"] >= threshold and not alert_active
-    )
+    should_alert = state["consecutive_failures"] >= threshold and not alert_active
     if not should_alert:
         if verbose:
             print(
@@ -262,7 +254,8 @@ def run_once(*, dry_run: bool = False, verbose: bool = False) -> int:
     try:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker_text = (
-            f"[dry-run] would write marker at {marker}\n" if dry_run
+            f"[dry-run] would write marker at {marker}\n"
+            if dry_run
             else json.dumps(payload, indent=2) + "\n"
         )
         marker.write_text(marker_text, encoding="utf-8")

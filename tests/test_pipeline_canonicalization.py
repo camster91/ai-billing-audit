@@ -41,7 +41,10 @@ from ai_billing_audit.auditor import validate_findings  # noqa: E402
 def _import_shadow_audit():
     sys.path.insert(0, str(ROOT / "scripts"))
     import importlib.util as _u
-    spec = _u.spec_from_file_location("shadow_audit", str(ROOT / "scripts" / "shadow_audit.py"))
+
+    spec = _u.spec_from_file_location(
+        "shadow_audit", str(ROOT / "scripts" / "shadow_audit.py")
+    )
     if spec is None or spec.loader is None:
         pytest.skip("shadow_audit.py not importable for cross-check")
     mod = _u.module_from_spec(spec)
@@ -150,8 +153,7 @@ def test_all_canonical_rule_ids_have_somb_dollar_rate():
             if rid not in shadow.SOMB_DOLLAR_BY_RULE:
                 missing.append(rid)
     assert not missing, (
-        f"These canonical rule_ids have no SOMB dollar rate: "
-        f"{sorted(set(missing))}"
+        f"These canonical rule_ids have no SOMB dollar rate: {sorted(set(missing))}"
     )
 
 
@@ -167,8 +169,7 @@ def test_all_canonical_rule_ids_have_somb_label():
             if rid not in shadow.SOMB_LABEL_BY_RULE:
                 missing.append(rid)
     assert not missing, (
-        f"These canonical rule_ids have no SOMB-friendly label: "
-        f"{sorted(set(missing))}"
+        f"These canonical rule_ids have no SOMB-friendly label: {sorted(set(missing))}"
     )
 
 
@@ -216,12 +217,13 @@ def test_dollar_rate_pipeline_no_longer_drops_to_zero():
     # dollar rate (sanity check that the pipeline isn't dropping all
     # findings to $0).
     non_avoidance = [
-        rid for f in findings for rid in f.rule_ids
+        rid
+        for f in findings
+        for rid in f.rule_ids
         if rid not in ("rule_ahcip_lab_coverage", "rule_ahcip_lab_order_no_draw")
     ]
     has_dollar = [
-        rid for rid in non_avoidance
-        if shadow.SOMB_DOLLAR_BY_RULE.get(rid, 0) > 0
+        rid for rid in non_avoidance if shadow.SOMB_DOLLAR_BY_RULE.get(rid, 0) > 0
     ]
     assert has_dollar, (
         f"All non-avoidance findings have $0 — pipeline regression. "
@@ -237,11 +239,6 @@ def test_somb_label_pipeline_renders_somb_friendly_copy():
     """
     shadow = _import_shadow_audit()
     findings = validate_findings(_SAMPLE_LLM_OUTPUT, clinical_note=_CLINICAL_NOTE)
-    labels = [
-        shadow._friendly_rule_label(rid)
-        for f in findings for rid in f.rule_ids
-    ]
-    has_somb = [l for l in labels if "SOMB GR" in l]
-    assert has_somb, (
-        f"No SOMB-friendly labels rendered. Got: {labels!r}"
-    )
+    labels = [shadow._friendly_rule_label(rid) for f in findings for rid in f.rule_ids]
+    has_somb = [label for label in labels if "SOMB GR" in label]
+    assert has_somb, f"No SOMB-friendly labels rendered. Got: {labels!r}"

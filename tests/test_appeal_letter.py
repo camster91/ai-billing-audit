@@ -20,19 +20,14 @@ What's pinned
 * The appeal_letters.jsonl log is written with metadata only,
   not the full body
 """
+
 from __future__ import annotations
 
 import json
-import re
-import tempfile
-from pathlib import Path
 
 import pytest
 
-from ai_billing_audit import appeal_letter
 from ai_billing_audit.appeal_letter import (
-    APPEAL_LETTER_PROMPT,
-    _BUILTIN_RULES,
     _DEFAULT_RULE_CITATION,
     _format_billed_codes,
     _pseudonymize_patient,
@@ -40,10 +35,8 @@ from ai_billing_audit.appeal_letter import (
     _scrub_phi,
     build_appeal_prompt,
     generate_appeal_letter,
-    log_appeal_letter,
     parse_appeal_response,
 )
-from ai_billing_audit import zorva_context
 
 
 # ----- fixtures -----
@@ -60,8 +53,8 @@ def finding():
         "suggested_code": "99214-25",
         "quote": "patient also had a separate E/M for the same-day procedure",
         "explanation": "The note documents a separately identifiable E/M "
-                       "on the same day as the procedure, supporting "
-                       "modifier -25 on the E/M code.",
+        "on the same day as the procedure, supporting "
+        "modifier -25 on the E/M code.",
     }
 
 
@@ -73,10 +66,20 @@ def encounter():
             "encounter_id": "E-APPEAL-1",
             "date_of_service": "2026-05-12",
             "line_items": [
-                {"line_id": 1, "cpt_code": "99214", "modifiers": ["25"],
-                 "charge_amount": 95.00, "units": 1},
-                {"line_id": 2, "cpt_code": "12001", "modifiers": [],
-                 "charge_amount": 250.00, "units": 1},
+                {
+                    "line_id": 1,
+                    "cpt_code": "99214",
+                    "modifiers": ["25"],
+                    "charge_amount": 95.00,
+                    "units": 1,
+                },
+                {
+                    "line_id": 2,
+                    "cpt_code": "12001",
+                    "modifiers": [],
+                    "charge_amount": 250.00,
+                    "units": 1,
+                },
             ],
             "rendering_provider_npi": "1992039481",
         },
@@ -198,7 +201,7 @@ def test_build_prompt_fills_market_slots(finding, encounter, zctx_ca):
     assert "Provincial" in prompt
     # The encounter metadata is filled in
     assert "1992039481" in prompt  # provider NPI
-    assert "99214-25" in prompt   # billed code
+    assert "99214-25" in prompt  # billed code
     assert "2026-05-12" in prompt  # date of service
     # The denial reason is quoted
     assert "Service not medically necessary" in prompt
@@ -211,12 +214,15 @@ def test_build_prompt_fills_market_slots(finding, encounter, zctx_ca):
 
 def test_build_prompt_uses_appeal_recipient_for_market(finding, encounter):
     zctx_us = {
-        "market": "US", "market_name": "United States",
+        "market": "US",
+        "market_name": "United States",
         "compliance_law": "HIPAA",
     }
     prompt = build_appeal_prompt(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=zctx_us,
     )
     assert "United States" in prompt
@@ -227,8 +233,10 @@ def test_build_prompt_uses_appeal_recipient_for_market(finding, encounter):
 def test_build_prompt_includes_all_rule_ids_in_citation(finding, encounter, zctx_ca):
     finding["rule_ids"] = ["MOD-25", "DX_LINKAGE_REQUIRED"]
     prompt = build_appeal_prompt(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=zctx_ca,
     )
     # Primary rule gets the full citation, secondary is mentioned
@@ -239,8 +247,10 @@ def test_build_prompt_includes_all_rule_ids_in_citation(finding, encounter, zctx
 def test_build_prompt_with_no_zctx_uses_defaults(finding, encounter):
     """When no zorva_context is passed, defaults to CA/PIPEDA."""
     prompt = build_appeal_prompt(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=None,
     )
     assert "Canada" in prompt
@@ -251,12 +261,14 @@ def test_build_prompt_with_no_zctx_uses_defaults(finding, encounter):
 
 
 def test_parse_clean_json():
-    raw = json.dumps({
-        "letter_markdown": "# Appeal\n\nBody text",
-        "appeal_basis": "Documentation supports medical necessity",
-        "cited_rule_ids": ["MOD-25"],
-        "requested_action": "Reconsider and pay",
-    })
+    raw = json.dumps(
+        {
+            "letter_markdown": "# Appeal\n\nBody text",
+            "appeal_basis": "Documentation supports medical necessity",
+            "cited_rule_ids": ["MOD-25"],
+            "requested_action": "Reconsider and pay",
+        }
+    )
     parsed = parse_appeal_response(raw)
     assert parsed is not None
     assert parsed["letter_markdown"] == "# Appeal\n\nBody text"
@@ -266,12 +278,14 @@ def test_parse_clean_json():
 def test_parse_with_fenced_json():
     raw = (
         "```json\n"
-        + json.dumps({
-            "letter_markdown": "# Appeal",
-            "appeal_basis": "supports",
-            "cited_rule_ids": [],
-            "requested_action": "reconsider",
-        })
+        + json.dumps(
+            {
+                "letter_markdown": "# Appeal",
+                "appeal_basis": "supports",
+                "cited_rule_ids": [],
+                "requested_action": "reconsider",
+            }
+        )
         + "\n```"
     )
     parsed = parse_appeal_response(raw)
@@ -282,12 +296,14 @@ def test_parse_with_fenced_json():
 def test_parse_with_leading_prose_and_trailing_brace():
     raw = (
         "Here is the letter:\n"
-        + json.dumps({
-            "letter_markdown": "Body",
-            "appeal_basis": "x",
-            "cited_rule_ids": ["R1"],
-            "requested_action": "y",
-        })
+        + json.dumps(
+            {
+                "letter_markdown": "Body",
+                "appeal_basis": "x",
+                "cited_rule_ids": ["R1"],
+                "requested_action": "y",
+            }
+        )
         + "\nDone."
     )
     parsed = parse_appeal_response(raw)
@@ -302,12 +318,14 @@ def test_parse_missing_key_returns_none():
 
 
 def test_parse_empty_letter_returns_none():
-    raw = json.dumps({
-        "letter_markdown": "   ",
-        "appeal_basis": "x",
-        "cited_rule_ids": [],
-        "requested_action": "y",
-    })
+    raw = json.dumps(
+        {
+            "letter_markdown": "   ",
+            "appeal_basis": "x",
+            "cited_rule_ids": [],
+            "requested_action": "y",
+        }
+    )
     parsed = parse_appeal_response(raw)
     assert parsed is None
 
@@ -327,7 +345,8 @@ def test_parse_garbage_braces_returns_none():
 def test_generate_without_llm_returns_template_letter(finding, encounter, zctx_ca):
     """No llm_complete passed -> template-only letter still works."""
     letter = generate_appeal_letter(
-        finding=finding, encounter=encounter,
+        finding=finding,
+        encounter=encounter,
         clinical_note="Patient presents with chest pain...",
         denial_reason="Not medically necessary",
         zorva_context=zctx_ca,
@@ -337,31 +356,38 @@ def test_generate_without_llm_returns_template_letter(finding, encounter, zctx_c
     assert letter["template_only"] is True
     assert letter["market"] == "CA"
     assert letter["compliance_law"] == "PIPEDA"
-    assert "OHIP" in letter["letter_markdown"] or "Provincial" in letter["letter_markdown"]
+    assert (
+        "OHIP" in letter["letter_markdown"] or "Provincial" in letter["letter_markdown"]
+    )
     assert letter["cited_rule_ids"] == ["MOD-25"]
     assert "Reconsider" in letter["requested_action"]
 
 
 def test_generate_with_llm_parses_response(finding, encounter, zctx_ca):
     """A well-formed LLM response is parsed and scrubbed."""
+
     def fake_complete(prompt: str) -> str:
-        return json.dumps({
-            "letter_markdown": (
-                "Dear payer,\n\n"
-                "We appeal the denial of claim 12345. "
-                "Patient MRN: 1234567890.\n"
-                "Documentation supports medical necessity.\n"
-                "Contact: biller@clinic.ca.\n\n"
-                "Sincerely,\nDr. Smith"
-            ),
-            "appeal_basis": "Documentation supports medical necessity",
-            "cited_rule_ids": ["MOD-25"],
-            "requested_action": "Reconsider and pay",
-        })
+        return json.dumps(
+            {
+                "letter_markdown": (
+                    "Dear payer,\n\n"
+                    "We appeal the denial of claim 12345. "
+                    "Patient MRN: 1234567890.\n"
+                    "Documentation supports medical necessity.\n"
+                    "Contact: biller@clinic.ca.\n\n"
+                    "Sincerely,\nDr. Smith"
+                ),
+                "appeal_basis": "Documentation supports medical necessity",
+                "cited_rule_ids": ["MOD-25"],
+                "requested_action": "Reconsider and pay",
+            }
+        )
 
     letter = generate_appeal_letter(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=zctx_ca,
         llm_complete=fake_complete,
     )
@@ -371,16 +397,22 @@ def test_generate_with_llm_parses_response(finding, encounter, zctx_ca):
     # PHI was scrubbed
     assert "1234567890" not in letter["letter_markdown"]
     assert "biller@clinic.ca" not in letter["letter_markdown"]
-    assert "[PATIENT_ID]" in letter["letter_markdown"] or "PATIENT_ID" in letter["letter_markdown"]
+    assert (
+        "[PATIENT_ID]" in letter["letter_markdown"]
+        or "PATIENT_ID" in letter["letter_markdown"]
+    )
     assert letter["cited_rule_ids"] == ["MOD-25"]
 
 
 def test_generate_with_llm_failure_returns_none(finding, encounter, zctx_ca):
     def fake_complete(prompt: str) -> str:
         raise RuntimeError("LLM offline")
+
     letter = generate_appeal_letter(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=zctx_ca,
         llm_complete=fake_complete,
     )
@@ -390,9 +422,12 @@ def test_generate_with_llm_failure_returns_none(finding, encounter, zctx_ca):
 def test_generate_with_llm_garbage_response_returns_none(finding, encounter, zctx_ca):
     def fake_complete(prompt: str) -> str:
         return "Sorry, I cannot generate that response."
+
     letter = generate_appeal_letter(
-        finding=finding, encounter=encounter,
-        clinical_note="note", denial_reason="denied",
+        finding=finding,
+        encounter=encounter,
+        clinical_note="note",
+        denial_reason="denied",
         zorva_context=zctx_ca,
         llm_complete=fake_complete,
     )
@@ -405,6 +440,7 @@ def test_generate_with_llm_garbage_response_returns_none(finding, encounter, zct
 def test_log_appeal_letter_writes_metadata_only(tmp_path, monkeypatch):
     """Log file gets the metadata (basis, rules, market) but NOT the body."""
     from ai_billing_audit import appeal_letter as al
+
     monkeypatch.setattr(al, "_LOGS_DIR", tmp_path)
     monkeypatch.setattr(al, "_APPEAL_LOG", tmp_path / "appeal_letters.jsonl")
     letter = {
@@ -417,19 +453,22 @@ def test_log_appeal_letter_writes_metadata_only(tmp_path, monkeypatch):
         "generated_at": "2026-06-20T12:00:00Z",
     }
     al.log_appeal_letter(letter, "E-APPEAL-1")
-    contents = (tmp_path / "appeal_letters.jsonl").read_text()
-    # Metadata IS in the log
-    assert "E-APPEAL-1" in contents
-    assert "MOD-25" in contents
-    assert "PIPEDA" in contents
-    assert "Documentation supports the claim" in contents
-    # Body is NOT in the log
-    assert "TOP SECRET" not in contents
+    contents = (tmp_path / "appeal_letters.jsonl").read_bytes()
+    assert b"E-APPEAL-1" not in contents
+    assert b"MOD-25" not in contents
+    assert b"PIPEDA" not in contents
+    assert b"TOP SECRET" not in contents
+    records = al.read_appeal_letters("E-APPEAL-1")
+    assert records[0]["cited_rule_ids"] == ["MOD-25"]
+    assert records[0]["compliance_law"] == "PIPEDA"
+    assert records[0]["appeal_basis"] == "Documentation supports the claim"
+    assert "letter_markdown" not in records[0]
 
 
 def test_log_failure_doesnt_crash(tmp_path, monkeypatch):
     """A logging failure (read-only fs) doesn't propagate."""
     from ai_billing_audit import appeal_letter as al
+
     # Point at a path that can't be created (parent is a file)
     bad_path = tmp_path / "not-a-dir" / "nope" / "appeal_letters.jsonl"
     monkeypatch.setattr(al, "_LOGS_DIR", bad_path.parent.parent)

@@ -26,18 +26,24 @@ this module's ``compute_signature`` concatenates fields directly
 prod Postgres ``audit_trail`` rows are interchangeable; either
 ``verify_chain`` works on both.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import os
-import re
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 from .patient_hash import hash_patient_id
+
 
 # Module-level path. Read on every access so the test suite can
 # set ``AUDIT_TRAIL_LOG`` BEFORE audit_actions is imported (or
@@ -216,20 +222,9 @@ def _read_last_signature() -> str:
         last_sig = _GENESIS_SIG
     else:
         last_sig = _GENESIS_SIG
-        try:
-            with path.open() as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if "cryptographic_signature" in rec:
-                        last_sig = rec["cryptographic_signature"]
-        except OSError:
-            last_sig = _GENESIS_SIG
+        for rec in read_encrypted_json_records(path):
+            if "cryptographic_signature" in rec:
+                last_sig = rec["cryptographic_signature"]
     _LAST_SIG_CACHE = last_sig
     _LAST_SIG_MTIME = mtime
     _LAST_SIG_PATH = path
@@ -353,8 +348,7 @@ def append(
     row = _normalize_row(row)
 
     # Append (line-by-line, JSONL)
-    with audit_trail_path().open("a") as fh:
-        fh.write(json.dumps(row) + "\n")
+    append_encrypted_json_record(audit_trail_path(), row)
     return row
 
 
@@ -372,16 +366,7 @@ def read_all(
     """
     if not audit_trail_path().is_file():
         return []
-    rows: list[dict[str, Any]] = []
-    with audit_trail_path().open() as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
+    rows = read_encrypted_json_records(audit_trail_path())
     # Tenant scoping. The contract:
     #   tenant_id=None      -> only the "default" tenant (Acme)
     #   tenant_id="default" -> only the "default" tenant
@@ -392,13 +377,15 @@ def read_all(
     # so existing audit trails don't disappear after the upgrade.
     if tenant_id != "*":
         effective_tenant = tenant_id if tenant_id is not None else "default"
-        rows = [
-            r for r in rows
-            if r.get("tenant_id", "default") == effective_tenant
-        ]
+        rows = [r for r in rows if r.get("tenant_id", "default") == effective_tenant]
     if limit is not None:
         rows = rows[-limit:]
     return rows
+
+
+def migrate_audit_trail_log() -> int:
+    """Encrypt a legacy plaintext audit-trail JSONL in place."""
+    return migrate_plaintext_jsonl(audit_trail_path())
 
 
 def verify_chain(
@@ -440,5 +427,3 @@ def verify_chain(
     from audit_log import verify_chain as _canonical_verify_chain  # src/audit_log.py
 
     return _canonical_verify_chain(rows, key=key)
-
-

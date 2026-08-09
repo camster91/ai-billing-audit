@@ -13,7 +13,6 @@ These tests enforce the acceptance criteria for t_35eae361:
 from __future__ import annotations
 
 import importlib
-import os
 
 
 def _reload_llm(monkeypatch=None) -> None:
@@ -64,7 +63,10 @@ def test_resolve_model_uses_pin_when_nothing_set(monkeypatch) -> None:
 
     client = LLMClient()
     # No explicit override, no LLM_MODEL, no kwargs["model"] → pin wins.
-    assert client._resolve_model({}) == client._resolve_model.__globals__["PINNED_DEFAULT_MODEL"]
+    assert (
+        client._resolve_model({})
+        == client._resolve_model.__globals__["PINNED_DEFAULT_MODEL"]
+    )
 
 
 def test_pinned_id_is_the_only_default_in_source() -> None:
@@ -77,10 +79,7 @@ def test_pinned_id_is_the_only_default_in_source() -> None:
     from pathlib import Path
 
     llm_src = (
-        Path(__file__).resolve().parents[1]
-        / "src"
-        / "ai_billing_audit"
-        / "llm.py"
+        Path(__file__).resolve().parents[1] / "src" / "ai_billing_audit" / "llm.py"
     ).read_text(encoding="utf-8")
 
     from ai_billing_audit.llm import PINNED_DEFAULT_MODEL
@@ -107,10 +106,7 @@ def test_no_latest_alias_in_llm_source() -> None:
     from pathlib import Path
 
     llm_src = (
-        Path(__file__).resolve().parents[1]
-        / "src"
-        / "ai_billing_audit"
-        / "llm.py"
+        Path(__file__).resolve().parents[1] / "src" / "ai_billing_audit" / "llm.py"
     ).read_text(encoding="utf-8")
 
     # Strip docstrings + comments so the assertion is about code, not

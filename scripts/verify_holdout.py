@@ -18,12 +18,12 @@ holdout produced by scripts/generate_holdout.py) is:
 Usage:
     python3 scripts/verify_holdout.py [--holdout data/synth/holdout_seed9999.json]
 """
+
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +31,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # The optimizer's val split is generated with train_seed=1729 and id range
 # enc_10000..enc_10049. Train is enc_0000..enc_0099.
 OPTIMIZER_TRAIN_SEED = 1729
-TRAIN_ID_RANGE = range(0, 100)      # enc_0000..enc_0099
+TRAIN_ID_RANGE = range(0, 100)  # enc_0000..enc_0099
 VAL_ID_RANGE = range(10_000, 10_050)  # enc_10000..enc_10049
 
 
@@ -74,7 +74,9 @@ def verify(holdout_path: Path) -> tuple[int, list[str]]:
                 f"was generated with this seed, so the holdout is NOT disjoint."
             )
         else:
-            msgs.append(f"OK: train_seed={seed} differs from optimizer's {OPTIMIZER_TRAIN_SEED}")
+            msgs.append(
+                f"OK: train_seed={seed} differs from optimizer's {OPTIMIZER_TRAIN_SEED}"
+            )
     else:
         msgs.append(f"WARN: no meta sidecar at {meta_path.name}; skipping SHA check")
 
@@ -91,13 +93,13 @@ def verify(holdout_path: Path) -> tuple[int, list[str]]:
 
     size = len(data)
     if size == 100:
-        msgs.append(f"OK: size=100 (matches task spec)")
+        msgs.append("OK: size=100 (matches task spec)")
     elif size == 50:
         msgs.append(
-            f"WARN: size=50. Task A6 spec asked for 100 (50/50 clean/flagged). "
-            f"The on-disk file is 50 (42 flagged + 8 clean). Either extend "
-            f"scripts/generate_holdout.py with --n 100 and re-run, or update "
-            f"the task body to reflect the 50-encounter acceptance reality."
+            "WARN: size=50. Task A6 spec asked for 100 (50/50 clean/flagged). "
+            "The on-disk file is 50 (42 flagged + 8 clean). Either extend "
+            "scripts/generate_holdout.py with --n 100 and re-run, or update "
+            "the task body to reflect the 50-encounter acceptance reality."
         )
     else:
         msgs.append(f"WARN: size={size}; task spec is 100 (or 50 by current reality).")
@@ -122,11 +124,11 @@ def verify(holdout_path: Path) -> tuple[int, list[str]]:
     if collisions_train:
         msgs.append(f"FAIL: {collisions_train} encounters collide with train range")
     else:
-        msgs.append(f"OK: no collisions with train (enc_0000..enc_0099)")
+        msgs.append("OK: no collisions with train (enc_0000..enc_0099)")
     if collisions_val:
         msgs.append(f"FAIL: {collisions_val} encounters collide with val range")
     else:
-        msgs.append(f"OK: no collisions with val (enc_10000..enc_10049)")
+        msgs.append("OK: no collisions with val (enc_10000..enc_10049)")
 
     # --- Every encounter has ground_truth --------------------------------
     missing_gt = 0
@@ -136,7 +138,7 @@ def verify(holdout_path: Path) -> tuple[int, list[str]]:
     if missing_gt:
         msgs.append(f"FAIL: {missing_gt} encounters have no ground truth")
     else:
-        msgs.append(f"OK: every encounter has ground truth")
+        msgs.append("OK: every encounter has ground truth")
 
     # Exit code: only FAILs are blocking. WARNs are surfaced for triage.
     fail_count = sum(1 for m in msgs if m.startswith("FAIL"))

@@ -74,7 +74,7 @@
 #
 # Secrets sourcing
 # ----------------
-# The deploy script reads two files from the HOST (not from this Mac)
+# The deploy script reads five files from the HOST (not from this workstation)
 # to keep the values off the local terminal:
 #   $LLM_API_KEY_FILE   file whose first non-comment, non-blank line is
 #                       the bare API key (no key= prefix). The key is
@@ -83,11 +83,14 @@
 #                       minimax_client code path).
 #   $POSTGRES_PASSWORD_FILE
 #                       same shape, but the postgres password.
-# If those files don't exist, the script falls back to default dev
-# values that are obviously NOT production (audit:audit for postgres,
-# OPENAI_API_KEY=unset for the LLM). The api process still boots
-# because the v1 healthz doesn't touch the LLM; a real LLM call would
-# 500 with a clear error. Documented in the handoff.
+#   $PHI_ENCRYPTION_KEY_FILE
+#                       a Fernet key used for uploaded notes and job records.
+#   $PRINCIPAL_SIGNING_SECRET_FILE
+#                       HMAC secret for short-lived portal principals.
+#   $AUDIT_BEARER_TOKEN_FILE
+#                       service bearer token required by the API middleware.
+# Database, PHI, and auth keys are fail-closed. The LLM key alone may use a clearly
+# labelled placeholder so liveness can start without enabling real audits.
 
 set -euo pipefail
 
@@ -100,6 +103,9 @@ LLM_PROVIDER="minimax"
 LLM_BASE_URL="https://api.minimax.io/v1"
 LLM_API_KEY_FILE="/root/ai-billing-audit-secrets/llm_api_key"
 POSTGRES_PASSWORD_FILE="/root/ai-billing-audit-secrets/postgres_password"
+PHI_ENCRYPTION_KEY_FILE="/root/ai-billing-audit-secrets/phi_encryption_key"
+PRINCIPAL_SIGNING_SECRET_FILE="/root/ai-billing-audit-secrets/principal_signing_secret"
+AUDIT_BEARER_TOKEN_FILE="/root/ai-billing-audit-secrets/audit_bearer_token"
 
 # --- Resolve script dir on the local machine ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -161,7 +167,7 @@ rsync -az --delete \
 
 # --- Step 2: write .env on the host ---
 log "write .env on host (DATABASE_URL, AUDIT_TRAIL_DB, LLM keys)"
-ssh "$HOST" "LLM_API_KEY_FILE=$LLM_API_KEY_FILE POSTGRES_PASSWORD_FILE=$POSTGRES_PASSWORD_FILE LLM_PROVIDER=$LLM_PROVIDER LLM_BASE_URL=$LLM_BASE_URL bash -s" <<'REMOTE_ENV_EOF'
+ssh "$HOST" "LLM_API_KEY_FILE=$LLM_API_KEY_FILE POSTGRES_PASSWORD_FILE=$POSTGRES_PASSWORD_FILE PHI_ENCRYPTION_KEY_FILE=$PHI_ENCRYPTION_KEY_FILE PRINCIPAL_SIGNING_SECRET_FILE=$PRINCIPAL_SIGNING_SECRET_FILE AUDIT_BEARER_TOKEN_FILE=$AUDIT_BEARER_TOKEN_FILE LLM_PROVIDER=$LLM_PROVIDER LLM_BASE_URL=$LLM_BASE_URL bash -s" <<'REMOTE_ENV_EOF'
 set -euo pipefail
 ENV_FILE=/opt/projects/ai-billing-audit/.env
 mkdir -p "$(dirname "$ENV_FILE")"
@@ -182,6 +188,30 @@ if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
     [ -n "$POSTGRES_PASSWORD" ] || { echo "POSTGRES_PASSWORD_FILE is empty" >&2; exit 1; }
 else
     echo "ERROR: $POSTGRES_PASSWORD_FILE missing; refusing to deploy with a default password." >&2
+    exit 1
+fi
+
+if [ -f "$PHI_ENCRYPTION_KEY_FILE" ]; then
+    PHI_ENCRYPTION_KEY="$(grep -v '^[[:space:]]*#' "$PHI_ENCRYPTION_KEY_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
+    [ -n "$PHI_ENCRYPTION_KEY" ] || { echo "PHI_ENCRYPTION_KEY_FILE is empty" >&2; exit 1; }
+else
+    echo "ERROR: $PHI_ENCRYPTION_KEY_FILE missing; refusing to deploy without PHI encryption." >&2
+    exit 1
+fi
+
+if [ -f "$PRINCIPAL_SIGNING_SECRET_FILE" ]; then
+    PRINCIPAL_SIGNING_SECRET="$(grep -v '^[[:space:]]*#' "$PRINCIPAL_SIGNING_SECRET_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
+    [ "${#PRINCIPAL_SIGNING_SECRET}" -ge 32 ] || { echo "PRINCIPAL_SIGNING_SECRET_FILE must contain at least 32 bytes" >&2; exit 1; }
+else
+    echo "ERROR: $PRINCIPAL_SIGNING_SECRET_FILE missing; refusing to deploy unsigned identity." >&2
+    exit 1
+fi
+
+if [ -f "$AUDIT_BEARER_TOKEN_FILE" ]; then
+    AUDIT_BEARER_TOKEN="$(grep -v '^[[:space:]]*#' "$AUDIT_BEARER_TOKEN_FILE" | grep -v '^[[:space:]]*$' | head -n 1)"
+    [ "${#AUDIT_BEARER_TOKEN}" -ge 32 ] || { echo "AUDIT_BEARER_TOKEN_FILE must contain at least 32 bytes" >&2; exit 1; }
+else
+    echo "ERROR: $AUDIT_BEARER_TOKEN_FILE missing; refusing to deploy an unauthenticated API." >&2
     exit 1
 fi
 
@@ -231,6 +261,9 @@ OPENAI_API_KEY=${LLM_API_KEY}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 DATABASE_URL=postgresql://audit:${POSTGRES_PASSWORD}@postgres:5432/ai_billing_audit
 AUDIT_TRAIL_DB=postgresql://audit:${POSTGRES_PASSWORD}@postgres:5432/ai_billing_audit
+ZORVA_PHI_ENCRYPTION_KEY=${PHI_ENCRYPTION_KEY}
+ZORVA_PRINCIPAL_SIGNING_SECRET=${PRINCIPAL_SIGNING_SECRET}
+AUDIT_BEARER_TOKEN=${AUDIT_BEARER_TOKEN}
 LOG_LEVEL=INFO
 ENV
 

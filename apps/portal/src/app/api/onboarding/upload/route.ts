@@ -3,8 +3,8 @@
 // multipart/form-data with field `file` (a single 837P file, up to
 // 20MB). Returns { filePath, fileName, size }.
 //
-// The file is staged under a server-local directory that the audit
-// pipeline polls for. We never trust the client filename for storage
+// The file is encrypted and staged under a server-local directory for a
+// future audit-engine handoff. We never trust the client filename for storage
 // — we generate a uuid-based path and remember the original name for
 // display purposes only.
 //
@@ -19,6 +19,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { requireOnboardingAuth } from "@/lib/onboarding-auth";
 import { OnboardingError } from "@/lib/onboarding";
+import { encryptPortalBuffer } from "@/lib/data-encryption";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,13 +80,14 @@ export async function POST(request: Request) {
   await mkdir(UPLOAD_DIR, { recursive: true });
   const storedPath = path.join(UPLOAD_DIR, storedName);
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(storedPath, buffer);
+  await writeFile(storedPath, encryptPortalBuffer(buffer), { flag: "wx" });
 
   return NextResponse.json(
     {
       filePath: `uploads/${storedName}`,
       fileName: file.name,
       size: file.size,
+      encryptedAtRest: true,
     },
     { status: 200 },
   );

@@ -44,7 +44,7 @@ import re
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from ai_billing_audit.llm import LLMClient
 
@@ -234,7 +234,10 @@ _RULE_ID_ALIASES: list[tuple[str, str]] = [
     (r"^DIAGNOSIS_DOCUMENTATION_REQUIREMENT", "rule_ahcip_dx_linkage"),
     (r"^DIAGNOSIS_DOCUMENTATION", "rule_ahcip_dx_linkage"),
     (r"^DIAGNOSIS_CODE_MUST_MATCH", "rule_ahcip_dx_linkage"),
-    (r"^CA-MEDI-CAL-DX-MATCH", "rule_ahcip_em_level"),  # California-style; treat as DX family
+    (
+        r"^CA-MEDI-CAL-DX-MATCH",
+        "rule_ahcip_em_level",
+    ),  # California-style; treat as DX family
     (r"PROCEDURE_DIAGNOSIS_LINKAGE", "rule_ahcip_dx_linkage"),
     (r"PROCEDURE_REQUIRES_APPROPRIATE_DIAGNOSIS", "rule_ahcip_dx_linkage"),
     (r"^EOM_DIAGNOSIS_COVERAGE", "rule_ahcip_dx_linkage"),
@@ -321,8 +324,6 @@ _RULE_ID_ALIASES: list[tuple[str, str]] = [
     (r"ICD.10.SEX.AGE", "rule_ahcip_em_level"),  # generic DX
 ]
 
-import re as _re_canonicalize  # alias for canonical alias map (see below); re also imported above for re.split
-
 
 def _canonicalize_rule_id(rule_id: str) -> str:
     """Map an LLM-emitted rule_id string back to the canonical
@@ -338,7 +339,7 @@ def _canonicalize_rule_id(rule_id: str) -> str:
     if rid_lower.startswith("rule_ahcip_"):
         return rule_id  # preserve original casing
     for pattern, canonical in _RULE_ID_ALIASES:
-        if _re_canonicalize.search(pattern, rid_lower, _re_canonicalize.IGNORECASE):
+        if re.search(pattern, rid_lower, re.IGNORECASE):
             return canonical
     return rule_id  # unknown — pass through
 
@@ -426,7 +427,9 @@ def _encounter_context(encounter: Mapping[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def build_messages(encounter: Mapping[str, Any], *, prompt: str) -> list[dict[str, str]]:
+def build_messages(
+    encounter: Mapping[str, Any], *, prompt: str
+) -> list[dict[str, str]]:
     """Build the OpenAI-style messages list sent to the LLM.
 
     The system message is the loaded auditor prompt; the user message
@@ -466,9 +469,12 @@ def _quote_in_note(quote: str, clinical_note: str) -> bool:
     # evidence; what matters is the tokens (medical terms, codes,
     # numbers) actually appearing in the source.
     import string
+
     punct = set(string.punctuation)
-    def _clean(s: str) -> str:
+
+    def _clean(s: str) -> list[str]:
         return " ".join(ch for ch in s.lower() if ch not in punct).split()
+
     q_tokens = _clean(quote)
     n_tokens = _clean(clinical_note)
     if not q_tokens:
@@ -528,7 +534,9 @@ def validate_findings(
         # pipeline can render the finding without crashing.
         for key in ("severity",):
             if key not in item:
-                raise AuditValidationError(f"findings[{i}] missing required field '{key}'")
+                raise AuditValidationError(
+                    f"findings[{i}] missing required field '{key}'"
+                )
         # Normalize severity to lowercase. Different models echo
         # back "CRITICAL" vs "critical"; we only care about the value.
         sev_raw = str(item.get("severity", "")).strip().lower()
@@ -584,9 +592,7 @@ def validate_findings(
         # the finding. The alias map (defined above) catches the
         # patterns the LLM actually emits on MiniMax-M3 + maps them
         # back to the canonical SOMB-aware rule_id.
-        canonical_rule_ids = tuple(
-            _canonicalize_rule_id(r) for r in rule_ids
-        )
+        canonical_rule_ids = tuple(_canonicalize_rule_id(r) for r in rule_ids)
         # Hallucination guardrail: if we have a clinical note to check against,
         # reject any finding whose quote is not in the note. The whole
         # finding (suggested_code + severity + rule_ids) is suspect when the
@@ -656,9 +662,7 @@ def run_audit(
     # the same word. Caller can override by passing
     # ``temperature=`` via LLMClient construction or by
     # wrapping ``client.complete``.
-    payload = client.complete_json(
-        messages, RESPONSE_JSON_SCHEMA, temperature=0.2
-    )
+    payload = client.complete_json(messages, RESPONSE_JSON_SCHEMA, temperature=0.2)
     # Retry-on-empty: if the model returned 0 findings AND a clinical
     # note was provided (i.e. the model had something to work with),
     # re-prompt with a follow-up nudge that asks for re-emission.

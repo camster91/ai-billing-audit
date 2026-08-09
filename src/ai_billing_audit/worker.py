@@ -22,6 +22,7 @@ A future card can replace this stub with one that connects to
 ``$DATABASE_URL`` via ``pg LISTEN/NOTIFY`` and processes jobs
 out-of-band. For v1, the worker is a no-op liveness sidecar.
 """
+
 from __future__ import annotations
 
 import logging

@@ -14,6 +14,7 @@ module's helpers and call ``register_demo_encounter(...)`` from their
 own entry point — the registry is idempotent on encounter_id, so a
 double registration is a no-op.
 """
+
 from __future__ import annotations
 
 from ai_billing_audit.demo_registry import register_demo_encounter

@@ -18,7 +18,8 @@ def store(tmp_path):
 
 def test_save_and_list(store):
     store.save_preset("user_a", "my queue", {"status": "flagged"})
-    store.save_preset("user_a", "this week", {"q": "modifier-25"})
+    store.save_preset("user_a", "this week", {"patient_id": "PATIENT-SECRET"})
+    assert b"PATIENT-SECRET" not in store.log_path.read_bytes()
     presets = store.list_for_user("user_a")
     names = [p.preset_name for p in presets]
     assert "my queue" in names

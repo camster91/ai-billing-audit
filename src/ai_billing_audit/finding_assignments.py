@@ -34,15 +34,21 @@ pattern, same as the snooze and audit_actions stores). Multi-process
 writers would need ``fcntl`` flock — not needed today because the
 dashboard app is a single uvicorn worker.
 """
+
 from __future__ import annotations
 
-import json
 import os
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 
 
 # Default JSONL path. Overridable via FINDING_ASSIGNMENT_LOG for tests.
@@ -111,9 +117,7 @@ class FindingAssignmentStore:
 
     def append(self, entry: FindingAssignment) -> FindingAssignment:
         """Append an assignment row to the JSONL log."""
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.log_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry.to_dict()) + "\n")
+        append_encrypted_json_record(self.log_path, entry.to_dict())
         return entry
 
     def assign(
@@ -149,20 +153,17 @@ class FindingAssignmentStore:
         """Return every row in the log, oldest first. Skips malformed lines."""
         if not self.log_path.is_file():
             return []
-        rows: list[FindingAssignment] = []
-        with self.log_path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rows.append(FindingAssignment.from_dict(json.loads(line)))
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    # Malformed row — skip rather than blow up the
-                    # whole dashboard render. Real prod would
-                    # quarantine these; for v0 we just keep going.
-                    continue
-        return rows
+        return [
+            FindingAssignment.from_dict(record)
+            for record in read_encrypted_json_records(self.log_path)
+        ]
+        # Malformed row — skip rather than blow up the
+        # whole dashboard render. Real prod would
+        # quarantine these; for v0 we just keep going.
+
+    def migrate_plaintext_log(self) -> int:
+        """Encrypt this store's legacy plaintext log in place."""
+        return migrate_plaintext_jsonl(self.log_path)
 
     def entries_for(
         self, encounter_id: str, finding_id: str | None = None
@@ -173,7 +174,8 @@ class FindingAssignmentStore:
         take the last element to get the current state.
         """
         return [
-            e for e in self.all_entries()
+            e
+            for e in self.all_entries()
             if e.encounter_id == encounter_id
             and (finding_id is None or e.finding_id == finding_id)
         ]
@@ -215,7 +217,7 @@ class FindingAssignmentStore:
         self,
         clinic_id: str,
         *,
-        biller_to_clinic: "callable | None" = None,
+        biller_to_clinic: Callable[[str], str] | None = None,
     ) -> list[dict[str, Any]]:
         """Return the current per-biller workload for one clinic.
 
@@ -275,6 +277,7 @@ class FindingAssignmentStore:
         completed_by_biller: dict[str, set[tuple[str, str]]] = {}
         try:
             from .feedback import get_default_store  # local import to avoid
+
             # pulling feedback at module import time (the dashboard
             # tests reload this module; feedback stays usable as long
             # as the env-driven paths resolve).
@@ -301,8 +304,7 @@ class FindingAssignmentStore:
                 continue
             completed_pairs = completed_by_biller.get(biller_id, set())
             n_completed = sum(
-                1 for r in rows
-                if (r.encounter_id, r.finding_id) in completed_pairs
+                1 for r in rows if (r.encounter_id, r.finding_id) in completed_pairs
             )
             n_overdue = 0
             for r in rows:
@@ -315,12 +317,14 @@ class FindingAssignmentStore:
                     continue
                 if ts < now_ts:
                     n_overdue += 1
-            out.append({
-                "biller_id": biller_id,
-                "n_assigned": len(rows),
-                "n_completed": n_completed,
-                "n_overdue": n_overdue,
-            })
+            out.append(
+                {
+                    "biller_id": biller_id,
+                    "n_assigned": len(rows),
+                    "n_completed": n_completed,
+                    "n_overdue": n_overdue,
+                }
+            )
         return out
 
 
@@ -336,8 +340,7 @@ def _parse_iso_ts(s: str) -> float | None:
         return None
     try:
         from datetime import datetime
-        return datetime.fromisoformat(
-            s.replace("Z", "+00:00")
-        ).timestamp()
+
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
     except (TypeError, ValueError):
         return None

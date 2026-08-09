@@ -1,4 +1,5 @@
 """Tests for feature_flags module (kanban t_11b04a94)."""
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,10 @@ def test_known_flags_includes_clinical_impact_set():
 
 def test_is_enabled_default_false(flag_log):
     assert ff.is_enabled("clinic_a", "doctor_dashboard", log_path=flag_log) is False
-    assert ff.is_enabled("clinic_a", "doctor_dashboard", log_path=flag_log, default=True) is True
+    assert (
+        ff.is_enabled("clinic_a", "doctor_dashboard", log_path=flag_log, default=True)
+        is True
+    )
 
 
 def test_enable_writes_row(flag_log):
@@ -116,12 +120,12 @@ def test_bucket_for_spread():
 
 def test_rollout_percent_zero_and_hundred():
     m = ff.rollout_percent("flag_x", 0)
-    pred = m[f"_predicate_for_flag_x"]
+    pred = m["_predicate_for_flag_x"]
     for i in range(50):
         assert pred(f"tenant_{i}") is False
 
     m = ff.rollout_percent("flag_x", 100)
-    pred = m[f"_predicate_for_flag_x"]
+    pred = m["_predicate_for_flag_x"]
     for i in range(50):
         assert pred(f"tenant_{i}") is True
 
@@ -136,6 +140,6 @@ def test_rollout_percent_validates():
 def test_rollout_percent_approximate_count():
     # ~50% rollout should hit ~50% of tenants (within tolerance)
     m = ff.rollout_percent("flag_x", 50)
-    pred = m[f"_predicate_for_flag_x"]
+    pred = m["_predicate_for_flag_x"]
     hits = sum(1 for i in range(1000) if pred(f"tenant_{i}"))
     assert 400 <= hits <= 600, f"expected ~500, got {hits}"

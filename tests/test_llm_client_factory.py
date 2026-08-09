@@ -34,9 +34,7 @@ from __future__ import annotations
 
 import ast
 import importlib
-import os
 import pathlib
-import re
 from typing import Any
 
 import pytest
@@ -160,12 +158,15 @@ def test_returns_object_satisfying_protocol(monkeypatch, factory_module):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("env_value,expected_label", [
-    ("minimax", "minimax"),
-    ("claude",  "claude"),
-    ("openai",  "openai"),
-    ("gemini",  "gemini"),
-])
+@pytest.mark.parametrize(
+    "env_value,expected_label",
+    [
+        ("minimax", "minimax"),
+        ("claude", "claude"),
+        ("openai", "openai"),
+        ("gemini", "gemini"),
+    ],
+)
 def test_env_var_picks_provider(monkeypatch, factory_module, env_value, expected_label):
     """``$LLM_PROVIDER`` selects the backend; default-arg call returns it."""
     _install_overrides(monkeypatch)
@@ -220,10 +221,20 @@ def test_env_swap_changes_returned_type(monkeypatch, factory_module):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("bad", [
-    "gpt", "anthropic", "claude-3", "MiniMax", " MINIMAX ",
-    "minimax\n", "openrouter", "azure", "bedrock",
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "gpt",
+        "anthropic",
+        "claude-3",
+        "MiniMax",
+        " MINIMAX ",
+        "minimax\n",
+        "openrouter",
+        "azure",
+        "bedrock",
+    ],
+)
 def test_unknown_provider_raises_value_error(monkeypatch, factory_module, bad):
     """Any name outside the canonical set must be rejected with ValueError."""
     _install_overrides(monkeypatch)
@@ -280,8 +291,9 @@ def test_factory_has_no_provider_name_conditionals(factory_module):
     src = LLM_CLIENT_PATH.read_text()
     tree = ast.parse(src)
     targets = {"create_llm_client", "_resolve_provider_class"}
-    found_targets = {node.name for node in ast.walk(tree)
-                     if isinstance(node, ast.FunctionDef)}
+    found_targets = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
     assert targets.issubset(found_targets), (
         f"expected to find functions {targets} in {LLM_CLIENT_PATH}; "
         f"present: {sorted(n for n in found_targets if n in targets)}"
@@ -348,6 +360,7 @@ def test_kwargs_forwarded_to_provider_constructor(monkeypatch, factory_module):
             super().__init__(**kwargs)
 
     import src.llm_client as llm_client
+
     llm_client._TEST_PROVIDER_OVERRIDES["minimax"] = _SpyMinimax
 
     llm_client.create_llm_client(
@@ -400,9 +413,9 @@ def test_factory_routes_to_real_classes_when_landed(monkeypatch, factory_module)
 
     expected = {
         "minimax": "MinimaxClient",
-        "claude":  "ClaudeClient",
-        "openai":  "OpenAIClient",
-        "gemini":  "GeminiClient",
+        "claude": "ClaudeClient",
+        "openai": "OpenAIClient",
+        "gemini": "GeminiClient",
     }
     for provider, class_name in expected.items():
         cls = factory_module._resolve_provider_class(provider)

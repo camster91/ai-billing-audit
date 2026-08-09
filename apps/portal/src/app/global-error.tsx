@@ -32,7 +32,6 @@ export default function GlobalError({
     // We deliberately do NOT send the error anywhere server-side here
     // because the global-error boundary renders BEFORE the root layout,
     // so the server-side logger isn't available.
-    // eslint-disable-next-line no-console
     console.error("[global-error] caught:", error);
   }, [error]);
 

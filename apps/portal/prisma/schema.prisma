@@ -153,6 +153,10 @@ model Tenant {
   // check-and-increment at 80% warn / 100% block, reset on
   // invoice.payment_succeeded).
   auditQuotaUsed     Int      @default(0)
+  // Audit slots reserved by portal requests that have not yet received a
+  // durable engine job id. Reservations count against the cap without being
+  // billed as usage; successful enqueue atomically moves one slot to used.
+  auditQuotaReserved Int      @default(0)
   auditQuotaLimit    Int      @default(100)
   // First day (UTC) of the billing period in which the 80% warning
   // email was last sent. Null until the first warning fires. Used to
@@ -277,6 +281,7 @@ model Tenant {
 
   memberships Membership[]
   encounters  Encounter[]
+  auditDispatches AuditDispatch[]
   auditEntries AuditTrailEntry[]
   redeemedSessions RedeemedCheckoutSession[]
   invoices    Invoice[]
@@ -384,8 +389,8 @@ model Encounter {
   patientHash   String   // SHA-256 hex of patient identifier; never PII
   dateOfService DateTime
   specialty     String
-  // Free-text clinical narrative. The /encounters/[id] page renders this
-  // verbatim and highlights the evidence_quote spans for each finding.
+  // AES-256-GCM ciphertext containing the free-text clinical narrative.
+  // Authorized server-side readers decrypt it in memory only.
   clinicalNote  String
   // FK to the EncounterClaim row holding the structured billed claim JSON.
   // 1:1 — every encounter has exactly one billed claim at review time.
@@ -399,9 +404,36 @@ model Encounter {
   claim         EncounterClaim @relation(fields: [claimId], references: [id])
   findings      Finding[]
   auditEntries  AuditTrailEntry[]
+  auditDispatch AuditDispatch?
 
   @@index([tenantId, status, dateOfService])
   @@index([tenantId, dateOfService])
+}
+
+// Durable bridge between a portal encounter and the asynchronous audit
+// engine. One encounter may be dispatched at most once; engineJobId provides
+// the second idempotency boundary after the engine acknowledges the enqueue.
+model AuditDispatch {
+  id               String   @id @default(cuid())
+  tenantId         String
+  encounterId      String   @unique
+  engineJobId      String?  @unique
+  engineStatusUrl  String?
+  status           String   @default("dispatching")
+  quotaReserved    Boolean  @default(true)
+  quotaChargedAt   DateTime?
+  dispatchStartedAt DateTime @default(now())
+  submittedAt      DateTime?
+  completedAt      DateTime?
+  resultImportedAt DateTime?
+  lastError        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  encounter        Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
 }
 
 model EncounterClaim {
@@ -436,7 +468,7 @@ model Finding {
   // pure documentation / policy note, not a code swap).
   currentCode              String?
   suggestedCode            String?
-  // The span in the encounter.clinicalNote this finding is anchored to.
+  // AES-256-GCM ciphertext containing the span in encounter.clinicalNote.
   // The /encounters/[id] page wraps matching occurrences in a clickable
   // highlight span and scrolls the first one into view on demand.
   evidenceQuote            String
@@ -460,7 +492,7 @@ model Finding {
   // "other_with_text" the free-text body is in `dismissText` and must
   // be non-empty (enforced at the route layer with Zod).
   dismissReason            String?
-  dismissText              String?
+  dismissText              String?  // AES-256-GCM ciphertext when present
   // Audit fields — the user that took the action and when.
   actionedByUserId         String?
   actionedAt               DateTime?
@@ -505,7 +537,7 @@ model AuditTrailEntry {
   // reason is one of the dismiss reason values; for "other_with_text"
   // the text is in `reasonText`.
   reason                 String?
-  reasonText             String?
+  reasonText             String?  // AES-256-GCM ciphertext when present
   // ---- Hash-chain payload fields ----
   // These four columns are part of the chain payload (see CHAIN_FIELDS
   // in src/lib/audit-chain.ts and the Python sibling src/audit_log.py).

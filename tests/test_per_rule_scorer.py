@@ -1,4 +1,5 @@
 """Tests for the per-rule-family recall scorer."""
+
 from __future__ import annotations
 
 import json

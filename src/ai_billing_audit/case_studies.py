@@ -32,6 +32,7 @@ The case studies are derived from the actual data/val.json
 encounters so the examples are honest. We don't fabricate
 encounters for marketing copy.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -61,13 +62,13 @@ class CaseStudy:
     enough to publish without a BAA.
     """
 
-    slug: str              # URL slug: /case-studies/{slug}
-    title: str             # "Modifier-25 caught on chest pain encounter"
-    difficulty: str        # "easy" | "medium" | "hard"
-    specialty: str         # "cardiology"
-    encounter_id: str      # "enc_0000" — the underlying val.json encounter
-    clinical_scenario: str # 2-3 sentence narrative
-    claim_summary: str     # what was billed
+    slug: str  # URL slug: /case-studies/{slug}
+    title: str  # "Modifier-25 caught on chest pain encounter"
+    difficulty: str  # "easy" | "medium" | "hard"
+    specialty: str  # "cardiology"
+    encounter_id: str  # "enc_0000" — the underlying val.json encounter
+    clinical_scenario: str  # 2-3 sentence narrative
+    claim_summary: str  # what was billed
     findings: list[dict[str, Any]]  # [{rule_id, severity, quote, suggested_code}]
     what_biller_would_have_done: str
     dollar_impact: str
@@ -104,7 +105,7 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "duplicate service on same date",
                 "suggested_code": "99213-25",
                 "rationale": "The problem-focused E/M needs modifier -25 to "
-                              "unbundle from the annual wellness service.",
+                "unbundle from the annual wellness service.",
             },
         ],
         what_biller_would_have_done=(
@@ -146,10 +147,10 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "echocardiogram ordered",
                 "suggested_code": "93306",
                 "rationale": "Echocardiogram was ordered and "
-                              "documented but the corresponding "
-                              "CPT code (93306) was not billed. "
-                              "This is recoverable revenue that "
-                              "would otherwise be lost.",
+                "documented but the corresponding "
+                "CPT code (93306) was not billed. "
+                "This is recoverable revenue that "
+                "would otherwise be lost.",
             },
             {
                 "rule_id": "rule_icd_001",
@@ -157,8 +158,8 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "palpitations reported",
                 "suggested_code": "R00.2",
                 "rationale": "Palpitations ICD-10 (R00.2) supports "
-                              "the medical necessity of the "
-                              "echocardiogram and lipid panel.",
+                "the medical necessity of the "
+                "echocardiogram and lipid panel.",
             },
             {
                 "rule_id": "rule_em_001",
@@ -166,8 +167,8 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "established patient moderate complexity",
                 "suggested_code": "99214",
                 "rationale": "Documentation supports moderate-"
-                              "complexity E/M. Verify chart review "
-                              "elements for 99214.",
+                "complexity E/M. Verify chart review "
+                "elements for 99214.",
             },
             {
                 "rule_id": "rule_icd_004",
@@ -175,8 +176,8 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "essential hypertension",
                 "suggested_code": "I10",
                 "rationale": "Hypertension ICD-10 (I10) supports "
-                              "continuity of care and chronic "
-                              "condition management.",
+                "continuity of care and chronic "
+                "condition management.",
             },
             {
                 "rule_id": "rule_lab_001",
@@ -184,7 +185,7 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "lipid panel ordered",
                 "suggested_code": "80061",
                 "rationale": "Lipid panel needs medical-necessity "
-                              "ICD linkage (the I10 above).",
+                "ICD linkage (the I10 above).",
             },
         ],
         what_biller_would_have_done=(
@@ -235,9 +236,9 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "separately identifiable E/M",
                 "suggested_code": "99214-25",
                 "rationale": "Same-day E/M + procedure requires "
-                              "modifier -25 to unbundle the E/M "
-                              "from the ECG. Without it, the "
-                              "system bundles and denies the E/M.",
+                "modifier -25 to unbundle the E/M "
+                "from the ECG. Without it, the "
+                "system bundles and denies the E/M.",
             },
             {
                 "rule_id": "rule_em_001",
@@ -245,8 +246,8 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "established patient moderate complexity",
                 "suggested_code": "99214",
                 "rationale": "Documentation supports moderate-"
-                              "complexity E/M. Verify chart review "
-                              "elements for 99214.",
+                "complexity E/M. Verify chart review "
+                "elements for 99214.",
             },
             {
                 "rule_id": "rule_ecg_001",
@@ -254,8 +255,8 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "ECG performed in office",
                 "suggested_code": "93000",
                 "rationale": "ECG billed — verify interpretation "
-                              "is documented separately from the "
-                              "tracing acquisition.",
+                "is documented separately from the "
+                "tracing acquisition.",
             },
             {
                 "rule_id": "rule_icd_001",
@@ -263,15 +264,14 @@ CASE_STUDIES: list[CaseStudy] = [
                 "quote": "palpitations reported",
                 "suggested_code": "R00.2",
                 "rationale": "Palpitations ICD-10 (R00.2) must "
-                              "support the ECG and lipid panel.",
+                "support the ECG and lipid panel.",
             },
             {
                 "rule_id": "rule_lab_lipid_001",
                 "severity": "low",
                 "quote": "lipid panel ordered",
                 "suggested_code": "80061",
-                "rationale": "Lipid panel needs medical-necessity "
-                              "ICD linkage.",
+                "rationale": "Lipid panel needs medical-necessity ICD linkage.",
             },
         ],
         what_biller_would_have_done=(

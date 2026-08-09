@@ -20,9 +20,9 @@ The portal TypeScript test lives in apps/portal/src/lib/__tests__/
 and the format-compat test below is the cross-implementation
 contract.
 """
+
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -280,7 +280,6 @@ def test_audit_actions_uses_canonical_patient_hash(monkeypatch, tmp_path):
     written patient_hash field equals hash_patient_id(encounter_id)
     under the same pepper. This is the contract the privacy
     officer's verifier relies on."""
-    import json
 
     # Import inside the test so the env vars are set first.
     from ai_billing_audit import audit_actions
@@ -297,6 +296,7 @@ def test_audit_actions_uses_canonical_patient_hash(monkeypatch, tmp_path):
     # monkeypatch.undo. Standardizing on env var + reload keeps
     # each test's path fully isolated.
     import importlib as _il
+
     monkeypatch.setenv("AUDIT_TRAIL_LOG", str(log_path))
     _il.reload(audit_actions)
 
@@ -311,14 +311,12 @@ def test_audit_actions_uses_canonical_patient_hash(monkeypatch, tmp_path):
 
     # The log file is append-only; read the one row we wrote.
     assert log_path.is_file()
-    rows = [
-        json.loads(line)
-        for line in log_path.read_text().splitlines()
-        if line.strip()
-    ]
+    from ai_billing_audit.clinical_note_storage import (
+        read_encrypted_json_records,
+    )
+
+    rows = read_encrypted_json_records(log_path)
     assert len(rows) == 1
     written = rows[0]
-    expected = hash_patient_id(
-        "enc-abc-123", pepper="z" * 32
-    )
+    expected = hash_patient_id("enc-abc-123", pepper="z" * 32)
     assert written["patient_hash"] == expected

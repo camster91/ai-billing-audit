@@ -22,6 +22,7 @@ The webhook log is redirected to ``tmp_path`` via
 ``/app/logs/webhooks.jsonl`` and so the registration rows
 can be inspected after the fact.
 """
+
 from __future__ import annotations
 
 import json
@@ -48,6 +49,9 @@ from starlette.testclient import TestClient  # noqa: E402
 from ai_billing_audit import api  # noqa: E402
 from ai_billing_audit import public_api  # noqa: E402
 from ai_billing_audit import webhooks as webhooks_module  # noqa: E402
+from ai_billing_audit.clinical_note_storage import (  # noqa: E402
+    read_encrypted_json_records,
+)
 from ai_billing_audit.webhooks import verify_webhook_signature  # noqa: E402
 from ai_billing_audit.job_queue import (  # noqa: E402
     JobQueue,
@@ -118,7 +122,9 @@ def webhook_server() -> dict[str, Any]:
     """
     capture = _Capture()
     server = HTTPServer(("127.0.0.1", 0), _make_handler(capture))
-    thread = threading.Thread(target=server.serve_forever, name="webhook-test", daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, name="webhook-test", daemon=True
+    )
     thread.start()
 
     host, port = server.server_address[:2]
@@ -206,6 +212,7 @@ def _claim(encounter_id: str = "ENC-WH-001") -> dict[str, Any]:
         "NPI": "1234567890",
         "date_of_service": "2026-06-24",
         "CPT_codes": ["99213"],
+        "clinical_note": "Established patient follow-up with documented assessment.",
     }
 
 
@@ -237,7 +244,9 @@ def test_register_webhook_returns_id_and_persists(
     assert len(body["signing_secret"]) >= 32
 
     log = tmp_log_dir / "webhooks.jsonl"
-    rows = [json.loads(line) for line in log.read_text().splitlines() if line]
+    assert url.encode() not in log.read_bytes()
+    assert body["signing_secret"].encode() not in log.read_bytes()
+    rows = read_encrypted_json_records(log)
     assert any(r.get("webhook_id") == body["webhook_id"] for r in rows)
 
 
@@ -414,7 +423,7 @@ def test_failed_webhook_delivery_logs_but_does_not_block_audit(
     # a non-empty error string. Search for the row so we
     # don't depend on ordering with the registration row.
     log_path = tmp_log_dir / "webhooks.jsonl"
-    rows = [json.loads(line) for line in log_path.read_text().splitlines() if line]  # noqa: E741
+    rows = read_encrypted_json_records(log_path)
     deliveries = [r for r in rows if r.get("_kind") == "delivery"]
     assert deliveries, "no delivery row was logged"
     delivery = deliveries[0]
@@ -432,7 +441,9 @@ def test_register_webhook_validates_input(
 ) -> None:
     """Missing ``url`` and bad ``events`` shape return 400."""
     # Missing url.
-    r = client.post("/v1/webhooks", json={"events": ["audit_complete"]}, headers=_bearer())
+    r = client.post(
+        "/v1/webhooks", json={"events": ["audit_complete"]}, headers=_bearer()
+    )
     assert r.status_code == 400
     # events not a list.
     r = client.post(

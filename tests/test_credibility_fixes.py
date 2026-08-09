@@ -1,10 +1,11 @@
 """Tests for the P2 audit fixes (2026-07-13):
-  - F1 citation includes val-set size + precision/recall
-  - 19-encounter claim is honest about being a shadow audit
-  - Press testimonials are honestly attributed (no fake clinic names)
-  - Third-party coverage section explains the outreach status
-  - Cookie consent banner is present + has the correct copy
+- F1 citation includes val-set size + precision/recall
+- 19-encounter claim is honest about being a shadow audit
+- Press testimonials are honestly attributed (no fake clinic names)
+- Third-party coverage section explains the outreach status
+- Cookie consent banner is present + has the correct copy
 """
+
 from __future__ import annotations
 
 import importlib
@@ -17,6 +18,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -165,11 +167,23 @@ def test_cookie_consent_banner_present_on_every_public_page(client):
     doesn't actually set cookies — a privacy officer should be
     able to confirm at a glance that no tracking is in use."""
     paths = [
-        "/", "/about", "/blog", "/blog/why-we-built-zorva",
-        "/pricing", "/contact", "/demo-request", "/newsletter",
-        "/glossary", "/glossary/ahcip", "/changelog/v0.5.0",
-        "/case-studies", "/security", "/status", "/try",
-        "/legal/privacy", "/legal/terms",
+        "/",
+        "/about",
+        "/blog",
+        "/blog/why-we-built-zorva",
+        "/pricing",
+        "/contact",
+        "/demo-request",
+        "/newsletter",
+        "/glossary",
+        "/glossary/ahcip",
+        "/changelog/v0.5.0",
+        "/case-studies",
+        "/security",
+        "/status",
+        "/try",
+        "/legal/privacy",
+        "/legal/terms",
     ]
     for path in paths:
         resp = client.get(path)
@@ -200,7 +214,9 @@ def test_cookie_consent_uses_localstorage_not_cookies(client):
     assert "localStorage" in body
     # No actual cookies set by the banner
     # (the response shouldn't have Set-Cookie for the banner)
-    assert "Set-Cookie" not in resp.headers or "consent" not in resp.headers.get("Set-Cookie", "")
+    assert "Set-Cookie" not in resp.headers or "consent" not in resp.headers.get(
+        "Set-Cookie", ""
+    )
 
 
 def test_cookie_consent_banner_hidden_by_default(client):
@@ -212,4 +228,4 @@ def test_cookie_consent_banner_hidden_by_default(client):
     # The element has the `hidden` attribute (the script
     # reveals it via JS, not the server)
     assert 'id="cookie-consent"' in body
-    assert 'hidden' in body
+    assert "hidden" in body

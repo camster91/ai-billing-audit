@@ -33,6 +33,7 @@ Run::
 The runner produces runs/shadow/prospect_demo_100-<ts>.md (the
 1-page report) and .json (machine-readable scoring input).
 """
+
 from __future__ import annotations
 
 import json
@@ -171,16 +172,18 @@ def base_encounter(i: int) -> dict:
         "clinical_note": template,
         "claim": {
             "som_b_codes": [recommended_cpt],
-            "diagnosis_codes": random.choice([
-                ["E11.9", "I10", "E78.5"],  # T2DM, HTN, dyslip
-                ["I10"],                     # HTN
-                ["E78.5"],                   # dyslip
-                ["I25.10"],                  # CAD
-                ["Z00.00"],                  # general exam
-                ["R07.9"],                   # chest pain
-                ["L82.1"],                   # seborrheic keratosis
-                ["O09.90"],                  # prenatal
-            ]),
+            "diagnosis_codes": random.choice(
+                [
+                    ["E11.9", "I10", "E78.5"],  # T2DM, HTN, dyslip
+                    ["I10"],  # HTN
+                    ["E78.5"],  # dyslip
+                    ["I25.10"],  # CAD
+                    ["Z00.00"],  # general exam
+                    ["R07.9"],  # chest pain
+                    ["L82.1"],  # seborrheic keratosis
+                    ["O09.90"],  # prenatal
+                ]
+            ),
             "modifier": modifier,
             "patient_health_number": fake_phn(),
             "referring_provider_npi": None,
@@ -217,15 +220,17 @@ def plant_modifier_25_missing(enc: dict) -> None:
     )
     enc["claim"]["som_b_codes"] = ["03.04A", "08.11A"]  # 08.11A is cryotherapy
     enc["claim"]["modifier"] = None  # <-- BUG: -25 missing
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_missing_procedure",
-        "severity": "high",
-        "category": "modifier",
-        "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
-        "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
-        "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_missing_procedure",
+            "severity": "high",
+            "category": "modifier",
+            "suggested_code": "03.04A -25 + 08.11A (drop E/M if no separate work)",
+            "clinical_evidence_quote": "cryotherapy to 2 actinic keratoses",
+            "note": "Modifier-25 missing on same-day E/M + procedure per SOMB GR 1.4",
+        }
+    ]
 
 
 def plant_cmgp_missed(enc: dict) -> None:
@@ -235,15 +240,17 @@ def plant_cmgp_missed(enc: dict) -> None:
     on 03.04A without the CMGP modifier. ~$25 missed per visit.
     """
     enc["claim"]["modifier"] = None  # <-- BUG: CMGP modifier missing
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_em_level",
-        "severity": "medium",
-        "category": "modifier",
-        "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
-        "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
-        "note": "Qualifying chronic conditions documented — CMGP modifier applies per SOMB GR 2.6",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_em_level",
+            "severity": "medium",
+            "category": "modifier",
+            "suggested_code": "03.04A + CMGP (chronic disease management general premium)",
+            "clinical_evidence_quote": "T2DM, HTN, dyslipidemia",
+            "note": "Qualifying chronic conditions documented — CMGP modifier applies per SOMB GR 2.6",
+        }
+    ]
 
 
 def plant_same_day_conflict(enc: dict) -> None:
@@ -253,15 +260,17 @@ def plant_same_day_conflict(enc: dict) -> None:
     is a same-day conflict per SOMB general rules.
     """
     enc["claim"]["som_b_codes"] = ["03.04A", "03.05A"]
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_same_day_conflict",
-        "severity": "high",
-        "category": "modifier",
-        "suggested_code": "03.04A (drop 03.05A — same-day conflict per SOMB)",
-        "clinical_evidence_quote": "comprehensive annual",
-        "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_same_day_conflict",
+            "severity": "high",
+            "category": "modifier",
+            "suggested_code": "03.04A (drop 03.05A — same-day conflict per SOMB)",
+            "clinical_evidence_quote": "comprehensive annual",
+            "note": "Cannot bill comprehensive + minor assessment same day per SOMB general rules",
+        }
+    ]
 
 
 def plant_annual_physical(enc: dict) -> None:
@@ -278,15 +287,17 @@ def plant_annual_physical(enc: dict) -> None:
     )
     enc["claim"]["som_b_codes"] = ["03.04A"]  # 03.04A is the comprehensive
     enc["claim"]["diagnosis_codes"] = ["Z00.00"]
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_non_insured_service",
-        "severity": "medium",
-        "category": "preventive",
-        "suggested_code": "Bill privately or via Blue Cross (annual physical non-insured)",
-        "clinical_evidence_quote": "Medicare-style annual health maintenance",
-        "note": "Adult annual physical largely non-insured under AHCIP — would be denied as 03.04A",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_non_insured_service",
+            "severity": "medium",
+            "category": "preventive",
+            "suggested_code": "Bill privately or via Blue Cross (annual physical non-insured)",
+            "clinical_evidence_quote": "Medicare-style annual health maintenance",
+            "note": "Adult annual physical largely non-insured under AHCIP — would be denied as 03.04A",
+        }
+    ]
 
 
 def plant_em_undercode(enc: dict) -> None:
@@ -296,15 +307,17 @@ def plant_em_undercode(enc: dict) -> None:
     The clinical narrative clearly documents comprehensive work.
     """
     enc["claim"]["som_b_codes"] = ["03.01A"]  # Undercoded
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_em_level_upcode",
-        "severity": "medium",
-        "category": "evaluation",
-        "suggested_code": "03.04A (comprehensive — work documented in note exceeds 03.01A scope)",
-        "clinical_evidence_quote": "comprehensive annual",
-        "note": "E/M level too low for the documented work",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_em_level_upcode",
+            "severity": "medium",
+            "category": "evaluation",
+            "suggested_code": "03.04A (comprehensive — work documented in note exceeds 03.01A scope)",
+            "clinical_evidence_quote": "comprehensive annual",
+            "note": "E/M level too low for the documented work",
+        }
+    ]
 
 
 def plant_global_window(enc: dict) -> None:
@@ -318,24 +331,26 @@ def plant_global_window(enc: dict) -> None:
         "Discussed expected recovery timeline."
     )
     enc["claim"]["som_b_codes"] = ["03.04A"]  # BUG: should be 03.02A post-op
-    enc["ground_truth"] = [{
-        "finding_id": f"gt-{enc['encounter_id']}-1",
-        "rule_id": "rule_ahcip_global_window",
-        "severity": "high",
-        "category": "evaluation",
-        "suggested_code": "03.02A (post-operative visit — bundled into surgical fee per SOMB GR 3.2.1)",
-        "clinical_evidence_quote": "8-day post-op cholecystectomy check",
-        "note": "Within 90-day post-op global period — visit bundled into surgical fee",
-    }]
+    enc["ground_truth"] = [
+        {
+            "finding_id": f"gt-{enc['encounter_id']}-1",
+            "rule_id": "rule_ahcip_global_window",
+            "severity": "high",
+            "category": "evaluation",
+            "suggested_code": "03.02A (post-operative visit — bundled into surgical fee per SOMB GR 3.2.1)",
+            "clinical_evidence_quote": "8-day post-op cholecystectomy check",
+            "note": "Within 90-day post-op global period — visit bundled into surgical fee",
+        }
+    ]
 
 
 PLANT_FUNCTIONS = [
     (plant_modifier_25_missing, 12),  # ~12% modifier-25 missing
-    (plant_cmgp_missed, 10),            # ~10% CMGP missed
-    (plant_same_day_conflict, 3),       # ~3% same-day conflict
-    (plant_annual_physical, 3),         # ~3% annual physical
-    (plant_em_undercode, 4),            # ~4% EM undercode
-    (plant_global_window, 2),           # ~2% global window
+    (plant_cmgp_missed, 10),  # ~10% CMGP missed
+    (plant_same_day_conflict, 3),  # ~3% same-day conflict
+    (plant_annual_physical, 3),  # ~3% annual physical
+    (plant_em_undercode, 4),  # ~4% EM undercode
+    (plant_global_window, 2),  # ~2% global window
 ]
 
 
@@ -364,7 +379,9 @@ def main() -> int:
     out_path = OUT / "prospect_demo_100.json"
     out_path.write_text(json.dumps(encounters, indent=2))
     print(f"OK: wrote {len(encounters)} encounters to {out_path}")
-    print(f"     {planted_count} planted (30%), {len(encounters) - planted_count} clean (70%)")
+    print(
+        f"     {planted_count} planted (30%), {len(encounters) - planted_count} clean (70%)"
+    )
     return 0
 
 

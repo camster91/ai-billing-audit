@@ -29,6 +29,7 @@ fixture so each test does not re-execute the script's top-level
 ``from ai_billing_audit.auditor import run_audit`` (which would
 otherwise happen on every test and pollute the import cache).
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -123,7 +124,9 @@ def test_perfect_match_each_category(monkeypatch, agg):
             _gt("evaluation", "99214", "established patient moderate complexity"),
         ]
     )
-    _patch_run_audit(monkeypatch, agg,
+    _patch_run_audit(
+        monkeypatch,
+        agg,
         [
             {
                 "category": "cardiology",
@@ -142,17 +145,27 @@ def test_perfect_match_each_category(monkeypatch, agg):
     assert r["tp"] == 2 and r["fp"] == 0 and r["fn"] == 0
     assert r["precision"] == 1.0 and r["recall"] == 1.0
     assert r["per_category"]["cardiology"] == {
-        "tp": 1, "fp": 0, "fn": 0, "gold": 1, "predicted": 1,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "gold": 1,
+        "predicted": 1,
     }
     assert r["per_category"]["evaluation"] == {
-        "tp": 1, "fp": 0, "fn": 0, "gold": 1, "predicted": 1,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "gold": 1,
+        "predicted": 1,
     }
 
 
 def test_all_unmatched_predicted(monkeypatch, agg):
     """Predicted findings with no matching gold → all FPs, all categories show 0 fn."""
     enc = _encounter([])  # no gold
-    _patch_run_audit(monkeypatch, agg,
+    _patch_run_audit(
+        monkeypatch,
+        agg,
         [
             {
                 "category": "modifier",
@@ -164,20 +177,26 @@ def test_all_unmatched_predicted(monkeypatch, agg):
     r = agg._grade_one_encounter(enc, None, Path("/tmp/prompt.txt"))
     assert r["tp"] == 0 and r["fp"] == 1 and r["fn"] == 0
     assert r["per_category"]["modifier"] == {
-        "tp": 0, "fp": 1, "fn": 0, "gold": 0, "predicted": 1,
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "gold": 0,
+        "predicted": 1,
     }
 
 
 def test_all_unmatched_ground_truth(monkeypatch, agg):
     """Gold findings with no predicted findings → all FNs, predicted count = 0."""
-    enc = _encounter(
-        [_gt("laboratory", "80053", "lipid panel ordered")]
-    )
+    enc = _encounter([_gt("laboratory", "80053", "lipid panel ordered")])
     _patch_run_audit(monkeypatch, agg, [])  # no predicted
     r = agg._grade_one_encounter(enc, None, Path("/tmp/prompt.txt"))
     assert r["tp"] == 0 and r["fp"] == 0 and r["fn"] == 1
     assert r["per_category"]["laboratory"] == {
-        "tp": 0, "fp": 0, "fn": 1, "gold": 1, "predicted": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "gold": 1,
+        "predicted": 0,
     }
 
 
@@ -192,7 +211,9 @@ def test_mixed_three_categories(monkeypatch, agg):
     )
     # 2 TPs (cardiology 93000, cardiology 93040) + 1 FP (modifier) +
     # 1 FN (laboratory).
-    _patch_run_audit(monkeypatch, agg,
+    _patch_run_audit(
+        monkeypatch,
+        agg,
         [
             {
                 "category": "cardiology",
@@ -214,13 +235,25 @@ def test_mixed_three_categories(monkeypatch, agg):
     r = agg._grade_one_encounter(enc, None, Path("/tmp/prompt.txt"))
     assert r["tp"] == 2 and r["fp"] == 1 and r["fn"] == 1
     assert r["per_category"]["cardiology"] == {
-        "tp": 2, "fp": 0, "fn": 0, "gold": 2, "predicted": 2,
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "gold": 2,
+        "predicted": 2,
     }
     assert r["per_category"]["laboratory"] == {
-        "tp": 0, "fp": 0, "fn": 1, "gold": 1, "predicted": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "gold": 1,
+        "predicted": 0,
     }
     assert r["per_category"]["modifier"] == {
-        "tp": 0, "fp": 1, "fn": 0, "gold": 0, "predicted": 1,
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "gold": 0,
+        "predicted": 1,
     }
 
 
@@ -304,11 +337,19 @@ def test_render_markdown_matches_json(agg, tmp_path):
         "spec_categories": ["under_coding", "missed_charge", "modifier"],
         "spec_category_note": "stub note",
         "overall": {
-            "precision": 1.0, "recall": 1.0, "f1": 1.0, "support": 164,
-            "tp": 164, "fp": 0, "fn": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 164,
+            "tp": 164,
+            "fp": 0,
+            "fn": 0,
         },
         "macro": {
-            "precision": 1.0, "recall": 1.0, "f1": 1.0, "n": 50,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "n": 50,
         },
         "per_category": {
             "under_coding": {"recall": None, "support": 0, "tp": 0, "fn": 0},

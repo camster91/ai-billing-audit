@@ -36,6 +36,7 @@ regression trained on the first pilot clinic's historical
 denial data. The module's API (compute_denial_risk) stays the
 same; only the scoring weights move.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -48,10 +49,10 @@ from typing import Any
 # them with real rates from the first pilot's denial log.
 SEVERITY_WEIGHTS: dict[str, float] = {
     "critical": 0.40,
-    "high":     0.25,
-    "medium":   0.10,
-    "low":      0.03,
-    "info":     0.01,
+    "high": 0.25,
+    "medium": 0.10,
+    "low": 0.03,
+    "info": 0.01,
 }
 
 # Rule-family multipliers. Rules whose absence is almost always
@@ -61,40 +62,33 @@ SEVERITY_WEIGHTS: dict[str, float] = {
 # the billed amount get a multiplier < 1.
 RULE_FAMILY_MULTIPLIERS: dict[str, float] = {
     # Documentation / narrative gaps — biller can fix before submission
-    "DOC":            0.6,
-    "DOCUMENTATION":  0.6,
-    "NARRATIVE":      0.6,
-
+    "DOC": 0.6,
+    "DOCUMENTATION": 0.6,
+    "NARRATIVE": 0.6,
     # Missing diagnosis linkage — hard denial
-    "DX_LINKAGE":     1.5,
-    "DX_LINK":        1.5,
-    "DX":             1.5,
-    "MISSING_DX":     1.5,
-
+    "DX_LINKAGE": 1.5,
+    "DX_LINK": 1.5,
+    "DX": 1.5,
+    "MISSING_DX": 1.5,
     # Modifier issues — often denied then overturned; high rate
-    "MOD":            1.2,
-    "MODIFIER":       1.2,
-    "MOD-25":         1.3,
-    "MOD-59":         1.3,
-
+    "MOD": 1.2,
+    "MODIFIER": 1.2,
+    "MOD-25": 1.3,
+    "MOD-59": 1.3,
     # E/M level upcoding / undercoding — moderate risk
-    "EM":             1.1,
-    "E/M":            1.1,
-    "E/M-LEVEL":      1.1,
-
+    "EM": 1.1,
+    "E/M": 1.1,
+    "E/M-LEVEL": 1.1,
     # Duplicate / NCCI edits — payers auto-deny these
-    "DUPLICATE":      1.6,
-    "NCCI":           1.4,
-
+    "DUPLICATE": 1.6,
+    "NCCI": 1.4,
     # Time-based codes — moderate
-    "TIME":           1.0,
-
+    "TIME": 1.0,
     # Medical necessity — high
-    "MED-NEC":        1.3,
+    "MED-NEC": 1.3,
     "MEDICAL_NECESSITY": 1.3,
-
     # General fallback
-    "OTHER":          1.0,
+    "OTHER": 1.0,
 }
 
 DEFAULT_RULE_MULTIPLIER = 1.0
@@ -103,7 +97,11 @@ DEFAULT_RULE_MULTIPLIER = 1.0
 # Severity rank for filtering when a tenant has set MIN_SEVERITY_TO_SHOW
 # (so the scoring respects the same threshold the dashboard uses).
 SEVERITY_RANK: dict[str, int] = {
-    "info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4,
+    "info": 0,
+    "low": 1,
+    "medium": 2,
+    "high": 3,
+    "critical": 4,
 }
 
 
@@ -171,7 +169,7 @@ def _combine_independent_risks(risks: list[float]) -> float:
     for r in risks:
         # Clamp each risk to [0, 1] before multiplying
         r = max(0.0, min(1.0, float(r)))
-        product *= (1.0 - r)
+        product *= 1.0 - r
     return min(0.99, 1.0 - product)
 
 

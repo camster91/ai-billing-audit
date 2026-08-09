@@ -16,11 +16,11 @@ Lightweight, no network, no LLM. The route is exercised via
 ``starlette.testclient.TestClient`` (httpx-backed) so the
 ``JSONResponse`` / ``HTTPException`` shapes are real.
 """
+
 from __future__ import annotations
 
 import sys
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -55,9 +55,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 def _iso(ts: float) -> str:
     """Format a POSIX timestamp as the feedback log's expected ISO-8601 UTC."""
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _build_store_with_months(
@@ -85,16 +83,18 @@ def _build_store_with_months(
                 prev_year -= 1
             target = target.replace(year=prev_year, month=prev_month)
         ts = target.timestamp()
-        store.append(FeedbackEntry(
-            encounter_id=f"enc-m{m_ago}",
-            finding_id=f"f-m{m_ago}",
-            action="accept",
-            severity="medium",
-            rule_id="R-MOD-25",
-            category="modifier_required",
-            timestamp=_iso(ts),
-            biller_id=biller_id,
-        ))
+        store.append(
+            FeedbackEntry(
+                encounter_id=f"enc-m{m_ago}",
+                finding_id=f"f-m{m_ago}",
+                action="accept",
+                severity="medium",
+                rule_id="R-MOD-25",
+                category="modifier_required",
+                timestamp=_iso(ts),
+                biller_id=biller_id,
+            )
+        )
     return store
 
 
@@ -147,10 +147,14 @@ def test_insufficient_data_with_some_feedback(
     """A clinic with 2 months of feedback still hits the stub, and
     ``current_months`` reflects the actual count (not always 0)."""
     store = _build_store_with_months(
-        tmp_path, biller_id="biller-PARTIAL", months_back=[1, 2],
+        tmp_path,
+        biller_id="biller-PARTIAL",
+        months_back=[1, 2],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -176,10 +180,14 @@ def test_insufficient_data_other_clinic_feedback_does_not_count(
     ``biller_id`` (the same proxy the per_clinic_f1 dashboard uses).
     """
     store = _build_store_with_months(
-        tmp_path, biller_id="biller-OTHER", months_back=[1, 2, 3, 4],
+        tmp_path,
+        biller_id="biller-OTHER",
+        months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -201,12 +209,12 @@ def test_insufficient_data_other_clinic_feedback_does_not_count(
 @pytest.mark.parametrize(
     "bad_month",
     [
-        "2025/01",      # wrong separator
-        "25-01",        # 2-digit year
-        "2025-1",       # 1-digit month
-        "Jan 2025",     # free-form
-        "",             # empty
-        "2025-01-15",   # full date, not month
+        "2025/01",  # wrong separator
+        "25-01",  # 2-digit year
+        "2025-1",  # 1-digit month
+        "Jan 2025",  # free-form
+        "",  # empty
+        "2025-01-15",  # full date, not month
     ],
 )
 def test_bad_month_returns_400(
@@ -263,10 +271,14 @@ def test_three_plus_months_returns_full_report(
     must reach it; the actual report content lives elsewhere.
     """
     store = _build_store_with_months(
-        tmp_path, biller_id="biller-FULL", months_back=[1, 2, 3, 4],
+        tmp_path,
+        biller_id="biller-FULL",
+        months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(

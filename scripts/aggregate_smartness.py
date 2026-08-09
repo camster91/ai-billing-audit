@@ -10,12 +10,12 @@ Usage:
     ...
     python3 scripts/aggregate_smartness.py chunk_*.json --out full.json
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 # Import the aggregation helper from the smartness_test module
@@ -24,27 +24,28 @@ from smartness_test import (
     EncounterResult,
     _aggregate,
     _print_report,
-    _score_encounter,
 )
 
 
 def _reconstruct(chunk: dict) -> list[EncounterResult]:
     results = []
     for r in chunk["results"]:
-        results.append(EncounterResult(
-            encounter_id=r["encounter_id"],
-            is_flagged_gold=any(g for g in r["gold_findings"]),
-            n_gold=r["n_gold"],
-            n_pred=r["n_pred"],
-            n_matched=r["n_matched"],
-            p=r["p"],
-            r=r["r"],
-            f1=r["f1"],
-            pred_findings=r["pred_findings"],
-            gold_findings=r["gold_findings"],
-            error=r.get("error"),
-            latency_s=r["latency_s"],
-        ))
+        results.append(
+            EncounterResult(
+                encounter_id=r["encounter_id"],
+                is_flagged_gold=any(g for g in r["gold_findings"]),
+                n_gold=r["n_gold"],
+                n_pred=r["n_pred"],
+                n_matched=r["n_matched"],
+                p=r["p"],
+                r=r["r"],
+                f1=r["f1"],
+                pred_findings=r["pred_findings"],
+                gold_findings=r["gold_findings"],
+                error=r.get("error"),
+                latency_s=r["latency_s"],
+            )
+        )
     return results
 
 
@@ -77,7 +78,9 @@ def main() -> int:
                             "n_gold": r.n_gold,
                             "n_pred": r.n_pred,
                             "n_matched": r.n_matched,
-                            "p": r.p, "r": r.r, "f1": r.f1,
+                            "p": r.p,
+                            "r": r.r,
+                            "f1": r.f1,
                             "latency_s": r.latency_s,
                             "error": r.error,
                             "pred_findings": r.pred_findings,
@@ -86,7 +89,8 @@ def main() -> int:
                         for r in all_results
                     ],
                 },
-                f, indent=2,
+                f,
+                indent=2,
             )
         print(f"\nWrote {out_path}")
     return 0

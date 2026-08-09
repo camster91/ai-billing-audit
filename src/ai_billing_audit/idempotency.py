@@ -43,16 +43,22 @@ the audit_trail.jsonl is the source of truth for "was this
 job actually enqueued?" and the JSONL cache is just the
 fast-path replay layer.
 """
+
 from __future__ import annotations
 
 import dataclasses
 import hashlib
-import json
 import os
 import threading
 import time
 from pathlib import Path
 from typing import Any
+
+from ai_billing_audit.clinical_note_storage import (
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+    write_encrypted_json_records,
+)
 
 __all__ = [
     "IdempotencyHit",
@@ -113,38 +119,22 @@ def fingerprint_request_body(body: bytes | str) -> str:
 
 def _read_entries(path: Path) -> list[dict[str, Any]]:
     """Read all entries from the JSONL log. Missing file = empty list."""
-    if not path.is_file():
-        return []
-    out: list[dict[str, Any]] = []
     try:
-        with path.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    out.append(json.loads(line))
-                except json.JSONDecodeError:
-                    # Skip corrupted lines; the log is append-only
-                    # and a partial write shouldn't poison the whole
-                    # cache.
-                    continue
+        return read_encrypted_json_records(path)
     except OSError:
         return []
-    return out
 
 
 def _write_entries(path: Path, entries: list[dict[str, Any]]) -> None:
     """Rewrite the JSONL log with the given entries. Atomic via
     ``rename`` so a crash mid-write doesn't leave a half-written
     file (the next read falls back to the previous good copy)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w") as f:
-        for entry in entries:
-            f.write(json.dumps(entry, ensure_ascii=False))
-            f.write("\n")
-    tmp.replace(path)
+    write_encrypted_json_records(path, entries)
+
+
+def migrate_idempotency_log() -> int:
+    """Encrypt a legacy plaintext idempotency response cache."""
+    return migrate_plaintext_jsonl(_log_path())
 
 
 def _evict_if_needed(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:

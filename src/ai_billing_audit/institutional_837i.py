@@ -75,6 +75,7 @@ hands the mapped claim to ``get_default_queue().enqueue`` so the
 real audit pipeline runs on it. No LLM call is made in this
 module — see kanban note "NO LLM tests" in the task body.
 """
+
 from __future__ import annotations
 
 import json
@@ -132,34 +133,25 @@ def validate_837i(payload: Any) -> list[str]:
     if not attending:
         errors.append("missing attending_provider_npi")
     elif not _NPI_RE.fullmatch(attending):
-        errors.append(
-            f"attending_provider_npi {attending!r} is not a 10-digit value"
-        )
+        errors.append(f"attending_provider_npi {attending!r} is not a 10-digit value")
 
     # --- operating provider NPI (optional but must validate) --------
     operating = (payload.get("operating_provider_npi") or "").strip()
     if operating and not _NPI_RE.fullmatch(operating):
-        errors.append(
-            f"operating_provider_npi {operating!r} is not a 10-digit value"
-        )
+        errors.append(f"operating_provider_npi {operating!r} is not a 10-digit value")
 
     # --- admission / discharge ---------------------------------------
     admission = (payload.get("admission_date") or "").strip()
     if not admission:
         errors.append("missing admission_date")
     elif not _DATE_RE.fullmatch(admission):
-        errors.append(
-            f"admission_date {admission!r} is not in YYYY-MM-DD format"
-        )
+        errors.append(f"admission_date {admission!r} is not in YYYY-MM-DD format")
     discharge = (payload.get("discharge_date") or "").strip()
     if discharge and not _DATE_RE.fullmatch(discharge):
-        errors.append(
-            f"discharge_date {discharge!r} is not in YYYY-MM-DD format"
-        )
+        errors.append(f"discharge_date {discharge!r} is not in YYYY-MM-DD format")
     if admission and discharge and discharge < admission:
         errors.append(
-            f"discharge_date {discharge!r} is before admission_date "
-            f"{admission!r}"
+            f"discharge_date {discharge!r} is before admission_date {admission!r}"
         )
 
     # --- value codes (40–43) ----------------------------------------
@@ -180,9 +172,7 @@ def validate_837i(payload: Any) -> list[str]:
             try:
                 icode = int(code)
             except (TypeError, ValueError):
-                errors.append(
-                    f"value_codes[{i}].code {code!r} is not numeric"
-                )
+                errors.append(f"value_codes[{i}].code {code!r} is not numeric")
                 continue
             if icode < 40 or icode > 43:
                 errors.append(
@@ -195,9 +185,7 @@ def validate_837i(payload: Any) -> list[str]:
                 try:
                     float(amount)
                 except (TypeError, ValueError):
-                    errors.append(
-                        f"value_codes[{i}].amount {amount!r} is not numeric"
-                    )
+                    errors.append(f"value_codes[{i}].amount {amount!r} is not numeric")
 
     # --- service lines ----------------------------------------------
     lines = payload.get("service_lines")
@@ -222,28 +210,20 @@ def validate_837i(payload: Any) -> list[str]:
             # Accept "99213", "99213:25", "99213:25:59" — CPT
             # plus optional colon-delimited modifiers, the same
             # way 837P emits SV1*HC:CODE:MOD1:MOD2.
-            errors.append(
-                f"service_lines[{i}].cpt {cpt!r} is not a valid CPT/mods"
-            )
+            errors.append(f"service_lines[{i}].cpt {cpt!r} is not a valid CPT/mods")
         units = ln.get("units", 1)
         try:
             iunits = int(units)
         except (TypeError, ValueError):
-            errors.append(
-                f"service_lines[{i}].units {units!r} is not an integer"
-            )
+            errors.append(f"service_lines[{i}].units {units!r} is not an integer")
             iunits = 0
         if iunits < 1:
-            errors.append(
-                f"service_lines[{i}].units must be >= 1 (got {units!r})"
-            )
+            errors.append(f"service_lines[{i}].units must be >= 1 (got {units!r})")
         billed = ln.get("billed_amount", 0)
         try:
             float(billed)
         except (TypeError, ValueError):
-            errors.append(
-                f"service_lines[{i}].billed_amount {billed!r} is not numeric"
-            )
+            errors.append(f"service_lines[{i}].billed_amount {billed!r} is not numeric")
         svc_date = (ln.get("service_date") or admission).strip()
         if not _DATE_RE.fullmatch(svc_date):
             errors.append(

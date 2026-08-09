@@ -37,6 +37,7 @@ Delivery logs land in the same file via :func:`_append_delivery_log`
 shapes are distinguishable via the ``_kind`` field on delivery
 records — registrations do NOT carry a ``_kind``.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -53,6 +54,12 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -193,7 +200,9 @@ def validate_webhook_url(url: str) -> str:
     if host.lower() in blocked_hosts and not allow_private:
         raise ValueError("url host is not allowed")
     try:
-        addrinfos = socket.getaddrinfo(host, parsed.port or 443, type=socket.SOCK_STREAM)
+        addrinfos = socket.getaddrinfo(
+            host, parsed.port or 443, type=socket.SOCK_STREAM
+        )
     except socket.gaierror as exc:
         raise ValueError(f"url host could not be resolved: {exc}") from exc
     if not addrinfos:
@@ -274,10 +283,7 @@ def register_webhook(
             record["webhook_id"],
             unknown,
         )
-    path = _log_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, separators=(",", ":")) + "\n")
+    append_encrypted_json_record(_log_path(), record)
     return record
 
 
@@ -291,24 +297,15 @@ def list_webhooks(*, tenant_id: str | None = None) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     out: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                _log.warning("skipping malformed webhook log row")
-                continue
-            # Skip delivery-log rows; they live in the same file
-            # but are distinguished by the ``_kind`` key. (See
-            # ``_append_delivery_log``.)
-            if not isinstance(rec, dict) or rec.get("_kind") == "delivery":
-                continue
-            if tenant_id and rec.get("tenant_id") != tenant_id:
-                continue
-            out.append(rec)
+    for rec in read_encrypted_json_records(path):
+        # Skip delivery-log rows; they live in the same file
+        # but are distinguished by the ``_kind`` key. (See
+        # ``_append_delivery_log``.)
+        if rec.get("_kind") == "delivery":
+            continue
+        if tenant_id and rec.get("tenant_id") != tenant_id:
+            continue
+        out.append(rec)
     return out
 
 
@@ -323,10 +320,12 @@ def _append_delivery_log(entry: dict[str, Any]) -> None:
     path to back up. The ``_kind`` discriminator on delivery
     rows keeps :func:`list_webhooks` from surfacing them.
     """
-    path = _log_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+    append_encrypted_json_record(_log_path(), entry)
+
+
+def migrate_webhook_log() -> int:
+    """Encrypt the legacy webhook registration and delivery log."""
+    return migrate_plaintext_jsonl(_log_path())
 
 
 def _deliver_one(
@@ -406,7 +405,12 @@ def _deliver_one(
                 }
             )
             return ok
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        OSError,
+    ) as exc:
         _log.warning(
             "webhook %s delivery to %s failed: %s",
             hook.get("webhook_id"),

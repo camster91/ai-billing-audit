@@ -253,7 +253,9 @@ def _audit_one(
     rec: dict[str, Any] = {
         "encounter_id": eid,
         "edi_sha256": _sha256(edi_path) if edi_path and edi_path.is_file() else None,
-        "note_sha256": _sha256(note_path) if note_path and note_path.is_file() else None,
+        "note_sha256": _sha256(note_path)
+        if note_path and note_path.is_file()
+        else None,
         "audit_status": "ok",
         "findings": [],
         "errors": [],
@@ -265,7 +267,9 @@ def _audit_one(
         return rec
 
     try:
-        parsed = x12_parser.parse_837p(edi_path.read_text(encoding="utf-8", errors="replace"))
+        parsed = x12_parser.parse_837p(
+            edi_path.read_text(encoding="utf-8", errors="replace")
+        )
     except Exception as exc:  # noqa: BLE001
         rec["audit_status"] = "parse_error"
         rec["errors"].append(f"x12_parser: {exc!r}")
@@ -276,18 +280,20 @@ def _audit_one(
     # auditor doesn't use it, but future prompts will).
     encounter = dict(parsed)
     if note_path and note_path.is_file():
-        encounter["clinical_note"] = note_path.read_text(encoding="utf-8", errors="replace")
+        encounter["clinical_note"] = note_path.read_text(
+            encoding="utf-8", errors="replace"
+        )
 
     try:
-        result = auditor.run_audit(encounter, prompt_path=Path(prompt) if prompt else None)
+        result = auditor.run_audit(
+            encounter, prompt_path=Path(prompt) if prompt else None
+        )
     except auditor.AuditValidationError as exc:
         rec["audit_status"] = "audit_validation_error"
         rec["errors"].append(f"auditor: {exc!r}")
         return rec
 
-    rec["findings"] = [
-        {**asdict(f), "encounter_id": eid} for f in result.findings
-    ]
+    rec["findings"] = [{**asdict(f), "encounter_id": eid} for f in result.findings]
     rec["summary"] = result.summary
 
     gold = eval_set.get(eid)
@@ -303,6 +309,7 @@ def _audit_one(
         # (see prompts/MANIFEST.json hash_chain_implementations_note).
         # We import here so the no-write path has zero side effects.
         from ai_billing_audit import audit_actions
+
         audit_actions.append(
             event_id=f"replay:{eid}",
             user_identifier="replay_submission.py",
@@ -325,7 +332,9 @@ def _aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     for r in records:
         pb = r.get("per_bucket") or {}
         for rule, m in pb.items():
-            agg = pooled.setdefault(rule, {"tp": 0, "fp": 0, "fn": 0, "n_gold": 0, "n_pred": 0})
+            agg = pooled.setdefault(
+                rule, {"tp": 0, "fp": 0, "fn": 0, "n_gold": 0, "n_pred": 0}
+            )
             agg["tp"] += m.get("tp", 0)
             agg["fp"] += m.get("fp", 0)
             agg["fn"] += m.get("fn", 0)
@@ -383,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Optional gold-labels JSON (e.g., data/val_ca.json). "
-             "Only encounters present in the set get per-bucket metrics.",
+        "Only encounters present in the set get per-bucket metrics.",
     )
     p.add_argument(
         "--out-dir",
@@ -407,9 +416,11 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         default=None,
         help="Baseline micro F1 to compare against. If omitted and "
-             "--strict is passed, exits 2.",
+        "--strict is passed, exits 2.",
     )
-    p.add_argument("--strict", action="store_true", help="Fail when no baseline is set.")
+    p.add_argument(
+        "--strict", action="store_true", help="Fail when no baseline is set."
+    )
     args = p.parse_args(argv)
 
     submission_dir: Path = args.submission_dir
@@ -475,7 +486,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
     elif args.strict:
-        print("[replay] --strict set without --baseline-f1; exiting 2.", file=sys.stderr)
+        print(
+            "[replay] --strict set without --baseline-f1; exiting 2.", file=sys.stderr
+        )
         return 2
 
     return 1 if failures else 0

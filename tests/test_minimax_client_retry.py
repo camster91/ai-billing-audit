@@ -82,7 +82,9 @@ class _FakeTransport:
         self.chat = _FakeChat()
 
 
-def _status_error(message: str, status_code: int, body: object = None) -> APIStatusError:
+def _status_error(
+    message: str, status_code: int, body: object = None
+) -> APIStatusError:
     """Build a real ``openai.APIStatusError`` for the given status code."""
     request = httpx.Request("POST", "https://api.minimax.io/v1/chat/completions")
     response = httpx.Response(
@@ -144,7 +146,7 @@ def test_backoff_grows_then_caps() -> None:
         upper_2 = MINIMAX_BACKOFF_BASE_SECONDS * MINIMAX_BACKOFF_FACTOR
         assert 0.0 <= compute_backoff(2) <= upper_2 + 1e-9
         # Attempt 3 -> base * factor^2, but capped
-        raw_3 = MINIMAX_BACKOFF_BASE_SECONDS * (MINIMAX_BACKOFF_FACTOR ** 2)
+        raw_3 = MINIMAX_BACKOFF_BASE_SECONDS * (MINIMAX_BACKOFF_FACTOR**2)
         upper_3 = min(raw_3, MINIMAX_BACKOFF_CAP_SECONDS)
         assert 0.0 <= compute_backoff(3) <= upper_3 + 1e-9
     # And confirm the cap kicks in for an absurdly large attempt
@@ -163,7 +165,10 @@ def test_should_retry_only_for_429_and_5xx() -> None:
     assert should_retry(_status_error("bad req", 400)) is False
     assert should_retry(_status_error("not found", 404)) is False
     # Non-APIStatusError
-    assert should_retry(APIConnectionError(request=httpx.Request("GET", "http://x"))) is False
+    assert (
+        should_retry(APIConnectionError(request=httpx.Request("GET", "http://x")))
+        is False
+    )
     assert should_retry(ValueError("boom")) is False
 
 

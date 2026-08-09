@@ -27,15 +27,21 @@ process writers add the standard ``fcntl`` flock pattern — not
 needed today because the dashboard runs as a single uvicorn
 worker.
 """
+
 from __future__ import annotations
 
-import json
 import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 
 
 # Default JSONL path. Overridable for tests via SAVED_FILTERS_LOG.
@@ -116,28 +122,20 @@ class SavedFilterStore:
     def _read_all(self) -> list[SavedFilterEntry]:
         if not self.log_path.is_file():
             return []
-        out: list[SavedFilterEntry] = []
-        with self.log_path.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                try:
-                    out.append(SavedFilterEntry(**rec))
-                except (TypeError, ValueError):
-                    # Skip malformed rows so a partial-write recovery
-                    # doesn't take down the read path.
-                    continue
+        out = [
+            SavedFilterEntry(**record)
+            for record in read_encrypted_json_records(self.log_path)
+        ]
+        # Skip malformed rows so a partial-write recovery
+        # doesn't take down the read path.
         return out
 
     def _append(self, entry: SavedFilterEntry) -> None:
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.log_path.open("a") as fh:
-            fh.write(json.dumps(asdict(entry)) + "\n")
+        append_encrypted_json_record(self.log_path, asdict(entry))
+
+    def migrate_plaintext_log(self) -> int:
+        """Encrypt this store's legacy plaintext log in place."""
+        return migrate_plaintext_jsonl(self.log_path)
 
     # ---- public API ---------------------------------------------------
 
@@ -177,10 +175,15 @@ class SavedFilterStore:
         # preset so ``list_for_user`` returns exactly one default per
         # user (the contract pinned by test_set_default_only_one).
         if set_default and existing_default and existing_default != preset_name:
+            default_preset = self.get_preset(user_id, existing_default)
+            if default_preset is None:
+                raise ValueError(
+                    f"default preset {existing_default!r} no longer exists"
+                )
             clear_entry = SavedFilterEntry(
                 user_id=user_id,
                 preset_name=existing_default,
-                filter=self.get_preset(user_id, existing_default).filter,
+                filter=default_preset.filter,
                 is_default=False,
             )
             self._append(clear_entry)
@@ -212,9 +215,7 @@ class SavedFilterStore:
         if not default_preset:
             return None
         # Re-save the same preset with is_default=False.
-        current = next(
-            p for p in existing if p.preset_name == default_preset
-        )
+        current = next(p for p in existing if p.preset_name == default_preset)
         entry = SavedFilterEntry(
             user_id=user_id,
             preset_name=default_preset,
@@ -255,9 +256,7 @@ class SavedFilterStore:
             result.append(e)
         return result
 
-    def get_preset(
-        self, user_id: str, preset_name: str
-    ) -> SavedFilterEntry | None:
+    def get_preset(self, user_id: str, preset_name: str) -> SavedFilterEntry | None:
         for entry in self.list_for_user(user_id):
             if entry.preset_name == preset_name:
                 return entry

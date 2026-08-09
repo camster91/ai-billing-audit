@@ -9,6 +9,7 @@ re-classified, etc.). This module exercises the read-side filter
 that surfaces that subset as its own view, separate from accept and
 dismiss.
 """
+
 from __future__ import annotations
 
 import sys
@@ -24,6 +25,8 @@ if str(SRC_ROOT) not in sys.path:
 from ai_billing_audit.feedback import (  # noqa: E402
     FeedbackEntry,
     FeedbackStore,
+    read_biller_corrections,
+    record_biller_correction,
 )
 
 
@@ -53,6 +56,27 @@ def _entry(
         modify_severity=modify_severity,
         modify_category=modify_category,
     )
+
+
+def test_structured_correction_is_encrypted_at_rest(tmp_path, monkeypatch) -> None:
+    from ai_billing_audit import feedback
+
+    path = tmp_path / "biller_corrections.jsonl"
+    monkeypatch.setattr(feedback, "_BILLER_CORRECTIONS_LOG", path)
+
+    record_biller_correction(
+        encounter_id="ENC-PHI-SECRET",
+        finding_id="finding-1",
+        severity="high",
+        category="documentation",
+        rationale="Patient Jane Doe requires correction",
+        biller_id="biller-1",
+    )
+
+    assert b"ENC-PHI-SECRET" not in path.read_bytes()
+    assert b"Jane Doe" not in path.read_bytes()
+    restored = read_biller_corrections()
+    assert restored[0].rationale == "Patient Jane Doe requires correction"
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +165,7 @@ def test_biller_corrections_orders_by_timestamp_when_distinct(
     comes first — this is the case the biller-facing UI cares about
     ('what did the biller change most recently?')."""
     from dataclasses import replace as dc_replace
+
     e_old = _entry(action="modify", finding_id="f-old")
     e_new = dc_replace(e_old, finding_id="f-new", timestamp="2099-01-01T00:00:00Z")
     store.append(e_old)

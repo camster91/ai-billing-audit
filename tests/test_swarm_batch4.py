@@ -14,13 +14,14 @@ Two contracts:
    state to Docker logs (visible to anyone with container
    access) and polluting the LOG_FORMAT=json shipper.
 """
+
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
-import pytest
+from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -33,6 +34,7 @@ def test_ground_truth_all_is_resolvable():
     the module (no broken promises in the public API contract).
     """
     import ai_billing_audit.ground_truth as gt
+
     for name in gt.__all__:
         assert hasattr(gt, name), (
             f"ground_truth.__all__ advertises {name!r} but the "
@@ -46,19 +48,18 @@ def test_ground_truth_star_import_works():
     without ImportError. Pre-fix this raised because Encounter
     and GroundTruthFinding weren't defined.
     """
-    import importlib
     # Wipe any cached version
     sys.modules.pop("ai_billing_audit.ground_truth", None)
     import ai_billing_audit.ground_truth  # noqa: F401
+
     # Run a star-import via exec to mimic ``from X import *``.
     ns: dict = {}
     exec("from ai_billing_audit.ground_truth import *", ns)
     # The names in __all__ should now be in ns.
     import ai_billing_audit.ground_truth as gt
+
     for name in gt.__all__:
-        assert name in ns, (
-            f"star-import of ground_truth did not expose {name!r}"
-        )
+        assert name in ns, f"star-import of ground_truth did not expose {name!r}"
 
 
 def test_audit_actions_append_does_not_print_debug(monkeypatch, tmp_path):
@@ -92,6 +93,6 @@ def test_audit_actions_append_does_not_print_debug(monkeypatch, tmp_path):
     )
     # And the row was actually written.
     assert log.exists()
-    rows = [json.loads(l) for l in log.read_text().splitlines() if l]
+    rows = read_encrypted_json_records(log)
     assert len(rows) == 1
     assert rows[0]["action"] == "test_action"

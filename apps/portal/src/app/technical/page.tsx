@@ -76,9 +76,9 @@ export default function TechnicalPage() {
           <p>The pipeline, end to end:</p>
           <ul>
             <li>
-              <strong>Ingest.</strong> An 837P / CSV row plus its
-              clinical note is read from <code>uploads/</code> and
-              normalized into a single <code>Encounter</code> record
+              <strong>Ingest.</strong> The audit service accepts an 837P / CSV
+              row plus its clinical note and normalizes them into a single
+              <code>Encounter</code> record
               (see <code>src/ai_billing_audit/encounters.py</code>).
             </li>
             <li>

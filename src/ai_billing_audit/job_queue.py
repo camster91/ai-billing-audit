@@ -6,15 +6,16 @@ real EHR ingestion lands, we model the audit job as a thin wrapper
 around the synth call so the UI has a pollable status and the
 accepted files leave a durable trail.
 
-Why in-process + JSONL
-----------------------
+Why in-process + encrypted records
+----------------------------------
 
 * The portal lives in a single FastAPI process. A thread-safe dict
   covers the "pollable from the same process" requirement.
-* We append a JSONL line to ``jobs.jsonl`` on every status change
-  so a process restart can rebuild the dict from disk. The
-  JSONL is a log, not a database — the latest line per ``job_id``
-  is the source of truth.
+* We append one Fernet-authenticated record to ``jobs.jsonl`` on every
+  status change so a process restart can rebuild the dict from disk. The
+  decrypted content is JSON, but identifiers, claims, and findings never
+  appear as plaintext on disk. The latest line per ``job_id`` is the source
+  of truth.
 * No external broker. This matches the project's
   "self-hosted / minimal-infra" stance (see
   ``AGENTS.md``). A future card can swap this for Celery / RQ
@@ -37,6 +38,7 @@ The synth call uses the encounter's normalised fields to build a
 ``difficulty_tier`` defaults to ``EASY`` so the resulting
 ``encounter_id`` is unique within ``enc_<>`` namespace.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,9 +49,15 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from .claim_schema import normalize_claim
+from .clinical_note_storage import (
+    PhiStorageIntegrityError,
+    decrypt_phi,
+    encrypt_phi,
+    load_clinical_note,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +101,7 @@ def _public_result(result: dict[str, Any]) -> dict[str, Any]:
     message. Keep the field for UI compatibility, but expose only a stable
     error code and never persist or return the original text.
     """
+
     def sanitize(value: Any, *, key: str = "") -> Any:
         if key in _SENSITIVE_ERROR_KEYS:
             return "audit_job_failed"
@@ -121,10 +130,77 @@ _PKG_DIR = Path(__file__).resolve().parent
 _UPLOADED_NOTES_DIR = _PKG_DIR.parent.parent / "logs" / "uploaded_notes"
 
 
-def _load_uploaded_note(encounter_id: str) -> str | None:
+def _uploaded_notes_dir() -> Path:
+    return Path(os.environ.get("ZORVA_UPLOADED_NOTES_DIR", str(_UPLOADED_NOTES_DIR)))
+
+
+def read_encrypted_job_records(path: Path) -> list[dict[str, Any]]:
+    """Read and authenticate every record in an encrypted upload-job log."""
+    if not path.is_file():
+        return []
+    records: list[dict[str, Any]] = []
+    with path.open("rb") as handle:
+        for raw_line in handle:
+            token = raw_line.strip()
+            if not token:
+                continue
+            try:
+                record = json.loads(decrypt_phi(token))
+            except json.JSONDecodeError as exc:
+                raise PhiStorageIntegrityError(
+                    "encrypted job log contains an invalid JSON record"
+                ) from exc
+            if not isinstance(record, dict):
+                raise PhiStorageIntegrityError(
+                    "encrypted job log record must be a JSON object"
+                )
+            records.append(record)
+    return records
+
+
+def migrate_plaintext_job_log(path: Path) -> int:
+    """Encrypt a legacy plaintext job log after preserving an exact backup."""
+    if not path.is_file():
+        return 0
+    lines = [line for line in path.read_bytes().splitlines() if line.strip()]
+    if not lines:
+        return 0
+    try:
+        decrypt_phi(lines[0])
+    except PhiStorageIntegrityError:
+        pass
+    else:
+        return 0
+
+    for line in lines:
+        try:
+            json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise PhiStorageIntegrityError(
+                "legacy job log contains an invalid plaintext JSON record"
+            ) from exc
+
+    backup = path.with_suffix(f"{path.suffix}.plaintext.bak.enc")
+    if backup.exists():
+        raise FileExistsError(f"refusing to overwrite migration backup: {backup}")
+    backup.write_bytes(encrypt_phi(path.read_bytes()))
+    temporary = path.with_suffix(f"{path.suffix}.migrating")
+    try:
+        with temporary.open("wb") as handle:
+            for line in lines:
+                handle.write(encrypt_phi(line))
+                handle.write(b"\n")
+        temporary.replace(path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return len(lines)
+
+
+def load_uploaded_note_for_encounter(encounter_id: str) -> str | None:
     """Return the most recent uploaded clinical note for an encounter_id.
 
-    Notes are saved as ``<encounter_id>.<note_id>.txt`` by the
+    Notes are saved as ``<encounter_id>.<note_id>.txt.enc`` by the
     /encounters/upload/text-note endpoint. We pick the most
     recently-modified one when there are multiple (the staff user
     may have re-uploaded).
@@ -138,19 +214,24 @@ def _load_uploaded_note(encounter_id: str) -> str | None:
     safe_match = re.sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id).strip("._")[:80]
     if not safe_match:
         return None
-    if not _UPLOADED_NOTES_DIR.is_dir():
+    notes_dir = _uploaded_notes_dir()
+    if not notes_dir.is_dir():
         return None
     try:
         candidates = sorted(
-            _UPLOADED_NOTES_DIR.glob(f"{safe_match}.*.txt"),
+            notes_dir.glob(f"{safe_match}.*.txt.enc"),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
         if not candidates:
             return None
-        return candidates[0].read_text(encoding="utf-8")
+        return load_clinical_note(candidates[0]).decode("utf-8")
     except OSError:
         return None
+
+
+# Backward-compatible private alias for older tests and internal callers.
+_load_uploaded_note = load_uploaded_note_for_encounter
 
 
 def _send_doctor_emails(
@@ -200,10 +281,7 @@ def _send_doctor_emails(
     # Resolve the doctor's email address. The portal paste-form
     # doesn't collect a provider_email field; the runner falls back
     # to looking up the email by NPI via the CMS public registry.
-    doctor_email = (
-        encounter.get("provider_email")
-        or encounter.get("doctor_email")
-    )
+    doctor_email = encounter.get("provider_email") or encounter.get("doctor_email")
     if not doctor_email:
         npi = (encounter.get("NPI") or "").strip()
         # Skip the registry lookup for invalid NPI shapes — the
@@ -264,6 +342,7 @@ __all__ = [
     "Job",
     "JobQueue",
     "get_default_queue",
+    "load_uploaded_note_for_encounter",
 ]
 
 
@@ -438,23 +517,11 @@ class JobQueue:
         if not self._log_path.exists():
             return
         try:
-            with self._log_path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        d = json.loads(line)
-                    except json.JSONDecodeError:
-                        # Corrupted line; skip it. A production
-                        # system would quarantine these to a
-                        # separate file; this is a portal, not
-                        # a database.
-                        continue
-                    jid = d.get("job_id")
-                    if not jid:
-                        continue
-                    self._jobs[jid] = Job.from_dict(d)
+            for d in read_encrypted_job_records(self._log_path):
+                jid = d.get("job_id")
+                if not jid:
+                    continue
+                self._jobs[jid] = Job.from_dict(d)
         except OSError:
             # Log file unreadable; start empty. Surfacing the
             # error to the caller would block startup, which
@@ -470,7 +537,8 @@ class JobQueue:
         """
         try:
             with self._log_path.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(job.to_dict(), sort_keys=True))
+                payload = json.dumps(job.to_dict(), sort_keys=True).encode("utf-8")
+                fh.write(encrypt_phi(payload).decode("ascii"))
                 fh.write("\n")
         except OSError:
             pass
@@ -563,6 +631,7 @@ class JobQueue:
         """
         import time as _time
         import os as _os
+
         window = int(_os.environ.get("DEDUP_WINDOW_SECONDS", "300"))
         now = _time.time()
         with self._lock:
@@ -632,7 +701,8 @@ class JobQueue:
         """
         with self._lock:
             matches = [
-                j for j in self._jobs.values()
+                j
+                for j in self._jobs.values()
                 if j.encounter_id == encounter_id
                 and (status is None or j.status == status)
             ]
@@ -672,8 +742,17 @@ class JobQueue:
                     self._append_log(job)
                 return
             with self._lock:
-                job.status = "done"
                 job.result = result
+                # The default runner deliberately catches LLM/auditor
+                # exceptions so it can return a safe structured result. Do
+                # not translate that caught failure into a successful queue
+                # terminal state: poll clients would mistake zero findings
+                # for a clean audit.
+                if isinstance(result, dict) and result.get("audit_status") == "failed":
+                    job.status = "failed"
+                    job.error = "audit_job_failed"
+                else:
+                    job.status = "done"
                 job.finished_at = time.time()
                 self._append_log(job)
         finally:
@@ -720,18 +799,10 @@ class JobQueue:
 def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
     """Run the synth pipeline + the real auditor on the seeded encounter.
 
-    The synth agent expects a ``Template(tier, variant, ...)`` and
-    a seed. For portal uploads we already have the encounter_id in
-    hand, so we use the synth to materialize a deterministic
-    clinical_note + claim + rules, then call the real auditor (which
-    hits minimax-m3:cloud via Ollama, per the live .env config).
-
-    Why this layout: the live demo doesn't have a clinical-note
-    capture UI yet. The synth provides a reproducible encounter
-    body keyed on the uploaded encounter_id, so re-submitting the
-    same 837P always audits the same synth encounter. Once a
-    clinical-note upload path exists, this runner can be swapped
-    to use the uploaded note directly.
+    Real upload callers must persist a clinical note before enqueueing the
+    claim. The runner fails closed if that evidence is missing. Only callers
+    that explicitly set ``_allow_synthetic_demo=True`` may materialize a
+    deterministic demo encounter through the synth agent.
 
     Real-data path (used by the pilot clinic):
     When the staff user uploaded BOTH a clinical note (via
@@ -741,8 +812,9 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
     real issues in real claims, the biller sees real findings, and
     the doctor gets a real email.
 
-    When neither is present we fall back to the synth (legacy
-    demo behaviour, retained for the marketing screenshots).
+    Synthetic fallback is available only to explicit demo callers via
+    ``_allow_synthetic_demo=True``. Real uploaded claims without a clinical
+    note fail closed.
     """
     from .synth_agent import generate, Template
 
@@ -767,6 +839,17 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
     # 3. Legacy demo path: synth everything (the marketing
     #    screenshots depend on this).
     canonical_claim = encounter.get("_claim_canonical")
+    queued_cpts = encounter.get("CPT_codes") or encounter.get("cpt_codes") or []
+    if (
+        (canonical_claim or queued_cpts)
+        and not uploaded_note
+        and encounter.get("_allow_synthetic_demo") is not True
+    ):
+        raise ValueError(
+            "clinical note is required for uploaded claim audit; "
+            "refusing synthetic fallback"
+        )
+    synth_out: dict[str, Any]
     if canonical_claim:
         claim = dict(canonical_claim)
         cpts = [
@@ -774,11 +857,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             for li in (claim.get("line_items") or [])
             if (li.get("cpt_code") or "").strip()
         ]
-        icds = (
-            claim.get("diagnosis_codes")
-            or claim.get("icd10_codes")
-            or []
-        )
+        icds = claim.get("diagnosis_codes") or claim.get("icd10_codes") or []
         # An 837I upload is the highest-fidelity data we have —
         # treat it as the hardest tier so the auditor doesn't
         # down-weight findings.
@@ -800,11 +879,6 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
         # codes (i.e. the staff user actually used the paste-form,
         # not just clicked a demo link), audit the real claim
         # against the real note.
-        queued_cpts = (
-            encounter.get("CPT_codes")
-            or encounter.get("cpt_codes")
-            or []
-        )
         use_real_data = bool(uploaded_note) and bool(queued_cpts)
 
         if use_real_data:
@@ -860,7 +934,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
                 "ran_via": "upload_portal_with_user_note",
                 "provider_note": {},  # not used; clinical_note is the uploaded one
             }
-            clinical_note = uploaded_note
+            clinical_note = uploaded_note or ""
         else:
             # Legacy demo path: synth everything.
             tier = str(encounter.get("difficulty_tier") or "EASY").upper()
@@ -876,11 +950,13 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
 
             provider_note = synth_out.get("provider_note", {}) or {}
             clinical_note = "\n\n".join(
-                v for v in [
+                v
+                for v in [
                     provider_note.get("hpi", ""),
                     provider_note.get("exam", ""),
                     provider_note.get("mdm", ""),
-                ] if v
+                ]
+                if v
             )
             cpts = synth_out.get("cpt_codes", []) or []
             icds = synth_out.get("icd10_codes", []) or []
@@ -893,8 +969,14 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
                 "payer_id": "PAYER-DEMO-001",
                 "payer_name": "Demo Payer",
                 "line_items": [
-                    {"line_id": i + 1, "cpt_code": c.get("code", ""), "modifiers": [],
-                     "dx_pointers": icds, "charge_amount": 150.00, "units": 1}
+                    {
+                        "line_id": i + 1,
+                        "cpt_code": c.get("code", ""),
+                        "modifiers": [],
+                        "dx_pointers": icds,
+                        "charge_amount": 150.00,
+                        "units": 1,
+                    }
                     for i, c in enumerate(cpts)
                 ],
                 "diagnosis_codes": icds,
@@ -902,7 +984,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             if uploaded_note:
                 clinical_note = uploaded_note
                 synth_out["ran_via"] = "upload_portal_with_user_note"
-    audit_encounter = {
+    audit_encounter: dict[str, Any] = {
         "encounter_id": synth_out.get("encounter_id"),
         "is_flagged": bool(synth_out.get("flagged", False)),
         "clinical_note": clinical_note,
@@ -922,6 +1004,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
     # trail) read. The auditor's prompt stays focused on rule
     # matching; we don't pollute it with vision/market text.
     from .zorva_context import build_context_for_encounter
+
     zorva_ctx = build_context_for_encounter(
         country_code=encounter.get("country_code"),
         payer_id=encounter.get("payer_id"),
@@ -933,7 +1016,8 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
     # Call the real auditor. LLMClient reads LLM_PROVIDER / LLM_BASE_URL /
     # LLM_MODEL / OLLAMA_API_KEY from env (set by the docker-compose env_file).
     try:
-        from .auditor import run_audit, AuditValidationError
+        from .auditor import run_audit
+
         result = run_audit(audit_encounter)
         findings = []
         for f in result.findings:
@@ -959,7 +1043,8 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
             "variant": synth_out.get("variant", variant),
             "seed": seed,
             "ran_via": synth_out.get("ran_via", "upload_portal"),
-            "used_uploaded_note": synth_out.get("ran_via") == "upload_portal_with_user_note",
+            "used_uploaded_note": synth_out.get("ran_via")
+            == "upload_portal_with_user_note",
             "audit_status": "ok",
             "has_findings": bool(findings),
             "findings_count": len(findings),
@@ -972,7 +1057,7 @@ def _default_runner(encounter: dict[str, Any]) -> dict[str, Any]:
                 encounter, clinical_note, findings, synth_out
             ),
         }
-    except Exception as e:
+    except Exception:
         # Don't fail the whole job for a single LLM hiccup. Return
         # the synth metadata + an audit_status="failed" marker so
         # the dashboard can surface the error.
@@ -1016,7 +1101,12 @@ def get_default_queue() -> JobQueue:
             # monkeypatches the queue directly, so this path is
             # only relevant for the live server.
             pkg_root = Path(__file__).resolve().parent
-            log_path = pkg_root.parent.parent / "logs" / "upload_jobs.jsonl"
+            log_path = Path(
+                os.environ.get(
+                    "UPLOAD_AUDIT_LOG_PATH",
+                    str(pkg_root.parent.parent / "logs" / "upload_jobs.jsonl"),
+                )
+            )
             _DEFAULT_QUEUE = JobQueue(log_path=log_path)
         return _DEFAULT_QUEUE
 

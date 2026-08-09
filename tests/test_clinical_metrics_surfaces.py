@@ -21,7 +21,6 @@ Tasks covered:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Iterator
 
@@ -67,9 +66,12 @@ def test_doctor_dashboard_view(tmp_logs) -> None:
     )
 
     payload = log_doctor_dashboard_view(
-        "doc_1", "clinic_a",
-        flagged_encounters=3, awaiting_review=1,
-        clean_rate=0.94, savings_usd=340.0,
+        "doc_1",
+        "clinic_a",
+        flagged_encounters=3,
+        awaiting_review=1,
+        clean_rate=0.94,
+        savings_usd=340.0,
     )
     assert payload["doctor_id"] == "doc_1"
     assert payload["flagged_encounters"] == 3
@@ -87,7 +89,9 @@ def test_note_suggestion(tmp_logs) -> None:
     )
 
     record_note_suggestion(
-        finding_id="f1", encounter_id="enc_1", clinic_id="clinic_a",
+        finding_id="f1",
+        encounter_id="enc_1",
+        clinic_id="clinic_a",
         suggested_addition="Patient has failed 6 weeks of NSAIDs + PT.",
     )
     assert len(list_note_suggestions("enc_1")) == 1
@@ -95,7 +99,9 @@ def test_note_suggestion(tmp_logs) -> None:
 
     with pytest.raises(ValueError):
         record_note_suggestion(
-            finding_id="f1", encounter_id="enc_1", clinic_id="clinic_a",
+            finding_id="f1",
+            encounter_id="enc_1",
+            clinic_id="clinic_a",
             suggested_addition="   ",
         )
 
@@ -111,8 +117,10 @@ def test_owner_monthly_email(tmp_logs) -> None:
 
     payload = queue_owner_monthly_email(
         "clinic_a",
-        claims_submitted=412, clean_rate=0.94,
-        estimated_savings_usd=14200.0, review_resolution_days=2.0,
+        claims_submitted=412,
+        clean_rate=0.94,
+        estimated_savings_usd=14200.0,
+        review_resolution_days=2.0,
         peer_percentile=75,
     )
     assert payload["status"] == "queued"
@@ -130,9 +138,12 @@ def test_submit_webhook(tmp_logs) -> None:
     )
 
     record_submit_webhook(
-        clinic_id="clinic_a", encounter_id="enc_1",
-        verdict="flagged", findings=[{"id": "f1"}],
-        hmac_ok=True, latency_ms=2400,
+        clinic_id="clinic_a",
+        encounter_id="enc_1",
+        verdict="flagged",
+        findings=[{"id": "f1"}],
+        hmac_ok=True,
+        latency_ms=2400,
     )
     rows = list_submit_webhooks("clinic_a")
     assert len(rows) == 1
@@ -141,8 +152,12 @@ def test_submit_webhook(tmp_logs) -> None:
 
     with pytest.raises(ValueError):
         record_submit_webhook(
-            clinic_id="clinic_a", encounter_id="enc_1",
-            verdict="bogus", findings=[], hmac_ok=False, latency_ms=0,
+            clinic_id="clinic_a",
+            encounter_id="enc_1",
+            verdict="bogus",
+            findings=[],
+            hmac_ok=False,
+            latency_ms=0,
         )
 
 
@@ -170,13 +185,19 @@ def test_tenant_rules(tmp_logs) -> None:
     )
 
     add_tenant_rule(
-        "clinic_a", rule_id="no_99211", description="We don't bill 99211",
-        severity="low", pattern="code==99211",
+        "clinic_a",
+        rule_id="no_99211",
+        description="We don't bill 99211",
+        severity="low",
+        pattern="code==99211",
     )
     add_tenant_rule(
-        "clinic_a", rule_id="chronic_modifier",
+        "clinic_a",
+        rule_id="chronic_modifier",
         description="Always append modifier-25 on chronic visits",
-        severity="info", pattern="visit_type==chronic", enabled=False,
+        severity="info",
+        pattern="visit_type==chronic",
+        enabled=False,
     )
     rules = list_tenant_rules("clinic_a")
     ids = sorted(r["rule_id"] for r in rules)
@@ -184,7 +205,10 @@ def test_tenant_rules(tmp_logs) -> None:
 
     with pytest.raises(ValueError):
         add_tenant_rule(
-            "clinic_a", rule_id="bad", description="", severity="critical",
+            "clinic_a",
+            rule_id="bad",
+            description="",
+            severity="critical",
             pattern="*",
         )
 
@@ -199,8 +223,11 @@ def test_onboarding_wizard(tmp_logs) -> None:
     )
 
     payload = save_onboarding_answers(
-        "clinic_a", ehr="AdvancedMD",
-        providers=4, billers=2, monthly_claim_volume=120,
+        "clinic_a",
+        ehr="AdvancedMD",
+        providers=4,
+        billers=2,
+        monthly_claim_volume=120,
         biggest_denial_type="modifier-25",
     )
     # Heuristic: 120 < 200 → Haiku
@@ -215,8 +242,11 @@ def test_onboarding_wizard(tmp_logs) -> None:
 
     with pytest.raises(ValueError):
         save_onboarding_answers(
-            "clinic_a", ehr="AdvancedMD",
-            providers=0, billers=1, monthly_claim_volume=1,
+            "clinic_a",
+            ehr="AdvancedMD",
+            providers=0,
+            billers=1,
+            monthly_claim_volume=1,
             biggest_denial_type="",
         )
 
@@ -231,12 +261,18 @@ def test_pre_submit_block(tmp_logs) -> None:
     )
 
     record_pre_submit_block(
-        "clinic_a", encounter_id="enc_1", finding_count=3,
-        blocked=True, override_reason="",
+        "clinic_a",
+        encounter_id="enc_1",
+        finding_count=3,
+        blocked=True,
+        override_reason="",
     )
     record_pre_submit_block(
-        "clinic_a", encounter_id="enc_2", finding_count=2,
-        blocked=True, override_reason="patient is terminal, billing is moot",
+        "clinic_a",
+        encounter_id="enc_2",
+        finding_count=2,
+        blocked=True,
+        override_reason="patient is terminal, billing is moot",
     )
     rows = list_pre_submit_blocks("clinic_a")
     assert len(rows) == 2
@@ -250,8 +286,11 @@ def test_extension_audit(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import record_extension_audit
 
     payload = record_extension_audit(
-        clinic_id="clinic_a", ehr="athena", encounter_id="enc_1",
-        findings_count=2, user_action="edited_then_submitted",
+        clinic_id="clinic_a",
+        ehr="athena",
+        encounter_id="enc_1",
+        findings_count=2,
+        user_action="edited_then_submitted",
         extension_version="0.4.1",
     )
     assert payload["ehr"] == "athena"
@@ -259,13 +298,21 @@ def test_extension_audit(tmp_logs) -> None:
 
     with pytest.raises(ValueError):
         record_extension_audit(
-            clinic_id="clinic_a", ehr="bogus_ehr", encounter_id="enc_1",
-            findings_count=0, user_action="submitted", extension_version="0.0",
+            clinic_id="clinic_a",
+            ehr="bogus_ehr",
+            encounter_id="enc_1",
+            findings_count=0,
+            user_action="submitted",
+            extension_version="0.0",
         )
     with pytest.raises(ValueError):
         record_extension_audit(
-            clinic_id="clinic_a", ehr="athena", encounter_id="enc_1",
-            findings_count=0, user_action="panic_clicked", extension_version="0.0",
+            clinic_id="clinic_a",
+            ehr="athena",
+            encounter_id="enc_1",
+            findings_count=0,
+            user_action="panic_clicked",
+            extension_version="0.0",
         )
 
 
@@ -279,7 +326,9 @@ def test_specialty_mix(tmp_logs) -> None:
     )
 
     encounters = ["primary_care"] * 60 + ["surgery"] * 30 + ["psych"] * 10
-    payload = compute_specialty_mix(clinic_id="clinic_a", encounter_specialties=encounters)
+    payload = compute_specialty_mix(
+        clinic_id="clinic_a", encounter_specialties=encounters
+    )
     assert payload["encounter_count"] == 100
     assert payload["dominant_specialties"][0] == "primary_care"
     assert payload["dominant_specialties"][1] == "surgery"
@@ -303,10 +352,15 @@ def test_bulk_accept_pattern(tmp_logs) -> None:
     )
 
     # Below threshold → None
-    assert detect_bulk_accept_pattern("clinic_a", rule_id="mod_25", dismissal_count=5) is None
+    assert (
+        detect_bulk_accept_pattern("clinic_a", rule_id="mod_25", dismissal_count=5)
+        is None
+    )
 
     # Above threshold → proposal
-    proposal = detect_bulk_accept_pattern("clinic_a", rule_id="mod_25", dismissal_count=12)
+    proposal = detect_bulk_accept_pattern(
+        "clinic_a", rule_id="mod_25", dismissal_count=12
+    )
     assert proposal is not None
     assert proposal["opt_in"] is False
     pattern_id = proposal["event_id"]
@@ -330,8 +384,12 @@ def test_doctor_positive_digest(tmp_logs) -> None:
     )
 
     payload = queue_doctor_positive_digest(
-        "doc_1", "clinic_a", week_of="2026-W26",
-        notes_written=47, notes_clean=45, notes_with_quick_fix=2,
+        "doc_1",
+        "clinic_a",
+        week_of="2026-W26",
+        notes_written=47,
+        notes_clean=45,
+        notes_with_quick_fix=2,
         estimated_savings_usd=9200.0,
     )
     assert payload["status"] == "queued"
@@ -352,12 +410,27 @@ def test_doctor_positive_digest(tmp_logs) -> None:
         ("/api/webhooks/submit?clinic_id=clinic_a&verdict=clean", "POST"),
         ("/api/admin/feedback-loop/run?clinic_id=clinic_a", "POST"),
         ("/api/clinic/clinic_a/rules?rule_id=no_99211&pattern=code%3D%3D99211", "POST"),
-        ("/api/clinic/clinic_a/onboarding?ehr=AdvancedMD&providers=4&billers=2&monthly_claim_volume=120&biggest_denial_type=modifier-25", "POST"),
-        ("/api/clinic/clinic_a/pre-submit-block?encounter_id=enc_1&finding_count=3", "POST"),
-        ("/api/extension/audit?clinic_id=clinic_a&ehr=athena&user_action=submitted", "POST"),
+        (
+            "/api/clinic/clinic_a/onboarding?ehr=AdvancedMD&providers=4&billers=2&monthly_claim_volume=120&biggest_denial_type=modifier-25",
+            "POST",
+        ),
+        (
+            "/api/clinic/clinic_a/pre-submit-block?encounter_id=enc_1&finding_count=3",
+            "POST",
+        ),
+        (
+            "/api/extension/audit?clinic_id=clinic_a&ehr=athena&user_action=submitted",
+            "POST",
+        ),
         ("/api/clinic/clinic_a/specialty-mix?specialties=primary_care,surgery", "POST"),
-        ("/api/clinic/clinic_a/bulk-accept/detect?rule_id=mod_25&dismissal_count=15", "POST"),
-        ("/api/doctor/doc_1/positive-digest?clinic_id=clinic_a&notes_written=47", "POST"),
+        (
+            "/api/clinic/clinic_a/bulk-accept/detect?rule_id=mod_25&dismissal_count=15",
+            "POST",
+        ),
+        (
+            "/api/doctor/doc_1/positive-digest?clinic_id=clinic_a&notes_written=47",
+            "POST",
+        ),
     ],
 )
 def test_routes_registered(tmp_logs, route: str, method: str) -> None:
@@ -385,7 +458,9 @@ def test_routes_registered(tmp_logs, route: str, method: str) -> None:
     # blocks the request — 503. Anything else (405 method-not-
     # allowed for a path that doesn't exist for this method) means
     # the surface was never wired.
-    resp = client.request(method, route, headers={"X-User-Id": "test", "X-User-Role": "admin"})
+    resp = client.request(
+        method, route, headers={"X-User-Id": "test", "X-User-Role": "admin"}
+    )
     assert resp.status_code in (200, 404, 503, 422), (
         f"{method} {route}: route not wired (got {resp.status_code}: {resp.text[:200]})"
     )

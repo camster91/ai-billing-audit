@@ -10,9 +10,9 @@ Plus end-to-end invocation against the real ``data/predictions_v0.jsonl``
 + ``data/val_manifest.json`` to make sure the script runs and writes
 the contract-correct JSON and Markdown.
 """
+
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -215,12 +215,24 @@ def test_micro_pools_across_categories() -> None:
 def test_macro_unweighted_mean_across_categories() -> None:
     per_cat = {
         "cardiology": {
-            "precision": 1.0, "recall": 1.0, "f1": 1.0,
-            "support": 5, "predicted": 5, "tp": 5, "fp": 0, "fn": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted": 5,
+            "tp": 5,
+            "fp": 0,
+            "fn": 0,
         },
         "evaluation": {
-            "precision": 0.5, "recall": 0.5, "f1": 0.5,
-            "support": 4, "predicted": 4, "tp": 2, "fp": 2, "fn": 2,
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "support": 4,
+            "predicted": 4,
+            "tp": 2,
+            "fp": 2,
+            "fn": 2,
         },
     }
     macro = _macro(per_cat)
@@ -260,7 +272,11 @@ def test_build_report_marks_unmet_targets() -> None:
     pred_path = PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl"
     man_path = PROJECT_ROOT / "data" / "synth" / "val_manifest.json"
     report = _build_report(
-        predictions, manifest, pred_path, man_path, 0.001,
+        predictions,
+        manifest,
+        pred_path,
+        man_path,
+        0.001,
     )
     # Encounter scored: tp=1 (cardiology), fn=2 (evaluation, diagnosis)
     # Micro: tp=1, fp=0, fn=2 -> P=1.0, R=1/3=0.3333
@@ -376,7 +392,8 @@ def test_real_data_metrics_match_known_values() -> None:
     preds = _load_predictions(PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl")
     manifest = _load_manifest(PROJECT_ROOT / "data" / "synth" / "val_manifest.json")
     report = _build_report(
-        preds, manifest,
+        preds,
+        manifest,
         PROJECT_ROOT / "data" / "synth" / "predictions_v0.jsonl",
         PROJECT_ROOT / "data" / "synth" / "val_manifest.json",
         0.0,

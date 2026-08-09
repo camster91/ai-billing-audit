@@ -40,6 +40,7 @@ What ships
 * :file:`tests/test_backup.py` with a round-trip test, a
   wrong-key rejection test, and a plaintext-leak test.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -246,9 +247,7 @@ def _untar_bytes(blob: bytes, *, dest_root: str | Path) -> int:
             try:
                 target.relative_to(dest_root)
             except ValueError:
-                _log.warning(
-                    "restore: skipping path-traversal entry %r", member.name
-                )
+                _log.warning("restore: skipping path-traversal entry %r", member.name)
                 continue
             if member.isfile():
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -311,7 +310,11 @@ def create_backup(
         out,
         len(encrypted),
     )
-    return {"files": len(pairs), "bytes_in": len(plaintext), "bytes_out": len(encrypted)}
+    return {
+        "files": len(pairs),
+        "bytes_in": len(plaintext),
+        "bytes_out": len(encrypted),
+    }
 
 
 def restore_backup(

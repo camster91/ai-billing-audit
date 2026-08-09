@@ -51,8 +51,7 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass, field
-from importlib import resources
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -168,8 +167,7 @@ def _resolve_prompt_path(prompt_path_str: str, *, config_path: Path) -> Path:
         if candidate.is_file():
             return candidate
     raise GraderConfigError(
-        f"grader prompt not found at any of: "
-        + ", ".join(str(c) for c in candidates)
+        "grader prompt not found at any of: " + ", ".join(str(c) for c in candidates)
     )
 
 
@@ -215,11 +213,16 @@ def load_grader_config(path: str | Path | None = None) -> dict[str, Any]:
         raise GraderConfigError(
             f"grader config at {p} must include a non-empty 'prompt_templates' mapping"
         )
-    return raw
+    return dict(raw)
 
 
-def _render_prompt(prompt_template: str, *, predicted: Mapping[str, Any],
-                   ground_truth: Mapping[str, Any], context: str) -> str:
+def _render_prompt(
+    prompt_template: str,
+    *,
+    predicted: Mapping[str, Any],
+    ground_truth: Mapping[str, Any],
+    context: str,
+) -> str:
     """Render the user-message body for a single grading call.
 
     Pure function: same input -> same output. No timestamps, no thread
@@ -375,19 +378,13 @@ class Grader:
             )
         verdict = payload.get("verdict")
         if verdict not in ("match", "no_match", "partial"):
-            raise GraderConfigError(
-                f"grader response has invalid verdict {verdict!r}"
-            )
+            raise GraderConfigError(f"grader response has invalid verdict {verdict!r}")
         score = payload.get("score")
         if not isinstance(score, (int, float)):
-            raise GraderConfigError(
-                f"grader response has non-numeric score {score!r}"
-            )
+            raise GraderConfigError(f"grader response has non-numeric score {score!r}")
         score = float(score)
         if not (0.0 <= score <= 1.0):
-            raise GraderConfigError(
-                f"grader response score {score} is out of [0, 1]"
-            )
+            raise GraderConfigError(f"grader response score {score} is out of [0, 1]")
         rationale = payload.get("rationale")
         if not isinstance(rationale, str):
             raise GraderConfigError(

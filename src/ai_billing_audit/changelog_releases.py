@@ -11,9 +11,9 @@ duplicated in :mod:`ai_billing_audit.feeds` as
 ``CHANGELOG_RELEASES`` for the RSS feed. The full body
 content lives here so the RSS feed stays compact.
 """
+
 from __future__ import annotations
 
-import datetime
 from typing import Any
 
 
@@ -126,6 +126,7 @@ _RELEASE_BODIES: dict[str, str] = {
 def get_release(version: str) -> dict[str, Any] | None:
     """Look up a single release by version (e.g. 'v0.5.0')."""
     from .feeds import CHANGELOG_RELEASES
+
     for r in CHANGELOG_RELEASES:
         if r["id"] == version:
             return {
@@ -138,10 +139,13 @@ def get_release(version: str) -> dict[str, Any] | None:
 def list_releases() -> list[dict[str, Any]]:
     """All releases with their bodies, newest first."""
     from .feeds import CHANGELOG_RELEASES
+
     out: list[dict[str, Any]] = []
     for r in CHANGELOG_RELEASES:
-        out.append({
-            **r,
-            "body_html": _RELEASE_BODIES.get(r["id"], ""),
-        })
+        out.append(
+            {
+                **r,
+                "body_html": _RELEASE_BODIES.get(r["id"], ""),
+            }
+        )
     return out

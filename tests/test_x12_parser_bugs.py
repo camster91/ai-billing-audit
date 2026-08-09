@@ -21,12 +21,11 @@ target bug; we deliberately do not import the project-level
 ``_FULL_837P`` fixture (kept under ``tests/test_encounters_upload.py``)
 because the bug-triggering shapes are tiny enough to spell out.
 """
+
 from __future__ import annotations
 
-import pytest
 
 from ai_billing_audit.x12_parser import (
-    X12ParseError,
     parse_837p,
     validate_required_fields,
 )
@@ -53,9 +52,7 @@ def _envelope(*body: str) -> str:
         "ISA*00*          *00*          *ZZ*SUBMITTERID    *ZZ*RECEIVERID     "
         "*240515*1200*^*00501*000000001*0*P*:~"
         "GS*HC*SUBMITTER*RECEIVER*20240515*1200*1*X*005010X222A1~"
-        "ST*837*0001*005010X222A1~"
-        + terminated
-        + "\n"
+        "ST*837*0001*005010X222A1~" + terminated + "\n"
         f"SE*{segments_in_envelope}*0001~"
         "GE*1*1~"
         "IEA*1*000000001~"
@@ -110,8 +107,8 @@ def test_hi_segment_multiple_segments_concatenate() -> None:
         "NM1*85*2*BILLING CLINIC*****XX*1234567890~",
         "NM1*IL*1*DOE*JOHN****MI*MBR-000123~",
         "CLM*ENC-HI-003*100.00***11:B:1*Y*A*Y*Y~",
-        "HI*ABK:Z0000~",         # ICD-10 primary
-        "HI*ABF:Z0011~",         # ICD-10 secondary
+        "HI*ABK:Z0000~",  # ICD-10 primary
+        "HI*ABF:Z0011~",  # ICD-10 secondary
         "DTP*472*D8*20240510~",
         "SV1*HC:99213*100.00*UN*1***1~",
     )
@@ -169,7 +166,12 @@ def test_alternative_x12_separators_match_canonical_claim() -> None:
     canonical_claim = parse_837p(standard)[0]
     alternative_claim = parse_837p(alternative)[0]
 
-    assert alternative_claim == canonical_claim
+    comparable_fields = set(canonical_claim) - {"raw"}
+    assert {key: alternative_claim[key] for key in comparable_fields} == {
+        key: canonical_claim[key] for key in comparable_fields
+    }
+    assert "^" in alternative_claim["raw"]
+    assert "!" in alternative_claim["raw"]
 
 
 # ---------------------------------------------------------------------------
@@ -186,8 +188,8 @@ def test_multiple_dtp_472_uses_first_segment() -> None:
         "NM1*85*2*BILLING CLINIC*****XX*1234567890~",
         "NM1*IL*1*DOE*JOHN****MI*MBR-000123~",
         "CLM*ENC-DTP-001*100.00***11:B:1*Y*A*Y*Y~",
-        "DTP*472*D8*20240510~",   # the correct service date
-        "DTP*472*D8*20240601~",   # garbage; should NOT overwrite
+        "DTP*472*D8*20240510~",  # the correct service date
+        "DTP*472*D8*20240601~",  # garbage; should NOT overwrite
         "SV1*HC:99213*100.00*UN*1***1~",
     )
     claims = parse_837p(payload)
@@ -310,15 +312,19 @@ def test_provider_and_subscriber_context_is_scoped_to_hl_loop() -> None:
 
 
 def test_non_default_element_and_segment_separators_are_honoured() -> None:
-    payload = _envelope(
-        "BHT*0019*00*1*20240515*1200*CH",
-        "NM1*85*2*BILLING CLINIC*****XX*1234567890",
-        "NM1*IL*1*DOE*JOHN****MI*MBR-000123",
-        "CLM*ENC-SEPS-001*100.00***11:B:1*Y*A*Y*Y",
-        "HI*ABK:Z0000",
-        "DTP*472*D8*20240510",
-        "SV1*HC:99213*100.00*UN*1***1",
-    ).replace("*", "|").replace("~", "!")
+    payload = (
+        _envelope(
+            "BHT*0019*00*1*20240515*1200*CH",
+            "NM1*85*2*BILLING CLINIC*****XX*1234567890",
+            "NM1*IL*1*DOE*JOHN****MI*MBR-000123",
+            "CLM*ENC-SEPS-001*100.00***11:B:1*Y*A*Y*Y",
+            "HI*ABK:Z0000",
+            "DTP*472*D8*20240510",
+            "SV1*HC:99213*100.00*UN*1***1",
+        )
+        .replace("*", "|")
+        .replace("~", "!")
+    )
     claim = parse_837p(payload)[0]
     assert claim["encounter_id"] == "ENC-SEPS-001"
     assert claim["diagnosis_codes"] == ["Z0000"]

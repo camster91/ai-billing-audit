@@ -73,6 +73,7 @@ input. Forward-only migration: new rows use the salted hash;
 old rows are immutable. After the full ledger is rotated (90-day
 retention), every row will use the new format.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -99,9 +100,7 @@ DOMAIN_PREFIX: str = "patient-hash:v1:"
 # log would be trivially dictionary-attackable by anyone with
 # the source code. The ``assert_production_pepper`` helper
 # prevents this via a loud error at first request.
-DEV_FALLBACK_PEPPER: str = (
-    "dev-only-patients-hash-pepper-do-not-use-in-production"
-)
+DEV_FALLBACK_PEPPER: str = "dev-only-patients-hash-pepper-do-not-use-in-production"
 
 # Minimum length of an acceptable pepper. The portal side uses
 # the same threshold; keep them in sync.

@@ -35,7 +35,6 @@ the admin UI.
 
 from __future__ import annotations
 
-import json
 import os
 import time
 import uuid
@@ -43,41 +42,97 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+    write_encrypted_json_records,
+)
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # ---- Constants --------------------------------------------------------
 
+
 def prompt_pin_path_path() -> Path:
-    return Path(os.environ.get("CLINIC_PROMPT_PIN_LOG", "/app/logs/clinic_prompt_pins.jsonl"))
+    return Path(
+        os.environ.get("CLINIC_PROMPT_PIN_LOG", "/app/logs/clinic_prompt_pins.jsonl")
+    )
+
+
 def teaching_verdict_path_path() -> Path:
-    return Path(os.environ.get("TEACHING_VERDICT_LOG", "/app/logs/teaching_verdicts.jsonl"))
+    return Path(
+        os.environ.get("TEACHING_VERDICT_LOG", "/app/logs/teaching_verdicts.jsonl")
+    )
+
+
 def reaudit_queue_path_path() -> Path:
     return Path(os.environ.get("REAUDIT_QUEUE_LOG", "/app/logs/reaudit_queue.jsonl"))
+
+
 def doctor_dashboard_path_path() -> Path:
-    return Path(os.environ.get("DOCTOR_DASHBOARD_LOG", "/app/logs/doctor_dashboard.jsonl"))
+    return Path(
+        os.environ.get("DOCTOR_DASHBOARD_LOG", "/app/logs/doctor_dashboard.jsonl")
+    )
+
+
 def note_suggestion_path_path() -> Path:
-    return Path(os.environ.get("NOTE_SUGGESTION_LOG", "/app/logs/note_suggestions.jsonl"))
+    return Path(
+        os.environ.get("NOTE_SUGGESTION_LOG", "/app/logs/note_suggestions.jsonl")
+    )
+
+
 def owner_email_path_path() -> Path:
     return Path(os.environ.get("OWNER_EMAIL_LOG", "/app/logs/owner_emails.jsonl"))
+
+
 def webhook_path_path() -> Path:
     return Path(os.environ.get("SUBMIT_WEBHOOK_LOG", "/app/logs/submit_webhooks.jsonl"))
+
+
 def feedback_loop_path_path() -> Path:
-    return Path(os.environ.get("FEEDBACK_LOOP_LOG", "/app/logs/feedback_loop_runs.jsonl"))
+    return Path(
+        os.environ.get("FEEDBACK_LOOP_LOG", "/app/logs/feedback_loop_runs.jsonl")
+    )
+
+
 def tenant_rules_path_path() -> Path:
     return Path(os.environ.get("TENANT_RULES_LOG", "/app/logs/tenant_rules.jsonl"))
+
+
 def onboarding_path_path() -> Path:
     return Path(os.environ.get("ONBOARDING_LOG", "/app/logs/onboarding.jsonl"))
+
+
 def blocking_path_path() -> Path:
-    return Path(os.environ.get("PRE_SUBMIT_BLOCKING_LOG", "/app/logs/pre_submit_blocking.jsonl"))
+    return Path(
+        os.environ.get("PRE_SUBMIT_BLOCKING_LOG", "/app/logs/pre_submit_blocking.jsonl")
+    )
+
+
 def extension_path_path() -> Path:
-    return Path(os.environ.get("BROWSER_EXTENSION_LOG", "/app/logs/browser_extension.jsonl"))
+    return Path(
+        os.environ.get("BROWSER_EXTENSION_LOG", "/app/logs/browser_extension.jsonl")
+    )
+
+
 def specialty_mix_path_path() -> Path:
     return Path(os.environ.get("SPECIALTY_MIX_LOG", "/app/logs/specialty_mix.jsonl"))
+
+
 def bulk_accept_path_path() -> Path:
-    return Path(os.environ.get("BULK_ACCEPT_LOG", "/app/logs/bulk_accept_patterns.jsonl"))
+    return Path(
+        os.environ.get("BULK_ACCEPT_LOG", "/app/logs/bulk_accept_patterns.jsonl")
+    )
+
+
 def positive_feedback_path_path() -> Path:
-    return Path(os.environ.get("POSITIVE_FEEDBACK_LOG", "/app/logs/doctor_positive_feedback.jsonl"))
+    return Path(
+        os.environ.get(
+            "POSITIVE_FEEDBACK_LOG", "/app/logs/doctor_positive_feedback.jsonl"
+        )
+    )
 
 
 # ---- Data shapes ------------------------------------------------------
@@ -122,25 +177,33 @@ class TeachingVerdict:
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        return []
-    out: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                out.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    return out
+    return read_encrypted_json_records(path)
 
 
 def _append_jsonl(path: Path, row: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row, sort_keys=True) + "\n")
+    append_encrypted_json_record(path, row)
+
+
+def migrate_clinical_metric_logs() -> int:
+    """Encrypt every legacy clinical-metric JSONL store in place."""
+    paths = {
+        prompt_pin_path_path(),
+        teaching_verdict_path_path(),
+        reaudit_queue_path_path(),
+        doctor_dashboard_path_path(),
+        note_suggestion_path_path(),
+        owner_email_path_path(),
+        webhook_path_path(),
+        feedback_loop_path_path(),
+        tenant_rules_path_path(),
+        onboarding_path_path(),
+        blocking_path_path(),
+        extension_path_path(),
+        specialty_mix_path_path(),
+        bulk_accept_path_path(),
+        positive_feedback_path_path(),
+    }
+    return sum(migrate_plaintext_jsonl(path) for path in paths)
 
 
 # ---- Doctor effectiveness metric (t_267a1ad6) -------------------------
@@ -168,7 +231,6 @@ def compute_doctor_effectiveness(
             feedback_log = [asdict(e) for e in entries]
         except Exception:
             feedback_log = []
-
 
     if not feedback_log:
         return {
@@ -239,19 +301,11 @@ def _read_feedback_with_incorrect() -> list[dict[str, Any]]:
     log_path = _feedback.feedback_log_path()  # noqa: SLF001 (intentional — same path)
     if not log_path.exists():
         return []
-    out: list[dict[str, Any]] = []
-    with log_path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if (row.get("action") or "").lower() == "incorrect":
-                out.append(row)
-    return out
+    return [
+        row
+        for row in read_encrypted_json_records(log_path)
+        if (row.get("action") or "").lower() == "incorrect"
+    ]
 
 
 def list_teaching_signal_queue(
@@ -274,7 +328,8 @@ def list_do_not_flag_rules(clinic_id: str) -> list[dict[str, Any]]:
     """Return the rule+pattern pairs the clinic has marked 'doctor right'."""
     rows = _read_jsonl(teaching_verdict_path_path())
     return [
-        r for r in rows
+        r
+        for r in rows
         if r.get("verdict") == "doctor_right" and r.get("clinic_id") == clinic_id
     ]
 
@@ -366,7 +421,11 @@ def log_doctor_dashboard_view(
 
 
 def list_doctor_dashboard_views(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(doctor_dashboard_path_path()) if r.get("clinic_id") == clinic_id]
+    return [
+        r
+        for r in _read_jsonl(doctor_dashboard_path_path())
+        if r.get("clinic_id") == clinic_id
+    ]
 
 
 # ---- Doctor "add this to your note" suggestion (t_df188436) ------------
@@ -395,7 +454,11 @@ def record_note_suggestion(
 
 
 def list_note_suggestions(encounter_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(note_suggestion_path_path()) if r.get("encounter_id") == encounter_id]
+    return [
+        r
+        for r in _read_jsonl(note_suggestion_path_path())
+        if r.get("encounter_id") == encounter_id
+    ]
 
 
 # ---- Monthly clinic-owner WIN email (t_a8eeb0de) ----------------------
@@ -427,7 +490,11 @@ def queue_owner_monthly_email(
 
 
 def list_owner_emails(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(owner_email_path_path()) if r.get("clinic_id") == clinic_id]
+    return [
+        r
+        for r in _read_jsonl(owner_email_path_path())
+        if r.get("clinic_id") == clinic_id
+    ]
 
 
 # ---- Submit-time EHR webhook (t_3b15809f) -----------------------------
@@ -458,7 +525,9 @@ def record_submit_webhook(
 
 
 def list_submit_webhooks(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(webhook_path_path()) if r.get("clinic_id") == clinic_id]
+    return [
+        r for r in _read_jsonl(webhook_path_path()) if r.get("clinic_id") == clinic_id
+    ]
 
 
 # ---- Reviewer feedback loop (t_2ab66102) ------------------------------
@@ -537,7 +606,11 @@ def add_tenant_rule(
 
 
 def list_tenant_rules(clinic_id: str) -> list[dict[str, Any]]:
-    rows = [r for r in _read_jsonl(tenant_rules_path_path()) if r.get("clinic_id") == clinic_id]
+    rows = [
+        r
+        for r in _read_jsonl(tenant_rules_path_path())
+        if r.get("clinic_id") == clinic_id
+    ]
     # Return only the latest enabled=True state per rule_id
     state: dict[str, dict[str, Any]] = {}
     for r in rows:
@@ -575,7 +648,9 @@ def save_onboarding_answers(
         "specialty_mix": specialty_mix,
         "recommended_default_model": default_model,
         "recommended_severity_threshold": severity_threshold,
-        "recommended_email_cadence": "weekly" if monthly_claim_volume < 500 else "daily",
+        "recommended_email_cadence": "weekly"
+        if monthly_claim_volume < 500
+        else "daily",
         "saved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     _append_jsonl(onboarding_path_path(), payload)
@@ -583,7 +658,11 @@ def save_onboarding_answers(
 
 
 def get_onboarding(clinic_id: str) -> dict[str, Any] | None:
-    rows = [r for r in _read_jsonl(onboarding_path_path()) if r.get("clinic_id") == clinic_id]
+    rows = [
+        r
+        for r in _read_jsonl(onboarding_path_path())
+        if r.get("clinic_id") == clinic_id
+    ]
     return rows[-1] if rows else None
 
 
@@ -613,7 +692,9 @@ def record_pre_submit_block(
 
 
 def list_pre_submit_blocks(clinic_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(blocking_path_path()) if r.get("clinic_id") == clinic_id]
+    return [
+        r for r in _read_jsonl(blocking_path_path()) if r.get("clinic_id") == clinic_id
+    ]
 
 
 # ---- Browser extension audit-log (t_8b915264) -------------------------
@@ -629,7 +710,9 @@ def record_extension_audit(
     if ehr not in {"advancedmd", "athena", "kareo", "other"}:
         raise ValueError("ehr must be one of: advancedmd, athena, kareo, other")
     if user_action not in {"submitted", "edited_then_submitted", "abandoned"}:
-        raise ValueError("user_action must be: submitted, edited_then_submitted, abandoned")
+        raise ValueError(
+            "user_action must be: submitted, edited_then_submitted, abandoned"
+        )
     payload = {
         "event_id": uuid.uuid4().hex,
         "clinic_id": clinic_id,
@@ -679,7 +762,11 @@ def compute_specialty_mix(
 
 
 def get_specialty_mix(clinic_id: str) -> dict[str, Any] | None:
-    rows = [r for r in _read_jsonl(specialty_mix_path_path()) if r.get("clinic_id") == clinic_id]
+    rows = [
+        r
+        for r in _read_jsonl(specialty_mix_path_path())
+        if r.get("clinic_id") == clinic_id
+    ]
     return rows[-1] if rows else None
 
 
@@ -719,9 +806,7 @@ def opt_in_bulk_accept(pattern_id: str, actor: str = "biller") -> dict[str, Any]
             r["opt_in_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             # Rewrite the log (small file, append-only semantics weakened
             # by design for this single opt-in transition).
-            with bulk_accept_path_path().open("w", encoding="utf-8") as fh:
-                for row in rows:
-                    fh.write(json.dumps(row, sort_keys=True) + "\n")
+            write_encrypted_json_records(bulk_accept_path_path(), rows)
             return r
     raise ValueError(f"pattern_id {pattern_id} not found")
 
@@ -755,24 +840,33 @@ def queue_doctor_positive_digest(
 
 
 def list_doctor_positive_digests(doctor_id: str) -> list[dict[str, Any]]:
-    return [r for r in _read_jsonl(positive_feedback_path_path()) if r.get("doctor_id") == doctor_id]
+    return [
+        r
+        for r in _read_jsonl(positive_feedback_path_path())
+        if r.get("doctor_id") == doctor_id
+    ]
 
 
 # ---- Route mounting for the 12 new surfaces --------------------------
+
 
 def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many small routes
     """Wire the clinical-impact routes onto a FastAPI app."""
     from . import feature_flags
 
     @app.get("/api/doctor/{doctor_id}/effectiveness")
-    def get_doctor_effectiveness(doctor_id: str, request: Request, clinic_id: str = "default") -> JSONResponse:
+    def get_doctor_effectiveness(
+        doctor_id: str, request: Request, clinic_id: str = "default"
+    ) -> JSONResponse:
         if not feature_flags.is_enabled(clinic_id, "doctor_effectiveness_metric"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
         payload = compute_doctor_effectiveness(doctor_id, clinic_id)
         return JSONResponse(payload)
 
     @app.get("/api/admin/teaching-signal-queue")
-    def get_teaching_queue(request: Request, clinic_id: str | None = None) -> JSONResponse:
+    def get_teaching_queue(
+        request: Request, clinic_id: str | None = None
+    ) -> JSONResponse:
         cid = clinic_id or "default"
         if not feature_flags.is_enabled(cid, "rejected_fix_teaching_signal"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
@@ -808,7 +902,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
         return JSONResponse({"ok": True, "event_id": v.event_id})
 
     @app.post("/api/encounter/{encounter_id}/re-audit")
-    def post_reaudit(encounter_id: str, request: Request, note: str = "", actor: str = "doctor") -> JSONResponse:
+    def post_reaudit(
+        encounter_id: str, request: Request, note: str = "", actor: str = "doctor"
+    ) -> JSONResponse:
         payload = queue_reaudit(encounter_id, actor=actor, note=note)
         return JSONResponse(payload)
 
@@ -877,7 +973,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
 
     @app.get("/api/encounter/{encounter_id}/suggestions")
     def list_encounter_suggestions(encounter_id: str) -> JSONResponse:
-        return JSONResponse({"encounter_id": encounter_id, "items": list_note_suggestions(encounter_id)})
+        return JSONResponse(
+            {"encounter_id": encounter_id, "items": list_note_suggestions(encounter_id)}
+        )
 
     # ---- Monthly clinic-owner WIN email (t_a8eeb0de) ----
     @app.post("/api/clinic/{clinic_id}/owner-email")
@@ -926,7 +1024,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
 
     # ---- Reviewer feedback loop (t_2ab66102) ----
     @app.post("/api/admin/feedback-loop/run")
-    def post_feedback_loop_run(request: Request, clinic_id: str | None = None) -> JSONResponse:
+    def post_feedback_loop_run(
+        request: Request, clinic_id: str | None = None
+    ) -> JSONResponse:
         cid = clinic_id or "default"
         if not feature_flags.is_enabled(cid, "reviewer_feedback_loop"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
@@ -960,7 +1060,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
 
     @app.get("/api/clinic/{clinic_id}/rules")
     def list_clinic_rules(clinic_id: str) -> JSONResponse:
-        return JSONResponse({"clinic_id": clinic_id, "rules": list_tenant_rules(clinic_id)})
+        return JSONResponse(
+            {"clinic_id": clinic_id, "rules": list_tenant_rules(clinic_id)}
+        )
 
     # ---- Onboarding wizard (t_58fbe2dd) ----
     @app.post("/api/clinic/{clinic_id}/onboarding")
@@ -989,7 +1091,10 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
 
     @app.get("/api/clinic/{clinic_id}/onboarding")
     def get_clinic_onboarding(clinic_id: str) -> JSONResponse:
-        return JSONResponse(get_onboarding(clinic_id) or {"clinic_id": clinic_id, "status": "not_onboarded"})
+        return JSONResponse(
+            get_onboarding(clinic_id)
+            or {"clinic_id": clinic_id, "status": "not_onboarded"}
+        )
 
     # ---- Pre-submit claim blocking (t_d080595b) ----
     @app.post("/api/clinic/{clinic_id}/pre-submit-block")
@@ -1048,13 +1153,20 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
         items = [s.strip() for s in specialties.split(",") if s.strip()]
         if not items:
-            raise HTTPException(status_code=422, detail="specialties required (comma-separated)")
-        payload = compute_specialty_mix(clinic_id=clinic_id, encounter_specialties=items)
+            raise HTTPException(
+                status_code=422, detail="specialties required (comma-separated)"
+            )
+        payload = compute_specialty_mix(
+            clinic_id=clinic_id, encounter_specialties=items
+        )
         return JSONResponse(payload)
 
     @app.get("/api/clinic/{clinic_id}/specialty-mix")
     def get_clinic_specialty_mix(clinic_id: str) -> JSONResponse:
-        return JSONResponse(get_specialty_mix(clinic_id) or {"clinic_id": clinic_id, "status": "not_computed"})
+        return JSONResponse(
+            get_specialty_mix(clinic_id)
+            or {"clinic_id": clinic_id, "status": "not_computed"}
+        )
 
     # ---- Bulk-accept known-good pattern (t_f3d392b2) ----
     @app.post("/api/clinic/{clinic_id}/bulk-accept/detect")
@@ -1068,7 +1180,10 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
         if not feature_flags.is_enabled(clinic_id, "bulk_accept_known_good"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
         proposal = detect_bulk_accept_pattern(
-            clinic_id, rule_id=rule_id, dismissal_count=dismissal_count, min_dismissals=min_dismissals
+            clinic_id,
+            rule_id=rule_id,
+            dismissal_count=dismissal_count,
+            min_dismissals=min_dismissals,
         )
         if proposal is None:
             return JSONResponse({"proposed": False, "reason": "below threshold"})

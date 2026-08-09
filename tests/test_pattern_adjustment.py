@@ -19,6 +19,7 @@ Idempotency: ``compute_clinic_pattern_adjustments`` is a pure function
 over its inputs; calling it twice with the same entries yields the
 same report.
 """
+
 from __future__ import annotations
 
 import sys
@@ -39,7 +40,9 @@ from ai_billing_audit.pattern_adjustment import (  # noqa: E402
 )
 
 
-def _dismiss(biller: str, rule: str, category: str = "missing-dx", severity: str = "HIGH") -> FeedbackEntry:
+def _dismiss(
+    biller: str, rule: str, category: str = "missing-dx", severity: str = "HIGH"
+) -> FeedbackEntry:
     return FeedbackEntry(
         encounter_id="enc_x",
         finding_id=f"f_{rule}",
@@ -51,7 +54,9 @@ def _dismiss(biller: str, rule: str, category: str = "missing-dx", severity: str
     )
 
 
-def _accept(biller: str, rule: str, category: str = "missing-dx", severity: str = "HIGH") -> FeedbackEntry:
+def _accept(
+    biller: str, rule: str, category: str = "missing-dx", severity: str = "HIGH"
+) -> FeedbackEntry:
     return FeedbackEntry(
         encounter_id="enc_x",
         finding_id=f"f_{rule}",
@@ -93,10 +98,9 @@ def test_insufficient_data_produces_no_phantom_adjustments() -> None:
 
 def test_threshold_filtering_dismissal_rate_below_cutoff() -> None:
     """5 entries with 40% dismissals (below 60% threshold) → no adjustment."""
-    entries = (
-        [_dismiss("clinic_a", "rule_x") for _ in range(2)]
-        + [_accept("clinic_a", "rule_x") for _ in range(3)]
-    )
+    entries = [_dismiss("clinic_a", "rule_x") for _ in range(2)] + [
+        _accept("clinic_a", "rule_x") for _ in range(3)
+    ]
     assert len(entries) == 5
     report = compute_clinic_pattern_adjustments(entries)
     assert report.weights == {}
@@ -106,12 +110,9 @@ def test_multiple_clinics_independent() -> None:
     """Clinic A's over-called rule does not leak into Clinic B's weights."""
     # Clinic A: 7/7 dismissals → strongly over-called.
     # Clinic B: 7/10 dismissals → mildly over-called.
-    entries = (
-        [_dismiss("clinic_a", "rule_em") for _ in range(7)]
-        + (
-            [_dismiss("clinic_b", "rule_em") for _ in range(7)]
-            + [_accept("clinic_b", "rule_em") for _ in range(3)]
-        )
+    entries = [_dismiss("clinic_a", "rule_em") for _ in range(7)] + (
+        [_dismiss("clinic_b", "rule_em") for _ in range(7)]
+        + [_accept("clinic_b", "rule_em") for _ in range(3)]
     )
     report = compute_clinic_pattern_adjustments(entries)
     assert "rule_em" in report.weights["clinic_a"]

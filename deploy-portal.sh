@@ -32,6 +32,9 @@
 #   - /root/ai-billing-audit-secrets/stripe_secret_key        (chmod 600)
 #   - /root/ai-billing-audit-secrets/stripe_publishable_key   (chmod 600)
 #   - /root/ai-billing-audit-secrets/stripe_webhook_secret    (chmod 600)
+#   - /root/ai-billing-audit-secrets/audit_bearer_token       (chmod 600)
+#   - /root/ai-billing-audit-secrets/principal_signing_secret (chmod 600)
+#   - /root/ai-billing-audit-secrets/phi_encryption_key       (chmod 600)
 #   - DNS A record: zorva.ashbi.ca -> 187.77.26.99
 #     (Cloudflare wildcard *.ashbi.ca already resolves to this)
 #
@@ -131,6 +134,15 @@ AUTH_RESEND_KEY_VAL="$(read_secret auth_resend_key)"
 STRIPE_SECRET_VAL="$(read_secret stripe_secret_key)"
 STRIPE_PUBLISHABLE_VAL="$(read_secret stripe_publishable_key)"
 STRIPE_WEBHOOK_VAL="$(read_secret stripe_webhook_secret)"
+FASTAPI_BEARER_TOKEN_VAL="$(read_secret audit_bearer_token)"
+FASTAPI_PRINCIPAL_SIGNING_SECRET_VAL="$(read_secret principal_signing_secret)"
+PHI_ENCRYPTION_KEY_VAL="$(read_secret phi_encryption_key)"
+[[ "${#FASTAPI_BEARER_TOKEN_VAL}" -ge 32 ]] || {
+    echo "FATAL: audit_bearer_token must contain at least 32 bytes" >&2; exit 1; }
+[[ "${#FASTAPI_PRINCIPAL_SIGNING_SECRET_VAL}" -ge 32 ]] || {
+    echo "FATAL: principal_signing_secret must contain at least 32 bytes" >&2; exit 1; }
+[[ "${PHI_ENCRYPTION_KEY_VAL}" =~ ^[A-Za-z0-9_-]{43}=?$ ]] || {
+    echo "FATAL: phi_encryption_key must be URL-safe base64 for exactly 32 bytes" >&2; exit 1; }
 
 # Build the env file locally then scp it. Avoids heredoc-in-ssh
 # (chat-layer redaction risk for long values).
@@ -143,6 +155,9 @@ sed \
     -e "s|^STRIPE_SECRET_KEY=.*|STRIPE_SECRET_KEY=\"${STRIPE_SECRET_VAL}\"|" \
     -e "s|^STRIPE_PUBLISHABLE_KEY=.*|STRIPE_PUBLISHABLE_KEY=\"${STRIPE_PUBLISHABLE_VAL}\"|" \
     -e "s|^STRIPE_WEBHOOK_SECRET=.*|STRIPE_WEBHOOK_SECRET=\"${STRIPE_WEBHOOK_VAL}\"|" \
+    -e "s|^FASTAPI_BEARER_TOKEN=.*|FASTAPI_BEARER_TOKEN=\"${FASTAPI_BEARER_TOKEN_VAL}\"|" \
+    -e "s|^FASTAPI_PRINCIPAL_SIGNING_SECRET=.*|FASTAPI_PRINCIPAL_SIGNING_SECRET=\"${FASTAPI_PRINCIPAL_SIGNING_SECRET_VAL}\"|" \
+    -e "s|^ZORVA_PHI_ENCRYPTION_KEY=.*|ZORVA_PHI_ENCRYPTION_KEY=\"${PHI_ENCRYPTION_KEY_VAL}\"|" \
     "${REPO_ROOT}/apps/portal/.env.production.example" > "$TMP_ENV"
 
 # Add the docker-compose env vars (not in the portal's .env.example —

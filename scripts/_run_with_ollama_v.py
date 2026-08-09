@@ -1,4 +1,5 @@
 """Helper: source ollama key cleanly, run shadow_audit with progress per encounter."""
+
 import os
 import sys
 from pathlib import Path
@@ -8,7 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import importlib.util as _iu
-spec = _iu.spec_from_file_location("shadow_audit", str(Path(__file__).resolve().parent / "shadow_audit.py"))
+
+spec = _iu.spec_from_file_location(
+    "shadow_audit", str(Path(__file__).resolve().parent / "shadow_audit.py")
+)
 shadow_audit = _iu.module_from_spec(spec)
 sys.modules["shadow_audit"] = shadow_audit
 
@@ -48,22 +52,34 @@ def main_with_progress():
         print("ERROR: no encounters loaded", file=sys.stderr)
         return 3
     run = shadow_audit._auditor_for(args.provider, args.base_url)
-    t0 = dt.datetime.now(tz=dt.timezone.utc)
     for i, enc in enumerate(encounters):
         t_enc = dt.datetime.now(tz=dt.timezone.utc)
         findings = run(enc)
         enc["findings"] = findings
         elapsed = (dt.datetime.now(tz=dt.timezone.utc) - t_enc).total_seconds()
-        print(f"  [{i+1}/{len(encounters)}] {enc['encounter_id']}: {len(findings)} findings ({elapsed:.1f}s)", file=sys.stderr)
+        print(
+            f"  [{i + 1}/{len(encounters)}] {enc['encounter_id']}: {len(findings)} findings ({elapsed:.1f}s)",
+            file=sys.stderr,
+        )
     summary = shadow_audit._summarise(encounters)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = args.input.stem
     ts = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y%m%dT%H%M%S")
     md_path = args.out_dir / f"{stem}-{ts}.md"
     json_path = args.out_dir / f"{stem}-{ts}.json"
-    md_path.write_text(shadow_audit._render_markdown(args.input, encounters, summary, args.provider))
-    json_path.write_text(_j.dumps(shadow_audit._render_json(args.input, encounters, summary, args.provider), indent=2))
-    print(f"OK: {len(encounters)} encounters, {summary['n_findings']} findings", file=sys.stderr)
+    md_path.write_text(
+        shadow_audit._render_markdown(args.input, encounters, summary, args.provider)
+    )
+    json_path.write_text(
+        _j.dumps(
+            shadow_audit._render_json(args.input, encounters, summary, args.provider),
+            indent=2,
+        )
+    )
+    print(
+        f"OK: {len(encounters)} encounters, {summary['n_findings']} findings",
+        file=sys.stderr,
+    )
     print(f"    Markdown: {md_path}", file=sys.stderr)
     print(f"    JSON:     {json_path}", file=sys.stderr)
     return 0

@@ -24,10 +24,10 @@ when that file is missing the stub returns a ``STUB_NO_DATA``
 finding per encounter. Tests that need canned findings skip if
 the recall file is absent rather than failing the suite.
 """
+
 from __future__ import annotations
 
 import importlib.util as _u
-import json
 import sys
 import time as _time
 from pathlib import Path
@@ -42,7 +42,9 @@ if str(SRC) not in sys.path:
 
 def _load_shadow():
     sys.path.insert(0, str(ROOT / "scripts"))
-    spec = _u.spec_from_file_location("shadow_audit", str(ROOT / "scripts" / "shadow_audit.py"))
+    spec = _u.spec_from_file_location(
+        "shadow_audit", str(ROOT / "scripts" / "shadow_audit.py")
+    )
     if spec is None or spec.loader is None:  # pragma: no cover
         pytest.skip("shadow_audit.py not importable")
     mod = _u.module_from_spec(spec)
@@ -87,11 +89,11 @@ def _run_auditor(run, encounters: list[dict], concurrency: int) -> list[dict]:
         return encounters
 
     import concurrent.futures as _cf
+
     n_workers = min(concurrency, len(encounters))
     with _cf.ThreadPoolExecutor(max_workers=n_workers) as ex:
         futures: dict[_cf.Future[list[dict]], int] = {
-            ex.submit(run, enc): idx
-            for idx, enc in enumerate(encounters)
+            ex.submit(run, enc): idx for idx, enc in enumerate(encounters)
         }
         for fut in _cf.as_completed(futures):
             encounters[futures[fut]]["findings"] = fut.result()

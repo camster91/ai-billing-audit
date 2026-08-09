@@ -17,22 +17,19 @@ What's pinned
 * Capped at 0.99 (never claim 'certain denial')
 * top_risk is the highest per-finding contribution
 """
+
 from __future__ import annotations
 
 import pytest
 
 from ai_billing_audit.denial_risk import (
-    DEFAULT_RULE_MULTIPLIER,
     RULE_FAMILY_MULTIPLIERS,
-    SEVERITY_RANK,
-    SEVERITY_WEIGHTS,
     compute_denial_risk,
     compute_finding_risk,
 )
 
 
-def _finding(severity: str, rule_id: str | None = None,
-             finding_id: str = "F"):
+def _finding(severity: str, rule_id: str | None = None, finding_id: str = "F"):
     f = {
         "finding_id": finding_id,
         "severity": severity,
@@ -123,9 +120,13 @@ def test_risk_capped_at_0_95():
     # 0.40 * 1.6 = 0.64 — under the cap
     assert contrib["risk"] == pytest.approx(0.64)
     # And a hypothetical extreme combo would still cap
-    contrib2 = compute_finding_risk({
-        "severity": "critical", "rule_id": "DUPLICATE", "finding_id": "x",
-    })
+    contrib2 = compute_finding_risk(
+        {
+            "severity": "critical",
+            "rule_id": "DUPLICATE",
+            "finding_id": "x",
+        }
+    )
     assert contrib2["risk"] <= 0.95
 
 
@@ -168,6 +169,7 @@ def test_multiple_findings_combine_independently():
     # the production code: 1 - (1 - a)(1 - b) with no rounding
     # at intermediate steps.
     from ai_billing_audit.denial_risk import _rule_family
+
     r1 = 0.03 * RULE_FAMILY_MULTIPLIERS[_rule_family("DUPLICATE_SERVICE")]
     r2 = 0.01 * RULE_FAMILY_MULTIPLIERS[_rule_family("MOD-25")]
     expected = 1 - (1 - r1) * (1 - r2)
@@ -178,7 +180,9 @@ def test_multiple_findings_combine_independently():
 
 def test_risk_capped_at_0_99_even_with_many_critical():
     """Even a dozen critical findings can't push risk above 0.99."""
-    findings = [_finding("critical", "DUPLICATE", finding_id=f"F{i}") for i in range(12)]
+    findings = [
+        _finding("critical", "DUPLICATE", finding_id=f"F{i}") for i in range(12)
+    ]
     risk = compute_denial_risk(findings)
     assert risk["denial_probability"] <= 0.99
 
@@ -282,8 +286,15 @@ def test_per_finding_includes_all_required_fields():
     findings = [_finding("high", "MOD-25", finding_id="F1")]
     risk = compute_denial_risk(findings)
     pf = risk["per_finding"][0]
-    for key in ("rule_id", "rule_family", "severity",
-                "base_weight", "rule_multiplier", "risk", "finding_id"):
+    for key in (
+        "rule_id",
+        "rule_family",
+        "severity",
+        "base_weight",
+        "rule_multiplier",
+        "risk",
+        "finding_id",
+    ):
         assert key in pf, f"missing {key}"
 
 

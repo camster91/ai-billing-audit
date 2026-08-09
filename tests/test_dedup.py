@@ -25,6 +25,7 @@ These tests pin:
    never appropriate).
 7. Out-of-window duplicates are NOT caught (DEDUP_WINDOW_SECONDS=0).
 """
+
 from __future__ import annotations
 
 import sys
@@ -46,6 +47,7 @@ def queue(monkeypatch, tmp_path):
     call which would either take 30s or fail without an LLM key.
     """
     from ai_billing_audit.job_queue import JobQueue
+
     # Disable the worker thread by patching threading.Thread to
     # call the target inline (sync) so tests don't hang on real
     # audit calls.
@@ -69,7 +71,9 @@ def queue(monkeypatch, tmp_path):
     monkeypatch.setattr(threading.Thread, "start", _sync_start)
 
     log_path = tmp_path / "job_queue.jsonl"
-    return JobQueue(log_path, runner=lambda enc: {"encounter_id": enc.get("encounter_id", "")})
+    return JobQueue(
+        log_path, runner=lambda enc: {"encounter_id": enc.get("encounter_id", "")}
+    )
 
 
 def _enc(enc_id: str = "enc-001", patient_id: str = "pat-001"):
@@ -100,8 +104,7 @@ def test_second_enqueue_within_window_returns_existing(queue):
     )
     assert j2.dedup_hit is True
     assert j2.job_id == j1.job_id, (
-        f"second enqueue returned {j2.job_id}; expected to "
-        f"dedup-hit on {j1.job_id}"
+        f"second enqueue returned {j2.job_id}; expected to dedup-hit on {j1.job_id}"
     )
 
 

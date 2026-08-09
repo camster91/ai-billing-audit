@@ -10,6 +10,21 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def restore_api_queue_resolver():
+    """Prevent direct queue monkeypatches from leaking into later tests."""
+    try:
+        from ai_billing_audit import api
+    except ImportError:
+        yield
+        return
+    original = api.get_default_queue
+    yield
+    api.get_default_queue = original
+
 
 def pytest_configure(config):
     os.environ.setdefault("AUDIT_ALLOW_NO_AUTH", "1")
@@ -36,17 +51,31 @@ def pytest_configure(config):
         "PATIENT_HASH_PEPPER",
         "test-pepper-do-not-use-in-production-1234567890",
     )
+    os.environ.setdefault(
+        "ZORVA_PHI_ENCRYPTION_KEY",
+        "CplDeX-7cyRE__tKgTOmRxRc7BRSVaFz0KNbGyUhHVA=",
+    )
+    os.environ.setdefault(
+        "ZORVA_PRINCIPAL_SIGNING_SECRET",
+        "test-principal-signing-secret-do-not-use-in-production",
+    )
     # Default the ux_polish log dir to a temp location so tests don't
     # try to write to /app/logs. The test fixtures override this per-test
     # via monkeypatch for isolation.
     import tempfile
 
-    os.environ.setdefault("UX_POLISH_LOG_DIR", tempfile.mkdtemp(prefix="ux-polish-test-"))
+    os.environ.setdefault(
+        "UX_POLISH_LOG_DIR", tempfile.mkdtemp(prefix="ux-polish-test-")
+    )
     # Default every clinical-impact JSONL log to /tmp/* so import-time
     # Path constants don't try to create /app/logs on a developer
     # laptop. The per-test fixtures override these.
     import uuid
+
     tmp_root = tempfile.mkdtemp(prefix=f"clinical-metrics-{uuid.uuid4().hex[:8]}-")
+    os.environ.setdefault(
+        "UPLOAD_AUDIT_LOG_PATH", os.path.join(tmp_root, "upload_jobs.jsonl.enc")
+    )
     for var, name in [
         ("DOCTOR_DASHBOARD_LOG", "doctor_dashboard.jsonl"),
         ("NOTE_SUGGESTION_LOG", "note_suggestions.jsonl"),

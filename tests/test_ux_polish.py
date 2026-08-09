@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 import time
 from pathlib import Path
 
 import pytest
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    read_encrypted_json_records,
+    write_encrypted_json_records,
+)
 
 
 @pytest.fixture
@@ -31,6 +35,7 @@ def client(ux_log_dir):
 
 # --- t_a852e3fb --------------------------------------------------------
 
+
 def test_recent_activity_empty(client):
     r = client.get("/api/activity/recent")
     assert r.status_code == 200
@@ -39,13 +44,21 @@ def test_recent_activity_empty(client):
 
 def test_recent_activity_returns_recent_rows(ux_log_dir, client):
     path = ux_log_dir / "audit_actions.jsonl"
-    with path.open("w") as fh:
-        # Write oldest first so the reverse-then-take-N gives newest.
-        for i in range(14, -1, -1):
-            fh.write(json.dumps({"action": "audit_complete", "encounter_id": f"e{i}", "ts": time.time() - i}) + "\n")
+    write_encrypted_json_records(
+        path,
+        [
+            {
+                "action": "audit_complete",
+                "encounter_id": f"e{i}",
+                "ts": time.time() - i,
+            }
+            for i in range(14, -1, -1)
+        ],
+    )
     # The ux_polish module captured _LOGS_DIR at import time; refresh
     # the path so the route sees the freshly-written fixture file.
     from ai_billing_audit import ux_polish
+
     ux_polish._LOGS_DIR = ux_log_dir
     r = client.get("/api/activity/recent?limit=5")
     assert r.status_code == 200
@@ -57,8 +70,12 @@ def test_recent_activity_returns_recent_rows(ux_log_dir, client):
 
 # --- t_f9a8d929 --------------------------------------------------------
 
+
 def test_undo_token_round_trip(client):
-    r = client.post("/api/undo-token", json={"action": "accept", "encounter_id": "e1", "finding_id": "f1"})
+    r = client.post(
+        "/api/undo-token",
+        json={"action": "accept", "encounter_id": "e1", "finding_id": "f1"},
+    )
     assert r.status_code == 200
     token = r.json()["token"]
     assert r.json()["window_seconds"] == 5
@@ -69,29 +86,37 @@ def test_undo_token_round_trip(client):
 
 def test_undo_token_expired(ux_log_dir, client):
     path = ux_log_dir / "undo_tokens.jsonl"
-    with path.open("w") as fh:
-        fh.write(json.dumps({"token": "abc", "action": "accept", "encounter_id": "e1", "finding_id": "f1", "ts": time.time() - 30}) + "\n")
+    append_encrypted_json_record(
+        path,
+        {
+            "token": "abc",
+            "action": "accept",
+            "encounter_id": "e1",
+            "finding_id": "f1",
+            "ts": time.time() - 30,
+        },
+    )
     r = client.post("/api/undo-token/abc")
     assert r.status_code == 410
 
 
 def test_undo_token_consume_writes_audit_row(ux_log_dir, client):
     from ai_billing_audit import ux_polish
+
     # The ux_polish module captured _LOGS_DIR at import; rebind it
     # to the fixture dir before either call so both writes land there.
     ux_polish._LOGS_DIR = ux_log_dir
-    r = client.post("/api/undo-token", json={"action": "dismiss", "encounter_id": "e9", "finding_id": "f3"})
+    r = client.post(
+        "/api/undo-token",
+        json={"action": "dismiss", "encounter_id": "e9", "finding_id": "f3"},
+    )
     assert r.status_code == 200
     token = r.json()["token"]
     r2 = client.post(f"/api/undo-token/{token}")
     assert r2.status_code == 200
     actions_path = ux_log_dir / "audit_actions.jsonl"
     assert actions_path.exists()
-    rows = [
-        json.loads(line)
-        for line in actions_path.read_text().splitlines()
-        if line.strip()
-    ]
+    rows = read_encrypted_json_records(actions_path)
     undo_rows = [r for r in rows if r.get("action") == "undo"]
     assert undo_rows, "consumed undo should write a tamper-evident row"
     assert undo_rows[0]["reverted_action"] == "dismiss"
@@ -100,8 +125,10 @@ def test_undo_token_consume_writes_audit_row(ux_log_dir, client):
 
 # --- t_28b8dbfa + t_af49b29a -------------------------------------------
 
+
 def test_home_state_empty_when_no_encounters():
     from ai_billing_audit import ux_polish
+
     p = ux_polish.home_state_payload(0)
     assert p["empty"] is True
     assert "Upload" in p["empty_copy"] or "audit" in p["empty_copy"].lower()
@@ -109,12 +136,14 @@ def test_home_state_empty_when_no_encounters():
 
 def test_home_state_populated():
     from ai_billing_audit import ux_polish
+
     p = ux_polish.home_state_payload(5)
     assert p["empty"] is False
 
 
 def test_error_state_copy_keys_present():
     from ai_billing_audit import ux_polish
+
     for k in ("audit_failed", "rate_limited", "tenant_unknown", "llm_unavailable"):
         assert k in ux_polish.ERROR_STATE_COPY
         assert ux_polish.ERROR_STATE_COPY[k]
@@ -122,8 +151,10 @@ def test_error_state_copy_keys_present():
 
 # --- t_de2d2e0f --------------------------------------------------------
 
+
 def test_sort_options_normalize():
     from ai_billing_audit import ux_polish
+
     assert ux_polish.normalize_sort(None) == "newest"
     assert ux_polish.normalize_sort("oldest") == "oldest"
     assert ux_polish.normalize_sort("highest_flagged") == "highest_flagged"
@@ -133,16 +164,20 @@ def test_sort_options_normalize():
 
 # --- t_ec0db7de --------------------------------------------------------
 
+
 def test_quick_filters_known_and_unknown():
     from ai_billing_audit import ux_polish
+
     assert ux_polish.apply_quick_filter("only_critical") == {"min_severity": "critical"}
     assert ux_polish.apply_quick_filter("unknown") == {}
 
 
 # --- t_71c708d3 --------------------------------------------------------
 
+
 def test_this_week_summary_counts_only_recent():
     from ai_billing_audit import ux_polish
+
     now = time.time()
     events = [
         {"action": "audit_complete", "ts": now - 1},
@@ -156,22 +191,29 @@ def test_this_week_summary_counts_only_recent():
 
 # --- t_005e810a --------------------------------------------------------
 
+
 def test_highlight_quote_wraps_match():
     from ai_billing_audit import ux_polish
-    out = ux_polish.highlight_quote("Patient has diabetes and hypertension.", "diabetes")
+
+    out = ux_polish.highlight_quote(
+        "Patient has diabetes and hypertension.", "diabetes"
+    )
     assert "<mark" in out and "diabetes" in out
 
 
 def test_highlight_quote_no_match_returns_escaped():
     from ai_billing_audit import ux_polish
+
     out = ux_polish.highlight_quote("<script>x</script>", "nope")
     assert "&lt;script&gt;" in out
 
 
 # --- t_aa36c525 --------------------------------------------------------
 
+
 def test_rule_lookup_known_and_unknown():
     from ai_billing_audit import ux_polish
+
     rec = ux_polish.rule_lookup("AH.001")
     assert rec and "title" in rec and "text" in rec
     assert ux_polish.rule_lookup("ZZ.999") is None
@@ -186,6 +228,7 @@ def test_rule_lookup_endpoint(client):
 
 
 # --- t_d609557c --------------------------------------------------------
+
 
 def test_audit_log_export_json(client):
     r = client.get("/api/audit-log/export?fmt=json")
@@ -215,7 +258,8 @@ def test_audit_log_export_bad_fmt(client):
 
 # --- t_d9713083 --------------------------------------------------------
 
-def test_sticky_note_round_trip(client):
+
+def test_sticky_note_round_trip(ux_log_dir, client):
     # swarm-audit B-Sec-1: user_id is now from the authenticated
     # session (X-User-Id header), not from the request body. The
     # POST body must omit user_id; the GET no longer takes query
@@ -226,6 +270,7 @@ def test_sticky_note_round_trip(client):
         json={"note": "follow-up Tue"},
     )
     assert r.status_code == 200
+    assert b"follow-up Tue" not in (ux_log_dir / "sticky_notes.jsonl").read_bytes()
     r2 = client.get(
         "/encounter/enc-9/note",
         headers={"X-User-Id": "u1", "X-User-Role": "biller"},
@@ -235,6 +280,7 @@ def test_sticky_note_round_trip(client):
 
 
 # --- t_b0e3dd73 --------------------------------------------------------
+
 
 def test_reorder_endpoint(client):
     r = client.post(
@@ -257,6 +303,7 @@ def test_reorder_rejects_non_list(client):
 
 # --- t_0ea1cdce --------------------------------------------------------
 
+
 def test_rule_tuning_round_trip(client):
     # swarm-audit H-Sec-1: rule tuning is admin-only now.
     admin_h = {"X-User-Id": "ops-1", "X-User-Role": "admin"}
@@ -274,6 +321,7 @@ def test_rule_tuning_round_trip(client):
 
 # --- t_24c99ece --------------------------------------------------------
 
+
 def test_llm_choice_endpoint(client):
     admin_h = {"X-User-Id": "ops-1", "X-User-Role": "admin"}
     r = client.get("/api/clinic/c1/llm", headers=admin_h)
@@ -285,6 +333,7 @@ def test_llm_choice_endpoint(client):
 
 # --- t_59fe7e05 --------------------------------------------------------
 
+
 def test_notifications_endpoint(client):
     r = client.get("/api/notifications?user_id=u1")
     assert r.status_code == 200
@@ -292,6 +341,7 @@ def test_notifications_endpoint(client):
 
 
 # --- t_b716e54c + t_77c0c140 + t_e7421098 -----------------------------
+
 
 def test_email_prefs_defaults(client):
     r = client.get("/api/email-prefs?user_id=new-user")
@@ -310,8 +360,11 @@ def test_email_prefs_set(client):
 
 # --- t_7e558a6a --------------------------------------------------------
 
+
 def test_bulk_confirm_validate(client):
-    r = client.post("/api/bulk/confirm", json={"action": "accept", "encounter_ids": ["e1", "e2"]})
+    r = client.post(
+        "/api/bulk/confirm", json={"action": "accept", "encounter_ids": ["e1", "e2"]}
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["ok"] is True
@@ -319,13 +372,17 @@ def test_bulk_confirm_validate(client):
 
 
 def test_bulk_confirm_rejects_bad_action(client):
-    r = client.post("/api/bulk/confirm", json={"action": "obliterate", "encounter_ids": ["e1"]})
+    r = client.post(
+        "/api/bulk/confirm", json={"action": "obliterate", "encounter_ids": ["e1"]}
+    )
     assert r.status_code == 200
     assert r.json()["ok"] is False
 
 
 def test_bulk_confirm_rejects_too_many(client):
-    r = client.post("/api/bulk/confirm", json={"action": "accept", "encounter_ids": ["x"] * 501})
+    r = client.post(
+        "/api/bulk/confirm", json={"action": "accept", "encounter_ids": ["x"] * 501}
+    )
     assert r.status_code == 200
     assert r.json()["ok"] is False
 
@@ -525,9 +582,7 @@ def test_sticky_note_private_to_user(client):
         headers={"X-User-Id": "u-B", "X-User-Role": "biller"},
     )
     assert "A's private note" in r_a.text
-    assert r_b.text == "", (
-        "user u-B saw u-A's sticky note — IDOR regression"
-    )
+    assert r_b.text == "", "user u-B saw u-A's sticky note — IDOR regression"
 
 
 def test_sticky_note_admin_sees_all(client):
@@ -553,6 +608,7 @@ def test_sticky_note_admin_sees_all(client):
 
 # --- t_a5bd33af --------------------------------------------------------
 
+
 def test_wcag_status(client):
     r = client.get("/api/wcag")
     assert r.status_code == 200
@@ -563,6 +619,7 @@ def test_wcag_status(client):
 
 # --- t_3f22b3b8 --------------------------------------------------------
 
+
 def test_print_view_returns_html(client):
     r = client.get("/encounter/enc-77/print")
     assert r.status_code == 200
@@ -572,7 +629,6 @@ def test_print_view_returns_html(client):
 
 # t_7e558a6a — bulk confirm modal partial must ship the JS contract
 def test_bulk_confirm_modal_template_exists():
-    from pathlib import Path
     template = (
         Path(__file__).resolve().parents[1]
         / "src"

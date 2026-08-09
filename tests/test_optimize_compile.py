@@ -28,7 +28,6 @@ Acceptance coverage
 from __future__ import annotations
 
 import hashlib
-import importlib
 import json
 import sys
 from pathlib import Path
@@ -194,9 +193,7 @@ class TestStubMode:
         ).hexdigest()
         assert out["prompt_hash"] == expected
 
-    def test_loop_driver_sees_same_stub_results(
-        self, tiny_val_set: list[dict]
-    ) -> None:
+    def test_loop_driver_sees_same_stub_results(self, tiny_val_set: list[dict]) -> None:
         """The loop driver's compile_and_evaluate kwarg-injection must
         see the same stub results as a direct call — proves the
         re-export is real, not a thin shim that loses state."""
@@ -293,9 +290,7 @@ class TestMiproMode:
     def test_returns_required_keys(
         self, tiny_val_set: list[dict], fake_dspy_lm: _SmartFakeLM
     ) -> None:
-        out = oc.compile_and_evaluate(
-            1, tiny_val_set, seed=1729, mode="mipro"
-        )
+        out = oc.compile_and_evaluate(1, tiny_val_set, seed=1729, mode="mipro")
         assert {"R", "P", "F1", "prompt_hash"} <= set(out)
         assert isinstance(out["prompt_hash"], str)
         assert len(out["prompt_hash"]) == 64
@@ -309,9 +304,7 @@ class TestMiproMode:
     def test_metrics_in_unit_interval(
         self, tiny_val_set: list[dict], fake_dspy_lm: _SmartFakeLM
     ) -> None:
-        out = oc.compile_and_evaluate(
-            1, tiny_val_set, seed=1729, mode="mipro"
-        )
+        out = oc.compile_and_evaluate(1, tiny_val_set, seed=1729, mode="mipro")
         r = float(out["R"])
         p = float(out["P"])
         f1 = float(out["F1"])
@@ -322,9 +315,7 @@ class TestMiproMode:
     def test_prompt_hash_is_64_char_hex(
         self, tiny_val_set: list[dict], fake_dspy_lm: _SmartFakeLM
     ) -> None:
-        out = oc.compile_and_evaluate(
-            1, tiny_val_set, seed=1729, mode="mipro"
-        )
+        out = oc.compile_and_evaluate(1, tiny_val_set, seed=1729, mode="mipro")
         h = out["prompt_hash"]
         assert isinstance(h, str)
         assert len(h) == 64
@@ -354,15 +345,11 @@ class TestMiproMode:
         b = oc.compile_and_evaluate(2, tiny_val_set, seed=1729, mode="mipro")
         assert a["prompt_hash"] != b["prompt_hash"]
 
-    def test_empty_val_set_raises(
-        self, fake_dspy_lm: _SmartFakeLM
-    ) -> None:
+    def test_empty_val_set_raises(self, fake_dspy_lm: _SmartFakeLM) -> None:
         with pytest.raises(ValueError, match="val_set must be non-empty"):
             oc.compile_and_evaluate(1, [], mode="mipro")
 
-    def test_runs_against_real_val_split(
-        self, fake_dspy_lm: _SmartFakeLM
-    ) -> None:
+    def test_runs_against_real_val_split(self, fake_dspy_lm: _SmartFakeLM) -> None:
         """End-to-end against the project's actual val.json (50
         encounters). Catches schema-mismatch regressions where the
         compiled program chokes on a real encounter shape."""

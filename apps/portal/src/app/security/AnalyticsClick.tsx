@@ -57,7 +57,6 @@ function send(event: string, payload: Record<string, unknown>) {
   }
 
   // 4. dev breadcrumb
-  // eslint-disable-next-line no-console
   console.log("[analytics]", event, payload);
 }
 

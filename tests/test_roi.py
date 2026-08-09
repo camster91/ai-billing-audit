@@ -27,12 +27,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ai_billing_audit.roi import (
-    DEFAULT_APPEAL_RATE,
-    DEFAULT_AVG_CLAIM_USD,
     DEFAULT_CATCH_RATE,
     DEFAULT_DENIAL_RATE,
-    DEFAULT_TIER,
-    PLAN_PRICING_CAD,
     compute_roi,
     tier_for_volume,
 )
@@ -101,10 +97,15 @@ def test_compute_roi_high_appeal_rate_more_loss_without_zorva():
     r_low = compute_roi(monthly_claims=2000, current_appeal_rate=0.0)
     r_high = compute_roi(monthly_claims=2000, current_appeal_rate=0.9)
     # Without Zorva, higher appeal rate means more revenue recovered
-    assert r_high["monthly"]["recovered_manually"] > r_low["monthly"]["recovered_manually"]
+    assert (
+        r_high["monthly"]["recovered_manually"] > r_low["monthly"]["recovered_manually"]
+    )
     # Zorva's saved amount is independent of appeal rate (it's
     # catch_rate × denials × avg_claim)
-    assert r_high["monthly"]["revenue_saved_by_zorva"] == r_low["monthly"]["revenue_saved_by_zorva"]
+    assert (
+        r_high["monthly"]["revenue_saved_by_zorva"]
+        == r_low["monthly"]["revenue_saved_by_zorva"]
+    )
 
 
 def test_compute_roi_zero_denial_rate():
@@ -236,6 +237,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -282,7 +284,9 @@ def test_roi_results_endpoint_returns_json(client):
     assert "annual" in data
     assert "inputs" in data
     assert "narrative" in data
-    assert data["monthly"]["plan_cost_cad"] == 499  # solo tier (1000 claims is at the upper bound)
+    assert (
+        data["monthly"]["plan_cost_cad"] == 499
+    )  # solo tier (1000 claims is at the upper bound)
 
 
 def test_roi_results_endpoint_with_custom_inputs(client):
@@ -300,14 +304,18 @@ def test_roi_results_validates_inputs(client):
 
 def test_roi_post_redirects_to_get(client):
     """POST /roi with form data redirects to GET with query params."""
-    resp = client.post("/roi", data={
-        "monthly_claims": 2500,
-        "current_denial_rate": "0.10",
-        "avg_claim_value_usd": "200",
-        "current_appeal_rate": "0.50",
-        "catch_rate": "0.42",
-        "plan_tier": "network",
-    }, follow_redirects=False)
+    resp = client.post(
+        "/roi",
+        data={
+            "monthly_claims": 2500,
+            "current_denial_rate": "0.10",
+            "avg_claim_value_usd": "200",
+            "current_appeal_rate": "0.50",
+            "catch_rate": "0.42",
+            "plan_tier": "network",
+        },
+        follow_redirects=False,
+    )
     assert resp.status_code == 303
     location = resp.headers.get("location", "")
     assert "/roi?" in location
@@ -317,11 +325,15 @@ def test_roi_post_redirects_to_get(client):
 
 def test_roi_post_then_get_round_trips(client):
     """Follow the redirect: POST → 303 → GET with the same params."""
-    resp = client.post("/roi", data={
-        "monthly_claims": 3500,
-        "current_denial_rate": "0.08",
-        "avg_claim_value_usd": "250",
-    }, follow_redirects=True)
+    resp = client.post(
+        "/roi",
+        data={
+            "monthly_claims": 3500,
+            "current_denial_rate": "0.08",
+            "avg_claim_value_usd": "250",
+        },
+        follow_redirects=True,
+    )
     assert resp.status_code == 200
     assert "3,500" in resp.text or "3500" in resp.text
 
@@ -351,9 +363,13 @@ def test_roi_includes_shareable_url_note(client):
     # behavior comes from query-param encoding.
     html = resp.text
     # Should mention shareable URL or query params somewhere
-    assert "shareable" in html.lower() or "share" in html.lower() or \
-           "/roi/results" in html or "/roi?" in html or \
-           'method="post"' in html
+    assert (
+        "shareable" in html.lower()
+        or "share" in html.lower()
+        or "/roi/results" in html
+        or "/roi?" in html
+        or 'method="post"' in html
+    )
 
 
 def test_roi_results_widget_for_marketing_embed(client):
@@ -363,12 +379,20 @@ def test_roi_results_widget_for_marketing_embed(client):
     expected_top_keys = {"inputs", "monthly", "annual", "narrative"}
     assert set(data.keys()) == expected_top_keys
     expected_monthly = {
-        "claims_submitted", "denials_without_zorva", "recovered_manually",
-        "revenue_lost_without_zorva", "caught_by_zorva",
-        "revenue_saved_by_zorva", "plan_cost_cad", "net_monthly_savings_usd",
+        "claims_submitted",
+        "denials_without_zorva",
+        "recovered_manually",
+        "revenue_lost_without_zorva",
+        "caught_by_zorva",
+        "revenue_saved_by_zorva",
+        "plan_cost_cad",
+        "net_monthly_savings_usd",
     }
     assert set(data["monthly"].keys()) == expected_monthly
     expected_annual = {
-        "revenue_saved_usd", "plan_cost_cad", "net_savings_usd", "roi_pct",
+        "revenue_saved_usd",
+        "plan_cost_cad",
+        "net_savings_usd",
+        "roi_pct",
     }
     assert set(data["annual"].keys()) == expected_annual

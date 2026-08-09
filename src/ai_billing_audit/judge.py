@@ -276,8 +276,16 @@ class Grader:
         judge_model: str | None = None,
     ) -> None:
         auditor_p = auditor_provider if auditor_provider is not None else provider()
-        judge_p = judge_provider if judge_provider is not None else _resolve_judge_provider(auditor_p)
-        judge_m = judge_model if judge_model is not None else _resolve_judge_model(auditor_p, judge_p)
+        judge_p = (
+            judge_provider
+            if judge_provider is not None
+            else _resolve_judge_provider(auditor_p)
+        )
+        judge_m = (
+            judge_model
+            if judge_model is not None
+            else _resolve_judge_model(auditor_p, judge_p)
+        )
 
         if judge_p == auditor_p:
             raise SameProviderError(
@@ -433,7 +441,10 @@ class Grader:
         # Detect explicit abstain phrases before the yes/no sweep so
         # "I'm not sure" is treated as abstain rather than collapsed
         # to "no" by a substring rule.
-        if any(tok in compact for tok in ("notsure", "cannotdetermine", "cantdetermine", "idk")):
+        if any(
+            tok in compact
+            for tok in ("notsure", "cannotdetermine", "cantdetermine", "idk")
+        ):
             return "abstain"
         # Yes/no sweep on the full text.
         if _YES_RE.search(text) and not _NO_RE.search(text):

@@ -24,6 +24,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
+import {
+  decryptPortalNullableString,
+  decryptPortalString,
+} from "@/lib/data-encryption";
 // TODO(portal-deploy): audit-log-export self-logging was wired to a
 // `appendAuditEvent` helper that was never implemented in audit-chain.ts.
 // The right shape is a thin wrapper around writeAuditEntry that takes a
@@ -73,8 +77,14 @@ export async function GET(req: NextRequest) {
   // Log the export itself (best-effort; do not block the response).
   // See the TODO above — the audit-chain integration is pending.
 
+  const exportRows = rows.map((row) => ({
+    ...row,
+    reasonText: decryptPortalNullableString(row.reasonText),
+    dataElements: decryptAuditDataElements(row.dataElements),
+  }));
+
   if (format === "json") {
-    return new NextResponse(JSON.stringify(rows, null, 2), {
+    return new NextResponse(JSON.stringify(exportRows, null, 2), {
       status: 200,
       headers: {
         "content-type": "application/json",
@@ -102,7 +112,7 @@ export async function GET(req: NextRequest) {
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines: string[] = [cols.join(",")];
-  for (const r of rows) {
+  for (const r of exportRows) {
     lines.push(
       [
         r.eventId,
@@ -126,4 +136,12 @@ export async function GET(req: NextRequest) {
       "content-disposition": `attachment; filename="audit-${tenant.slug}-${new Date().toISOString().slice(0, 10)}.csv"`,
     },
   });
+}
+
+function decryptAuditDataElements(value: string): string {
+  const parsed = JSON.parse(value) as Record<string, unknown>;
+  if (typeof parsed.reasonText === "string") {
+    parsed.reasonText = decryptPortalString(parsed.reasonText);
+  }
+  return JSON.stringify(parsed, Object.keys(parsed).sort());
 }

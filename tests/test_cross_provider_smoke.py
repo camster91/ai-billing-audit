@@ -65,7 +65,6 @@ from unittest.mock import MagicMock, patch
 import litellm
 import pytest
 
-import src.llm_client as llm_client
 from src.llm_client import LLMClient, create_llm_client
 
 
@@ -84,9 +83,9 @@ PROVIDERS: tuple[str, ...] = ("minimax", "claude", "openai", "gemini")
 
 PROVIDER_API_KEY_ENV: dict[str, str] = {
     "minimax": "MINIMAX_API_KEY",
-    "claude":  "ANTHROPIC_API_KEY",
-    "openai":  "OPENAI_API_KEY",
-    "gemini":  "GEMINI_API_KEY",
+    "claude": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "gemini": "GEMINI_API_KEY",
 }
 
 
@@ -368,10 +367,16 @@ def test_complete_json_returns_schema_conformant_dict_for_every_provider(
     #     back unchanged, regardless of which provider served.
     for key, expected_value in CANNED_JSON_PAYLOAD.items():
         assert result[key] == expected_value, _diff_response_shape(
-            provider_name, result, expected_kind="dict", expected_json=CANNED_JSON_PAYLOAD
+            provider_name,
+            result,
+            expected_kind="dict",
+            expected_json=CANNED_JSON_PAYLOAD,
         )
         assert isinstance(result[key], type(expected_value)), _diff_response_shape(
-            provider_name, result, expected_kind="dict", expected_json=CANNED_JSON_PAYLOAD
+            provider_name,
+            result,
+            expected_kind="dict",
+            expected_json=CANNED_JSON_PAYLOAD,
         )
 
     # The provider forced ``response_format=json_object`` on the
@@ -381,9 +386,7 @@ def test_complete_json_returns_schema_conformant_dict_for_every_provider(
         f"provider {provider_name!r}.complete_json() called litellm.completion "
         f"{mocked.call_count} times, expected 1"
     )
-    assert mocked.call_args.kwargs.get("response_format") == {
-        "type": "json_object"
-    }, (
+    assert mocked.call_args.kwargs.get("response_format") == {"type": "json_object"}, (
         f"provider {provider_name!r}.complete_json() did not request "
         f"json_object response_format; got "
         f"{mocked.call_args.kwargs.get('response_format')!r}"

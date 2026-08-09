@@ -26,6 +26,9 @@ import {
   saveResidencyRegion,
   OnboardingError,
 } from "../src/lib/onboarding";
+import { decryptPortalString } from "../src/lib/data-encryption";
+
+process.env.ZORVA_PHI_ENCRYPTION_KEY ??= randomBytes(32).toString("base64url");
 
 function uniq(): string {
   return randomBytes(6).toString("hex");
@@ -330,6 +333,15 @@ test("audit gate: SFTP mode without credentials is rejected", async () => {
         password: "secret",
       },
     });
+    const encryptedTenant = await prisma.tenant.findUnique({
+      where: { id: fx.tenantId },
+      select: { ehrSftpPasswordCiphertext: true },
+    });
+    assert.notEqual(encryptedTenant?.ehrSftpPasswordCiphertext, "secret");
+    assert.equal(
+      decryptPortalString(encryptedTenant?.ehrSftpPasswordCiphertext ?? ""),
+      "secret",
+    );
     await prisma.tenant.update({
       where: { id: fx.tenantId },
       data: { ehrSftpHost: null, ehrSftpUsername: null, ehrSftpPasswordCiphertext: null },

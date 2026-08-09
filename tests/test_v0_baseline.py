@@ -22,13 +22,13 @@ What's pinned
 * A single end-to-end ``run_audit()`` call returns a parseable
   AuditResult using the active prompt
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -110,8 +110,7 @@ def active_prompt_entry() -> dict:
     # Prefer the active_current entry (the shipped prompt); fall back
     # to the most recent active_baseline for backwards compatibility.
     active = [
-        e for e in entries
-        if e.get("status") in ("active_current", "active_baseline")
+        e for e in entries if e.get("status") in ("active_current", "active_baseline")
     ]
     if not active:
         pytest.skip("no active prompt entry in prompts/MANIFEST.json")
@@ -215,7 +214,9 @@ def test_manifest_matches_val_split(val_split: list[dict], manifest: dict) -> No
     )
 
 
-def test_manifest_gold_categories_match_ground_truth(val_split: list[dict], manifest: dict) -> None:
+def test_manifest_gold_categories_match_ground_truth(
+    val_split: list[dict], manifest: dict
+) -> None:
     for entry in manifest["entries"]:
         enc = next(e for e in val_split if e["encounter_id"] == entry["encounter_id"])
         actual_categories = sorted({f["category"] for f in enc["ground_truth"]})
@@ -225,7 +226,9 @@ def test_manifest_gold_categories_match_ground_truth(val_split: list[dict], mani
         )
 
 
-def test_manifest_n_gold_findings_matches(val_split: list[dict], manifest: dict) -> None:
+def test_manifest_n_gold_findings_matches(
+    val_split: list[dict], manifest: dict
+) -> None:
     for entry in manifest["entries"]:
         enc = next(e for e in val_split if e["encounter_id"] == entry["encounter_id"])
         assert entry["n_gold_findings"] == len(enc["ground_truth"]), (
@@ -283,16 +286,15 @@ def test_active_prompt_manifest_records_correct_hash(
     Skips when the active prompt has no per-version MANIFEST.json
     (v0 doesn't; v12 was a manual rewrite and may not have one).
     """
-    actual_hash = "sha256:" + hashlib.sha256(
-        active_prompt_path.read_bytes()
-    ).hexdigest()
+    canonical_bytes = active_prompt_path.read_text(encoding="utf-8").encode("utf-8")
+    actual_hash = "sha256:" + hashlib.sha256(canonical_bytes).hexdigest()
     assert active_prompt_manifest["content_sha256"] == actual_hash, (
         f"active prompt manifest content_sha256 "
         f"{active_prompt_manifest['content_sha256']} does not match "
         f"actual file hash {actual_hash}. Re-pin the prompt and "
         f"update the manifest."
     )
-    assert active_prompt_manifest["byte_size"] == active_prompt_path.stat().st_size
+    assert active_prompt_manifest["byte_size"] == len(canonical_bytes)
 
 
 def test_active_prompt_manifest_paired_test_split_hash_matches(
@@ -315,9 +317,8 @@ def test_active_prompt_manifest_paired_test_split_hash_matches(
         f"manifest declares paired split at {paired_val_relpath} but "
         f"the file does not exist on disk."
     )
-    actual_val_hash = "sha256:" + hashlib.sha256(
-        paired_val_path.read_bytes()
-    ).hexdigest()
+    canonical_bytes = paired_val_path.read_text(encoding="utf-8").encode("utf-8")
+    actual_val_hash = "sha256:" + hashlib.sha256(canonical_bytes).hexdigest()
     assert paired["val_json_sha256"] == actual_val_hash, (
         f"active prompt manifest pairs with {paired_val_relpath} hash "
         f"{paired['val_json_sha256']} but actual is {actual_val_hash}. "
@@ -386,9 +387,7 @@ def test_smoke_run_audit_on_first_val_encounter(
     assert len(fake.calls) == 1
     sent_messages, sent_kwargs = fake.calls[0]
     assert sent_messages[0]["role"] == "system"
-    pinned_prompt = (
-        active_prompt_path.read_bytes().rstrip(b"\n").decode("utf-8")
-    )
+    pinned_prompt = active_prompt_path.read_text(encoding="utf-8").rstrip("\n")
     assert sent_messages[0]["content"] == pinned_prompt, (
         "run_audit did not send the active pinned prompt to the LLM"
     )

@@ -1,9 +1,9 @@
 """Tests for doctor_dashboard module (kanban t_af26abdb, t_df188436, t_f5ea3bf2, t_585dcaed, t_267a1ad6)."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
 
 from ai_billing_audit import doctor_dashboard as dd
 
@@ -44,7 +44,12 @@ def test_doctor_encounters_filters_by_provider():
         _enc("e2", "doc_b", "2026-06-20"),
         _enc("e3", "doc_a", "2026-06-22", findings=[_finding("MOD-25")]),
     ]
-    out = dd.doctor_encounters_for("doc_a", log, lookback_days=30, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_encounters_for(
+        "doc_a",
+        log,
+        lookback_days=30,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
+    )
     assert len(out) == 2
     assert all(e["patient_label"] == "the patient" for e in out)
 
@@ -55,7 +60,12 @@ def test_doctor_encounters_empty_provider_returns_empty():
 
 def test_doctor_encounters_clean_encounter_has_no_fix():
     log = [_enc("e1", "doc_a", "2026-06-20")]  # no findings
-    out = dd.doctor_encounters_for("doc_a", log, lookback_days=30, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_encounters_for(
+        "doc_a",
+        log,
+        lookback_days=30,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
+    )
     assert len(out) == 1
     e = out[0]
     assert e["needs_fix"] is False
@@ -65,15 +75,28 @@ def test_doctor_encounters_clean_encounter_has_no_fix():
 
 def test_doctor_encounters_flagged_uses_worst_finding():
     log = [
-        _enc("e1", "doc_a", "2026-06-22", findings=[
-            _finding("MOD-25", "low"),
-            _finding("MOD-59", "high"),
-        ]),
+        _enc(
+            "e1",
+            "doc_a",
+            "2026-06-22",
+            findings=[
+                _finding("MOD-25", "low"),
+                _finding("MOD-59", "high"),
+            ],
+        ),
     ]
-    out = dd.doctor_encounters_for("doc_a", log, lookback_days=30, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_encounters_for(
+        "doc_a",
+        log,
+        lookback_days=30,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
+    )
     assert out[0]["severity"] == "high"
     assert out[0]["needs_fix"] is True
-    assert "modifier" in out[0]["what_wrong"].lower() or "bundled" in out[0]["what_wrong"].lower()
+    assert (
+        "modifier" in out[0]["what_wrong"].lower()
+        or "bundled" in out[0]["what_wrong"].lower()
+    )
 
 
 def test_doctor_encounters_lookback_window_filters_old():
@@ -81,7 +104,12 @@ def test_doctor_encounters_lookback_window_filters_old():
         _enc("e1", "doc_a", "2025-01-01", findings=[_finding("MOD-25")]),
         _enc("e2", "doc_a", "2026-06-22", findings=[_finding("MOD-25")]),
     ]
-    out = dd.doctor_encounters_for("doc_a", log, lookback_days=14, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_encounters_for(
+        "doc_a",
+        log,
+        lookback_days=14,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
+    )
     assert len(out) == 1
     assert out[0]["encounter_id"] == "e2"
 
@@ -92,7 +120,12 @@ def test_doctor_encounters_sorted_most_recent_first():
         _enc("e2", "doc_a", "2026-06-22"),
         _enc("e3", "doc_a", "2026-06-21"),
     ]
-    out = dd.doctor_encounters_for("doc_a", log, lookback_days=30, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_encounters_for(
+        "doc_a",
+        log,
+        lookback_days=30,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
+    )
     assert [e["encounter_id"] for e in out] == ["e2", "e3", "e1"]
 
 
@@ -125,17 +158,25 @@ def test_fixit_reaudit_payload_includes_note_hash():
     assert payload["job_type"] == "re_audit"
     assert payload["trigger"] == "doctor_fixit"
     assert len(payload["updated_note_sha256"]) == 64
-    assert payload["updated_note_chars"] == len("The patient is a 47yo female with cough x 3 weeks.")
+    assert payload["updated_note_chars"] == len(
+        "The patient is a 47yo female with cough x 3 weeks."
+    )
 
 
 def test_fixit_reaudit_payload_has_job_id():
-    p1 = dd.fixit_reaudit_payload(encounter_id="e1", updated_note_text="x", provider_npi="d")
-    p2 = dd.fixit_reaudit_payload(encounter_id="e1", updated_note_text="x", provider_npi="d")
+    p1 = dd.fixit_reaudit_payload(
+        encounter_id="e1", updated_note_text="x", provider_npi="d"
+    )
+    p2 = dd.fixit_reaudit_payload(
+        encounter_id="e1", updated_note_text="x", provider_npi="d"
+    )
     assert p1["job_id"] != p2["job_id"]  # unique per click
 
 
 def test_fixit_reaudit_payload_uses_tenant_depth_strategy():
-    p = dd.fixit_reaudit_payload(encounter_id="e1", updated_note_text="x", provider_npi="d")
+    p = dd.fixit_reaudit_payload(
+        encounter_id="e1", updated_note_text="x", provider_npi="d"
+    )
     assert p["depth_strategy"] == "tenant_default_or_global"
 
 
@@ -170,7 +211,10 @@ def test_weekly_digest_positive_framing_comes_first():
         _enc("e2", "doc_a", "2026-06-22", findings=[_finding("MOD-25")]),
     ]
     digest = dd.doctor_weekly_digest(
-        "doc_a", log, lookback_days=7, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0))
+        "doc_a",
+        log,
+        lookback_days=7,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
     )
     # Subject opens with the win, not the loss
     assert digest.subject.index("clean") < digest.subject.index("flagged")
@@ -178,11 +222,19 @@ def test_weekly_digest_positive_framing_comes_first():
 
 def test_weekly_digest_caps_flagged_listing():
     log = [
-        _enc(f"e{i}", "doc_a", f"2026-06-{20 + (i % 5):02d}", findings=[_finding("MOD-25")])
+        _enc(
+            f"e{i}",
+            "doc_a",
+            f"2026-06-{20 + (i % 5):02d}",
+            findings=[_finding("MOD-25")],
+        )
         for i in range(10)
     ]
     digest = dd.doctor_weekly_digest(
-        "doc_a", log, lookback_days=7, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0))
+        "doc_a",
+        log,
+        lookback_days=7,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
     )
     assert "and 5 more" in digest.body_text or "and 6 more" in digest.body_text
 
@@ -190,9 +242,22 @@ def test_weekly_digest_caps_flagged_listing():
 def test_weekly_digest_to_dict_round_trip():
     log = [_enc("e1", "doc_a", "2026-06-20")]
     d = dd.doctor_weekly_digest(
-        "doc_a", log, to_email="d@x.com", lookback_days=7, now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0))
+        "doc_a",
+        log,
+        to_email="d@x.com",
+        lookback_days=7,
+        now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)),
     ).to_dict()
-    for key in ("event_id", "subject", "body_text", "clean_count", "flagged_count", "saved_usd", "week_label", "queued_at"):
+    for key in (
+        "event_id",
+        "subject",
+        "body_text",
+        "clean_count",
+        "flagged_count",
+        "saved_usd",
+        "week_label",
+        "queued_at",
+    ):
         assert key in d
 
 
@@ -200,7 +265,9 @@ def test_weekly_digest_to_dict_round_trip():
 
 
 def test_effectiveness_no_data_returns_friendly_message():
-    out = dd.doctor_effectiveness("doc_a", [], now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_effectiveness(
+        "doc_a", [], now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0))
+    )
     assert out["headline"] == "Not enough notes yet to measure."
     assert out["delta_pct_points"] == 0.0
 
@@ -212,10 +279,16 @@ def test_effectiveness_improvement_is_positive():
     log = []
     for i in range(10):
         dos = time.strftime("%Y-%m-%d", time.gmtime(now - i * 86_400))  # recent
-        log.append(_enc(f"r{i}", "doc_a", dos, findings=[] if i < 4 else [_finding("MOD-25")]))
+        log.append(
+            _enc(f"r{i}", "doc_a", dos, findings=[] if i < 4 else [_finding("MOD-25")])
+        )
     for i in range(10):
-        dos = time.strftime("%Y-%m-%d", time.gmtime(now - 45 * 86_400 - i * 86_400))  # prior
-        log.append(_enc(f"p{i}", "doc_a", dos, findings=[] if i < 2 else [_finding("MOD-25")]))
+        dos = time.strftime(
+            "%Y-%m-%d", time.gmtime(now - 45 * 86_400 - i * 86_400)
+        )  # prior
+        log.append(
+            _enc(f"p{i}", "doc_a", dos, findings=[] if i < 2 else [_finding("MOD-25")])
+        )
     out = dd.doctor_effectiveness("doc_a", log, prior_window_days=30, now_ts=now)
     assert out["n_recent"] == 10
     assert out["n_prior"] == 10
@@ -230,10 +303,14 @@ def test_effectiveness_decline_is_negative():
     log = []
     for i in range(10):
         dos = time.strftime("%Y-%m-%d", time.gmtime(now - i * 86_400))
-        log.append(_enc(f"r{i}", "doc_a", dos, findings=[] if i < 2 else [_finding("MOD-25")]))
+        log.append(
+            _enc(f"r{i}", "doc_a", dos, findings=[] if i < 2 else [_finding("MOD-25")])
+        )
     for i in range(10):
         dos = time.strftime("%Y-%m-%d", time.gmtime(now - 45 * 86_400 - i * 86_400))
-        log.append(_enc(f"p{i}", "doc_a", dos, findings=[] if i < 8 else [_finding("MOD-25")]))
+        log.append(
+            _enc(f"p{i}", "doc_a", dos, findings=[] if i < 8 else [_finding("MOD-25")])
+        )
     out = dd.doctor_effectiveness("doc_a", log, prior_window_days=30, now_ts=now)
     assert out["delta_pct_points"] < 0
     assert "worse" in out["headline"].lower()
@@ -244,10 +321,14 @@ def test_effectiveness_steady_state_message():
     log = []
     for i in range(10):
         dos = time.strftime("%Y-%m-%d", time.gmtime(now - i * 86_400))
-        log.append(_enc(f"r{i}", "doc_a", dos, findings=[] if i < 5 else [_finding("MOD-25")]))
+        log.append(
+            _enc(f"r{i}", "doc_a", dos, findings=[] if i < 5 else [_finding("MOD-25")])
+        )
     for i in range(10):
         dos = time.strftime("%Y-%m-%d", time.gmtime(now - 45 * 86_400 - i * 86_400))
-        log.append(_enc(f"p{i}", "doc_a", dos, findings=[] if i < 5 else [_finding("MOD-25")]))
+        log.append(
+            _enc(f"p{i}", "doc_a", dos, findings=[] if i < 5 else [_finding("MOD-25")])
+        )
     out = dd.doctor_effectiveness("doc_a", log, prior_window_days=30, now_ts=now)
     assert "steady" in out["headline"].lower()
 
@@ -260,6 +341,8 @@ def test_effectiveness_no_prior_window_says_so():
 
 
 def test_effectiveness_empty_provider():
-    out = dd.doctor_effectiveness("", [], now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0)))
+    out = dd.doctor_effectiveness(
+        "", [], now_ts=time.mktime((2026, 6, 25, 0, 0, 0, 0, 0, 0))
+    )
     assert out["provider_npi"] == ""
     assert out["n_recent"] == 0

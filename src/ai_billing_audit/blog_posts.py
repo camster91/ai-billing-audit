@@ -14,6 +14,7 @@ To add a post:
   3. Reference the slug in templates/blog.html and the
      sitemap (feeds.PUBLIC_MARKETING_PATHS).
 """
+
 from __future__ import annotations
 
 import datetime
@@ -73,9 +74,9 @@ def _blog_body_why_we_built_zorva() -> str:
         "<p>We're running a 60-day no-cost pilot with two Alberta "
         "family-medicine clinics. After the pilot, the clinic either "
         "moves to a paid tier or the data is purged. The full pilot "
-        "terms are at <a href=\"/pilot\">/pilot</a>.</p>"
+        'terms are at <a href="/pilot">/pilot</a>.</p>'
         "<p>If you want to see what Zorva catches on your own claims, "
-        "<a href=\"/contact\">send 100 de-identified claims</a>. We'll "
+        '<a href="/contact">send 100 de-identified claims</a>. We\'ll '
         "run the auditor and send back a 1-page finding-by-finding "
         "report. No fee, no follow-up unless the report is useful.</p>"
     )
@@ -230,8 +231,8 @@ def _blog_body_why_alberta_first() -> str:
         "verify the service's work after the fact).</li>"
         "<li><strong>EMR billing modules are not the answer.</strong> "
         "Telus PS Suite, OSCAR, Accuro, and Med Access all have "
-        "billing modules, but the billers described them as \"a "
-        "checkbox on the encounter screen\" — not a tool that reads "
+        'billing modules, but the billers described them as "a '
+        'checkbox on the encounter screen" — not a tool that reads '
         "the clinical note. The biller is still the one catching the "
         "modifier-25 misses and the dx-linkage errors.</li>"
         "</ul>"
@@ -267,7 +268,7 @@ def _blog_body_why_alberta_first() -> str:
         "<p>If you're an Alberta clinic or PCN, Zorva is built for you. "
         "If you're in Ontario or BC and want to be on the early-access "
         "list for the OHIP/MSP rulesets, send a note via "
-        "<a href=\"/contact\">/contact</a> and we'll add you.</p>"
+        '<a href="/contact">/contact</a> and we\'ll add you.</p>'
     )
 
 
@@ -275,7 +276,9 @@ BLOG_POSTS_DETAIL: dict[str, dict[str, Any]] = {
     "why-we-built-zorva": {
         "id": "why-we-built-zorva",
         "title": "Why we built Zorva (and not a billing service)",
-        "published": datetime.datetime(2026, 7, 13, 9, 0, 0, tzinfo=datetime.timezone.utc),
+        "published": datetime.datetime(
+            2026, 7, 13, 9, 0, 0, tzinfo=datetime.timezone.utc
+        ),
         "summary": (
             "Most AHCIP billing software falls into one of two "
             "categories: a managed submission service, or an EMR "
@@ -289,7 +292,9 @@ BLOG_POSTS_DETAIL: dict[str, dict[str, Any]] = {
     "18-ahcip-rules": {
         "id": "18-ahcip-rules",
         "title": "The 18 AHCIP rules in v12",
-        "published": datetime.datetime(2026, 7, 8, 9, 0, 0, tzinfo=datetime.timezone.utc),
+        "published": datetime.datetime(
+            2026, 7, 8, 9, 0, 0, tzinfo=datetime.timezone.utc
+        ),
         "summary": (
             "v12 of the Zorva prompt ships with 18 AHCIP rules "
             "covering the highest-yield patterns Alberta billers see "
@@ -302,7 +307,9 @@ BLOG_POSTS_DETAIL: dict[str, dict[str, Any]] = {
     "why-flat-fee": {
         "id": "why-flat-fee",
         "title": "Why we charge flat-fee, not per-claim",
-        "published": datetime.datetime(2026, 7, 1, 9, 0, 0, tzinfo=datetime.timezone.utc),
+        "published": datetime.datetime(
+            2026, 7, 1, 9, 0, 0, tzinfo=datetime.timezone.utc
+        ),
         "summary": (
             "Per-claim pricing punishes the clinics that need the "
             "most help. We picked flat-fee because the alternative "
@@ -315,7 +322,9 @@ BLOG_POSTS_DETAIL: dict[str, dict[str, Any]] = {
     "why-alberta-first": {
         "id": "why-alberta-first",
         "title": "Why Alberta first",
-        "published": datetime.datetime(2026, 6, 22, 9, 0, 0, tzinfo=datetime.timezone.utc),
+        "published": datetime.datetime(
+            2026, 6, 22, 9, 0, 0, tzinfo=datetime.timezone.utc
+        ),
         "summary": (
             "Zorva started as an Ontario-pivot idea. Then we looked "
             "at the Alberta AHCIP fee schedule, talked to six "

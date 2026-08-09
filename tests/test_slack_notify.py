@@ -19,6 +19,7 @@ Test isolation
   ``Request`` it received so the assertions can inspect the
   Block Kit body verbatim.
 """
+
 from __future__ import annotations
 
 import json
@@ -40,6 +41,9 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from ai_billing_audit import api as api_mod  # noqa: E402
 from ai_billing_audit import slack_notify as slack  # noqa: E402
+from ai_billing_audit.clinical_note_storage import (  # noqa: E402
+    read_encrypted_json_records,
+)
 from ai_billing_audit.job_queue import (  # noqa: E402
     JobQueue,
     reset_default_queue_for_tests,
@@ -90,7 +94,9 @@ def _make_handler(capture: _Capture) -> type[BaseHTTPRequestHandler]:
 def webhook_server() -> dict[str, Any]:
     capture = _Capture()
     server = HTTPServer(("127.0.0.1", 0), _make_handler(capture))
-    thread = threading.Thread(target=server.serve_forever, name="slack-test", daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, name="slack-test", daemon=True
+    )
     thread.start()
     host, port = server.server_address[:2]
     base_url = f"http://{host}:{port}"
@@ -185,6 +191,7 @@ def _claim(encounter_id: str = "ENC-SLACK-001") -> dict[str, Any]:
         "NPI": "1234567890",
         "date_of_service": "2026-06-24",
         "CPT_codes": ["99213"],
+        "clinical_note": "Established patient follow-up with documented assessment.",
     }
 
 
@@ -220,7 +227,8 @@ def test_register_endpoint_returns_id_and_persists(
     assert body["clinic_id"] == "default"  # falls back to TENANT_ID
 
     log = tmp_log_dir / "slack.jsonl"
-    rows = [json.loads(line) for line in log.read_text().splitlines() if line]
+    assert url.encode() not in log.read_bytes()
+    rows = read_encrypted_json_records(log)
     assert any(r.get("slack_id") == body["slack_id"] for r in rows)
 
 
@@ -258,7 +266,11 @@ def test_register_rejects_non_list_events(
 ) -> None:
     r = client.post(
         "/api/integrations/slack",
-        json={"webhook_url": "https://hooks.slack.com/x", "channel": "#x", "events": "audit_complete"},
+        json={
+            "webhook_url": "https://hooks.slack.com/x",
+            "channel": "#x",
+            "events": "audit_complete",
+        },
     )
     assert r.status_code == 400
 
@@ -445,11 +457,7 @@ def test_notify_slack_swallows_network_errors(
     assert result["delivered"] == 0
     assert result["failed"] == 1
     # And the delivery-log row carries the failure.
-    rows = [
-        json.loads(line)
-        for line in (tmp_log_dir / "slack.jsonl").read_text().splitlines()
-        if line
-    ]
+    rows = read_encrypted_json_records(tmp_log_dir / "slack.jsonl")
     delivery = [r for r in rows if r.get("_kind") == "delivery"]
     assert len(delivery) == 1
     assert delivery[0]["ok"] is False
@@ -533,7 +541,9 @@ def test_bulk_accept_high_finding_fires_slack(
     # so the assertion can inspect the Block Kit body verbatim.
     capture = _Capture()
     server = HTTPServer(("127.0.0.1", 0), _make_handler(capture))
-    thread = threading.Thread(target=server.serve_forever, name="slack-bulk", daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, name="slack-bulk", daemon=True
+    )
     thread.start()
     try:
         host, port = server.server_address[:2]
@@ -561,6 +571,7 @@ def test_bulk_accept_high_finding_fires_slack(
         monkeypatch.setenv("TENANT_ID", "default")
         import importlib
         from ai_billing_audit import api as api_mod_bulk
+
         importlib.reload(api_mod_bulk)
 
         bulk_client = TestClient(api_mod_bulk.app)
@@ -570,7 +581,9 @@ def test_bulk_accept_high_finding_fires_slack(
         # external state.
         train_path = (
             Path(api_mod_bulk.__file__).resolve().parents[2]
-            / "data" / "synth" / "train.json"
+            / "data"
+            / "synth"
+            / "train.json"
         )
         with train_path.open() as fh:
             train = json.load(fh)
@@ -591,7 +604,9 @@ def test_bulk_accept_high_finding_fires_slack(
 
         # The Slack receiver got at least one high_finding POST.
         slack_posts = [
-            r for r in capture.requests if r["headers"].get("X-Zorva-Event") == "high_finding"
+            r
+            for r in capture.requests
+            if r["headers"].get("X-Zorva-Event") == "high_finding"
         ]
         assert slack_posts, "no high_finding Slack POST captured"
         body = slack_posts[0]["body"]

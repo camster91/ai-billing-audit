@@ -4,9 +4,9 @@ Pre-submit medical-billing auditor for Alberta clinics — flags AHCIP (Schedule
 
 ## Current state
 
-Zorva is on **v12 AHCIP** (a 7-section AHCIP-only prompt that drops the US `-24` modifier and adds 5 AHCIP rules). On the cleaned AHCIP val set (10 encounters, 13 gold findings) v12 scores **F1 = 0.690, R = 0.769, P = 0.625** with 0 errors (micro over the cleaned gold, 2026-06-23 post-leakage-fix). The auditor, denial-risk scorer, appeal-letter generator, doctor-summary emailer, hash-chained audit trail, and self-improving loop are all implemented in `src/ai_billing_audit/`; the test suite is **791 pytest tests**, all passing locally. The **billing portal is live** at [https://ai-billing-audit.ashbi.ca](https://ai-billing-audit.ashbi.ca) (Next.js + FastAPI, served by Traefik on a single Hostinger VPS).
+Zorva is on **v12 AHCIP** (a 7-section AHCIP-only prompt that drops the US `-24` modifier and adds 5 AHCIP rules). On the cleaned AHCIP val set (10 encounters, 13 gold findings) v12 scores **F1 = 0.690, R = 0.769, P = 0.625** with 0 errors (micro over the cleaned gold, 2026-06-23 post-leakage-fix). The auditor, denial-risk scorer, appeal-letter generator, doctor-summary emailer, hash-chained audit trail, and self-improving loop are implemented in `src/ai_billing_audit/`. Local validation and live deployment are separate gates; see `docs/DEPLOYMENT.md` for the repository-backed topology and production verification requirements.
 
-**Alberta pivot (2026-06-22).** The product was US/Mexico/Colombia multi-market on v0–v11; v12 is Alberta-first. Compliance is now PIPEDA + the Alberta *Health Information Act* (HIA, not Ontario's PHIPA). The go-to-market is a 30-day paid pilot with Alberta clinics (CAD $499 / $1,499 / $2,999 tiers, real Stripe checkout). 12-clinic prospect list is in `docs/ALBERTA_PROSPECT_LIST.md`.
+**Alberta pivot (2026-06-22).** The product was US/Mexico/Colombia multi-market on v0–v11; v12 is Alberta-first. The intended compliance context is PIPEDA plus Alberta's *Health Information Act* (HIA, not Ontario's PHIPA), subject to legal/privacy approval. The proposed go-to-market is a 30-day paid pilot with Alberta clinics; pricing, visible checkout, and commercial terms remain approval-gated (issues #9 and #14).
 
 ## Quick start
 
@@ -14,7 +14,7 @@ Zorva is on **v12 AHCIP** (a 7-section AHCIP-only prompt that drops the US `-24`
 git clone <repo> ai-billing-audit && cd ai-billing-audit
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest                                # 791 tests, ~10s, no API key
+pytest                                # hermetic suite; provider integration skips without its API key
 ```
 
 To exercise the live AHCIP auditor against a real LLM, set the provider env var and run the dev loop:
@@ -34,17 +34,17 @@ The VPS-deploy entry point is `deploy-to-vps.sh` (idempotent: rsync → `.env` �
 ## Deploying
 
 The repo ships **two distinct applications** that deploy separately.
-They share a domain apex but live on different stacks.
+They are designed for separate stacks and may share a domain apex.
 
-### Side 1 — FastAPI / API (live)
+### Side 1 — FastAPI / API
 
 | | |
 | --- | --- |
 | **What** | the auditor (v12 AHCIP prompt), denial-risk scorer, missed-revenue detector, SOMB fee lookups, hash-chained audit trail, demo dashboard, `/healthz` smoke endpoint |
 | **Source** | `src/`, `prompts/`, `data/synth/`, `Dockerfile`, `docker-compose.yml` |
-| **Deployed to** | `https://ai-billing-audit.ashbi.ca` |
+| **Public target** | `https://ai-billing-audit.ashbi.ca` |
 | **Pipeline** | `deploy-to-vps.sh` → rsync to VPS → writes `/etc/traefik/dynamic/routers.yml` → `docker compose up -d` → Traefik → Caddy → FastAPI |
-| **Status** | **Live** as of 2026-06-24 |
+| **Status** | Repository deployment target; verify the public host and reported version independently before release claims. |
 
 To re-ship the API:
 
@@ -56,15 +56,15 @@ Backup/restore for the Postgres `audit_trail` table lives at
 `deploy/scripts/audit-backup.sh` (age-encrypted `pg_dump` → B2 via
 `rclone`, weekly cron, monthly restore-verify).
 
-### Side 2 — Next.js marketing portal (live as of 2026-06-26)
+### Side 2 — Next.js marketing portal
 
 | | |
 | --- | --- |
 | **What** | the user-facing marketing site — hero ("Find the revenue..."), `/pricing` (CAD $499 / $1,499 / $2,999 tiers), `/what-zorva-finds` (8 finding cards), `/security` controls matrix, `/robots.txt` split rules, plus `/contact`, `/pilot`, `/how-it-works`. Authenticated workspace (`/portal/*`) runs the OnboardingWizard, billing dashboard, encounters/findings/audit workspace. |
-| **Source** | `apps/portal/` (Next.js 16 + React 19 + Prisma/SQLite-dev/Postgres-prod + Stripe + Resend) |
-| **Deployed to** | **`https://zorva.ashbi.ca`** — separate Traefik router, separate Postgres, separate Node 22-slim container, no shared process tree with the API |
-| **Pipeline** | `./deploy-portal.sh` → rsync → write `/opt/projects/ai-billing-audit/portal.env` from host secrets → add Traefik router block → `docker compose up -d --build portal portal-postgres` → healthcheck → verify HTTPS |
-| **Status** | **Live** as of 2026-06-26 |
+| **Source** | `apps/portal/` (Next.js 15 + React 19 + Prisma/SQLite-dev/Postgres-prod + Stripe + Resend) |
+| **Public target** | **`https://zorva.ashbi.ca`** — separate Traefik router, PostgreSQL, and Node 22-slim container, with no shared process tree with the API |
+| **Pipeline** | `./deploy-portal.sh` → rsync → write `/opt/projects/ai-billing-audit/portal.env` from host secrets → configure Traefik → start PostgreSQL → apply `portal-migrate` → start portal → verify health and trusted HTTPS |
+| **Status** | Production-ready repository topology; public deployment and provider configuration remain operator-verified gates. |
 
 To run the marketing portal locally:
 
@@ -98,7 +98,7 @@ To rotate a portal secret (e.g. `STRIPE_SECRET_KEY`):
 
 ### When you're ready to deploy `apps/portal`
 
-Already shipped — see **Side 2** above. The deploy script
+The deploy script
 (`deploy-portal.sh`) is the canonical recipe; static-export and
 pm2-managed Node are no longer on the roadmap. If a future operator
 wants to migrate the portal off the VPS to Cloudflare Pages / Netlify
@@ -129,7 +129,7 @@ ai-billing-audit/
 ├── data/                      # val.json (synth) + val_ca.json (AHCIP), manifests
 ├── rules/                     # 26 seed rules (14 CMS E/M + 12 NCCI)
 ├── apps/portal/               # Next.js 15 billing portal (Tailwind + shadcn)
-├── tests/                     # 791 pytest tests
+├── tests/                     # hermetic unit/regression suite plus gated integrations
 ├── scripts/                   # optimize.py, smartness harnesses, eval scripts
 ├── deploy/                    # backup/restore scripts + cron
 ├── deploy-to-vps.sh           # single-shot VPS deploy (Traefik + Coolify)

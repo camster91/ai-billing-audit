@@ -24,6 +24,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
 import { hashPatientId } from "../src/lib/patient-hash";
+import { encryptPortalString } from "../src/lib/data-encryption";
 
 function cuidLike(): string {
   return `c${randomBytes(12).toString("hex")}`;
@@ -182,7 +183,9 @@ async function main() {
         patientHash,
         dateOfService: date,
         specialty,
-        clinicalNote: `Bulk-seeded encounter #${i + 1} for ${provider.name}.`,
+        clinicalNote: encryptPortalString(
+          `Bulk-seeded encounter #${i + 1} for ${provider.name}.`,
+        ),
         claimId,
         status,
       },
@@ -219,7 +222,7 @@ async function main() {
           billingRuleReference: RULES[cat],
           currentCode: cpt,
           suggestedCode: cat === "em_level" ? "99214" : cpt,
-          evidenceQuote: "Bulk-seeded narrative.",
+          evidenceQuote: encryptPortalString("Bulk-seeded narrative."),
           estFinancialImpactCents: estImpactCents,
           status: "pending",
         },

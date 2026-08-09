@@ -71,15 +71,16 @@ def _build_easy(rng: random.Random, scenario: Scenario, variant: str) -> dict[st
     }
     if variant == "clean":
         enc["trigger_reason"] = (
-            "Single problem focus; no prescription drug management; "
-            "no modifier flags."
+            "Single problem focus; no prescription drug management; no modifier flags."
         )
     else:
         enc["trigger_reason"] = scenario.benign_flag
     return enc
 
 
-def _build_medium(rng: random.Random, scenario: Scenario, variant: str) -> dict[str, Any]:
+def _build_medium(
+    rng: random.Random, scenario: Scenario, variant: str
+) -> dict[str, Any]:
     """Render a MEDIUM encounter.
 
     RNG draws (in order):

@@ -18,6 +18,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
 import { wrapEvidenceQuotes } from "../src/lib/encounter-format";
 import { hashPatientId } from "../src/lib/patient-hash";
+import { encryptPortalString } from "../src/lib/data-encryption";
 
 function cuidLike(): string {
   return `c${randomBytes(12).toString("hex")}`;
@@ -117,7 +118,7 @@ async function main() {
       patientHash,
       dateOfService: new Date("2026-06-12T00:00:00Z"),
       specialty: "cardiology",
-      clinicalNote,
+      clinicalNote: encryptPortalString(clinicalNote),
       claimId: claim.id,
       status: "awaiting_review",
     },
@@ -161,7 +162,7 @@ async function main() {
         billingRuleReference: f.billingRuleReference,
         currentCode: f.currentCode,
         suggestedCode: f.suggestedCode,
-        evidenceQuote: f.evidenceQuote,
+        evidenceQuote: encryptPortalString(f.evidenceQuote),
         estFinancialImpactCents: f.estFinancialImpactCents,
       },
       create: {
@@ -171,7 +172,7 @@ async function main() {
         billingRuleReference: f.billingRuleReference,
         currentCode: f.currentCode,
         suggestedCode: f.suggestedCode,
-        evidenceQuote: f.evidenceQuote,
+        evidenceQuote: encryptPortalString(f.evidenceQuote),
         estFinancialImpactCents: f.estFinancialImpactCents,
         status: "pending",
       },

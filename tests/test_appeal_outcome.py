@@ -20,6 +20,7 @@ What's pinned
 * The endpoint returns 400 when ``status`` is not in
   {won, lost, withdrawn, pending}
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ai_billing_audit import appeal_letter
+from ai_billing_audit.clinical_note_storage import PhiStorageIntegrityError
 from ai_billing_audit.appeal_letter import (
     AppealOutcome,
     appeal_win_rate,
@@ -49,7 +51,9 @@ def temp_logs_dir(tmp_path, monkeypatch):
     """
     monkeypatch.setattr(appeal_letter, "_LOGS_DIR", tmp_path)
     monkeypatch.setattr(appeal_letter, "_APPEAL_LOG", tmp_path / "appeal_letters.jsonl")
-    monkeypatch.setattr(appeal_letter, "_APPEAL_OUTCOMES_LOG", tmp_path / "appeal_outcomes.jsonl")
+    monkeypatch.setattr(
+        appeal_letter, "_APPEAL_OUTCOMES_LOG", tmp_path / "appeal_outcomes.jsonl"
+    )
     return tmp_path
 
 
@@ -103,25 +107,31 @@ def test_appeal_outcome_now_factory_sets_timestamp():
 
 def test_log_and_read_round_trip(temp_logs_dir):
     """log_appeal_outcome + read_appeal_outcomes preserves every field."""
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-1",
-        encounter_id="E-1",
-        status="won",
-        biller_id="biller-1",
-        notes="denial reversed on first review",
-    ))
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-2",
-        encounter_id="E-1",
-        status="lost",
-        notes="payer upheld denial",
-    ))
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-3",
-        encounter_id="E-2",
-        status="withdrawn",
-        notes="clinic pulled the appeal",
-    ))
+    log_appeal_outcome(
+        AppealOutcome.now(
+            appeal_id="A-1",
+            encounter_id="E-1",
+            status="won",
+            biller_id="biller-1",
+            notes="denial reversed on first review",
+        )
+    )
+    log_appeal_outcome(
+        AppealOutcome.now(
+            appeal_id="A-2",
+            encounter_id="E-1",
+            status="lost",
+            notes="payer upheld denial",
+        )
+    )
+    log_appeal_outcome(
+        AppealOutcome.now(
+            appeal_id="A-3",
+            encounter_id="E-2",
+            status="withdrawn",
+            notes="clinic pulled the appeal",
+        )
+    )
 
     rows = read_appeal_outcomes()
     assert len(rows) == 3
@@ -135,10 +145,12 @@ def test_log_and_read_round_trip(temp_logs_dir):
 
 def test_read_filters_by_encounter_id(temp_logs_dir):
     """read_appeal_outcomes(encounter_id=...) drops other rows."""
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-1", encounter_id="E-1", status="won"))
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-2", encounter_id="E-2", status="lost"))
+    log_appeal_outcome(
+        AppealOutcome.now(appeal_id="A-1", encounter_id="E-1", status="won")
+    )
+    log_appeal_outcome(
+        AppealOutcome.now(appeal_id="A-2", encounter_id="E-2", status="lost")
+    )
 
     e1 = read_appeal_outcomes(encounter_id="E-1")
     assert [r.appeal_id for r in e1] == ["A-1"]
@@ -158,38 +170,42 @@ def test_read_returns_empty_when_log_missing(tmp_path, monkeypatch):
     assert read_appeal_outcomes() == []
 
 
-def test_read_skips_malformed_rows(temp_logs_dir):
-    """Corrupt log lines (not JSON / wrong shape) are silently skipped."""
+def test_read_refuses_plaintext_or_corrupt_rows(temp_logs_dir):
     log_path: Path = temp_logs_dir / "appeal_outcomes.jsonl"
     log_path.write_text(
-        "\n".join([
-            "not json at all",
-            json.dumps({"unrelated": "object"}),
-            json.dumps({
-                "appeal_id": "A-OK",
-                "encounter_id": "E-1",
-                "status": "won",
-                "timestamp": "2026-06-24T00:00:00+00:00",
-            }),
-            "",
-        ]) + "\n"
+        "\n".join(
+            [
+                "not json at all",
+                json.dumps({"unrelated": "object"}),
+                json.dumps(
+                    {
+                        "appeal_id": "A-OK",
+                        "encounter_id": "E-1",
+                        "status": "won",
+                        "timestamp": "2026-06-24T00:00:00+00:00",
+                    }
+                ),
+                "",
+            ]
+        )
+        + "\n"
     )
-    rows = read_appeal_outcomes()
-    # Only the well-formed row survives
-    assert len(rows) == 1
-    assert rows[0].appeal_id == "A-OK"
+    with pytest.raises(PhiStorageIntegrityError):
+        read_appeal_outcomes()
 
 
 def test_log_failure_does_not_raise(temp_logs_dir, monkeypatch):
     """A log write failure (e.g. read-only fs) does not propagate."""
     # Point the log path at a non-writable target
     monkeypatch.setattr(
-        appeal_letter, "_APPEAL_OUTCOMES_LOG",
+        appeal_letter,
+        "_APPEAL_OUTCOMES_LOG",
         temp_logs_dir / "not-a-dir" / "nope" / "outcomes.jsonl",
     )
     # Should not raise
-    log_appeal_outcome(AppealOutcome.now(
-        appeal_id="A-1", encounter_id="E-1", status="won"))
+    log_appeal_outcome(
+        AppealOutcome.now(appeal_id="A-1", encounter_id="E-1", status="won")
+    )
 
 
 # ----- appeal_win_rate --------------------------------------------------
@@ -207,9 +223,13 @@ def test_win_rate_empty_log(temp_logs_dir):
 def test_win_rate_counts_only_decided(temp_logs_dir):
     """win_rate = won / (won + lost); pending/withdrawn don't count."""
     for i, s in enumerate(["won", "lost", "won", "withdrawn", "pending", "lost"]):
-        log_appeal_outcome(AppealOutcome.now(
-            appeal_id=f"A-{i}", encounter_id="E-1", status=s,
-        ))
+        log_appeal_outcome(
+            AppealOutcome.now(
+                appeal_id=f"A-{i}",
+                encounter_id="E-1",
+                status=s,
+            )
+        )
     stats = appeal_win_rate()
     assert stats["total_won"] == 2
     assert stats["total_lost"] == 2
@@ -221,16 +241,18 @@ def test_win_rate_counts_only_decided(temp_logs_dir):
 
 def test_win_rate_all_won(temp_logs_dir):
     for i in range(3):
-        log_appeal_outcome(AppealOutcome.now(
-            appeal_id=f"A-{i}", encounter_id="E-1", status="won"))
+        log_appeal_outcome(
+            AppealOutcome.now(appeal_id=f"A-{i}", encounter_id="E-1", status="won")
+        )
     stats = appeal_win_rate()
     assert stats["win_rate"] == 1.0
 
 
 def test_win_rate_all_lost(temp_logs_dir):
     for i in range(2):
-        log_appeal_outcome(AppealOutcome.now(
-            appeal_id=f"A-{i}", encounter_id="E-1", status="lost"))
+        log_appeal_outcome(
+            AppealOutcome.now(appeal_id=f"A-{i}", encounter_id="E-1", status="lost")
+        )
     stats = appeal_win_rate()
     assert stats["win_rate"] == 0.0
 
@@ -241,18 +263,30 @@ def test_win_rate_uses_latest_outcome_per_appeal(temp_logs_dir):
     The biller can update an outcome (e.g. pending -> won). The
     win rate should reflect the current state, not the history.
     """
-    log_appeal_outcome(AppealOutcome(
-        appeal_id="A-1", encounter_id="E-1", status="pending",
-        timestamp="2026-06-24T00:00:00+00:00",
-    ))
-    log_appeal_outcome(AppealOutcome(
-        appeal_id="A-1", encounter_id="E-1", status="won",
-        timestamp="2026-06-25T00:00:00+00:00",
-    ))
-    log_appeal_outcome(AppealOutcome(
-        appeal_id="A-2", encounter_id="E-1", status="lost",
-        timestamp="2026-06-24T00:00:00+00:00",
-    ))
+    log_appeal_outcome(
+        AppealOutcome(
+            appeal_id="A-1",
+            encounter_id="E-1",
+            status="pending",
+            timestamp="2026-06-24T00:00:00+00:00",
+        )
+    )
+    log_appeal_outcome(
+        AppealOutcome(
+            appeal_id="A-1",
+            encounter_id="E-1",
+            status="won",
+            timestamp="2026-06-25T00:00:00+00:00",
+        )
+    )
+    log_appeal_outcome(
+        AppealOutcome(
+            appeal_id="A-2",
+            encounter_id="E-1",
+            status="lost",
+            timestamp="2026-06-24T00:00:00+00:00",
+        )
+    )
     stats = appeal_win_rate()
     assert stats["total_won"] == 1
     assert stats["total_lost"] == 1

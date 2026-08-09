@@ -39,6 +39,7 @@ After running all four providers:
 The script accepts --runs-dir to point at a non-default location
 (useful for archived acceptance runs).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,6 +67,7 @@ EXPECTED_PROVIDERS: tuple[str, ...] = ("minimax", "claude", "openai", "gemini")
 # is self-contained — the multiset semantics are the contract, not the file).
 # ---------------------------------------------------------------------------
 
+
 def _safe_div(num: float, den: float) -> float:
     if den == 0:
         return 0.0
@@ -91,7 +93,9 @@ def _score_one(predicted: list[str], gold: list[str]) -> dict[str, dict[str, int
     return out
 
 
-def _accumulate(per_encounter: list[dict[str, dict[str, int]]]) -> dict[str, dict[str, int]]:
+def _accumulate(
+    per_encounter: list[dict[str, dict[str, int]]],
+) -> dict[str, dict[str, int]]:
     totals: dict[str, dict[str, int]] = {}
     for enc in per_encounter:
         for cat, c in enc.items():
@@ -158,6 +162,7 @@ def _macro(per_category: dict[str, dict[str, Any]]) -> dict[str, Any]:
 # Per-provider run discovery
 # ---------------------------------------------------------------------------
 
+
 def _discover_provider_runs(runs_dir: Path) -> dict[str, Path]:
     """Return ``{provider_name: latest_run_dir}`` for runs under ``runs_dir``.
 
@@ -179,7 +184,7 @@ def _discover_provider_runs(runs_dir: Path) -> dict[str, Path]:
         for provider in EXPECTED_PROVIDERS:
             prefix = f"{provider}-"
             if name.startswith(prefix):
-                ts = name[len(prefix):]
+                ts = name[len(prefix) :]
                 # Cheap validation: length and the Z terminator.
                 if len(ts) >= 16 and ts.endswith("Z") and "T" in ts:
                     matched = (provider, ts)
@@ -196,6 +201,7 @@ def _discover_provider_runs(runs_dir: Path) -> dict[str, Path]:
 # ---------------------------------------------------------------------------
 # Scoring a single provider's run
 # ---------------------------------------------------------------------------
+
 
 def _score_provider_run(
     run_dir: Path,
@@ -267,6 +273,7 @@ def _score_provider_run(
 # Spread + verdict
 # ---------------------------------------------------------------------------
 
+
 def _spread(metric: dict[str, float]) -> dict[str, float]:
     """Return ``{max, min, mean, spread}`` for a dict of provider->metric.
 
@@ -334,20 +341,19 @@ def _verdict(provider_reports: list[dict]) -> dict:
                     "metric": metric_name,
                     "spread": stats["spread"],
                     "tolerance": SPREAD_TOLERANCE,
-                    "per_provider": {k: round(v, 4) for k, v in {
-                        "micro_precision": micro_p,
-                        "micro_recall": micro_r,
-                        "micro_f1": micro_f1,
-                        "macro_f1": macro_f1,
-                    }[metric_name].items()},
+                    "per_provider": {
+                        k: round(v, 4)
+                        for k, v in {
+                            "micro_precision": micro_p,
+                            "micro_recall": micro_r,
+                            "micro_f1": micro_f1,
+                            "macro_f1": macro_f1,
+                        }[metric_name].items()
+                    },
                 }
             )
 
-    passed = (
-        not missing
-        and not valid_output_failures
-        and not spread_failures
-    )
+    passed = not missing and not valid_output_failures and not spread_failures
 
     return {
         "verdict": "PASS" if passed else "FAIL",
@@ -367,6 +373,7 @@ def _verdict(provider_reports: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 # Markdown rendering
 # ---------------------------------------------------------------------------
+
 
 def _fmt(v: Any) -> str:
     if v is None:
@@ -389,9 +396,11 @@ def _render_markdown(
         f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}"
     )
     lines.append(f"Source runs dir: `{runs_dir.relative_to(PROJECT_ROOT)}`")
-    lines.append(f"Gold manifest: `data/test_sample_manifest.json` "
-                 f"({manifest['size']} encounters, "
-                 f"{len(manifest.get('category_distribution', {}))} categories)")
+    lines.append(
+        f"Gold manifest: `data/test_sample_manifest.json` "
+        f"({manifest['size']} encounters, "
+        f"{len(manifest.get('category_distribution', {}))} categories)"
+    )
     lines.append("")
 
     # Headline verdict
@@ -410,7 +419,7 @@ def _render_markdown(
         f"{'yes' if crit['all_100_percent_valid_output'] else 'no — see failures'}"
     )
     lines.append(
-        f"- All metrics within {SPREAD_TOLERANCE*100:.0f}% spread: "
+        f"- All metrics within {SPREAD_TOLERANCE * 100:.0f}% spread: "
         f"{'yes' if crit['all_metrics_within_5pct_spread'] else 'no — see failures'}"
     )
     lines.append("")
@@ -421,13 +430,15 @@ def _render_markdown(
     lines.append(
         "| provider | model | mode | n | n_ok | n_err | valid% | micro_P | micro_R | micro_F1 | macro_F1 | wall_s | tokens |"
     )
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append(
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    )
     for r in provider_reports:
         tokens = r["token_usage_total"].get("total_tokens") or 0
         lines.append(
             f"| {r['provider']} | `{r['model']}` | {r['mode']} | "
             f"{r['n_predicted']} | {r['n_ok']} | {r['n_errors']} | "
-            f"{r['valid_output_rate']*100:.2f}% | "
+            f"{r['valid_output_rate'] * 100:.2f}% | "
             f"{_fmt(r['micro']['precision'])} | {_fmt(r['micro']['recall'])} | "
             f"{_fmt(r['micro']['f1'])} | {_fmt(r['macro']['f1'])} | "
             f"{_fmt(r['wall_clock_seconds_total'])} | {tokens} |"
@@ -442,7 +453,11 @@ def _render_markdown(
     lines.append("| metric | max | min | mean | spread | within_tol |")
     lines.append("| --- | --- | --- | --- | --- | --- |")
     for metric_name, stats in crit["spread"].items():
-        within = "yes" if stats["spread"] is not None and stats["spread"] <= SPREAD_TOLERANCE else "no"
+        within = (
+            "yes"
+            if stats["spread"] is not None and stats["spread"] <= SPREAD_TOLERANCE
+            else "no"
+        )
         lines.append(
             f"| {metric_name} | {_fmt(stats['max'])} | {_fmt(stats['min'])} | "
             f"{_fmt(stats['mean'])} | {_fmt(stats['spread'])} | {within} |"
@@ -456,7 +471,11 @@ def _render_markdown(
     all_cats: list[str] = sorted(
         {cat for r in provider_reports for cat in r["per_category"].keys()}
     )
-    header = "| category | " + " | ".join(r["provider"] for r in provider_reports) + " | spread |"
+    header = (
+        "| category | "
+        + " | ".join(r["provider"] for r in provider_reports)
+        + " | spread |"
+    )
     sep = "| --- | " + " | ".join("---" for _ in provider_reports) + " | --- |"
     lines.append(header)
     lines.append(sep)
@@ -484,7 +503,7 @@ def _render_markdown(
         lines.append("")
         for f in crit["valid_output_failures"]:
             lines.append(
-                f"- **{f['provider']}**: valid_output_rate={f['valid_output_rate']*100:.2f}%, "
+                f"- **{f['provider']}**: valid_output_rate={f['valid_output_rate'] * 100:.2f}%, "
                 f"n_errors={f['n_errors']}, error_tally={f['error_type_tally']}"
             )
         lines.append("")
@@ -530,6 +549,7 @@ def _render_markdown(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])

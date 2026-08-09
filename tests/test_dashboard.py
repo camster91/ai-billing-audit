@@ -4,11 +4,9 @@ Lightweight, no network, no LLM. The dashboard is exercised via
 ``starlette.testclient.TestClient`` (httpx-backed) so the routes
 return real ``Response`` objects the same way they would in production.
 """
+
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
@@ -29,18 +27,18 @@ def client() -> TestClient:
 
 # --- registry contract ---------------------------------------------------
 
+
 def test_registry_is_idempotent_on_encounter_id() -> None:
     # Use a fresh id guaranteed not to be in the live registry so we
     # can observe the +1 then +0 transitions cleanly.
     probe_id = "enc_test_probe_idempotent_xyz"
     # Clean up if a prior test left it.
     from ai_billing_audit import demo_registry
+
     demo_registry._REGISTRY[:] = [
         e for e in demo_registry._REGISTRY if e.encounter_id != probe_id
     ]
-    a = register_demo_encounter(
-        encounter_id=probe_id, difficulty="EASY", summary="dup"
-    )
+    a = register_demo_encounter(encounter_id=probe_id, difficulty="EASY", summary="dup")
     b = register_demo_encounter(
         encounter_id=probe_id, difficulty="EASY", summary="dup-again"
     )
@@ -57,9 +55,7 @@ def test_registry_is_idempotent_on_encounter_id() -> None:
 
 def test_registry_rejects_unknown_difficulty() -> None:
     with pytest.raises(ValueError, match="EASY, MEDIUM, or HARD"):
-        register_demo_encounter(
-            encounter_id="enc_bogus", difficulty="WAT", summary="x"
-        )
+        register_demo_encounter(encounter_id="enc_bogus", difficulty="WAT", summary="x")
 
 
 def test_load_encounter_record_finds_known_id() -> None:
@@ -75,6 +71,7 @@ def test_load_encounter_record_returns_none_for_missing() -> None:
 
 
 # --- route contracts -----------------------------------------------------
+
 
 def test_audits_dashboard_lists_registered_encounter(client: TestClient) -> None:
     # The marketing landing page at / replaced the Audits dashboard
@@ -94,9 +91,7 @@ def test_audits_dashboard_renders_no_card_when_registry_empty(
 ) -> None:
     # Reset the registry in-place: the module is shared across the
     # process, so we patch list_demo_encounters to return [].
-    monkeypatch.setattr(
-        "ai_billing_audit.api.list_demo_encounters", lambda: []
-    )
+    monkeypatch.setattr("ai_billing_audit.api.list_demo_encounters", lambda: [])
     r = client.get("/audits")
     assert r.status_code == 200
     assert "No demo encounters registered yet." in r.text
@@ -241,8 +236,14 @@ def test_medium_detail_renders_full_audit_panel(client: TestClient) -> None:
     #   - rule_icd_003 / rule_lab_002 / rule_injection_001 / rule_icd_004
     #   - E11.9 / 83036 / 90686 / I10
     for needle in (
-        "rule_icd_003", "rule_lab_002", "rule_injection_001", "rule_icd_004",
-        "E11.9", "83036", "90686", "I10",
+        "rule_icd_003",
+        "rule_lab_002",
+        "rule_injection_001",
+        "rule_icd_004",
+        "E11.9",
+        "83036",
+        "90686",
+        "I10",
     ):
         assert needle in body, f"missing medium-tier evidence field: {needle}"
 
@@ -299,19 +300,23 @@ def test_medium_detail_404_when_unregistered(
     detail page must 404 cleanly rather than 500 — same contract the
     easy-card test pins for an unknown id."""
     from ai_billing_audit import demo_registry
+
     snapshot = list(demo_registry._REGISTRY)
     monkeypatch.setattr(
-        demo_registry, "list_demo_encounters",
+        demo_registry,
+        "list_demo_encounters",
         lambda: [e for e in snapshot if e.encounter_id != MEDIUM_ID],
     )
     monkeypatch.setattr(
-        demo_registry, "get_demo_encounter",
-        lambda eid: None if eid == MEDIUM_ID else next(
-            (e for e in snapshot if e.encounter_id == eid), None
-        ),
+        demo_registry,
+        "get_demo_encounter",
+        lambda eid: None
+        if eid == MEDIUM_ID
+        else next((e for e in snapshot if e.encounter_id == eid), None),
     )
     # Bypass the api-level lookup with the same patch.
     import ai_billing_audit.api as api_mod
+
     monkeypatch.setattr(api_mod, "get_demo_encounter", demo_registry.get_demo_encounter)
     r = client.get(f"/encounter/{MEDIUM_ID}")
     assert r.status_code == 404
@@ -381,9 +386,15 @@ def test_hard_detail_renders_full_audit_panel(client: TestClient) -> None:
     #   - rule_em_001 / rule_ecg_001 / rule_icd_001 / rule_modifier_25_001 / rule_lab_001
     #   - 99214 / 93000 / R00.2 / modifier 25 / 80061
     for needle in (
-        "rule_em_001", "rule_ecg_001", "rule_icd_001",
-        "rule_modifier_25_001", "rule_lab_001",
-        "99214", "93000", "R00.2", "80061",
+        "rule_em_001",
+        "rule_ecg_001",
+        "rule_icd_001",
+        "rule_modifier_25_001",
+        "rule_lab_001",
+        "99214",
+        "93000",
+        "R00.2",
+        "80061",
     ):
         assert needle in body, f"missing hard-tier evidence field: {needle}"
 
@@ -400,7 +411,9 @@ def test_hard_detail_shows_evidence_highlight(client: TestClient) -> None:
     # "evidence highlight is visible on the detail page" as a hard
     # requirement; the gt0 quote appears verbatim in the clinical
     # note so the highlight is unambiguous.
-    assert '<mark class="evidence">established patient moderate complexity</mark>' in body, (
+    assert (
+        '<mark class="evidence">established patient moderate complexity</mark>' in body
+    ), (
         "primary (first) finding's evidence quote must be visibly "
         "highlighted in the clinical note; this is the hard-tier "
         "evidence cue the task acceptance criteria pin"
@@ -471,18 +484,22 @@ def test_hard_detail_404_when_unregistered(
     detail page must 404 cleanly rather than 500 — same contract the
     easy/medium tests pin for an unknown id."""
     from ai_billing_audit import demo_registry
+
     snapshot = list(demo_registry._REGISTRY)
     monkeypatch.setattr(
-        demo_registry, "list_demo_encounters",
+        demo_registry,
+        "list_demo_encounters",
         lambda: [e for e in snapshot if e.encounter_id != HARD_ID],
     )
     monkeypatch.setattr(
-        demo_registry, "get_demo_encounter",
-        lambda eid: None if eid == HARD_ID else next(
-            (e for e in snapshot if e.encounter_id == eid), None
-        ),
+        demo_registry,
+        "get_demo_encounter",
+        lambda eid: None
+        if eid == HARD_ID
+        else next((e for e in snapshot if e.encounter_id == eid), None),
     )
     import ai_billing_audit.api as api_mod
+
     monkeypatch.setattr(api_mod, "get_demo_encounter", demo_registry.get_demo_encounter)
     r = client.get(f"/encounter/{HARD_ID}")
     assert r.status_code == 404

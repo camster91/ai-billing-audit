@@ -61,21 +61,20 @@ Postgres, and does NOT need a server running. The reports it
 produces are the exact artifact a privacy officer receives on
 day 7 of a real pilot.
 """
+
 from __future__ import annotations
 
 import argparse
 import concurrent.futures as _cf
 import csv
 import datetime as _dt
-import hashlib
 import json
 import os
-import re
 import sys
 import textwrap
 import time as _time
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 SRC = REPO / "src"
@@ -215,25 +214,19 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
         for i, row in enumerate(reader):
             row_lc = {k.lower().strip(): (v or "").strip() for k, v in row.items() if k}
             cpts = [
-                c.strip()
-                for c in row_lc.get("cpt_codes", "").split(",")
-                if c.strip()
+                c.strip() for c in row_lc.get("cpt_codes", "").split(",") if c.strip()
             ]
             icds = [
-                c.strip()
-                for c in row_lc.get("icd_codes", "").split(",")
-                if c.strip()
+                c.strip() for c in row_lc.get("icd_codes", "").split(",") if c.strip()
             ]
             out.append(
                 {
-                    "encounter_id": row_lc.get("encounter_id")
-                    or f"csv-{i:04d}",
+                    "encounter_id": row_lc.get("encounter_id") or f"csv-{i:04d}",
                     "clinical_note": row_lc.get("clinical_note", ""),
                     "claim": {
                         "CPT_codes": cpts,
                         "diagnosis_codes": icds,
-                        "date_of_service": row_lc.get("date_of_service")
-                        or None,
+                        "date_of_service": row_lc.get("date_of_service") or None,
                     },
                 }
             )
@@ -416,9 +409,7 @@ def _summarise(encounters: list[dict[str, Any]]) -> dict[str, Any]:
         "n_encounters": len(encounters),
         "n_findings": total_findings,
         "n_estimated_dollars": total_estimated_dollars,
-        "by_rule": dict(
-            sorted(by_rule.items(), key=lambda kv: -kv[1])
-        ),
+        "by_rule": dict(sorted(by_rule.items(), key=lambda kv: -kv[1])),
         "by_severity": by_severity,
     }
 
@@ -437,12 +428,12 @@ def _render_markdown(
     n = summary["n_encounters"]
     n_f = summary["n_findings"]
     n_d = summary["n_estimated_dollars"]
-    sev_str = ", ".join(
-        f"{k}={v}" for k, v in summary["by_severity"].items() if v
-    ) or "none"
-    rule_str = ", ".join(
-        f"{k}={v}" for k, v in list(summary["by_rule"].items())[:5]
-    ) or "none"
+    sev_str = (
+        ", ".join(f"{k}={v}" for k, v in summary["by_severity"].items() if v) or "none"
+    )
+    rule_str = (
+        ", ".join(f"{k}={v}" for k, v in list(summary["by_rule"].items())[:5]) or "none"
+    )
 
     lines: list[str] = []
     lines.append(f"# Zorva shadow audit report — {input_path.name}")
@@ -480,14 +471,15 @@ def _render_markdown(
     if summary["by_rule"]:
         lines.append("## Findings by rule")
         lines.append("")
-        lines.append("| Rule (canonical) | SOMB-friendly label | Count | Per-finding SOMB rate |")
+        lines.append(
+            "| Rule (canonical) | SOMB-friendly label | Count | Per-finding SOMB rate |"
+        )
         lines.append("|---|---|---|---|")
         for rule, count in summary["by_rule"].items():
             rate = SOMB_DOLLAR_BY_RULE.get(rule, 0)
             label = _friendly_rule_label(rule)
             lines.append(
-                f"| `{rule}` | {label} | {count} | "
-                f"{'$' + str(rate) if rate else '—'} |"
+                f"| `{rule}` | {label} | {count} | {'$' + str(rate) if rate else '—'} |"
             )
         lines.append("")
 
@@ -515,12 +507,10 @@ def _render_markdown(
             quote = f.get("quote") or ""
             explanation = f.get("explanation") or ""
             err = " (ERROR)" if f.get("error") else ""
-            lines.append(
-                f"- **{sev}** `{rule}` ({label}) → `{code}`{err}"
-            )
+            lines.append(f"- **{sev}** `{rule}` ({label}) → `{code}`{err}")
             if quote:
                 wrapped = textwrap.fill(
-                    f"  Quote: \"{quote}\"", width=88, subsequent_indent="    "
+                    f'  Quote: "{quote}"', width=88, subsequent_indent="    "
                 )
                 lines.append(wrapped)
             if explanation:
@@ -639,7 +629,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.concurrency < 1:
-        print(f"ERROR: --concurrency must be >= 1, got {args.concurrency}", file=sys.stderr)
+        print(
+            f"ERROR: --concurrency must be >= 1, got {args.concurrency}",
+            file=sys.stderr,
+        )
         return 2
     if args.concurrency > 50:
         print(
@@ -678,8 +671,7 @@ def main() -> int:
         n_workers = min(args.concurrency, len(encounters))
         with _cf.ThreadPoolExecutor(max_workers=n_workers) as ex:
             futures: dict[_cf.Future[list[dict[str, Any]]], int] = {
-                ex.submit(run, enc): idx
-                for idx, enc in enumerate(encounters)
+                ex.submit(run, enc): idx for idx, enc in enumerate(encounters)
             }
             done_count = 0
             total = len(encounters)

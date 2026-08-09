@@ -69,8 +69,8 @@ def aggregate_missed_revenue_by_rule(
     # page isn't permanently empty.
     in_window_count = 0
     seeded_count = 0
-    for entry in list_demo_encounters():
-        record = load_encounter_record(entry.encounter_id)
+    for demo_entry in list_demo_encounters():
+        record = load_encounter_record(demo_entry.encounter_id)
         if record is None:
             continue
         audited_at = (record or {}).get("audited_at")
@@ -99,11 +99,11 @@ def aggregate_missed_revenue_by_rule(
             )
             bucket["total_dollar"] += float(opp.get("estimated_dollar") or 0.0)
             bucket["finding_count"] += 1
-            seen_encounters.add(entry.encounter_id)
+            seen_encounters.add(demo_entry.encounter_id)
     # encounter_count per rule: how many distinct encounters fired this rule
     rule_to_encounters: dict[str, set[str]] = {}
-    for entry in list_demo_encounters():
-        record = load_encounter_record(entry.encounter_id)
+    for demo_entry in list_demo_encounters():
+        record = load_encounter_record(demo_entry.encounter_id)
         if record is None:
             continue
         findings = _finding_dicts(record)
@@ -111,12 +111,10 @@ def aggregate_missed_revenue_by_rule(
             for rid in _finding_rule_ids(f):
                 if rid not in buckets:
                     continue
-                rule_to_encounters.setdefault(rid, set()).add(entry.encounter_id)
+                rule_to_encounters.setdefault(rid, set()).add(demo_entry.encounter_id)
     for rid, bucket in buckets.items():
         bucket["encounter_count"] = len(rule_to_encounters.get(rid, set()))
-    ranked = sorted(
-        buckets.values(), key=lambda b: b["total_dollar"], reverse=True
-    )
+    ranked = sorted(buckets.values(), key=lambda b: b["total_dollar"], reverse=True)
     # Round dollar values for display
     for b in ranked:
         b["total_dollar"] = round(b["total_dollar"], 2)
@@ -227,28 +225,29 @@ def aggregate_monthly_revenue_kpi(
     n_accepted = 0
     try:
         from .feedback import get_default_store
+
         store = get_default_store()
-        for entry in store.read_all():
-            if entry.action != "accept":
+        for feedback_entry in store.read_all():
+            if feedback_entry.action != "accept":
                 continue
-            ts = _parse_feedback_ts(entry.timestamp)
+            ts = _parse_feedback_ts(feedback_entry.timestamp)
             if ts is None:
                 continue
             if ts < start_ts or ts >= end_ts:
                 continue
-            key = f"{entry.encounter_id}|{entry.finding_id}"
-            dol = finding_dollars.get(key)
-            if dol is None:
+            key = f"{feedback_entry.encounter_id}|{feedback_entry.finding_id}"
+            recovered_value = finding_dollars.get(key)
+            if recovered_value is None:
                 # Accept happened this month for a finding whose
                 # identified opportunity is from a different month (or
                 # never priced). Fall back to the rule-level default
                 # estimate so the recovered number isn't understated.
-                meta = REVENUE_OPPORTUNITY_RULES.get(entry.rule_id or "")
+                meta = REVENUE_OPPORTUNITY_RULES.get(feedback_entry.rule_id or "")
                 if meta is None:
-                    dol = 0.0
+                    recovered_value = 0.0
                 else:
-                    dol = float(meta.get("estimated_dollar") or 0.0)
-            recovered_dollar += dol
+                    recovered_value = float(meta.get("estimated_dollar") or 0.0)
+            recovered_dollar += recovered_value
             n_accepted += 1
     except Exception:
         # Feedback module unavailable or log unreadable → leave

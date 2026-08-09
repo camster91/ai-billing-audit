@@ -1,6 +1,6 @@
 # apps/portal/Dockerfile
 #
-# Multi-stage build for the Zorva marketing portal (Next.js 16 + React 19).
+# Multi-stage build for the Zorva marketing portal (Next.js 15 + React 19).
 # Outputs the standalone bundle from `next build --standalone` (configured in
 # next.config.ts via `output: 'standalone'`), so the runtime image carries
 # only the compiled server + the static asset bundles — not node_modules.
@@ -19,6 +19,10 @@
 
 # ---- Stage 1: deps -----------------------------------------------------
 FROM node:22-slim AS deps
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # pnpm via corepack (Node 22 ships corepack). Faster + reproducible.
 # Pin to the same version the lockfile was generated with (9.15.9 as
@@ -39,8 +43,16 @@ COPY package.json pnpm-lock.yaml ./
 # `prisma generate` step in the build stage.
 RUN pnpm install --frozen-lockfile --prod=false
 
+# ---- Stage 2: migrations ------------------------------------------------
+FROM deps AS migrate
 
-# ---- Stage 2: build -----------------------------------------------------
+COPY prisma ./prisma
+COPY prisma.config.ts prisma.postgresql.config.ts ./
+COPY scripts/prepare-postgresql-schema.mjs ./scripts/prepare-postgresql-schema.mjs
+
+CMD ["pnpm", "prisma:migrate:deploy:postgresql"]
+
+# ---- Stage 3: build -----------------------------------------------------
 FROM node:22-slim AS build
 
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
@@ -51,9 +63,10 @@ WORKDIR /app
 # reinstall.
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml ./
-COPY next.config.ts next-env.d.ts tsconfig.json ./
+COPY next.config.ts next-env.d.ts tsconfig.json prisma.config.ts prisma.postgresql.config.ts ./
 COPY src ./src
 COPY prisma ./prisma
+COPY scripts/prepare-postgresql-schema.mjs ./scripts/prepare-postgresql-schema.mjs
 COPY public ./public
 
 # Prisma client is generated into src/generated/prisma (per
@@ -63,12 +76,13 @@ COPY public ./public
 # the generated client the bundler fails with "module not found."
 # Locally this happened implicitly from prior `pnpm dev` runs; the
 # Dockerfile build is a clean checkout so we must generate explicitly.
-RUN pnpm prisma generate
+RUN pnpm prisma:generate
 
 # `next build` with `output: 'standalone'` in next.config.ts produces
 # `.next/standalone/` with the minimal server + .next/static with the
 # hashed asset bundles.
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL=postgresql://build:build@127.0.0.1:9/build
 RUN pnpm build
 
 # Prisma client is generated into src/generated/prisma (per
@@ -79,7 +93,7 @@ RUN test -d .next/standalone || (echo "ERROR: standalone output missing — chec
 RUN test -d .next/static || (echo "ERROR: .next/static missing" && exit 1)
 
 
-# ---- Stage 3: runtime ---------------------------------------------------
+# ---- Stage 4: runtime ---------------------------------------------------
 FROM node:22-slim AS runtime
 
 # pnpm not needed at runtime — the standalone server is plain Node.

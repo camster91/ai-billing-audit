@@ -39,13 +39,14 @@ This module owns the data shaping:
 All functions are pure: they take data in, return dicts out. No
 side effects, no I/O. The FastAPI surface wires them up.
 """
+
 from __future__ import annotations
 
 import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable
 
 # ---------------------------------------------------------------------------
 # Doctor-encounter view
@@ -124,7 +125,9 @@ def doctor_encounters_for(
 def _worst_finding(findings: list[dict[str, Any]]) -> dict[str, Any]:
     """Pick the worst (highest severity) finding."""
     order = {"high": 3, "medium": 2, "low": 1}
-    return max(findings, key=lambda f: order.get(str(f.get("severity", "low")).lower(), 0))
+    return max(
+        findings, key=lambda f: order.get(str(f.get("severity", "low")).lower(), 0)
+    )
 
 
 def _one_sentence_what_wrong(finding: dict[str, Any]) -> str:
@@ -140,7 +143,9 @@ def _one_sentence_what_wrong(finding: dict[str, Any]) -> str:
     if rule == "NCCI":
         return "Two procedures on the same day conflict on the payer's edit list."
     if rule == "TIME":
-        return "The note needs the start time and total minutes for the prolonged service."
+        return (
+            "The note needs the start time and total minutes for the prolonged service."
+        )
     if rule == "MED-NEC":
         return "The diagnosis doesn't clearly support the procedure."
     if body:
@@ -276,7 +281,9 @@ def doctor_weekly_digest(
     clean = [e for e in encs if not e["needs_fix"]]
     flagged = [e for e in encs if e["needs_fix"]]
     saved = round(len(clean) * saved_per_clean_usd, 2)
-    week_label = time.strftime("%Y-W%V", time.gmtime(now_ts) if now_ts else time.gmtime())
+    week_label = time.strftime(
+        "%Y-W%V", time.gmtime(now_ts) if now_ts else time.gmtime()
+    )
     subject = f"Your week in notes: {len(clean)} clean, {len(flagged)} flagged"
     body_lines = [
         "Hi,",
@@ -290,7 +297,7 @@ def doctor_weekly_digest(
         body_lines.append("Notes needing a quick fix:")
         for e in flagged[:5]:  # cap so we don't send a wall of text
             body_lines.append(f"  - {e['date_of_service']}: {e['what_wrong']}")
-            body_lines.append(f"      Add: \"{e['fix_suggestion']}\"")
+            body_lines.append(f'      Add: "{e["fix_suggestion"]}"')
         if len(flagged) > 5:
             body_lines.append(f"  ... and {len(flagged) - 5} more.")
         body_lines.append("")
@@ -369,7 +376,9 @@ def doctor_effectiveness(
     recent_rate = (recent_clean / recent_total) if recent_total else 0.0
     prior_rate = (prior_clean / prior_total) if prior_total else 0.0
     delta_pts = (recent_rate - prior_rate) * 100.0
-    rel_pct = ((recent_rate - prior_rate) / prior_rate * 100.0) if prior_rate > 0 else 0.0
+    rel_pct = (
+        ((recent_rate - prior_rate) / prior_rate * 100.0) if prior_rate > 0 else 0.0
+    )
     if recent_total == 0 and prior_total == 0:
         headline = "Not enough notes yet to measure."
     elif prior_total == 0:
@@ -412,6 +421,7 @@ def _parse_iso(value: str) -> float:
     if not value:
         return 0.0
     from datetime import datetime
+
     s = str(value).strip()
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"

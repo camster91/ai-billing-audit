@@ -12,6 +12,7 @@ H-Engine-3 (high-severity rules relying on inference):
   rule. This file pins the contract: each rule's section in
   the prompt must contain a "Trigger phrases" block.
 """
+
 from __future__ import annotations
 
 import re
@@ -25,7 +26,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 
-PROMPT = (ROOT / "prompts" / "v12" / "auditor_prompt.txt").read_text()
+PROMPT = (ROOT / "prompts" / "v12" / "auditor_prompt.txt").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(
@@ -81,12 +82,8 @@ def test_in_tree_prompt_matches_v12_canonical_after_batch7():
     """src/ai_billing_audit/auditor_prompt.txt (the editable
     fallback) must match the v12 canonical text byte-for-byte
     even after swarm-batch7 grew the canonical text."""
-    in_tree = (
-        ROOT / "src" / "ai_billing_audit" / "auditor_prompt.txt"
-    ).read_bytes()
-    canonical = (
-        ROOT / "prompts" / "v12" / "auditor_prompt.txt"
-    ).read_bytes()
+    in_tree = (ROOT / "src" / "ai_billing_audit" / "auditor_prompt.txt").read_bytes()
+    canonical = (ROOT / "prompts" / "v12" / "auditor_prompt.txt").read_bytes()
     assert in_tree == canonical, (
         f"in-tree prompt is {len(in_tree):,} bytes; canonical is "
         f"{len(canonical):,} bytes. The editable-install fallback "
@@ -101,10 +98,9 @@ def test_manifest_hash_matches_canonical():
     pin no longer matched reality."""
     import hashlib
     import json
-    manifest = json.loads(
-        (ROOT / "prompts" / "v12" / "MANIFEST.json").read_text()
-    )
-    actual = hashlib.sha256(PROMPT.encode()).hexdigest()
+
+    manifest = json.loads((ROOT / "prompts" / "v12" / "MANIFEST.json").read_text())
+    actual = hashlib.sha256(PROMPT.encode("utf-8")).hexdigest()
     expected = manifest["content_sha256"].removeprefix("sha256:")
     assert actual == expected, (
         f"MANIFEST pin {expected[:12]}... doesn't match "

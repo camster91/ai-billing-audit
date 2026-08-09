@@ -4,9 +4,9 @@ The feeds module is the source of truth for the public
 marketing feed and sitemap. Pin the contract here so a
 template change doesn't silently drop an entry.
 """
+
 from __future__ import annotations
 
-from datetime import datetime
 from xml.etree import ElementTree as ET
 
 import pytest
@@ -87,9 +87,7 @@ def test_build_atom_feed_includes_all_entries() -> None:
     ns = "{http://www.w3.org/2005/Atom}"
     titles = {e.findtext(f"{ns}title") for e in root.findall(f"{ns}entry")}
     for post in BLOG_POSTS:
-        assert post["title"] in titles, (
-            f"Blog post {post['title']!r} missing from feed"
-        )
+        assert post["title"] in titles, f"Blog post {post['title']!r} missing from feed"
     for release in CHANGELOG_RELEASES:
         assert release["title"] in titles, (
             f"Changelog {release['title']!r} missing from feed"
@@ -101,9 +99,7 @@ def test_build_atom_feed_entries_newest_first() -> None:
     xml = build_atom_feed("https://example.com")
     root = ET.fromstring(xml)
     ns = "{http://www.w3.org/2005/Atom}"
-    updated_times = [
-        e.findtext(f"{ns}updated") for e in root.findall(f"{ns}entry")
-    ]
+    updated_times = [e.findtext(f"{ns}updated") for e in root.findall(f"{ns}entry")]
     assert updated_times == sorted(updated_times, reverse=True), (
         f"Feed is not newest-first: {updated_times}"
     )
@@ -169,6 +165,7 @@ def test_sitemap_includes_high_priority_paths(client: TestClient) -> None:
     # the path appears; the host is constructed from
     # request.headers['host'] in the route handler.
     import re
+
     high_priority = ["/", "/pricing", "/try"]
     for path in high_priority:
         # Match <loc>...<path>...</loc> (path is '/' for home)
@@ -182,7 +179,8 @@ def test_sitemap_includes_high_priority_paths(client: TestClient) -> None:
         # Find the <url> block that contains this path.
         url_match = re.search(
             rf"<url>\s*<loc>[^<]+{re.escape(path)}</loc>.*?</url>",
-            r.text, re.DOTALL,
+            r.text,
+            re.DOTALL,
         )
         assert url_match, f"<url> block for {path!r} not found"
         assert "<priority>0.8</priority>" in url_match.group(0), (

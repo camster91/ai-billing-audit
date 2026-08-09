@@ -29,6 +29,10 @@ import {
 } from "../src/lib/audit-write";
 import { GENESIS_PREVIOUS_SIGNATURE } from "../src/lib/audit-chain";
 import { hashPatientId } from "../src/lib/patient-hash";
+import {
+  decryptPortalString,
+  encryptPortalString,
+} from "../src/lib/data-encryption";
 
 function cuidLike(prefix = ""): string {
   return `${prefix}${prefix}${prefix}c${randomBytes(12).toString("hex")}`;
@@ -72,6 +76,9 @@ async function reseed(): Promise<{ tenantId: string; userId: string; encounterId
       userId: user.id,
       tenantId: tenant.id,
       role: "admin",
+      status: "active",
+      email: user.email,
+      activatedAt: new Date(),
     },
   });
 
@@ -111,7 +118,7 @@ async function reseed(): Promise<{ tenantId: string; userId: string; encounterId
       patientHash: hashPatientId("smoke-patient-001"),
       dateOfService: new Date("2026-06-12T00:00:00Z"),
       specialty: "cardiology",
-      clinicalNote,
+      clinicalNote: encryptPortalString(clinicalNote),
       claimId: claim.id,
       status: "awaiting_review",
     },
@@ -135,7 +142,7 @@ async function reseed(): Promise<{ tenantId: string; userId: string; encounterId
         billingRuleReference: "Smoke test rule reference",
         currentCode: "99214",
         suggestedCode: null,
-        evidenceQuote: f.quote,
+        evidenceQuote: encryptPortalString(f.quote),
         estFinancialImpactCents: 0,
         status: "pending",
       },
@@ -350,8 +357,12 @@ async function main() {
   assert(f3.status === "dismissed", "f3 should be dismissed");
   assert(f3.dismissReason === "other_with_text", "f3.dismissReason == other_with_text");
   assert(
-    f3.dismissText !== null && f3.dismissText.startsWith("Payer policy"),
-    "f3.dismissText stored verbatim",
+    f3.dismissText !== null && !f3.dismissText.includes("Payer policy"),
+    "f3.dismissText encrypted at rest",
+  );
+  assert(
+    f3.dismissText !== null && decryptPortalString(f3.dismissText).startsWith("Payer policy"),
+    "f3.dismissText decrypts for authorized use",
   );
 
   console.log("\n[smoke] all assertions passed ✓");

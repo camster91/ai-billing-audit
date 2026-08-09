@@ -1,4 +1,5 @@
 """Helper: source ollama key cleanly, run shadow_audit with --provider ollama."""
+
 import os
 import sys
 from pathlib import Path

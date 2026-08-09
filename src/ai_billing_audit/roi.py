@@ -52,23 +52,24 @@ on their own smartness-test runs.
 
 Tier names match templates/pricing.html (Solo / Practice / Network).
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 
 PLAN_PRICING_CAD: dict[str, dict[str, Any]] = {
-    "solo":     {"monthly_price_cad": 499,  "max_claims_per_month": 1000},
+    "solo": {"monthly_price_cad": 499, "max_claims_per_month": 1000},
     "practice": {"monthly_price_cad": 1499, "max_claims_per_month": 3000},
-    "network":  {"monthly_price_cad": 2999, "max_claims_per_month": None},
+    "network": {"monthly_price_cad": 2999, "max_claims_per_month": None},
 }
 
 # Conservative defaults pulled from CMS / industry sources.
-DEFAULT_DENIAL_RATE = 0.075       # 7.5% of claims denied on first submission
-DEFAULT_APPEAL_RATE = 0.50        # 50% of denials get appealed and recovered
-DEFAULT_AVG_CLAIM_USD = 190.0    # CMS commercial office-visit average
-DEFAULT_CATCH_RATE = 0.77        # v12 AHCIP val-set RECALL (README.md:7, 2026-06-23 post-leakage-fix); was 0.69 from F1, was 0.42 from v10
-DEFAULT_TIER = "practice"        # conservative middle tier
+DEFAULT_DENIAL_RATE = 0.075  # 7.5% of claims denied on first submission
+DEFAULT_APPEAL_RATE = 0.50  # 50% of denials get appealed and recovered
+DEFAULT_AVG_CLAIM_USD = 190.0  # CMS commercial office-visit average
+DEFAULT_CATCH_RATE = 0.77  # v12 AHCIP val-set RECALL (README.md:7, 2026-06-23 post-leakage-fix); was 0.69 from F1, was 0.42 from v10
+DEFAULT_TIER = "practice"  # conservative middle tier
 
 
 def tier_for_volume(monthly_claims: int) -> str:
@@ -115,9 +116,7 @@ def compute_roi(
 
     monthly_denials = monthly_claims * current_denial_rate
     monthly_recovered_no_zorva = monthly_denials * current_appeal_rate
-    monthly_revenue_lost_no_zorva = (
-        monthly_denials - monthly_recovered_no_zorva
-    )
+    monthly_revenue_lost_no_zorva = monthly_denials - monthly_recovered_no_zorva
 
     # Zorva catches (catch_rate) of the would-be denials and the
     # biller fixes them pre-submission. The catch_rate is
@@ -138,7 +137,8 @@ def compute_roi(
     annual_net_savings_usd = annual_revenue_saved_usd - annual_plan_cost_cad
     annual_roi_pct = (
         (annual_net_savings_usd / annual_plan_cost_cad) * 100
-        if annual_plan_cost_cad > 0 else 0.0
+        if annual_plan_cost_cad > 0
+        else 0.0
     )
 
     return {

@@ -337,7 +337,9 @@ def test_overlap_above_upper_band_skips_judge() -> None:
     )
     almost_same_with_period = almost_same + "."
     pred = _finding("missing_dx", "R00.2", almost_same, financial_impact=100.0)
-    gt = _finding("missing_dx", "R00.2", almost_same_with_period, financial_impact=100.0)
+    gt = _finding(
+        "missing_dx", "R00.2", almost_same_with_period, financial_impact=100.0
+    )
 
     from ai_billing_audit.grading import _jaccard, _tokenize
 
@@ -360,7 +362,15 @@ def test_overlap_above_upper_band_skips_judge() -> None:
 @pytest.mark.parametrize(
     "raw",
     ["", " ", "?", "maybe", "unsure", "I'm not sure", "I cannot determine"],
-    ids=["empty", "whitespace", "question_mark", "maybe", "unsure", "not_sure", "cannot_determine"],
+    ids=[
+        "empty",
+        "whitespace",
+        "question_mark",
+        "maybe",
+        "unsure",
+        "not_sure",
+        "cannot_determine",
+    ],
 )
 def test_abstain_responses_fall_back_to_deterministic(raw: str) -> None:
     grader = FallbackGrader(
@@ -477,8 +487,18 @@ def test_accepts_quote_field_alias() -> None:
         judge_provider="anthropic",
         judge_model="claude-haiku-4-5",
     )
-    pred = {"category": "missing_dx", "suggested_code": "R00.2", "quote": PRED_QUOTE, "financial_impact": 100.0}
-    gt = {"category": "missing_dx", "suggested_code": "R00.2", "quote": GT_QUOTE, "financial_impact": 100.0}
+    pred = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": PRED_QUOTE,
+        "financial_impact": 100.0,
+    }
+    gt = {
+        "category": "missing_dx",
+        "suggested_code": "R00.2",
+        "quote": GT_QUOTE,
+        "financial_impact": 100.0,
+    }
     result = grader.grade(pred, gt)
     assert result.judge_used is True
     assert result.score == 1.0
@@ -498,7 +518,11 @@ def test_grade_with_fallback_promotes_fp_to_tp_on_yes() -> None:
         judge_provider="anthropic",
         judge_model="claude-haiku-4-5",
     )
-    pred = [_finding("missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0)]
+    pred = [
+        _finding(
+            "missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0
+        )
+    ]
     gt = [_finding("missing_dx", "R00.2", GT_QUOTE, financial_impact=100.0)]
 
     # Sanity: the deterministic matcher rejects this pair, and the
@@ -528,7 +552,11 @@ def test_grade_with_fallback_leaves_alone_on_judge_no() -> None:
         judge_provider="anthropic",
         judge_model="claude-haiku-4-5",
     )
-    pred = [_finding("missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0)]
+    pred = [
+        _finding(
+            "missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0
+        )
+    ]
     gt = [_finding("missing_dx", "R00.2", GT_QUOTE, financial_impact=100.0)]
 
     result = grade_with_fallback(pred, gt, grader)
@@ -567,7 +595,11 @@ def test_grade_with_fallback_abstain_does_not_promote() -> None:
         judge_provider="anthropic",
         judge_model="claude-haiku-4-5",
     )
-    pred = [_finding("missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0)]
+    pred = [
+        _finding(
+            "missing_dx", "R00.2", PRED_QUOTE_BELOW_THRESHOLD, financial_impact=100.0
+        )
+    ]
     gt = [_finding("missing_dx", "R00.2", GT_QUOTE, financial_impact=100.0)]
 
     result = grade_with_fallback(pred, gt, grader)

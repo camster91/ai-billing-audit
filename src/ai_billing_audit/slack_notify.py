@@ -52,6 +52,7 @@ two would force every webhook subscriber to opt out of Slack
 quirks and vice versa. Keeping them separate means an
 integration can register either kind independently.
 """
+
 from __future__ import annotations
 
 import json
@@ -63,6 +64,12 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -77,9 +84,7 @@ _DEFAULT_LOG_PATH = "/app/logs/slack_integrations.jsonl"
 # the new event; the dispatcher is event-agnostic.
 EVENT_AUDIT_COMPLETE = "audit_complete"
 EVENT_HIGH_FINDING = "high_finding"
-_KNOWN_EVENTS: frozenset[str] = frozenset(
-    {EVENT_AUDIT_COMPLETE, EVENT_HIGH_FINDING}
-)
+_KNOWN_EVENTS: frozenset[str] = frozenset({EVENT_AUDIT_COMPLETE, EVENT_HIGH_FINDING})
 
 
 def _log_path() -> Path:
@@ -171,10 +176,7 @@ def register_slack(
             record["slack_id"],
             unknown,
         )
-    path = _log_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, separators=(",", ":")) + "\n")
+    append_encrypted_json_record(_log_path(), record)
     return record
 
 
@@ -188,23 +190,14 @@ def list_integrations(*, clinic_id: str | None = None) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     out: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                _log.warning("skipping malformed slack log row")
-                continue
-            # Skip delivery-log rows; they live in the same file
-            # but are distinguished by the ``_kind`` key.
-            if not isinstance(rec, dict) or rec.get("_kind") == "delivery":
-                continue
-            if clinic_id and rec.get("clinic_id") != clinic_id:
-                continue
-            out.append(rec)
+    for rec in read_encrypted_json_records(path):
+        # Skip delivery-log rows; they live in the same file
+        # but are distinguished by the ``_kind`` key.
+        if rec.get("_kind") == "delivery":
+            continue
+        if clinic_id and rec.get("clinic_id") != clinic_id:
+            continue
+        out.append(rec)
     return out
 
 
@@ -219,10 +212,12 @@ def _append_delivery_log(entry: dict[str, Any]) -> None:
     path to back up. The ``_kind`` discriminator on delivery
     rows keeps :func:`list_integrations` from surfacing them.
     """
-    path = _log_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+    append_encrypted_json_record(_log_path(), entry)
+
+
+def migrate_slack_log() -> int:
+    """Encrypt the legacy Slack registration and delivery log."""
+    return migrate_plaintext_jsonl(_log_path())
 
 
 def _build_blocks(event: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -255,7 +250,10 @@ def _build_blocks(event: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
         ]
         if summary:
             blocks.append(
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"> {summary[:300]}"}}
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"> {summary[:300]}"},
+                }
             )
         return blocks
     if event == EVENT_HIGH_FINDING:
@@ -267,17 +265,23 @@ def _build_blocks(event: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "type": "section",
                 "fields": [
-                    {"type": "mrkdwn", "text": f"*Encounter*\n`{payload.get('encounter_id', '?')}`"},
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Encounter*\n`{payload.get('encounter_id', '?')}`",
+                    },
                     {"type": "mrkdwn", "text": f"*Rule*\n`{rule}`"},
                     {"type": "mrkdwn", "text": f"*Action*\n{action}"},
-                    {"type": "mrkdwn", "text": f"*Severity*\nhigh"},
+                    {"type": "mrkdwn", "text": "*Severity*\nhigh"},
                 ],
             },
         ]
         quote = payload.get("quote")
         if isinstance(quote, str) and quote.strip():
             blocks.append(
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"> {quote[:300]}"}}
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"> {quote[:300]}"},
+                }
             )
         return blocks
     # Fallback for unknown events: still emit *something* so the
@@ -285,7 +289,10 @@ def _build_blocks(event: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {
             "type": "section",
-            "text": {"type": "mrkdwn", "text": f"*Zorva event: `{event}`*\n```json\n{json.dumps(payload, indent=2)[:1500]}\n```"},
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Zorva event: `{event}`*\n```json\n{json.dumps(payload, indent=2)[:1500]}\n```",
+            },
         }
     ]
 
@@ -360,7 +367,12 @@ def _deliver_one(
                 }
             )
             return ok
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        OSError,
+    ) as exc:
         _log.warning(
             "slack %s delivery to %s failed: %s",
             hook.get("slack_id"),
@@ -409,8 +421,7 @@ def notify_slack(
     subs = [
         h
         for h in list_integrations()
-        if (h.get("clinic_id") == clinic_id)
-        and (event in (h.get("events") or []))
+        if (h.get("clinic_id") == clinic_id) and (event in (h.get("events") or []))
     ]
     delivered = 0
     failed = 0

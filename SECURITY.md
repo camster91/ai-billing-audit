@@ -84,8 +84,8 @@ not retroactively applied to prior reports. Out-of-band
 
 ### In scope
 
-Anything that runs in the production ai-billing-audit stack
-on `ai-billing-audit.ashbi.ca` (or any successor domain):
+Anything in the checked-in ai-billing-audit stack, or on an operator-confirmed
+deployment of that stack:
 
 - The FastAPI app (`api` service in `docker-compose.yml`).
 - The operator portal (`apps/portal`).
@@ -149,19 +149,16 @@ If you self-host Zorva (the project is open source and the
    `docker-compose.yml` shipped in the repo already
    does this; if you change the bind, you take on the
    TLS-termination responsibility.
-3. **Rotate `POSTGRES_PASSWORD`** away from the
-   default `audit` value, and rotate the
-   `MINIMAX_API_KEY` together with the LLM provider
-   you point at.
-4. **Keep the `caddy` image on the custom build**
-   (`Dockerfile.caddy`) so the `rate_limit` module
-   stays compiled in. The stock `caddy:2-alpine`
-   image does not ship it.
-5. **Back up the `ai_billing_audit_logs` volume** — it
-   contains `audit_trail.jsonl` and the operator action
-   history. The `feat: backup + restore with Fernet
-   encryption` commit (`ad5431e`) ships a `backup.py`
-   helper that handles the encryption; use it.
+3. **Supply unique FastAPI and portal PostgreSQL passwords.** Compose and the
+   deploy scripts fail closed when either password is absent; there is no
+   supported production default. Rotate provider credentials independently.
+4. **Use the stock `caddy:2-alpine` image declared by Compose.** The public TLS
+   edge owns external rate limiting; the in-stack Caddy service is loopback
+   only and must not be exposed directly.
+5. **Inventory and protect every authoritative store.** The checked-in backup
+   scripts currently cover the FastAPI PostgreSQL database; portal PostgreSQL
+   and required named volumes remain a production backup/restore gate tracked
+   in issue #12.
 
 ---
 

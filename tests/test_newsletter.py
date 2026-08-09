@@ -7,6 +7,7 @@ route writes a 'contact_request' event with
 request_type='demo_request' so the marketing lead can
 distinguish demo asks from sales asks.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -21,6 +22,7 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -137,32 +139,45 @@ def test_demo_request_uses_distinct_audit_trail_row(client):
     produce distinct audit-trail rows so the marketing lead
     can filter by request_type."""
     # POST to /contact
-    client.post("/contact", data={
-        "name": "Sales Lead",
-        "clinic": "Sales Clinic",
-        "email": "sales@example.com",
-        "monthly_claims": "2000",
-    })
+    client.post(
+        "/contact",
+        data={
+            "name": "Sales Lead",
+            "clinic": "Sales Clinic",
+            "email": "sales@example.com",
+            "monthly_claims": "2000",
+        },
+    )
     # POST to /demo-request
-    client.post("/demo-request", data={
-        "name": "Demo Lead",
-        "clinic": "Demo Clinic",
-        "email": "demo@example.com",
-        "monthly_claims": "3000",
-    })
+    client.post(
+        "/demo-request",
+        data={
+            "name": "Demo Lead",
+            "clinic": "Demo Clinic",
+            "email": "demo@example.com",
+            "monthly_claims": "3000",
+        },
+    )
     # Read the audit trail and confirm both events exist
     from pathlib import Path
     import os
+
     log_path = Path(os.environ["AUDIT_TRAIL_LOG"])
     if log_path.exists():
-        content = log_path.read_text()
+        from ai_billing_audit.clinical_note_storage import (
+            read_encrypted_json_records,
+        )
+
+        rows = read_encrypted_json_records(log_path)
         # Both email hashes should appear in the trail
         # SHA-256 of "sales@example.com" / "demo@example.com" lowercased
         import hashlib
+
         sales_hash = hashlib.sha256(b"sales@example.com").hexdigest()
         demo_hash = hashlib.sha256(b"demo@example.com").hexdigest()
-        assert sales_hash[:16] in content or "sales@example.com" in content
-        assert demo_hash[:16] in content or "demo@example.com" in content
+        user_identifiers = {str(row.get("user_identifier", "")) for row in rows}
+        assert sales_hash in user_identifiers
+        assert demo_hash in user_identifiers
 
 
 # ─── /newsletter and /demo-request are in the public whitelist ──

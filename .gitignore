@@ -91,13 +91,13 @@ runs/shadow/_live_smoke_*.json
 # Validation run artifacts (regenerable via scripts/val_ca.py).
 runs/shadow/val_ca-2026*
 
-# Junk files from mis-quoted shell commands
-" if v else \"\"}\"\"')\n"
-
 # One-off diagnostic / probe scripts (audit-tooling, not part of source)
 scripts/ab_prompt.py
 scripts/analyze_failures.py
 scripts/audit_one.py
+
+# Derived from the canonical SQLite Prisma model by the portal build.
+apps/portal/prisma/postgresql/schema.prisma
 scripts/calibration_report.py
 scripts/check_*.py
 scripts/daily_report.py

@@ -162,12 +162,11 @@ export default async function DashboardPage() {
           firstEncounterFileName ? (
             <section className={styles.card}>
               <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>
-                First audit queued
+                First encounter securely staged
               </h2>
               <p className={styles.muted} style={{ margin: 0 }}>
-                We&rsquo;re running an audit on{" "}
-                <strong>{firstEncounterFileName}</strong>. You&rsquo;ll see
-                findings here as soon as the auditor finishes.
+                <strong>{firstEncounterFileName}</strong> is encrypted and
+                ready for processing. An audit has not been queued yet.
               </p>
             </section>
           ) : null}
@@ -177,7 +176,7 @@ export default async function DashboardPage() {
               testId="dashboard-fresh-tenant-cta"
               variant="block"
               title="No encounters yet"
-              description="Upload a clinical note and we'll run the pre-bill audit. Findings appear in your inbox as soon as the auditor finishes."
+              description="Securely stage your first encounter. Audit processing begins after your clinic's engine integration is enabled."
               primaryAction={{
                 label: "Upload your first encounter",
                 href: onboardingWizardHref(),

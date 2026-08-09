@@ -38,15 +38,21 @@ once the timestamp passes. The dashboard's default filter
 ``include_snoozed=false`` hides only ACTIVE snoozes; expired
 snoozes are treated the same as never-snoozed.
 """
+
 from __future__ import annotations
 
-import json
 import os
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
+
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
 
 
 # Default JSONL path. Overridable via SNOOZE_LOG for tests.
@@ -114,9 +120,7 @@ class SnoozeStore:
 
     def append(self, entry: SnoozeEntry) -> SnoozeEntry:
         """Append a snooze/unsnooze row to the JSONL log."""
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.log_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry.to_dict()) + "\n")
+        append_encrypted_json_record(self.log_path, entry.to_dict())
         return entry
 
     def snooze(
@@ -177,20 +181,18 @@ class SnoozeStore:
         """Return every row in the log, oldest first. Skips malformed lines."""
         if not self.log_path.is_file():
             return []
-        rows: list[SnoozeEntry] = []
-        with self.log_path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rows.append(SnoozeEntry.from_dict(json.loads(line)))
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    # Malformed row — skip rather than blow up the
-                    # whole dashboard render. Real prod would
-                    # quarantine these; for v0 we just keep going.
-                    continue
+        rows = [
+            SnoozeEntry.from_dict(record)
+            for record in read_encrypted_json_records(self.log_path)
+        ]
+        # Malformed row — skip rather than blow up the
+        # whole dashboard render. Real prod would
+        # quarantine these; for v0 we just keep going.
         return rows
+
+    def migrate_plaintext_log(self) -> int:
+        """Encrypt this store's legacy plaintext log in place."""
+        return migrate_plaintext_jsonl(self.log_path)
 
     def entries_for(
         self, encounter_id: str, finding_id: str | None = None
@@ -198,7 +200,8 @@ class SnoozeStore:
         """Return rows for an encounter (optionally narrowed to one finding),
         oldest first."""
         return [
-            e for e in self.all_entries()
+            e
+            for e in self.all_entries()
             if e.encounter_id == encounter_id
             and (finding_id is None or e.finding_id == finding_id)
         ]
@@ -279,6 +282,7 @@ def _parse_iso_ts(s: str) -> float | None:
     try:
         # Python 3.11+ fromisoformat accepts the trailing 'Z'.
         from datetime import datetime
+
         return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
     except (TypeError, ValueError):
         return None

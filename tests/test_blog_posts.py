@@ -7,6 +7,7 @@ in feeds.BLOG_POSTS has a matching detail entry, the route renders
 without 500, the post body is the long-form version, and unknown
 slugs return 404.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -19,6 +20,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -27,6 +29,7 @@ def client(monkeypatch):
 def test_blog_post_route_exists_for_every_post_in_feeds(client):
     """Every post in feeds.BLOG_POSTS must have a working detail page."""
     from ai_billing_audit.feeds import BLOG_POSTS
+
     for post in BLOG_POSTS:
         # url_path is "/blog/{slug}" — extract the slug
         slug = post["url_path"].rsplit("/", 1)[-1]
@@ -72,7 +75,10 @@ def test_blog_post_contains_og_meta_for_sharing(client):
     # OG image is the same 1200x630 og-image.jpg
     assert "/static/og-image.jpg" in resp.text
     # OG type = article for proper Twitter card
-    assert 'property="og:type" content="article"' in resp.text or 'property="og:type"' in resp.text
+    assert (
+        'property="og:type" content="article"' in resp.text
+        or 'property="og:type"' in resp.text
+    )
 
 
 def test_blog_posts_data_matches_feeds_metadata(client):
@@ -80,6 +86,7 @@ def test_blog_posts_data_matches_feeds_metadata(client):
     + published so the RSS feed teaser matches the detail page."""
     from ai_billing_audit.blog_posts import BLOG_POSTS_DETAIL
     from ai_billing_audit.feeds import BLOG_POSTS
+
     feed_by_id = {p["id"]: p for p in BLOG_POSTS}
     for post_id, detail in BLOG_POSTS_DETAIL.items():
         assert post_id in feed_by_id, (
@@ -94,6 +101,7 @@ def test_blog_post_body_is_substantive(client):
     """Each post body has at least 1,000 characters of long-form
     content (vs. the ~200-char teaser in feeds.BLOG_POSTS)."""
     from ai_billing_audit.blog_posts import BLOG_POSTS_DETAIL
+
     for post_id, detail in BLOG_POSTS_DETAIL.items():
         body_len = len(detail.get("body_html", ""))
         assert body_len > 1000, (

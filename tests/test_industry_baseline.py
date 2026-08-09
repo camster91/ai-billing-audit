@@ -23,13 +23,12 @@ What's pinned
 
 No LLM, no network. Test logs redirected to tmp JSONL files.
 """
+
 from __future__ import annotations
 
 import importlib
-import json
 import sys
 import time as time_mod
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -44,6 +43,9 @@ from ai_billing_audit import api as api_mod  # noqa: E402
 from ai_billing_audit import audit_actions as aa_mod  # noqa: E402
 from ai_billing_audit import feedback as fb_mod  # noqa: E402
 from ai_billing_audit import industry_baseline as ib_mod  # noqa: E402
+from ai_billing_audit.clinical_note_storage import (  # noqa: E402
+    write_encrypted_json_records,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,10 +85,7 @@ def _iso_dt(dt) -> str:
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as fh:
-        for r in rows:
-            fh.write(json.dumps(r) + "\n")
+    write_encrypted_json_records(path, rows)
 
 
 def _audit_row(
@@ -218,9 +217,7 @@ def test_benchmark_known_metric_returns_position_and_percentiles(
     With no audit log data, clinic_value=0.0 → falls "below p50"
     (lower-is-better: a 0% denial rate is best-possible).
     """
-    r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark?metric=denial_rate"
-    )
+    r = client.get("/api/dashboard/clinic/default_biller/benchmark?metric=denial_rate")
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["metric"] == "denial_rate"
@@ -239,9 +236,7 @@ def test_benchmark_known_metric_returns_position_and_percentiles(
 def test_benchmark_unknown_metric_returns_400(
     client: TestClient,
 ) -> None:
-    r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark?metric=not_a_metric"
-    )
+    r = client.get("/api/dashboard/clinic/default_biller/benchmark?metric=not_a_metric")
     assert r.status_code == 400
     detail = r.json()["detail"]
     assert "not_a_metric" in detail
@@ -253,9 +248,7 @@ def test_benchmark_missing_metric_returns_400(
     client: TestClient,
 ) -> None:
     """No metric param → 400 (the endpoint requires it)."""
-    r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark"
-    )
+    r = client.get("/api/dashboard/clinic/default_biller/benchmark")
     assert r.status_code == 400
     detail = r.json()["detail"]
     assert "metric required" in detail
@@ -284,8 +277,7 @@ def test_benchmark_window_param_accepted(
         assert r.json()["window_days"] == int(w.rstrip("d"))
     # Out-of-set clamps to 30d
     r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark"
-        "?metric=denial_rate&window=42d"
+        "/api/dashboard/clinic/default_biller/benchmark?metric=denial_rate&window=42d"
     )
     assert r.status_code == 200
     assert r.json()["window_days"] == 30
@@ -302,28 +294,32 @@ def test_benchmark_windowed_data_changes_clinic_value(
     both rows do, so the rate changes.
     """
     now = time_mod.time()
-    in_window = now - 86400        # 1d ago
+    in_window = now - 86400  # 1d ago
     out_window = now - 60 * 86400  # 60d ago
 
     rows = [
-        _audit_row(encounter_id="enc_in", finding_id="f_1", ts=in_window, action="flag"),
-        _audit_row(encounter_id="enc_out", finding_id="f_1", ts=out_window, action="flag"),
-        _audit_row(encounter_id="enc_clean", finding_id="f_1", ts=in_window, action="append"),
+        _audit_row(
+            encounter_id="enc_in", finding_id="f_1", ts=in_window, action="flag"
+        ),
+        _audit_row(
+            encounter_id="enc_out", finding_id="f_1", ts=out_window, action="flag"
+        ),
+        _audit_row(
+            encounter_id="enc_clean", finding_id="f_1", ts=in_window, action="append"
+        ),
     ]
     _write_jsonl(fresh_logs["audit_log"], rows)
 
     # 7d window: 1 of 2 in-window encounters is flagged → 50%
     r7 = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark"
-        "?metric=denial_rate&window=7d"
+        "/api/dashboard/clinic/default_biller/benchmark?metric=denial_rate&window=7d"
     )
     assert r7.status_code == 200, r7.text
     assert r7.json()["clinic_value"] == 50.0
 
     # 90d window: 2 of 3 encounters flagged → 66.67%
     r90 = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark"
-        "?metric=denial_rate&window=90d"
+        "/api/dashboard/clinic/default_biller/benchmark?metric=denial_rate&window=90d"
     )
     assert r90.status_code == 200, r90.text
     assert abs(r90.json()["clinic_value"] - 66.67) < 0.01
@@ -334,9 +330,7 @@ def test_benchmark_time_to_act_metric_works(
 ) -> None:
     """time_to_act returns 200 with the right shape, even with
     no data (clinic_value=0.0 → below p50)."""
-    r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark?metric=time_to_act"
-    )
+    r = client.get("/api/dashboard/clinic/default_biller/benchmark?metric=time_to_act")
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["metric"] == "time_to_act"
@@ -351,9 +345,7 @@ def test_benchmark_time_to_act_metric_works(
 def test_benchmark_top_category_returns_breakdown(
     client: TestClient,
 ) -> None:
-    r = client.get(
-        "/api/dashboard/clinic/default_biller/benchmark?metric=top_category"
-    )
+    r = client.get("/api/dashboard/clinic/default_biller/benchmark?metric=top_category")
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["metric"] == "top_category"

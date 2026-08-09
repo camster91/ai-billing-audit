@@ -1,6 +1,6 @@
 {
   "best_val_f1": 1.0,
-  "artifact_dir": "/Users/biancabienaime/projects/ai-billing-audit/artifacts/miprov2_best_val_f1_1_0000_prog",
+  "artifact_dir": "C:\\Users\\camst\\Documents\\Codex\\2026-08-08\\can-we-review-the-ai-billing\\artifacts\\miprov2_best_val_f1_1_0000_prog",
   "train_size": 5,
   "val_size": 3,
   "total_trials": 84,

@@ -8,6 +8,7 @@
 
 import { randomBytes, createHash } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
+import { encryptPortalString } from "../src/lib/data-encryption";
 
 function sha256Hex(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -71,7 +72,7 @@ async function main() {
       patientHash,
       dateOfService: new Date("2026-06-15"),
       specialty: "Family Medicine",
-      clinicalNote,
+      clinicalNote: encryptPortalString(clinicalNote),
       claimId: claim.id,
       status: "awaiting_review",
     },
@@ -85,7 +86,9 @@ async function main() {
       billingRuleReference: "AMA CPT 2026 §99214 (moderate MDM)",
       currentCode: "99214",
       suggestedCode: "99213",
-      evidenceQuote: "BP 138/86, HR 72. Meds reviewed and adjusted.",
+      evidenceQuote: encryptPortalString(
+        "BP 138/86, HR 72. Meds reviewed and adjusted.",
+      ),
       estFinancialImpactCents: -3500,
       status: "pending",
     },
@@ -99,7 +102,7 @@ async function main() {
       billingRuleReference: "AMA Documentation Guidelines §3.2",
       currentCode: null,
       suggestedCode: null,
-      evidenceQuote: "Discussed lifestyle modifications.",
+      evidenceQuote: encryptPortalString("Discussed lifestyle modifications."),
       estFinancialImpactCents: 0,
       status: "pending",
     },

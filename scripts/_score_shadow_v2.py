@@ -36,6 +36,7 @@ Usage::
 
     python3 scripts/_score_shadow_v2.py runs/shadow/prospect_demo_100-<ts>.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -110,7 +111,9 @@ BUCKET_PATTERNS: dict[str, list[str]] = {
 }
 
 
-def matches_bucket(rule_id: str, category: str, explanation: str, patterns: list[str]) -> bool:
+def matches_bucket(
+    rule_id: str, category: str, explanation: str, patterns: list[str]
+) -> bool:
     """Return True if (rule_id OR category OR explanation) matches any pattern."""
     haystack = f"{rule_id} {category} {explanation}".lower()
     for pat in patterns:
@@ -121,8 +124,7 @@ def matches_bucket(rule_id: str, category: str, explanation: str, patterns: list
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("report", type=Path,
-                        help="Shadow runner JSON output")
+    parser.add_argument("report", type=Path, help="Shadow runner JSON output")
     args = parser.parse_args()
 
     if not args.report.is_file():
@@ -174,7 +176,10 @@ def main() -> int:
                     continue
                 for planted_b, patterns in BUCKET_PATTERNS.items():
                     if matches_bucket(
-                        single, f.get("category", ""), f.get("explanation", ""), patterns
+                        single,
+                        f.get("category", ""),
+                        f.get("explanation", ""),
+                        patterns,
                     ):
                         predicted_buckets.add(planted_b)
                         predicted_meta.append({**f, "matched_bucket": planted_b})
@@ -218,10 +223,15 @@ def main() -> int:
 
     precision = tp_total / (tp_total + fp_total) if (tp_total + fp_total) > 0 else 0.0
     recall = tp_total / (tp_total + fn_total) if (tp_total + fn_total) > 0 else 0.0
-    f1 = (2 * precision * recall / (precision + recall)
-          if (precision + recall) > 0 else 0.0)
+    f1 = (
+        2 * precision * recall / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
 
-    print(f"=== Blind-test scoring v2 (semantic bucket matching) — {args.report.name} ===")
+    print(
+        f"=== Blind-test scoring v2 (semantic bucket matching) — {args.report.name} ==="
+    )
     print()
     print(f"Encounters audited: {len(encounters)}")
     planted_total = sum(
@@ -230,9 +240,11 @@ def main() -> int:
     )
     print(f"Planted findings:   {planted_total}")
     audit_total = sum(
-        1 for e in encounters
+        1
+        for e in encounters
         for f in e.get("findings", [])
-        if f.get("rule_id") not in ("STUB_NO_DATA", "AUDIT_ERROR", "VALIDATION_ERROR", "")
+        if f.get("rule_id")
+        not in ("STUB_NO_DATA", "AUDIT_ERROR", "VALIDATION_ERROR", "")
     )
     print(f"Audit findings (real): {audit_total}")
     print()

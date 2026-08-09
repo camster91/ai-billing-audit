@@ -66,13 +66,11 @@ async function countQueries<T>(fn: () => Promise<T>): Promise<{ result: T; count
   // commented out because @types/prisma's typings now expose both
   // signatures; if a future Prisma upgrade narrows the type we can
   // re-enable them.
-  // @ts-ignore
   testPrisma.$on("query", handler);
   try {
     const result = await fn();
     return { result, count, samples };
   } finally {
-    // @ts-ignore
     testPrisma.$off?.("query", handler);
   }
 }

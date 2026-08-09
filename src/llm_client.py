@@ -57,7 +57,9 @@ _DEFAULT_PROVIDER = "minimax"
 # in the same module — those are the only two places that should ever
 # mention a provider name. Everything else in the codebase receives an
 # ``LLMClient``-typed value and never sees ``if provider == ...`` logic.
-SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"minimax", "claude", "openai", "gemini"})
+SUPPORTED_PROVIDERS: frozenset[str] = frozenset(
+    {"minimax", "claude", "openai", "gemini"}
+)
 
 # Maps each canonical provider name to the fully-qualified class path
 # that implements it. The four classes are populated by sibling task
@@ -70,9 +72,9 @@ SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"minimax", "claude", "openai", 
 # (protocol + factory shipped, implementations still in flight) viable.
 _PROVIDER_CLASS_PATHS: Mapping[str, str] = {
     "minimax": "src.llm_client:MinimaxClient",
-    "claude":  "src.llm_client:ClaudeClient",
-    "openai":  "src.llm_client:OpenAIClient",
-    "gemini":  "src.llm_client:GeminiClient",
+    "claude": "src.llm_client:ClaudeClient",
+    "openai": "src.llm_client:OpenAIClient",
+    "gemini": "src.llm_client:GeminiClient",
 }
 
 # Test override hook. When populated, the factory consults this
@@ -322,7 +324,11 @@ def create_llm_client(
     invariant by scanning the source for ``if`` statements that test
     the provider variable.
     """
-    chosen = provider if provider is not None else os.environ.get("LLM_PROVIDER", _DEFAULT_PROVIDER)
+    chosen = (
+        provider
+        if provider is not None
+        else os.environ.get("LLM_PROVIDER", _DEFAULT_PROVIDER)
+    )
     # Treat empty string the same as unset — empty env var is almost
     # always an operator typo (e.g. ``export LLM_PROVIDER=``) and
     # silently picking the default is the friendlier behaviour.
@@ -330,8 +336,7 @@ def create_llm_client(
         chosen = _DEFAULT_PROVIDER
     if chosen not in SUPPORTED_PROVIDERS:
         raise ValueError(
-            f"unknown LLM provider {chosen!r}; supported: "
-            f"{sorted(SUPPORTED_PROVIDERS)}"
+            f"unknown LLM provider {chosen!r}; supported: {sorted(SUPPORTED_PROVIDERS)}"
         )
 
     cls = _resolve_provider_class(chosen)
@@ -381,7 +386,7 @@ def create_llm_client(
 #   compatibility fallback). Model prefix is ``"gemini/..."``.
 
 import litellm  # noqa: E402  -- intentionally after the Protocol/factory so the
-                 # Protocol docstring is the first thing readers see.
+# Protocol docstring is the first thing readers see.
 
 _DEFAULT_TEMPERATURE = 0.0  # deterministic default; callers override per-call.
 
@@ -423,7 +428,9 @@ class MinimaxClient:
         api_key: str | None = None,
     ) -> None:
         self.model = model
-        self.api_key = api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        self.api_key = (
+            api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        )
         if not self.api_key:
             raise RuntimeError(
                 f"{self.api_key_env} is not set; export it or pass api_key= explicitly"
@@ -472,7 +479,9 @@ class ClaudeClient:
         api_key: str | None = None,
     ) -> None:
         self.model = model
-        self.api_key = api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        self.api_key = (
+            api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        )
         if not self.api_key:
             raise RuntimeError(
                 f"{self.api_key_env} is not set; export it or pass api_key= explicitly"
@@ -521,7 +530,9 @@ class OpenAIClient:
         api_key: str | None = None,
     ) -> None:
         self.model = model
-        self.api_key = api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        self.api_key = (
+            api_key if api_key is not None else os.environ.get(self.api_key_env, "")
+        )
         if not self.api_key:
             raise RuntimeError(
                 f"{self.api_key_env} is not set; export it or pass api_key= explicitly"
@@ -577,9 +588,8 @@ class GeminiClient:
         if api_key is not None:
             self.api_key = api_key
         else:
-            self.api_key = (
-                os.environ.get(self.api_key_env, "")
-                or os.environ.get(self.api_key_env_fallback, "")
+            self.api_key = os.environ.get(self.api_key_env, "") or os.environ.get(
+                self.api_key_env_fallback, ""
             )
         if not self.api_key:
             raise RuntimeError(

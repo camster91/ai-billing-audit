@@ -39,7 +39,7 @@ interface FPARTileProps {
  * — receives the computed FPAR object as a prop; the dashboard page
  * does the prisma work (via computeFPAR) and passes the result.
  */
-export function FPARTile({ tenantId, fpar, drillInHref }: FPARTileProps) {
+export function FPARTile({ fpar, drillInHref }: FPARTileProps) {
   const { auditsInWindow, acceptedUnchangedCount, rate, isStale } = fpar;
 
   // Rate interpretation: docs/APPROVAL_RATE_KPI.md §5 recommends

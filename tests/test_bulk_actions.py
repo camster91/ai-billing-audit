@@ -27,13 +27,12 @@ Lightweight, no network, no LLM. The routes are exercised via
 Uses a tmp JSONL path so tests never touch the production
 ``/app/logs/audit_trail.jsonl`` or ``/app/logs/feedback.jsonl``.
 """
+
 from __future__ import annotations
 
 import importlib
 import json
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -47,6 +46,9 @@ if str(SRC_ROOT) not in sys.path:
 from ai_billing_audit import audit_actions as aa_mod  # noqa: E402
 from ai_billing_audit import feedback as fb_mod  # noqa: E402
 from ai_billing_audit import api as api_mod  # noqa: E402
+from ai_billing_audit.clinical_note_storage import (  # noqa: E402
+    read_encrypted_json_records,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -104,18 +106,7 @@ def client(fresh_logs) -> TestClient:
 
 
 def _read_jsonl(path: Path) -> list[dict]:
-    if not path.is_file():
-        return []
-    out: list[dict] = []
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            out.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return out
+    return read_encrypted_json_records(path)
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +136,7 @@ def test_bulk_accept_writes_one_audit_row_and_per_finding_feedback(
     # Per-finding feedback rows should equal the sum of ground_truth
     # findings across the 50 encounters.
     expected_findings = sum(
-        len(rec.get("ground_truth", []))
-        for rec in _TRAIN_DATA[0:50]
+        len(rec.get("ground_truth", [])) for rec in _TRAIN_DATA[0:50]
     )
     assert body["applied_count"] == expected_findings
     assert body["skipped_count"] == 0
@@ -366,10 +356,7 @@ def test_bulk_accept_second_call_skips_already_accepted(
     r1 = client.post("/encounters/bulk-accept", json={"encounter_ids": ids})
     assert r1.status_code == 200
     body1 = r1.json()
-    expected_first = sum(
-        len(rec.get("ground_truth", []))
-        for rec in _TRAIN_DATA[0:20]
-    )
+    expected_first = sum(len(rec.get("ground_truth", [])) for rec in _TRAIN_DATA[0:20])
     assert body1["applied_count"] == expected_first
     assert body1["skipped_count"] == 0
 

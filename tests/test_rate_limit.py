@@ -15,6 +15,7 @@ Retry-After header. The middleware does NOT limit:
   * Auth-required routes (already gated by bearer)
   * Anything else
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,11 +33,13 @@ if str(SRC) not in sys.path:
 def client(monkeypatch):
     """Build a TestClient with a fresh rate-limit state."""
     import ai_billing_audit.api as api_mod
+
     # Reset the module-level rate-limit state so previous tests'
     # buckets don't carry over.
     if hasattr(api_mod, "_rate_limit_state"):
         api_mod._rate_limit_state.clear()
     from fastapi.testclient import TestClient
+
     return TestClient(api_mod.create_app())
 
 
@@ -147,6 +150,5 @@ def test_upload_route_is_rate_limited(client):
             )
         else:
             assert r.status_code == 429, (
-                f"request {i + 1} returned {r.status_code}; "
-                "expected 429 (rate limit)"
+                f"request {i + 1} returned {r.status_code}; expected 429 (rate limit)"
             )

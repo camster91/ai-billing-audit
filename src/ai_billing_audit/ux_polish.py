@@ -57,6 +57,12 @@ from fastapi import Depends, HTTPException, Request
 # partially-initialise this module in the process — circular).
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 
+from ai_billing_audit.clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
+
 
 # Lazy module-level directory resolution: read env on each call so
 # test fixtures that set ``UX_POLISH_LOG_DIR`` after import take
@@ -75,34 +81,44 @@ def _log_path(name: str) -> Path:
 def _append_jsonl(path: Path, record: dict[str, Any]) -> None:
     """Append a JSON record, ignoring disk failures (best-effort)."""
     try:
-        with path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record, sort_keys=True, default=str) + "\n")
+        append_encrypted_json_record(path, record)
     except OSError:
         pass
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Read authenticated records; a missing file is an empty store."""
+    return read_encrypted_json_records(path)
+
+
+def migrate_ux_logs() -> int:
+    """Encrypt every legacy UX state log in place."""
+    names = (
+        "audit_actions",
+        "undo_tokens",
+        "sticky_notes",
+        "encounter_order",
+        "rule_tuning",
+        "llm_choice",
+        "notifications",
+        "last_login",
+        "re_engagement_sent",
+        "email_prefs",
+    )
+    return sum(migrate_plaintext_jsonl(_log_path(name)) for name in names)
 
 
 # ---------------------------------------------------------------------------
 # t_a852e3fb — recent activity feed on home page
 # ---------------------------------------------------------------------------
 
+
 def recent_activity(limit: int = 10) -> list[dict[str, Any]]:
     """Return the last ``limit`` audit-actions events for the home page feed."""
     path = _log_path("audit_actions")
     if not path.exists():
         return []
-    rows: list[dict[str, Any]] = []
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rows.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        return []
+    rows = _read_jsonl(path)
     rows.reverse()
     return rows[:limit]
 
@@ -135,24 +151,13 @@ def consume_undo_token(token: str) -> dict[str, Any] | None:
     path = _log_path("undo_tokens")
     if not path.exists():
         return None
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if rec.get("token") != token:
-                    continue
-                age = time.time() - float(rec.get("ts", 0))
-                if age > UNDO_WINDOW_SECONDS:
-                    return None
-                return rec
-    except OSError:
-        return None
+    for rec in _read_jsonl(path):
+        if rec.get("token") != token:
+            continue
+        age = time.time() - float(rec.get("ts", 0))
+        if age > UNDO_WINDOW_SECONDS:
+            return None
+        return rec
     return None
 
 
@@ -241,6 +246,7 @@ def apply_quick_filter(name: str) -> dict[str, Any]:
 # t_71c708d3 — this-week panel
 # ---------------------------------------------------------------------------
 
+
 def this_week_summary(events: list[dict[str, Any]]) -> dict[str, int]:
     cutoff = time.time() - 7 * 86400
     audited = flagged = dismissed = 0
@@ -279,6 +285,7 @@ PRINT_CSS = """
 # t_005e810a — inline highlight filter (returns HTML-safe spans)
 # ---------------------------------------------------------------------------
 
+
 def highlight_quote(text: str, quote: str) -> str:
     """Return ``text`` with ``quote`` wrapped in <mark class='finding-quote'>.
 
@@ -288,8 +295,10 @@ def highlight_quote(text: str, quote: str) -> str:
     """
     if not text or not quote:
         from html import escape
+
         return escape(text or "")
     from html import escape
+
     lower_text = text.lower()
     lower_quote = quote.lower()
     idx = lower_text.find(lower_quote)
@@ -297,7 +306,7 @@ def highlight_quote(text: str, quote: str) -> str:
         return escape(text)
     return (
         escape(text[:idx])
-        + "<mark class=\"finding-quote\">"
+        + '<mark class="finding-quote">'
         + escape(text[idx : idx + len(quote)])
         + "</mark>"
         + escape(text[idx + len(quote) :])
@@ -334,23 +343,11 @@ def rule_lookup(rule_id: str) -> dict[str, str] | None:
 # t_d609557c — audit-log export (CSV or JSON)
 # ---------------------------------------------------------------------------
 
+
 def export_audit_log(fmt: str = "json") -> tuple[str, str, str]:
     """Return (filename, content_type, body) for the audit log export."""
     path = _log_path("audit_actions")
-    rows: list[dict[str, Any]] = []
-    if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rows.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
-        except OSError:
-            rows = []
+    rows = _read_jsonl(path)
     if fmt == "csv":
         buf = io.StringIO()
         if rows:
@@ -364,9 +361,7 @@ def export_audit_log(fmt: str = "json") -> tuple[str, str, str]:
         # t_d609557c — privacy officer prefers JSONL because it
         # streams nicely into jq and won't balloon memory on large
         # exports.
-        body = "".join(
-            json.dumps(r, sort_keys=True, default=str) + "\n" for r in rows
-        )
+        body = "".join(json.dumps(r, sort_keys=True, default=str) + "\n" for r in rows)
         return "audit-log.jsonl", "application/x-ndjson", body
     return (
         "audit-log.json",
@@ -378,6 +373,7 @@ def export_audit_log(fmt: str = "json") -> tuple[str, str, str]:
 # ---------------------------------------------------------------------------
 # t_d9713083 — sticky notes per encounter
 # ---------------------------------------------------------------------------
+
 
 def sticky_note_get(encounter_id: str, *, user_id: str | None = None) -> str:
     """Return the most-recent sticky note for ``encounter_id``.
@@ -392,26 +388,15 @@ def sticky_note_get(encounter_id: str, *, user_id: str | None = None) -> str:
         return ""
     latest: str = ""
     latest_ts: float = 0.0
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if rec.get("encounter_id") != encounter_id:
-                    continue
-                if user_id is not None and rec.get("user_id") != user_id:
-                    continue
-                ts = float(rec.get("ts", 0))
-                if ts >= latest_ts:
-                    latest_ts = ts
-                    latest = str(rec.get("note", ""))
-    except OSError:
-        return ""
+    for rec in _read_jsonl(path):
+        if rec.get("encounter_id") != encounter_id:
+            continue
+        if user_id is not None and rec.get("user_id") != user_id:
+            continue
+        ts = float(rec.get("ts", 0))
+        if ts >= latest_ts:
+            latest_ts = ts
+            latest = str(rec.get("note", ""))
     return latest
 
 
@@ -431,6 +416,7 @@ def sticky_note_set(encounter_id: str, user_id: str, note: str) -> None:
 # t_b0e3dd73 — drag-drop reorder priority
 # ---------------------------------------------------------------------------
 
+
 def reorder_set(user_id: str, ordering: list[str]) -> None:
     """Persist the biller's custom encounter ordering."""
     _append_jsonl(
@@ -447,27 +433,17 @@ def reorder_set(user_id: str, ordering: list[str]) -> None:
 # t_0ea1cdce — per-clinic rule tuning
 # ---------------------------------------------------------------------------
 
+
 def rule_tuning_get(clinic_id: str) -> dict[str, list[str]]:
     """Return {enabled: [...], suppressed: [...]} for the clinic."""
     path = _log_path("rule_tuning")
     out: dict[str, list[str]] = {"enabled": [], "suppressed": []}
     if not path.exists():
         return out
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if rec.get("clinic_id") == clinic_id:
-                    out["enabled"] = list(rec.get("enabled", []))
-                    out["suppressed"] = list(rec.get("suppressed", []))
-    except OSError:
-        return out
+    for rec in _read_jsonl(path):
+        if rec.get("clinic_id") == clinic_id:
+            out["enabled"] = list(rec.get("enabled", []))
+            out["suppressed"] = list(rec.get("suppressed", []))
     return out
 
 
@@ -487,6 +463,7 @@ def rule_tuning_set(clinic_id: str, enabled: list[str], suppressed: list[str]) -
 # t_24c99ece — per-tenant LLM provider + model selection
 # ---------------------------------------------------------------------------
 
+
 def llm_choice_get(clinic_id: str) -> dict[str, str]:
     out: dict[str, str] = {
         "clinic_id": clinic_id,
@@ -498,26 +475,14 @@ def llm_choice_get(clinic_id: str) -> dict[str, str]:
     # applies to LLM selection (privacy officer can see who picked
     # which model and when).
     path = _log_path("llm_choice")
-    if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if rec.get("clinic_id") == clinic_id:
-                        p = str(rec.get("provider", "")).strip()
-                        m = str(rec.get("model", "")).strip()
-                        if p:
-                            out["provider"] = p
-                        if m:
-                            out["model"] = m
-        except OSError:
-            pass
+    for rec in _read_jsonl(path):
+        if rec.get("clinic_id") == clinic_id:
+            p = str(rec.get("provider", "")).strip()
+            m = str(rec.get("model", "")).strip()
+            if p:
+                out["provider"] = p
+            if m:
+                out["model"] = m
     return out
 
 
@@ -561,24 +526,10 @@ def llm_choice_set(
 # t_59fe7e05 — in-app notification feed
 # ---------------------------------------------------------------------------
 
+
 def notification_feed(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
     path = _log_path("notifications")
-    rows: list[dict[str, Any]] = []
-    if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if rec.get("user_id") == user_id:
-                        rows.append(rec)
-        except OSError:
-            rows = []
+    rows = [rec for rec in _read_jsonl(path) if rec.get("user_id") == user_id]
     rows.sort(key=lambda r: float(r.get("ts", 0)), reverse=True)
     return rows[:limit]
 
@@ -622,25 +573,10 @@ def notification_mark_read(user_id: str, event_id: str) -> bool:
     path = _log_path("notifications")
     if not path.exists():
         return False
-    found = False
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if (
-                    rec.get("user_id") == user_id
-                    and rec.get("event_id") == event_id
-                ):
-                    found = True
-                    break
-    except OSError:
-        return False
+    found = any(
+        rec.get("user_id") == user_id and rec.get("event_id") == event_id
+        for rec in _read_jsonl(path)
+    )
     if not found:
         return False
     _append_jsonl(
@@ -672,23 +608,11 @@ def re_engagement_status(user_id: str) -> dict[str, Any]:
     """
     last_login_ts: float | None = None
     login_path = _log_path("last_login")
-    if login_path.exists():
-        try:
-            with login_path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if rec.get("user_id") == user_id:
-                        ts = float(rec.get("ts", 0))
-                        if ts > (last_login_ts or 0):
-                            last_login_ts = ts
-        except OSError:
-            last_login_ts = None
+    for rec in _read_jsonl(login_path):
+        if rec.get("user_id") == user_id:
+            ts = float(rec.get("ts", 0))
+            if ts > (last_login_ts or 0):
+                last_login_ts = ts
 
     now = time.time()
     days_since: float | None = None
@@ -698,29 +622,15 @@ def re_engagement_status(user_id: str) -> dict[str, Any]:
     # Have we already sent a re-engagement nudge in the last 7 days?
     nudge_already_sent = False
     sent_path = _log_path("re_engagement_sent")
-    if sent_path.exists():
-        try:
-            with sent_path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if rec.get("user_id") == user_id:
-                        ts = float(rec.get("ts", 0))
-                        if (now - ts) <= 7 * 86400.0:
-                            nudge_already_sent = True
-                            break
-        except OSError:
-            nudge_already_sent = False
+    for rec in _read_jsonl(sent_path):
+        if rec.get("user_id") == user_id:
+            ts = float(rec.get("ts", 0))
+            if (now - ts) <= 7 * 86400.0:
+                nudge_already_sent = True
+                break
 
     should_send = (
-        days_since is not None
-        and days_since >= 7.0
-        and not nudge_already_sent
+        days_since is not None and days_since >= 7.0 and not nudge_already_sent
     )
 
     return {
@@ -736,27 +646,17 @@ def re_engagement_status(user_id: str) -> dict[str, Any]:
 # t_b716e54c + t_77c0c140 + t_e7421098 — email prefs (opt-in toggles)
 # ---------------------------------------------------------------------------
 
+
 def email_pref_get(user_id: str) -> dict[str, bool]:
     path = _log_path("email_prefs")
     out = {"digest_daily": False, "reengagement_7d": True, "welcome": True}
     if not path.exists():
         return out
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if rec.get("user_id") == user_id:
-                    for k, v in rec.items():
-                        if k in out and isinstance(v, bool):
-                            out[k] = v
-    except OSError:
-        return out
+    for rec in _read_jsonl(path):
+        if rec.get("user_id") == user_id:
+            for k, v in rec.items():
+                if k in out and isinstance(v, bool):
+                    out[k] = v
     return out
 
 
@@ -764,13 +664,16 @@ def email_pref_set(user_id: str, **flags: bool) -> dict[str, bool]:
     merged = email_pref_get(user_id)
     merged.update({k: bool(v) for k, v in flags.items() if k in merged})
     merged["user_id"] = user_id  # type: ignore[assignment]
-    _append_jsonl(_log_path("email_prefs"), {"user_id": user_id, **merged, "ts": time.time()})
+    _append_jsonl(
+        _log_path("email_prefs"), {"user_id": user_id, **merged, "ts": time.time()}
+    )
     return merged
 
 
 # ---------------------------------------------------------------------------
 # t_7e558a6a — bulk action confirmation validation
 # ---------------------------------------------------------------------------
+
 
 def bulk_confirm_validate(payload: dict[str, Any]) -> tuple[bool, str]:
     """Return (ok, message). Used by the bulk-confirm modal.
@@ -837,6 +740,7 @@ def wcag_status() -> dict[str, Any]:
 # Route registration (idempotent)
 # ---------------------------------------------------------------------------
 
+
 def register_routes(app: Any) -> None:
     """Attach the UX-polish routes to the FastAPI app.
 
@@ -899,9 +803,7 @@ def register_routes(app: Any) -> None:
         # parameter (any caller could read any user's feed by
         # passing a forged user_id). Now resolved from the
         # authenticated session.
-        return JSONResponse(
-            {"items": notification_feed(user.user_id or "dev_user")}
-        )
+        return JSONResponse({"items": notification_feed(user.user_id or "dev_user")})
 
     @app.post("/api/notifications", response_class=JSONResponse)
     async def api_notifications_record(
@@ -1028,9 +930,7 @@ def register_routes(app: Any) -> None:
         except Exception:
             body = {}
         note = str(body.get("note", ""))[:2000]
-        sticky_note_set(
-            encounter_id, user.user_id or "dev_user", note
-        )
+        sticky_note_set(encounter_id, user.user_id or "dev_user", note)
         return JSONResponse({"ok": True, "len": len(note)})
 
     @app.post("/api/encounters/reorder", response_class=JSONResponse)
@@ -1047,9 +947,7 @@ def register_routes(app: Any) -> None:
         ordering = body.get("ordering") or []
         if not isinstance(ordering, list):
             raise HTTPException(status_code=400, detail="ordering must be a list")
-        reorder_set(
-            user.user_id or "dev_user", [str(x) for x in ordering]
-        )
+        reorder_set(user.user_id or "dev_user", [str(x) for x in ordering])
         return JSONResponse({"ok": True, "n": len(ordering)})
 
     @app.get("/api/clinic/{clinic_id}/rules", response_class=JSONResponse)

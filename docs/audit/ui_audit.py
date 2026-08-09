@@ -8,10 +8,8 @@ horizontal scroll, tap-target sizing, dark-mode toggle / FOUC).
 Outputs go to /tmp/portal-audit/screenshots/ and a JSON report at
 /tmp/portal-audit/audit.json. The downstream writer ingests both.
 """
+
 import json
-import os
-import sys
-import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -71,7 +69,9 @@ def main():
                 )
                 h_scroll = scroll_w > client_w + 1
                 # Page size
-                page_height = page.evaluate("() => document.documentElement.scrollHeight")
+                page_height = page.evaluate(
+                    "() => document.documentElement.scrollHeight"
+                )
                 shot_path = SHOTS / f"{label}_{vname}.png"
                 page.screenshot(path=str(shot_path), full_page=True)
                 # Above-the-fold snapshot for CTA checks
@@ -133,7 +133,8 @@ def main():
                     )
                 # Pricing teaser check on home only — look for any /pricing link in viewport
                 pricing_link_above_fold = any(
-                    c["aboveFold"] and ("/pricing" in c["href"] or "pricing" in c["text"].lower())
+                    c["aboveFold"]
+                    and ("/pricing" in c["href"] or "pricing" in c["text"].lower())
                     for c in cta_locators
                 )
                 key = f"{label}_{vname}"
@@ -164,9 +165,7 @@ def main():
             initial_bg = page.evaluate(
                 "() => getComputedStyle(document.body).backgroundColor"
             )
-            initial_color = page.evaluate(
-                "() => getComputedStyle(document.body).color"
-            )
+            initial_color = page.evaluate("() => getComputedStyle(document.body).color")
         except Exception as e:
             report["errors"].append(f"FOUC capture: {e}")
             initial_bg = initial_color = "?"

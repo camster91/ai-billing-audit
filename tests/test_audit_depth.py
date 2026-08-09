@@ -1,4 +1,5 @@
 """Tests for audit_depth module (kanban t_e2c5afab)."""
+
 from __future__ import annotations
 
 import json

@@ -32,11 +32,8 @@ from pathlib import Path
 import pytest
 
 from ai_billing_audit.synth_agent import (
-    TIERS,
-    VARIANTS,
     generate_encounter,
     generate_suite,
-    tier_variants,
 )
 
 
@@ -70,14 +67,17 @@ def test_two_calls_same_seed_inprocess_are_byte_identical():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("tier,variant", [
-    ("EASY", "clean"),
-    ("EASY", "flagged"),
-    ("MEDIUM", "clean"),
-    ("MEDIUM", "flagged"),
-    ("HARD", "clean"),
-    ("HARD", "flagged"),
-])
+@pytest.mark.parametrize(
+    "tier,variant",
+    [
+        ("EASY", "clean"),
+        ("EASY", "flagged"),
+        ("MEDIUM", "clean"),
+        ("MEDIUM", "flagged"),
+        ("HARD", "clean"),
+        ("HARD", "flagged"),
+    ],
+)
 def test_generate_encounter_individually_deterministic(tier, variant):
     a = generate_encounter(tier, variant, seed=42)
     b = generate_encounter(tier, variant, seed=42)
@@ -141,6 +141,7 @@ def test_across_process_same_hash_seed():
     """Same as above, with PYTHONHASHSEED pinned."""
     a = _run_subprocess_suite(42)
     b = _run_subprocess_suite(42)
+    assert a == b, "two default-hash subprocess invocations disagree"
     # Compare after the dict is reconstructed, ruling out hash-randomisation
     # effects (if any) by pinning PYTHONHASHSEED at process start.
     env = os.environ.copy()

@@ -28,6 +28,7 @@ We deliberately do NOT route to the model here — that would couple
 this module to minimax_client. Callers ask for the model name and
 use it.
 """
+
 from __future__ import annotations
 
 import json
@@ -209,7 +210,9 @@ def _sign(previous: str, row: dict[str, object]) -> str:
     import hashlib
 
     payload = "|".join(
-        str(row.get(k, "")) for k in sorted(row.keys()) if k != "cryptographic_signature"
+        str(row.get(k, ""))
+        for k in sorted(row.keys())
+        if k != "cryptographic_signature"
     )
     return hashlib.sha256(f"{previous}|{payload}".encode("utf-8")).hexdigest()
 
@@ -237,7 +240,9 @@ def save_tenant_default(tenant_id: str, depth: int) -> dict[str, object]:
     return row
 
 
-def load_tenant_default(tenant_id: str, *, log_path: Path | str | None = None) -> AuditDepth:
+def load_tenant_default(
+    tenant_id: str, *, log_path: Path | str | None = None
+) -> AuditDepth:
     """Return the most-recent default depth for ``tenant_id`` (or ``DEFAULT_DEPTH``)."""
     path = Path(log_path) if log_path is not None else _TENANT_CONFIG_LOG
     if not path.exists():

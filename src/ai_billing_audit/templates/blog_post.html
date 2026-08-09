@@ -9,7 +9,7 @@
     <a href="/blog" class="back-link muted">← All blog posts</a>
     <h1>{{ post.title }}</h1>
     <p class="blog-post__meta">
-      <span class="muted">By {{ post.author }} · {{ post.published.strftime("%B %-d, %Y") }}</span>
+    <span class="muted">By {{ post.author }} · {{ post.published.strftime("%B") }} {{ post.published.day }}, {{ post.published.year }}</span>
       {% if post.tags %}
       ·
       <span class="blog-post__tags">

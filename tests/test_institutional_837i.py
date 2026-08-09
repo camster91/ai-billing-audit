@@ -32,9 +32,11 @@ use a custom JobQueue whose runner echoes the enqueued
 encounter, so the new ``/upload/837i`` route is exercised
 without ever reaching the default runner.
 """
+
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 # The bearer middleware in create_app() reads AUDIT_ALLOW_NO_AUTH
@@ -54,6 +56,7 @@ from ai_billing_audit.institutional_837i import (
     validate_837i,
 )
 from ai_billing_audit.job_queue import (  # noqa: E402
+    get_default_queue,
     reset_default_queue_for_tests,
 )
 
@@ -115,6 +118,7 @@ def _valid_837i_payload(
         "attending_provider_npi": "1234567890",
         "admission_date": "2026-01-15",
         "discharge_date": "2026-01-17",
+        "clinical_note": "Inpatient admission and operative course documented.",
         "value_codes": value_codes,
         "service_lines": service_lines,
     }
@@ -390,18 +394,21 @@ def test_map_to_enqueue_payload_preserves_canonical_claim() -> None:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """A TestClient with a fresh JobQueue that uses a tmp log path.
 
     The default module-level queue is reset per-test so the
     runner doesn't leak state across tests.
     """
+    monkeypatch.setenv("UPLOAD_AUDIT_LOG_PATH", str(tmp_path / "upload_jobs.jsonl"))
+    monkeypatch.setenv("ZORVA_UPLOADED_NOTES_DIR", str(tmp_path / "notes"))
     reset_default_queue_for_tests()
     return TestClient(api.app)
 
 
 def test_upload_837i_route_returns_200_on_happy_path(client: TestClient) -> None:
     p = _valid_837i_payload()
+    p["clinical_note"] = "Inpatient admission and operative course documented."
     r = client.post("/upload/837i", json=p)
     assert r.status_code == 200, r.text
     body = r.json()
@@ -413,6 +420,18 @@ def test_upload_837i_route_returns_200_on_happy_path(client: TestClient) -> None
     assert body["claim"]["rendering_provider_npi"] == "1234567890"
     assert body["claim"]["date_of_service"] == "2026-01-15"
     assert body["claim"]["claim_type"] == "837I"
+
+
+def test_upload_837i_rejects_missing_clinical_note_before_enqueue(
+    client: TestClient,
+) -> None:
+    payload = _valid_837i_payload()
+    payload.pop("clinical_note")
+    response = client.post("/upload/837i", json=payload)
+
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "clinical_note_required"
+    assert get_default_queue().list_jobs() == []
 
 
 def test_upload_837i_route_returns_400_on_validation_error(
@@ -492,6 +511,11 @@ def test_default_runner_uses_canonical_claim_for_837i(
     # Skip the doctor-email side effect so the test doesn't
     # touch the SMTP code path (also a no-LLM test).
     monkeypatch.setattr(jq, "_send_doctor_emails", lambda *a, **kw: [])
+    monkeypatch.setattr(
+        jq,
+        "_load_uploaded_note",
+        lambda _id: "Inpatient admission and operative course documented.",
+    )
 
     canonical = {
         "encounter_id": "837I-E2E-001",
@@ -564,6 +588,7 @@ def test_default_runner_falls_through_to_synth_for_non_837i(
             "CPT_codes": ["99213"],
             "difficulty_tier": "EASY",
             "variant": "clean",
+            "_allow_synthetic_demo": True,
         }
     )
     # The synth ran, NOT the 837I branch. The synth generates

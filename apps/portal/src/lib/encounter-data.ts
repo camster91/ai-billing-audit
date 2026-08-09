@@ -11,6 +11,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { ClaimPayload } from "@/lib/encounter-types";
 import { parseClaimPayload } from "@/lib/encounter-format";
+import {
+  decryptPortalNullableString,
+  decryptPortalString,
+} from "@/lib/data-encryption";
 
 export interface EncounterDetail {
   id: string;
@@ -20,6 +24,10 @@ export interface EncounterDetail {
   specialty: string;
   clinicalNote: string;
   status: string;
+  auditDispatch: {
+    status: string;
+    engineJobId: string | null;
+  } | null;
   claim: {
     id: string;
     payer: string;
@@ -67,6 +75,9 @@ export async function loadEncounterDetail(
       findings: {
         orderBy: [{ status: "asc" }, { createdAt: "asc" }],
       },
+      auditDispatch: {
+        select: { status: true, engineJobId: true },
+      },
     },
   });
   if (!row) return null;
@@ -77,8 +88,9 @@ export async function loadEncounterDetail(
     patientHash: row.patientHash,
     dateOfService: row.dateOfService,
     specialty: row.specialty,
-    clinicalNote: row.clinicalNote,
+    clinicalNote: decryptPortalString(row.clinicalNote),
     status: row.status,
+    auditDispatch: row.auditDispatch,
     claim: {
       id: row.claim.id,
       payer: row.claim.payer,
@@ -95,11 +107,11 @@ export async function loadEncounterDetail(
       billingRuleReference: f.billingRuleReference,
       currentCode: f.currentCode,
       suggestedCode: f.suggestedCode,
-      evidenceQuote: f.evidenceQuote,
+      evidenceQuote: decryptPortalString(f.evidenceQuote),
       estFinancialImpactCents: f.estFinancialImpactCents,
       status: f.status,
       dismissReason: f.dismissReason,
-      dismissText: f.dismissText,
+      dismissText: decryptPortalNullableString(f.dismissText),
       actionedByUserId: f.actionedByUserId,
       actionedAt: f.actionedAt,
       createdAt: f.createdAt,

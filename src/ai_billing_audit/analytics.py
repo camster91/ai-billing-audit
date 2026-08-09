@@ -46,6 +46,7 @@ Output shape
       ],
     }
 """
+
 from __future__ import annotations
 
 import json
@@ -305,7 +306,7 @@ def top_missed_revenue_patterns(
             totals[key] += amount
 
     # Rank by count × total_dollars, descending.
-    patterns = [
+    patterns: list[dict[str, Any]] = [
         {
             "pattern": key,
             "count": counts[key],
@@ -314,7 +315,7 @@ def top_missed_revenue_patterns(
         }
         for key in counts
     ]
-    patterns.sort(key=lambda p: p["score"], reverse=True)
+    patterns.sort(key=lambda p: float(p["score"]), reverse=True)
     if top_n and top_n > 0:
         patterns = patterns[:top_n]
 
@@ -345,11 +346,15 @@ def _cli() -> None:  # pragma: no cover — manual CLI entry point
         help="Specialty to filter on (e.g. 'family_medicine').",
     )
     p.add_argument(
-        "--top-n", type=int, default=DEFAULT_TOP_N,
+        "--top-n",
+        type=int,
+        default=DEFAULT_TOP_N,
         help=f"Number of patterns to return (default {DEFAULT_TOP_N}).",
     )
     p.add_argument(
-        "--min-months", type=int, default=MIN_MONTHS,
+        "--min-months",
+        type=int,
+        default=MIN_MONTHS,
         help=f"Min months of data (default {MIN_MONTHS}).",
     )
     args = p.parse_args()
@@ -364,11 +369,17 @@ def _cli() -> None:  # pragma: no cover — manual CLI entry point
             except json.JSONDecodeError:
                 continue
         result = top_missed_revenue_patterns(
-            args.specialty, records, top_n=args.top_n, min_months=args.min_months,
+            args.specialty,
+            records,
+            top_n=args.top_n,
+            min_months=args.min_months,
         )
     else:
         result = top_missed_revenue_patterns(
-            args.specialty, args.path, top_n=args.top_n, min_months=args.min_months,
+            args.specialty,
+            args.path,
+            top_n=args.top_n,
+            min_months=args.min_months,
         )
     print(json.dumps(result, indent=2))
 

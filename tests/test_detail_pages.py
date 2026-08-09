@@ -8,6 +8,7 @@ specific term. Added:
   - /glossary/{slug}   (22 terms)
   - /changelog/{version}   (5 releases)
 """
+
 from __future__ import annotations
 
 import importlib
@@ -20,6 +21,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -34,9 +36,28 @@ def test_glossary_index_renders_all_terms(client):
     body = resp.text
     # All 22 term names should be visible
     for term in [
-        "AHCIP", "AWV", "CMGP", "CPT", "E/M", "FHIR", "GR", "HIA",
-        "HIPAA", "H-Link", "HMV", "IMA", "LLM", "Modifier-25", "MUE",
-        "NCCI", "PCN", "PHIPA", "PIPEDA", "SOMB", "SFTP", "837P",
+        "AHCIP",
+        "AWV",
+        "CMGP",
+        "CPT",
+        "E/M",
+        "FHIR",
+        "GR",
+        "HIA",
+        "HIPAA",
+        "H-Link",
+        "HMV",
+        "IMA",
+        "LLM",
+        "Modifier-25",
+        "MUE",
+        "NCCI",
+        "PCN",
+        "PHIPA",
+        "PIPEDA",
+        "SOMB",
+        "SFTP",
+        "837P",
     ]:
         assert term in body, f"/glossary missing term: {term}"
 
@@ -147,6 +168,7 @@ def test_blog_post_links_in_sitemap_match_routes(client):
     """The feeds.PUBLIC_MARKETING_PATHS sitemap must list the
     same blog slugs the /blog/{slug} route serves."""
     from ai_billing_audit.feeds import BLOG_POSTS, PUBLIC_MARKETING_PATHS
+
     feed_slugs = {p["url_path"] for p in BLOG_POSTS}
     # All blog slug paths in the sitemap must be reachable
     for path in feed_slugs:
@@ -168,23 +190,23 @@ def test_case_studies_includes_ahcip_grounded_study(client):
     Zorva on a real Alberta AHCIP claim with SOMB fee
     codes and GR references (P0 audit fix)."""
     from ai_billing_audit.case_studies import CASE_STUDIES
-    ahcip_cs = [
-        cs for cs in CASE_STUDIES
-        if cs.specialty == "ahcip_family_medicine"
-    ]
+
+    ahcip_cs = [cs for cs in CASE_STUDIES if cs.specialty == "ahcip_family_medicine"]
     assert len(ahcip_cs) == 1, (
         f"Expected exactly 1 AHCIP-grounded case study, got {len(ahcip_cs)}"
     )
     cs = ahcip_cs[0]
     # AHCIP-grounded body uses SOMB fee codes + GR references
     # (check across all body fields, not just scenario/summary)
-    all_text = " ".join([
-        cs.clinical_scenario,
-        cs.claim_summary,
-        cs.what_biller_would_have_done,
-        cs.dollar_impact,
-        " ".join(f.get("rationale", "") for f in cs.findings),
-    ])
+    all_text = " ".join(
+        [
+            cs.clinical_scenario,
+            cs.claim_summary,
+            cs.what_biller_would_have_done,
+            cs.dollar_impact,
+            " ".join(f.get("rationale", "") for f in cs.findings),
+        ]
+    )
     # SOMB mentioned in the rationale + dollar impact
     assert "SOMB" in all_text, "AHCIP case study should mention SOMB"
     # 03.04A is the comprehensive office visit SOMB code

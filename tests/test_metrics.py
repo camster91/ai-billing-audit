@@ -23,6 +23,7 @@ These tests pin:
 5. Per-route counters stay separate (counter for /healthz doesn't
    bleed into /roi).
 """
+
 from __future__ import annotations
 
 import re
@@ -42,10 +43,12 @@ def client(monkeypatch):
     """Build a TestClient with fresh metrics state."""
     import ai_billing_audit.api as api_mod
     from fastapi.testclient import TestClient
+
     # Reset the http counter + rate-limit state for clean isolation
     if hasattr(api_mod, "_rate_limit_state"):
         api_mod._rate_limit_state.clear()
     from ai_billing_audit import metrics
+
     metrics._HTTP_COUNTER.clear()
     return TestClient(api_mod.create_app())
 
@@ -70,6 +73,7 @@ def test_metrics_body_includes_current_version(client):
     r = client.get("/metrics")
     # The version gauge should be 1 with the current version string
     from ai_billing_audit import __version__
+
     expected_line = f'zorva_version_info{{version="{__version__}"}} 1'
     assert expected_line in r.text
 
@@ -78,6 +82,7 @@ def test_metrics_uptime_increases_between_requests(client):
     """The uptime gauge is monotonically increasing across scrapes."""
     r1 = client.get("/metrics")
     import time as _time
+
     _time.sleep(0.05)
     r2 = client.get("/metrics")
     m1 = re.search(r"zorva_uptime_seconds ([\d.]+)", r1.text)
@@ -88,13 +93,14 @@ def test_metrics_uptime_increases_between_requests(client):
 
 def test_http_request_counter_bumped_on_healthz(client):
     """Hitting /healthz twice bumps the counter for /healthz+GET+200."""
-    from ai_billing_audit import metrics
 
     client.get("/healthz")
     client.get("/healthz")
     r = client.get("/metrics")
     # Find the counter line for /healthz GET 200
-    pattern = r'zorva_http_requests_total\{path="/healthz",method="GET",status="200"\} (\d+)'
+    pattern = (
+        r'zorva_http_requests_total\{path="/healthz",method="GET",status="200"\} (\d+)'
+    )
     m = re.search(pattern, r.text)
     assert m is not None, f"missing counter for /healthz GET 200; body:\n{r.text}"
     assert int(m.group(1)) >= 2
@@ -108,16 +114,13 @@ def test_metrics_endpoint_does_not_bump_its_own_counter(client):
     client.get("/metrics")
     # No entry for /metrics should have been added
     for key in metrics._HTTP_COUNTER:
-        assert key[0] != "/metrics", (
-            f"/metrics scrape bumped its own counter: {key}"
-        )
+        assert key[0] != "/metrics", f"/metrics scrape bumped its own counter: {key}"
     # And the snapshot we took before should match exactly
     assert set(metrics._HTTP_COUNTER.keys()) == set(initial.keys())
 
 
 def test_per_route_counters_are_independent(client):
     """Hitting /healthz doesn't bump the /roi counter."""
-    from ai_billing_audit import metrics
 
     client.get("/healthz")
     r = client.get("/metrics")
@@ -156,6 +159,7 @@ def test_render_metrics_returns_string(client):
     """render_metrics is the export function; it should always
     return a non-empty string regardless of process state."""
     from ai_billing_audit.metrics import render_metrics
+
     out = render_metrics()
     assert isinstance(out, str)
     assert "zorva_uptime_seconds" in out
@@ -166,10 +170,9 @@ def test_bump_http_request_bucketizes_encounter_id(client):
     must collapse to a /{id}/ template so Prometheus label
     values don't leak per-encounter PHI."""
     from ai_billing_audit import metrics
+
     metrics._HTTP_COUNTER.clear()
-    metrics.bump_http_request(
-        "/encounter/ca_ahcip_001/audit", "GET", 200
-    )
+    metrics.bump_http_request("/encounter/ca_ahcip_001/audit", "GET", 200)
     # The label stored should be the bucketed template, not the
     # raw path with the encounter_id.
     keys = [k for k in metrics._HTTP_COUNTER.keys() if k[0].startswith("/encounter")]
@@ -178,18 +181,15 @@ def test_bump_http_request_bucketizes_encounter_id(client):
         assert "ca_ahcip_001" not in k[0], (
             f"raw encounter_id leaked into metrics label: {k[0]}"
         )
-        assert "{id}" in k[0], (
-            f"path was not bucketised to a template: {k[0]}"
-        )
+        assert "{id}" in k[0], f"path was not bucketised to a template: {k[0]}"
 
 
 def test_bump_http_request_bucketizes_hex_job_id(client):
     """32-char hex job_ids (upload-flow UUIDs) collapse to {id}."""
     from ai_billing_audit import metrics
+
     metrics._HTTP_COUNTER.clear()
-    metrics.bump_http_request(
-        "/jobs/abc123def456789012345678901234ab", "GET", 200
-    )
+    metrics.bump_http_request("/jobs/abc123def456789012345678901234ab", "GET", 200)
     keys = [k for k in metrics._HTTP_COUNTER.keys() if k[0].startswith("/jobs")]
     assert keys
     for k in keys:
@@ -201,6 +201,7 @@ def test_bump_http_request_keeps_static_routes_intact(client):
     """Static routes like /healthz, /roi, /metrics must NOT be
     bucketised — they're already non-identifying."""
     from ai_billing_audit import metrics
+
     metrics._HTTP_COUNTER.clear()
     metrics.bump_http_request("/healthz", "GET", 200)
     metrics.bump_http_request("/roi", "GET", 200)
@@ -216,6 +217,7 @@ def test_bucketize_path_idempotent(client):
     """Running bucketize twice on the same path is a no-op
     (templates don't double-collide)."""
     from ai_billing_audit.metrics import _bucketize_path
+
     once = _bucketize_path("/encounter/ca_ahcip_001/audit")
     twice = _bucketize_path(once)
     assert once == twice

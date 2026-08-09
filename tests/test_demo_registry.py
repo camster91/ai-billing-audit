@@ -6,6 +6,7 @@ registry — but the registry helpers are still exported and
 called from scripts and one-off tooling, so we keep the
 contract tests alive.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -24,9 +25,7 @@ def test_registry_is_idempotent_on_encounter_id() -> None:
     demo_registry._REGISTRY[:] = [
         e for e in demo_registry._REGISTRY if e.encounter_id != probe_id
     ]
-    a = register_demo_encounter(
-        encounter_id=probe_id, difficulty="EASY", summary="dup"
-    )
+    a = register_demo_encounter(encounter_id=probe_id, difficulty="EASY", summary="dup")
     b = register_demo_encounter(
         encounter_id=probe_id, difficulty="EASY", summary="dup-again"
     )
@@ -40,9 +39,7 @@ def test_registry_is_idempotent_on_encounter_id() -> None:
 
 def test_registry_rejects_unknown_difficulty() -> None:
     with pytest.raises(ValueError, match="EASY, MEDIUM, or HARD"):
-        register_demo_encounter(
-            encounter_id="enc_bogus", difficulty="WAT", summary="x"
-        )
+        register_demo_encounter(encounter_id="enc_bogus", difficulty="WAT", summary="x")
 
 
 def test_load_encounter_record_finds_known_id() -> None:

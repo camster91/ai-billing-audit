@@ -13,6 +13,7 @@ These tests pin that:
     public_read whitelist passes /static* through)
   - requests for non-existent static files return 404, not 500
 """
+
 from __future__ import annotations
 
 import importlib
@@ -25,6 +26,7 @@ def client(monkeypatch):
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("TENANT_ID", "default")
     import ai_billing_audit.api as api_mod
+
     importlib.reload(api_mod)
     app = api_mod.create_app()
     return TestClient(app)
@@ -43,7 +45,10 @@ def test_static_dashboard_css_serves_200(client):
 def test_static_favicon_svg_serves_200(client):
     resp = client.get("/static/favicon.svg")
     assert resp.status_code == 200
-    assert "svg" in resp.text.lower() or "xml" in resp.headers.get("content-type", "").lower()
+    assert (
+        "svg" in resp.text.lower()
+        or "xml" in resp.headers.get("content-type", "").lower()
+    )
 
 
 def test_static_og_image_serves_200(client):

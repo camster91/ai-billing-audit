@@ -15,14 +15,13 @@ Two contracts:
    runs gave different recall numbers, defeating the
    'shadow reproduces the live auditor' marketing promise.
 """
+
 from __future__ import annotations
 
 import hashlib
-import inspect
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -46,10 +45,17 @@ def test_in_tree_prompt_matches_v12_canonical():
         "src/ai_billing_audit/auditor_prompt.txt."
     )
     # And the canonical hash should match the MANIFEST pin.
-    actual_hash = hashlib.sha256(in_tree).hexdigest()
+    # The manifest pins the canonical LF/UTF-8 content. Text-mode
+    # reading normalizes a Windows CRLF checkout before hashing.
+    actual_hash = hashlib.sha256(
+        (SRC / "ai_billing_audit" / "auditor_prompt.txt")
+        .read_text(encoding="utf-8")
+        .encode("utf-8")
+    ).hexdigest()
     manifest_path = ROOT / "prompts" / "v12" / "MANIFEST.json"
     if manifest_path.is_file():
         import json
+
         manifest = json.loads(manifest_path.read_text())
         expected_hash = manifest.get("content_sha256", "").removeprefix("sha256:")
         assert actual_hash == expected_hash, (
@@ -72,6 +78,7 @@ def test_shadow_audit_passes_temperature_0_2():
     )
     # And the temperature literal must be 0.2 (not 0.7 or 1.0).
     import re
+
     matches = re.findall(r"temperature\s*=\s*([\d.]+)", src)
     assert matches, "no temperature= literal in shadow_audit.py"
     for m in matches:
@@ -87,13 +94,12 @@ def test_auditor_and_shadow_audit_use_same_temperature_default():
     auditor_src = (SRC / "ai_billing_audit" / "auditor.py").read_text()
     shadow_src = (ROOT / "scripts" / "shadow_audit.py").read_text()
     import re
+
     auditor_temps = [
-        float(m)
-        for m in re.findall(r"temperature\s*=\s*([\d.]+)", auditor_src)
+        float(m) for m in re.findall(r"temperature\s*=\s*([\d.]+)", auditor_src)
     ]
     shadow_temps = [
-        float(m)
-        for m in re.findall(r"temperature\s*=\s*([\d.]+)", shadow_src)
+        float(m) for m in re.findall(r"temperature\s*=\s*([\d.]+)", shadow_src)
     ]
     assert 0.2 in auditor_temps, (
         f"auditor.py does not use temperature=0.2; found {auditor_temps}"

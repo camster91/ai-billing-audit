@@ -16,10 +16,11 @@ criteria of kanban t_6cc0199c stay pinned: a view function exists,
 the template handles both states, and a manual request for a
 known clinic-month returns the expected structure.
 """
+
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -54,9 +55,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 def _iso(ts: float) -> str:
     """Format a POSIX timestamp as the feedback log's ISO-8601 UTC."""
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _seed_store_with_clinic_months(
@@ -83,16 +82,18 @@ def _seed_store_with_clinic_months(
                 prev_month = 12
                 prev_year -= 1
             target = target.replace(year=prev_year, month=prev_month)
-        store.append(FeedbackEntry(
-            encounter_id=f"enc-m{m_ago}",
-            finding_id=f"f-m{m_ago}",
-            action=action,  # type: ignore[arg-type]
-            severity="medium",
-            rule_id=rule_id,
-            category="modifier_required",
-            timestamp=_iso(target.timestamp()),
-            biller_id=biller_id,
-        ))
+        store.append(
+            FeedbackEntry(
+                encounter_id=f"enc-m{m_ago}",
+                finding_id=f"f-m{m_ago}",
+                action=action,  # type: ignore[arg-type]
+                severity="medium",
+                rule_id=rule_id,
+                category="modifier_required",
+                timestamp=_iso(target.timestamp()),
+                biller_id=biller_id,
+            )
+        )
     return store
 
 
@@ -140,7 +141,9 @@ def test_insufficient_data_state_renders_months_have_not_zero(
     """
     empty = FeedbackStore(log_path=tmp_path / "empty.jsonl")
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", empty, raising=False,
+        "ai_billing_audit.feedback._default",
+        empty,
+        raising=False,
     )
 
     r = client.get(
@@ -170,10 +173,14 @@ def test_insufficient_data_with_some_feedback_shows_actual_count(
     """A clinic with 2 months of feedback still hits the stub, and
     current_months reflects the real count (not zero)."""
     store = _seed_store_with_clinic_months(
-        tmp_path, biller_id="biller-PARTIAL", months_back=[1, 2],
+        tmp_path,
+        biller_id="biller-PARTIAL",
+        months_back=[1, 2],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -215,7 +222,9 @@ def test_ok_branch_renders_all_required_fields(
         action="modify",
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -267,7 +276,9 @@ def test_ok_branch_excludes_insufficient_data_card(
         months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -288,10 +299,14 @@ def test_view_inherits_base_layout(
     present. (Verifies the template isn't accidentally a standalone
     HTML document that bypasses the shared layout.)"""
     store = _seed_store_with_clinic_months(
-        tmp_path, biller_id="biller-FULL", months_back=[1, 2, 3, 4],
+        tmp_path,
+        biller_id="biller-FULL",
+        months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -317,10 +332,14 @@ def test_view_links_to_json_and_pdf_siblings(
     insufficient_data branch (the JSON would still 200 but the
     PDF 404s; not a useful affordance on an empty state)."""
     store = _seed_store_with_clinic_months(
-        tmp_path, biller_id="biller-FULL", months_back=[1, 2, 3, 4],
+        tmp_path,
+        biller_id="biller-FULL",
+        months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -335,7 +354,9 @@ def test_view_links_to_json_and_pdf_siblings(
     # disappear.
     empty = FeedbackStore(log_path=tmp_path / "empty.jsonl")
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", empty, raising=False,
+        "ai_billing_audit.feedback._default",
+        empty,
+        raising=False,
     )
     r2 = client.get(
         "/reports/clinic-monthly",

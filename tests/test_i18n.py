@@ -1,8 +1,8 @@
 """Tests for i18n.locale support (kanban t_843317a2)."""
+
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -89,7 +89,10 @@ def test_set_and_get_locale(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("TENANT_LOCALE_LOG", str(log))
 
     assert i18n.get_locale("clinic_a", log_path=log) == "en"
-    i18n.set_locale("clinic_a", "fr-ca", )
+    i18n.set_locale(
+        "clinic_a",
+        "fr-ca",
+    )
     assert i18n.get_locale("clinic_a", log_path=log) == "fr-ca"
 
     # Setting twice — latest wins
@@ -111,7 +114,11 @@ def test_locale_log_signature_chain(tmp_path: Path, monkeypatch):
     i18n.set_locale("clinic_a", "fr-ca")
     i18n.set_locale("clinic_b", "es")
 
-    rows = [json.loads(line) for line in (tmp_path / "x.jsonl").read_text().splitlines() if line]
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "x.jsonl").read_text().splitlines()
+        if line
+    ]
     assert len(rows) == 2
     assert rows[0]["previous_signature"] == "0" * 64
     assert rows[1]["previous_signature"] == rows[0]["cryptographic_signature"]

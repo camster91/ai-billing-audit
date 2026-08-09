@@ -14,6 +14,7 @@ These tests use a real ``FeedbackStore`` (tmp_path JSONL) rather than
 mocking so they exercise the actual append / read chain. No LLM, no
 network.
 """
+
 from __future__ import annotations
 
 import sys
@@ -45,9 +46,7 @@ from ai_billing_audit.monthly_report import (  # noqa: E402
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _append_entry(
@@ -60,16 +59,18 @@ def _append_entry(
     when: datetime,
 ) -> FeedbackEntry:
     """Append one FeedbackEntry signed into the chain."""
-    return store.append(FeedbackEntry(
-        encounter_id=f"enc-{finding_id}",
-        finding_id=finding_id,
-        action=action,  # type: ignore[arg-type]
-        severity="medium",
-        rule_id=rule_id,
-        category="modifier_required",
-        timestamp=_iso(when.timestamp()),
-        biller_id=biller_id,
-    ))
+    return store.append(
+        FeedbackEntry(
+            encounter_id=f"enc-{finding_id}",
+            finding_id=finding_id,
+            action=action,  # type: ignore[arg-type]
+            severity="medium",
+            rule_id=rule_id,
+            category="modifier_required",
+            timestamp=_iso(when.timestamp()),
+            biller_id=biller_id,
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -97,8 +98,12 @@ def test_compute_clinic_month_returns_insufficient_data_on_empty_store(
     assert out["current_months"] == 0
     # Insufficient-data stub must NOT carry fabricated numbers.
     for forbidden_key in (
-        "total_findings", "accepted", "dismissed", "modified",
-        "top_3_modified_rules", "confidence_calibration",
+        "total_findings",
+        "accepted",
+        "dismissed",
+        "modified",
+        "top_3_modified_rules",
+        "confidence_calibration",
         "tuning_recommendations",
     ):
         assert forbidden_key not in out, (
@@ -119,13 +124,19 @@ def test_compute_clinic_month_insufficient_with_some_feedback(
     store = FeedbackStore(log_path=tmp_path / "partial.jsonl")
     base = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     _append_entry(
-        store, biller_id="clinic-PARTIAL",
-        action="accept", rule_id="R-MOD-25", finding_id="f-1",
+        store,
+        biller_id="clinic-PARTIAL",
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="f-1",
         when=base,
     )
     _append_entry(
-        store, biller_id="clinic-PARTIAL",
-        action="dismiss", rule_id="R-MOD-25", finding_id="f-2",
+        store,
+        biller_id="clinic-PARTIAL",
+        action="dismiss",
+        rule_id="R-MOD-25",
+        finding_id="f-2",
         when=base - timedelta(days=30),
     )
     out = compute_clinic_month("clinic-PARTIAL", 2026, 6, store=store)
@@ -143,9 +154,12 @@ def test_compute_clinic_month_insufficient_data_ignores_other_clinics(
     for m_ago in range(1, 5):
         when = base - timedelta(days=30 * m_ago)
         _append_entry(
-            store, biller_id="clinic-OTHER",
-            action="accept", rule_id="R-MOD-25",
-            finding_id=f"other-{m_ago}", when=when,
+            store,
+            biller_id="clinic-OTHER",
+            action="accept",
+            rule_id="R-MOD-25",
+            finding_id=f"other-{m_ago}",
+            when=when,
         )
     out = compute_clinic_month("clinic-QUERY", 2026, 6, store=store)
     assert out["status"] == "insufficient_data"
@@ -171,35 +185,53 @@ def _seed_three_months_of_feedback(
     """
     # Month -2: 1 accept
     _append_entry(
-        store, biller_id=biller_id,
-        action="accept", rule_id="R-MOD-25", finding_id="f-pre2",
+        store,
+        biller_id=biller_id,
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="f-pre2",
         when=when - timedelta(days=60),
     )
     # Month -1: 1 accept
     _append_entry(
-        store, biller_id=biller_id,
-        action="accept", rule_id="R-MOD-25", finding_id="f-pre1",
+        store,
+        biller_id=biller_id,
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="f-pre1",
         when=when - timedelta(days=30),
     )
     # Current month (the requested month): 1 accept + 1 dismiss + 2 modify.
     _append_entry(
-        store, biller_id=biller_id,
-        action="accept", rule_id="R-MOD-25", finding_id="f-acc-1",
+        store,
+        biller_id=biller_id,
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="f-acc-1",
         when=when,
     )
     _append_entry(
-        store, biller_id=biller_id,
-        action="dismiss", rule_id="R-DX-91", finding_id="f-dis-1",
+        store,
+        biller_id=biller_id,
+        action="dismiss",
+        rule_id="R-DX-91",
+        finding_id="f-dis-1",
         when=when,
     )
     _append_entry(
-        store, biller_id=biller_id,
-        action="modify", rule_id="R-MOD-25", finding_id="f-mod-1",
+        store,
+        biller_id=biller_id,
+        action="modify",
+        rule_id="R-MOD-25",
+        finding_id="f-mod-1",
         when=when,
     )
     _append_entry(
-        store, biller_id=biller_id,
-        action="modify", rule_id="R-DX-91", finding_id="f-mod-2",
+        store,
+        biller_id=biller_id,
+        action="modify",
+        rule_id="R-DX-91",
+        finding_id="f-mod-2",
         when=when,
     )
 
@@ -253,26 +285,38 @@ def test_compute_clinic_month_top_modified_rules_ordering(
     base = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     # Gate-passing baseline: 2 prior months with 1 accept each.
     _append_entry(
-        store, biller_id="clinic-TOP",
-        action="accept", rule_id="R-MOD-25", finding_id="g-pre2",
+        store,
+        biller_id="clinic-TOP",
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="g-pre2",
         when=base - timedelta(days=60),
     )
     _append_entry(
-        store, biller_id="clinic-TOP",
-        action="accept", rule_id="R-MOD-25", finding_id="g-pre1",
+        store,
+        biller_id="clinic-TOP",
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="g-pre1",
         when=base - timedelta(days=30),
     )
     # Current month: 3 modify on R-MOD-25, 1 modify on R-DX-91.
     for i in range(3):
         _append_entry(
-            store, biller_id="clinic-TOP",
-            action="modify", rule_id="R-MOD-25",
-            finding_id=f"g-mod-{i}", when=base,
+            store,
+            biller_id="clinic-TOP",
+            action="modify",
+            rule_id="R-MOD-25",
+            finding_id=f"g-mod-{i}",
+            when=base,
         )
     _append_entry(
-        store, biller_id="clinic-TOP",
-        action="modify", rule_id="R-DX-91",
-        finding_id="g-mod-dx", when=base,
+        store,
+        biller_id="clinic-TOP",
+        action="modify",
+        rule_id="R-DX-91",
+        finding_id="g-mod-dx",
+        when=base,
     )
 
     out = compute_clinic_month("clinic-TOP", 2026, 6, store=store)
@@ -293,22 +337,31 @@ def test_compute_clinic_month_top_modified_rules_capped_at_three(
     store = FeedbackStore(log_path=tmp_path / "cap.jsonl")
     base = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     _append_entry(
-        store, biller_id="clinic-CAP",
-        action="accept", rule_id="R-MOD-25", finding_id="c-pre2",
+        store,
+        biller_id="clinic-CAP",
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="c-pre2",
         when=base - timedelta(days=60),
     )
     _append_entry(
-        store, biller_id="clinic-CAP",
-        action="accept", rule_id="R-MOD-25", finding_id="c-pre1",
+        store,
+        biller_id="clinic-CAP",
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="c-pre1",
         when=base - timedelta(days=30),
     )
     # 5 different rules, 1 modify each → top-3 should keep the first 3
     # alphabetically by tie-break.
     for rule in ["R-A", "R-B", "R-C", "R-D", "R-E"]:
         _append_entry(
-            store, biller_id="clinic-CAP",
-            action="modify", rule_id=rule,
-            finding_id=f"c-{rule}", when=base,
+            store,
+            biller_id="clinic-CAP",
+            action="modify",
+            rule_id=rule,
+            finding_id=f"c-{rule}",
+            when=base,
         )
 
     out = compute_clinic_month("clinic-CAP", 2026, 6, store=store)
@@ -333,8 +386,10 @@ def test_compute_clinic_month_recommendations_non_empty_even_when_thin(
     base = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     for m_ago in range(1, 4):
         _append_entry(
-            store, biller_id="clinic-THIN",
-            action="accept", rule_id="R-MOD-25",
+            store,
+            biller_id="clinic-THIN",
+            action="accept",
+            rule_id="R-MOD-25",
             finding_id=f"t-{m_ago}",
             when=base - timedelta(days=30 * m_ago),
         )
@@ -354,7 +409,8 @@ def test_compute_clinic_month_recommendations_non_empty_even_when_thin(
 
 @pytest.mark.parametrize("bad_month", [0, 13, -1, 99])
 def test_compute_clinic_month_raises_for_invalid_month(
-    tmp_path: Path, bad_month: int,
+    tmp_path: Path,
+    bad_month: int,
 ) -> None:
     """Out-of-range month values raise ValueError instead of silently wrapping."""
     store = FeedbackStore(log_path=tmp_path / "validate.jsonl")
@@ -365,6 +421,7 @@ def test_compute_clinic_month_raises_for_invalid_month(
 def test_compute_clinic_month_is_importable_from_module() -> None:
     """Acceptance: function is importable from the public module surface."""
     import ai_billing_audit.monthly_report as mr
+
     assert callable(mr.compute_clinic_month)
     assert mr.compute_clinic_month.__name__ == "compute_clinic_month"
 
@@ -549,36 +606,51 @@ def _seed_month_with_action_counts(
     """
     # Gate-passing baseline: 2 prior months, 1 accept each.
     _append_entry(
-        store, biller_id=biller_id,
-        action="accept", rule_id="R-MOD-25", finding_id="pre2",
+        store,
+        biller_id=biller_id,
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="pre2",
         when=when - timedelta(days=60),
     )
     _append_entry(
-        store, biller_id=biller_id,
-        action="accept", rule_id="R-MOD-25", finding_id="pre1",
+        store,
+        biller_id=biller_id,
+        action="accept",
+        rule_id="R-MOD-25",
+        finding_id="pre1",
         when=when - timedelta(days=30),
     )
     # Current month: exactly the requested counts.
     counter = 0
     for _ in range(accepted):
         _append_entry(
-            store, biller_id=biller_id,
-            action="accept", rule_id="R-MOD-25",
-            finding_id=f"a-{counter}", when=when,
+            store,
+            biller_id=biller_id,
+            action="accept",
+            rule_id="R-MOD-25",
+            finding_id=f"a-{counter}",
+            when=when,
         )
         counter += 1
     for _ in range(dismissed):
         _append_entry(
-            store, biller_id=biller_id,
-            action="dismiss", rule_id="R-MOD-25",
-            finding_id=f"d-{counter}", when=when,
+            store,
+            biller_id=biller_id,
+            action="dismiss",
+            rule_id="R-MOD-25",
+            finding_id=f"d-{counter}",
+            when=when,
         )
         counter += 1
     for _ in range(modified):
         _append_entry(
-            store, biller_id=biller_id,
-            action="modify", rule_id="R-MOD-25",
-            finding_id=f"m-{counter}", when=when,
+            store,
+            biller_id=biller_id,
+            action="modify",
+            rule_id="R-MOD-25",
+            finding_id=f"m-{counter}",
+            when=when,
         )
         counter += 1
 
@@ -596,8 +668,12 @@ def test_compute_clinic_month_uses_new_calibration_high(
     store = FeedbackStore(log_path=tmp_path / "high.jsonl")
     when = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     _seed_month_with_action_counts(
-        store, biller_id="clinic-HIGH", when=when,
-        accepted=9, dismissed=0, modified=1,
+        store,
+        biller_id="clinic-HIGH",
+        when=when,
+        accepted=9,
+        dismissed=0,
+        modified=1,
     )
 
     out = compute_clinic_month("clinic-HIGH", 2026, 6, store=store)
@@ -621,8 +697,12 @@ def test_compute_clinic_month_uses_new_calibration_low(
     store = FeedbackStore(log_path=tmp_path / "low.jsonl")
     when = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     _seed_month_with_action_counts(
-        store, biller_id="clinic-LOW", when=when,
-        accepted=3, dismissed=1, modified=6,
+        store,
+        biller_id="clinic-LOW",
+        when=when,
+        accepted=3,
+        dismissed=1,
+        modified=6,
     )
 
     out = compute_clinic_month("clinic-LOW", 2026, 6, store=store)
@@ -649,8 +729,12 @@ def test_compute_clinic_month_uses_new_calibration_medium(
     store = FeedbackStore(log_path=tmp_path / "medium.jsonl")
     when = datetime(2026, 6, 15, 12, tzinfo=timezone.utc)
     _seed_month_with_action_counts(
-        store, biller_id="clinic-MED", when=when,
-        accepted=7, dismissed=2, modified=1,
+        store,
+        biller_id="clinic-MED",
+        when=when,
+        accepted=7,
+        dismissed=2,
+        modified=1,
     )
 
     out = compute_clinic_month("clinic-MED", 2026, 6, store=store)

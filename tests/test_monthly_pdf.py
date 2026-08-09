@@ -21,6 +21,7 @@ asserts the contract holds either way (non-empty binary,
 contains key strings, content-type target is ``application/pdf``
 end-to-end).
 """
+
 from __future__ import annotations
 
 import sys
@@ -39,7 +40,6 @@ from ai_billing_audit.api import create_app  # noqa: E402
 from ai_billing_audit.feedback import FeedbackEntry, FeedbackStore  # noqa: E402
 from ai_billing_audit.monthly_pdf import (  # noqa: E402
     build_report_payload,
-    render_monthly_pdf,
 )
 
 
@@ -53,9 +53,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _seed_feedback(
@@ -80,16 +78,18 @@ def _seed_feedback(
                 prev_year -= 1
             target = target.replace(year=prev_year, month=prev_month)
         ts = target.timestamp()
-        store.append(FeedbackEntry(
-            encounter_id=f"enc-m{m_ago}",
-            finding_id=f"f-m{m_ago}",
-            action="accept",
-            severity="medium",
-            rule_id="R-MOD-25",
-            category="modifier_required",
-            timestamp=_iso(ts),
-            biller_id=biller_id,
-        ))
+        store.append(
+            FeedbackEntry(
+                encounter_id=f"enc-m{m_ago}",
+                finding_id=f"f-m{m_ago}",
+                action="accept",
+                severity="medium",
+                rule_id="R-MOD-25",
+                category="modifier_required",
+                timestamp=_iso(ts),
+                biller_id=biller_id,
+            )
+        )
     return store
 
 
@@ -106,7 +106,9 @@ def test_insufficient_data_returns_404(
     3-month threshold the JSON sibling uses."""
     empty = FeedbackStore(log_path=tmp_path / "empty.jsonl")
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", empty, raising=False,
+        "ai_billing_audit.feedback._default",
+        empty,
+        raising=False,
     )
 
     r = client.get(
@@ -125,10 +127,14 @@ def test_two_months_still_insufficient(
 ) -> None:
     """Even 2 months of feedback is below the threshold."""
     store = _seed_feedback(
-        tmp_path, biller_id="biller-PARTIAL", months_back=[1, 2],
+        tmp_path,
+        biller_id="biller-PARTIAL",
+        months_back=[1, 2],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -189,7 +195,9 @@ def test_three_months_returns_pdf_with_key_strings(
         months_back=[1, 2, 3],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -230,10 +238,14 @@ def test_payload_aggregation_surfaces_seeded_rule(
     requiring a PDF parser.
     """
     store = _seed_feedback(
-        tmp_path, biller_id="Acme Family Practice", months_back=[1, 2, 3],
+        tmp_path,
+        biller_id="Acme Family Practice",
+        months_back=[1, 2, 3],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
     # We need 3+ months to pass the route gate; call the payload
     # builder directly so the gate doesn't get in the way of
@@ -241,6 +253,7 @@ def test_payload_aggregation_surfaces_seeded_rule(
     # the months_back=3 feedback event is still in the window.
     from ai_billing_audit.monthly_pdf import build_report_payload
     from ai_billing_audit.feedback import get_default_store
+
     feedback_entries = get_default_store().read_all()
     payload = build_report_payload(
         clinic_id="Acme Family Practice",
@@ -253,9 +266,7 @@ def test_payload_aggregation_surfaces_seeded_rule(
     assert payload["clinic_name"] == "Acme Family Practice"
     assert payload["month"] == "2026-06"
     rule_ids = [r["rule_id"] for r in payload["top_rules"]]
-    assert "R-MOD-25" in rule_ids, (
-        f"expected R-MOD-25 in top_rules, got {rule_ids}"
-    )
+    assert "R-MOD-25" in rule_ids, f"expected R-MOD-25 in top_rules, got {rule_ids}"
 
 
 def test_pdf_body_is_valid_pdf_when_reportlab_available(
@@ -270,13 +281,18 @@ def test_pdf_body_is_valid_pdf_when_reportlab_available(
     installed.
     """
     from ai_billing_audit import monthly_pdf
+
     if not monthly_pdf._REPORTLAB_AVAILABLE:
         pytest.skip("reportlab not installed; text-fallback path covered separately")
     store = _seed_feedback(
-        tmp_path, biller_id="biller-FULL", months_back=[1, 2, 3, 4],
+        tmp_path,
+        biller_id="biller-FULL",
+        months_back=[1, 2, 3, 4],
     )
     monkeypatch.setattr(
-        "ai_billing_audit.feedback._default", store, raising=False,
+        "ai_billing_audit.feedback._default",
+        store,
+        raising=False,
     )
 
     r = client.get(
@@ -284,9 +300,7 @@ def test_pdf_body_is_valid_pdf_when_reportlab_available(
         params={"clinic_id": "biller-FULL", "month": "2026-06"},
     )
     assert r.status_code == 200
-    assert r.content[:5] == b"%PDF-", (
-        f"expected PDF magic, got {r.content[:32]!r}"
-    )
+    assert r.content[:5] == b"%PDF-", f"expected PDF magic, got {r.content[:32]!r}"
 
 
 # ─── 4. Direct module tests (no HTTP) ──────────────────────────────────
@@ -298,6 +312,7 @@ def test_build_report_payload_aggregates_findings() -> None:
     no I/O — purely unit-level so a regression in the
     aggregation is caught here, not in the route test."""
     from datetime import datetime, timezone
+
     month = "2026-06"
     month_start = datetime.strptime(month, "%Y-%m").replace(tzinfo=timezone.utc)
     enc_ts = month_start.timestamp() + 5 * 86400  # 5 days into the month
@@ -384,7 +399,11 @@ def test_render_works_with_or_without_reportlab(
         ],
         "median_time_to_act_hours": 3.5,
         "appeal_counts": {
-            "won": 2, "lost": 1, "pending": 1, "withdrawn": 0, "filed": 0,
+            "won": 2,
+            "lost": 1,
+            "pending": 1,
+            "withdrawn": 0,
+            "filed": 0,
         },
     }
     # Force fallback path even if reportlab is installed.
@@ -404,3 +423,23 @@ def test_render_works_with_or_without_reportlab(
     if monthly_pdf._REPORTLAB_AVAILABLE:
         out_pdf = monthly_pdf.render_monthly_pdf(payload)
         assert out_pdf.startswith(b"%PDF-"), "expected real PDF when reportlab is on"
+
+
+def test_appeal_counts_read_encrypted_outcome_log(tmp_path, monkeypatch):
+    from ai_billing_audit import appeal_letter
+    from ai_billing_audit.appeal_letter import AppealOutcome, log_appeal_outcome
+    from ai_billing_audit.monthly_pdf import _appeal_outcome_counts
+
+    path = tmp_path / "appeal_outcomes.jsonl"
+    monkeypatch.setattr(appeal_letter, "_APPEAL_OUTCOMES_LOG", path)
+    monkeypatch.setenv("APPEAL_OUTCOMES_LOG", str(path))
+    log_appeal_outcome(
+        AppealOutcome.now(
+            appeal_id="appeal-secret",
+            encounter_id="enc-secret",
+            status="won",
+        )
+    )
+
+    assert b"enc-secret" not in path.read_bytes()
+    assert _appeal_outcome_counts()["won"] == 1

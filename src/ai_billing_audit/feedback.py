@@ -9,6 +9,7 @@ and replay them. Each row is SHA-256-chained (same shape as
 ``/app/logs/feedback.jsonl`` (overridable via ``FEEDBACK_LOG``). Column
 shape mirrors the spec'd ``biller_feedback`` SQL table.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,7 +22,14 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from .clinical_note_storage import (
+    append_encrypted_json_record,
+    migrate_plaintext_jsonl,
+    read_encrypted_json_records,
+)
+
 Action = Literal["accept", "dismiss", "modify", "comment"]
+
 
 def feedback_log_path() -> Path:
     """Return the feedback JSONL path (read on every call).
@@ -43,6 +51,8 @@ def feedback_log_path() -> Path:
     authoritative for ``feedback_log_path()`` calls.
     """
     return Path(os.environ.get("FEEDBACK_LOG", "/app/logs/feedback.jsonl"))
+
+
 _GENESIS_SIG = "0" * 64
 
 # Process-local cache of ``FeedbackStore._last_signature()`` results.
@@ -52,21 +62,31 @@ _FEEDBACK_LAST_SIG_CACHE: dict[tuple[str, float], str] = {}
 
 # Fields included in the chain hash. Order matters.
 _CHAIN_FIELDS = (
-    "event_id", "timestamp", "encounter_id", "finding_id", "action",
-    "biller_id", "rule_id", "category", "severity",
+    "event_id",
+    "timestamp",
+    "encounter_id",
+    "finding_id",
+    "action",
+    "biller_id",
+    "rule_id",
+    "category",
+    "severity",
 )
 
 
 @dataclass
 class FeedbackEntry:
     """One biller decision on one finding. ``action`` is accept|dismiss|modify."""
+
     encounter_id: str
     finding_id: str
     action: Action
     severity: str
     rule_id: str
     category: str
-    timestamp: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    timestamp: str = field(
+        default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    )
     biller_id: str = "default_biller"
     modify_severity: str | None = None
     modify_category: str | None = None
@@ -93,6 +113,7 @@ class FeedbackEntry:
 
 class FeedbackStore:
     """Append-only JSONL store with SHA-256 chain."""
+
     def __init__(self, log_path: Path | str | None = None) -> None:
         self._path = Path(log_path) if log_path is not None else feedback_log_path()
 
@@ -104,8 +125,7 @@ class FeedbackStore:
         if not entry.cryptographic_signature:
             row_dict = asdict(entry)
             entry.cryptographic_signature = _sign(entry.previous_signature, row_dict)
-        with self._path.open("a") as fh:
-            fh.write(json.dumps(asdict(entry)) + "\n")
+        append_encrypted_json_record(self._path, asdict(entry))
         return entry
 
     def read_for_encounter(self, encounter_id: str) -> list[FeedbackEntry]:
@@ -257,23 +277,19 @@ class FeedbackStore:
                     "dismissed_at": e.timestamp,
                 }
             )
-        out.sort(key=lambda r: (r["dismissed_at"], r["encounter_id"] + ":" + r["finding_id"]), reverse=True)
+        out.sort(
+            key=lambda r: (
+                r["dismissed_at"],
+                r["encounter_id"] + ":" + r["finding_id"],
+            ),
+            reverse=True,
+        )
         return out
 
     def read_all(self) -> list[FeedbackEntry]:
         if not self._path.is_file():
             return []
-        out: list[FeedbackEntry] = []
-        with self._path.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    out.append(_row_to_entry(json.loads(line)))
-                except (json.JSONDecodeError, ValueError):
-                    continue
-        return out
+        return [_row_to_entry(row) for row in read_encrypted_json_records(self._path)]
 
     def stats(self) -> dict[str, Any]:
         """Counts by action, rule_id, category, biller_id."""
@@ -331,7 +347,7 @@ class FeedbackStore:
         """
         accepts = 0
         dismisses = 0
-        for e in (_entries if _entries is not None else self.read_all()):
+        for e in _entries if _entries is not None else self.read_all():
             if (e.rule_id or "") != rule_id:
                 continue
             if e.action == "accept":
@@ -369,21 +385,13 @@ class FeedbackStore:
         if not self._path.is_file():
             return True
         prev = _GENESIS_SIG
-        with self._path.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    return False
-                if row.get("previous_signature") != prev:
-                    return False
-                expected = _sign(row.get("previous_signature", prev), row)
-                if row.get("cryptographic_signature") != expected:
-                    return False
-                prev = row.get("cryptographic_signature", prev)
+        for row in read_encrypted_json_records(self._path):
+            if row.get("previous_signature") != prev:
+                return False
+            expected = _sign(row.get("previous_signature", prev), row)
+            if row.get("cryptographic_signature") != expected:
+                return False
+            prev = row.get("cryptographic_signature", prev)
         return True
 
     def _last_signature(self) -> str:
@@ -394,7 +402,10 @@ class FeedbackStore:
         # path + mtime — a no-op fast path on the hot path. The
         # cache key includes the path so a different FeedbackStore
         # pointing at a different log doesn't see stale data.
-        cache_key = (str(self._path), self._path.stat().st_mtime if self._path.is_file() else 0.0)
+        cache_key = (
+            str(self._path),
+            self._path.stat().st_mtime if self._path.is_file() else 0.0,
+        )
         cached = _FEEDBACK_LAST_SIG_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -402,22 +413,15 @@ class FeedbackStore:
             last = _GENESIS_SIG
         else:
             last = _GENESIS_SIG
-            try:
-                with self._path.open() as fh:
-                    for line in fh:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            rec = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-                        if "cryptographic_signature" in rec:
-                            last = rec["cryptographic_signature"]
-            except OSError:
-                last = _GENESIS_SIG
+            for rec in read_encrypted_json_records(self._path):
+                if "cryptographic_signature" in rec:
+                    last = rec["cryptographic_signature"]
         _FEEDBACK_LAST_SIG_CACHE[cache_key] = last
         return last
+
+    def migrate_plaintext_log(self) -> int:
+        """Encrypt this store's legacy plaintext JSONL in place."""
+        return migrate_plaintext_jsonl(self._path)
 
 
 def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
@@ -513,7 +517,9 @@ class BillerCorrection:
     rationale: str
     biller_id: str
     encounter_id: str
-    created_at: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    created_at: str = field(
+        default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    )
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
     previous_signature: str = ""
     cryptographic_signature: str = ""
@@ -533,15 +539,23 @@ def _sign_correction(previous: str, row: dict[str, Any]) -> str:
     "why" field is detectable.
     """
     payload = (
-        previous + "|" +
-        str(row.get("id", "")) + "|" +
-        str(row.get("encounter_id", "")) + "|" +
-        str(row.get("finding_id", "")) + "|" +
-        str(row.get("severity", "")) + "|" +
-        str(row.get("category", "")) + "|" +
-        str(row.get("rationale", "")) + "|" +
-        str(row.get("biller_id", "")) + "|" +
-        str(row.get("created_at", ""))
+        previous
+        + "|"
+        + str(row.get("id", ""))
+        + "|"
+        + str(row.get("encounter_id", ""))
+        + "|"
+        + str(row.get("finding_id", ""))
+        + "|"
+        + str(row.get("severity", ""))
+        + "|"
+        + str(row.get("category", ""))
+        + "|"
+        + str(row.get("rationale", ""))
+        + "|"
+        + str(row.get("biller_id", ""))
+        + "|"
+        + str(row.get("created_at", ""))
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -550,20 +564,9 @@ def _last_correction_signature(path: Path) -> str:
     if not path.exists():
         return _GENESIS_SIG
     last_sig = _GENESIS_SIG
-    try:
-        with path.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(row, dict) and row.get("cryptographic_signature"):
-                    last_sig = row["cryptographic_signature"]
-    except OSError:
-        return _GENESIS_SIG
+    for row in read_encrypted_json_records(path):
+        if row.get("cryptographic_signature"):
+            last_sig = row["cryptographic_signature"]
     return last_sig
 
 
@@ -597,14 +600,15 @@ def record_biller_correction(
     )
     try:
         _BILLER_CORRECTIONS_LOG.parent.mkdir(parents=True, exist_ok=True)
-        correction.previous_signature = _last_correction_signature(_BILLER_CORRECTIONS_LOG)
+        correction.previous_signature = _last_correction_signature(
+            _BILLER_CORRECTIONS_LOG
+        )
         row = correction.to_dict()
         correction.cryptographic_signature = _sign_correction(
             correction.previous_signature, row
         )
         row["cryptographic_signature"] = correction.cryptographic_signature
-        with _BILLER_CORRECTIONS_LOG.open("a") as fh:
-            fh.write(json.dumps(row) + "\n")
+        append_encrypted_json_record(_BILLER_CORRECTIONS_LOG, row)
     except OSError:
         pass
     return correction
@@ -622,29 +626,21 @@ def read_biller_corrections(
     if not _BILLER_CORRECTIONS_LOG.exists():
         return []
     out: list[BillerCorrection] = []
-    try:
-        with _BILLER_CORRECTIONS_LOG.open() as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(row, dict):
-                    continue
-                if encounter_id and row.get("encounter_id") != encounter_id:
-                    continue
-                try:
-                    out.append(BillerCorrection(**{
-                        k: v for k, v in row.items()
+    for row in read_encrypted_json_records(_BILLER_CORRECTIONS_LOG):
+        if encounter_id and row.get("encounter_id") != encounter_id:
+            continue
+        try:
+            out.append(
+                BillerCorrection(
+                    **{
+                        k: v
+                        for k, v in row.items()
                         if k in {f.name for f in dataclasses.fields(BillerCorrection)}
-                    }))
-                except Exception:
-                    continue
-    except OSError:
-        return []
+                    }
+                )
+            )
+        except Exception:
+            continue
     return out
 
 
@@ -735,14 +731,10 @@ class CommentStore:
             finding_id=str(finding_id),
             author_id=str(author_id or "default_biller"),
             body=str(body),
-            created_at=time.strftime(
-                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-            ),
+            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             parent_comment_id=str(parent_comment_id) if parent_comment_id else None,
         )
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        with self._path.open("a") as fh:
-            fh.write(json.dumps(c.to_dict()) + "\n")
+        append_encrypted_json_record(self._path, c.to_dict())
         return c
 
     def list_for_finding(
@@ -768,28 +760,15 @@ class CommentStore:
         if not self._path.is_file():
             return []
         out: list[tuple[int, Comment]] = []
-        try:
-            with self._path.open() as fh:
-                for idx, line in enumerate(fh):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if not isinstance(row, dict):
-                        continue
-                    if row.get("encounter_id") != encounter_id:
-                        continue
-                    if row.get("finding_id") != finding_id:
-                        continue
-                    try:
-                        out.append((idx, _row_to_comment(row)))
-                    except Exception:
-                        continue
-        except OSError:
-            return []
+        for idx, row in enumerate(read_encrypted_json_records(self._path)):
+            if row.get("encounter_id") != encounter_id:
+                continue
+            if row.get("finding_id") != finding_id:
+                continue
+            try:
+                out.append((idx, _row_to_comment(row)))
+            except Exception:
+                continue
         out.sort(key=lambda ic: (ic[1].created_at, ic[0]))
         return [c for _i, c in out]
 
@@ -802,25 +781,16 @@ class CommentStore:
         if not self._path.is_file():
             return []
         out: list[Comment] = []
-        try:
-            with self._path.open() as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if not isinstance(row, dict):
-                        continue
-                    try:
-                        out.append(_row_to_comment(row))
-                    except Exception:
-                        continue
-        except OSError:
-            return []
+        for row in read_encrypted_json_records(self._path):
+            try:
+                out.append(_row_to_comment(row))
+            except Exception:
+                continue
         return out
+
+    def migrate_plaintext_log(self) -> int:
+        """Encrypt this comment store's legacy plaintext JSONL in place."""
+        return migrate_plaintext_jsonl(self._path)
 
 
 # Wire comments through the FeedbackStore so callers only have to
@@ -919,3 +889,12 @@ def list_comments(
         comments_log = store._path.parent / "finding_comments.jsonl"  # noqa: SLF001
     cstore = _get_comment_store(comments_log)
     return cstore.list_for_finding(encounter_id, finding_id)
+
+
+def migrate_feedback_logs() -> tuple[int, int, int]:
+    """Encrypt legacy decision, correction, and comment logs in place."""
+    return (
+        migrate_plaintext_jsonl(feedback_log_path()),
+        migrate_plaintext_jsonl(_BILLER_CORRECTIONS_LOG),
+        migrate_plaintext_jsonl(_COMMENTS_LOG),
+    )

@@ -15,8 +15,7 @@
 // fresh state on the next render (force-dynamic), so a refresh always
 // lands on the right step.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { toUserFacingError } from "@/lib/ui-error";
 import styles from "./onboarding.module.css";
 
@@ -50,8 +49,7 @@ const STEP_LABELS = [
   "Done",
 ] as const;
 
-export default function OnboardingWizard({ initialState, sessionId }: Props) {
-  const router = useRouter();
+export default function OnboardingWizard({ initialState }: Props) {
   const [state, setState] = useState<WizardState>(initialState);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -82,7 +80,6 @@ export default function OnboardingWizard({ initialState, sessionId }: Props) {
 
   // Step 3 (first encounter).
   const [encounterFile, setEncounterFile] = useState<File | null>(null);
-  const [encounterFilePath, setEncounterFilePath] = useState<string | null>(null);
   const [encounterSkip, setEncounterSkip] = useState(false);
   const encounterFileInputRef = useRef<HTMLInputElement | null>(null);
 

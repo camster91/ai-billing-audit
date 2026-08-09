@@ -14,11 +14,11 @@ Structured JSON logs are the contract the production log shipper
 5. ``configure_json_logging_if_requested`` is idempotent — calling
    twice doesn't double-install handlers.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -244,6 +244,7 @@ def test_json_safe_coercion():
     assert _json_safe({"a", "b", "c"}) == ["a", "b", "c"]
     assert _json_safe(b"bytes") == "bytes"
     import datetime as _dt
+
     assert _json_safe(_dt.datetime(2026, 7, 4, 12, 0, 0)) == "2026-07-04T12:00:00"
     assert _json_safe(_dt.date(2026, 7, 4)) == "2026-07-04"
     assert _json_safe(ValueError("x")) == "ValueError: x"

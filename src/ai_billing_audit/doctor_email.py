@@ -47,6 +47,7 @@ providing their health info to a billing agent. We do not need a
 separate patient consent flow for this. The clinic's privacy
 officer is responsible for documenting that consent.
 """
+
 from __future__ import annotations
 
 import json
@@ -56,6 +57,15 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .clinical_note_storage import (
+    append_encrypted_json_record,
+    decrypt_phi,
+    encrypt_phi,
+    migrate_plaintext_jsonl,
+    PhiStorageIntegrityError,
+    read_encrypted_json_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +77,19 @@ _LOGS_DIR = Path("/app/logs")
 
 def _dev_mailbox_path() -> Path:
     """Resolve the dev-mailbox path lazily so tests can override _LOGS_DIR."""
-    return _LOGS_DIR / "doctor_emails.jsonl"
+    return Path(
+        os.environ.get("DOCTOR_EMAIL_LOG", str(_LOGS_DIR / "doctor_emails.jsonl"))
+    )
+
+
+def read_doctor_summaries() -> list[dict[str, Any]]:
+    """Decrypt and authenticate the operator-review outbox."""
+    return read_encrypted_json_records(_dev_mailbox_path())
+
+
+def migrate_doctor_summary_log() -> int:
+    """Encrypt a legacy plaintext doctor-summary outbox in place."""
+    return migrate_plaintext_jsonl(_dev_mailbox_path())
 
 
 def _optout_path() -> Path:
@@ -81,25 +103,56 @@ def _optout_path() -> Path:
     file use a file lock to avoid concurrent-write corruption
     (rare in practice but cheap to add).
     """
-    return _LOGS_DIR / "doctor_optouts.json"
+    return Path(
+        os.environ.get("DOCTOR_OPTOUT_PATH", str(_LOGS_DIR / "doctor_optouts.json"))
+    )
 
 
 def _load_optouts() -> dict[str, dict[str, Any]]:
-    """Load the opt-outs file. Returns {} on missing/corrupt file."""
+    """Load and authenticate the opt-outs file."""
     p = _optout_path()
     if not p.is_file():
         return {}
-    try:
-        data = json.loads(p.read_text())
-    except json.JSONDecodeError:
-        return {}
+    data = json.loads(decrypt_phi(p.read_bytes()))
     return data if isinstance(data, dict) else {}
 
 
 def _save_optouts(data: dict[str, dict[str, Any]]) -> None:
     """Persist opt-outs to disk. Creates parent dirs."""
     _LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    _optout_path().write_text(json.dumps(data, indent=2, sort_keys=True))
+    path = _optout_path()
+    replacement = path.with_name(path.name + ".encrypted.tmp")
+    try:
+        replacement.write_bytes(
+            encrypt_phi(json.dumps(data, separators=(",", ":")).encode("utf-8"))
+        )
+        replacement.replace(path)
+    finally:
+        if replacement.exists():
+            replacement.unlink()
+
+
+def migrate_doctor_optout_file() -> int:
+    """Encrypt a legacy plaintext doctor opt-out registry in place."""
+    path = _optout_path()
+    if not path.is_file() or not path.read_bytes().strip():
+        return 0
+    original = path.read_bytes()
+    try:
+        decrypt_phi(original)
+    except PhiStorageIntegrityError:
+        data = json.loads(original)
+    else:
+        _load_optouts()
+        return 0
+    if not isinstance(data, dict):
+        raise ValueError("doctor opt-out registry must be a JSON object")
+    backup = path.with_suffix(path.suffix + ".plaintext.bak.enc")
+    if backup.exists():
+        raise ValueError("encrypted plaintext backup already exists")
+    backup.write_bytes(encrypt_phi(original))
+    _save_optouts(data)
+    return len(data)
 
 
 def _is_doctor_opted_out(doctor_email: str) -> bool:
@@ -304,10 +357,7 @@ def build_doctor_summary(
     if not finding_id:
         return None
 
-    rule_id = (
-        finding.get("rule_id")
-        or (finding.get("rule_ids") or [""])[0]
-    )
+    rule_id = finding.get("rule_id") or (finding.get("rule_ids") or [""])[0]
     severity = str(finding.get("severity", "medium"))
     quote = str(finding.get("quote", "") or "").strip()
     suggested = str(finding.get("suggested_code", "") or "").strip()
@@ -340,7 +390,7 @@ def build_doctor_summary(
         f"been denied by the payer.\n\n"
         f"Reason: {reason}\n\n"
         f"Fix: add this sentence to the note —\n\n"
-        f"    \"{fix}\"\n\n"
+        f'    "{fix}"\n\n'
         f"The auditor will re-run and (usually) clear the claim. "
         f"No action needed if the patient was a one-off.\n\n"
         f"— Zorva pre-bill audit\n"
@@ -379,8 +429,7 @@ def _one_sentence_reason(
             "they are separate services — without it, the payer bundles them"
         ),
         "E/M-LEVEL": (
-            "the documentation supports a different E/M level than what "
-            "was billed"
+            "the documentation supports a different E/M level than what was billed"
         ),
         "NCCI": (
             "two procedure codes on the same day conflict under the NCCI "
@@ -404,7 +453,7 @@ def _one_sentence_reason(
             f"{suggested_code} as submitted"
         )
     if quote:
-        return f"the note's documentation around \"{quote[:60]}...\" is incomplete"
+        return f'the note\'s documentation around "{quote[:60]}..." is incomplete'
     return "the documentation doesn't fully support the claim as billed"
 
 
@@ -474,8 +523,7 @@ def send_doctor_summary(summary: DoctorSummary) -> bool:
         "finding_id": summary.finding_id,
         "ts": time.time(),
     }
-    with _dev_mailbox_path().open("a") as fh:
-        fh.write(json.dumps(record) + "\n")
+    append_encrypted_json_record(_dev_mailbox_path(), record)
     return True
 
 
@@ -509,7 +557,10 @@ def doctor_email_for_provider(provider_npi: str) -> str | None:
         return None
 
     try:
-        url = "https://npiregistry.cms.hhs.gov/api/?version=2.1&number=" + urllib.parse.quote(provider_npi)
+        url = (
+            "https://npiregistry.cms.hhs.gov/api/?version=2.1&number="
+            + urllib.parse.quote(provider_npi)
+        )
         with urllib.request.urlopen(url, timeout=5) as resp:
             payload = json.loads(resp.read())
     except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
@@ -523,7 +574,7 @@ def doctor_email_for_provider(provider_npi: str) -> str | None:
         # Pick the first email address (NPI registry can return
         # multiple addresses for an NPI if the provider has multiple
         # practice locations). For v1, first one wins.
-        addresses = (results[0].get("addresses") or [])
+        addresses = results[0].get("addresses") or []
         email = None
         for addr in addresses:
             if addr.get("address_purpose") == "MAILING":

@@ -81,9 +81,7 @@ def compile_and_evaluate(
     if not val_set:
         raise ValueError("val_set must be non-empty")
     if mode not in {"stub", "mipro"}:
-        raise ValueError(
-            f"mode must be 'stub' or 'mipro', got {mode!r}"
-        )
+        raise ValueError(f"mode must be 'stub' or 'mipro', got {mode!r}")
 
     if mode == "stub":
         return _compile_and_evaluate_stub(round_idx, val_set, seed=seed)

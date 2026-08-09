@@ -12,6 +12,7 @@ adds a proper subscriber list + double-opt-in + Resend
 integration. For v1, the marketing lead reads the audit
 trail manually and adds emails to the Resend list.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,6 +41,7 @@ def append_newsletter_signup(*, email: str, name: str = "") -> dict:
     """
     from . import audit_actions as _aa
     from .api import _TENANT_ID  # type: ignore[attr-defined]
+
     email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
     extra: dict = {
         "name_excerpt": (name or "")[:80],

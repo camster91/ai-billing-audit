@@ -16,14 +16,16 @@ The test suite exercises both the FeedbackStore helper API
 endpoints in :mod:`ai_billing_audit.api` so a future regression
 that breaks one path but not the other is still caught.
 """
+
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -106,7 +108,8 @@ def test_add_top_level_comment_writes_to_comments_log(
     assert comment.created_at  # ISO timestamp populated
     # The comments log exists and has exactly one line.
     assert comments_log.is_file()
-    rows = [json.loads(line) for line in comments_log.read_text().splitlines() if line]
+    assert b"Why is this flagged?" not in comments_log.read_bytes()
+    rows = read_encrypted_json_records(comments_log)
     assert len(rows) == 1
     assert rows[0]["comment_id"] == comment.comment_id
     assert rows[0]["body"] == "Why is this flagged?"
@@ -216,12 +219,15 @@ def test_list_comments_returns_thread_in_created_at_order(
     deterministic without sleeping between writes.
     """
     cstore = CommentStore(log_path=comments_log)
-    cstore.add(encounter_id="enc-1", finding_id="f-1",
-               author_id="biller-A", body="First")
-    cstore.add(encounter_id="enc-1", finding_id="f-1",
-               author_id="biller-B", body="Second")
-    cstore.add(encounter_id="enc-1", finding_id="f-1",
-               author_id="biller-A", body="Third")
+    cstore.add(
+        encounter_id="enc-1", finding_id="f-1", author_id="biller-A", body="First"
+    )
+    cstore.add(
+        encounter_id="enc-1", finding_id="f-1", author_id="biller-B", body="Second"
+    )
+    cstore.add(
+        encounter_id="enc-1", finding_id="f-1", author_id="biller-A", body="Third"
+    )
     thread = cstore.list_for_finding("enc-1", "f-1")
     assert [c.body for c in thread] == ["First", "Second", "Third"]
 
@@ -231,16 +237,28 @@ def test_list_comments_filters_by_encounter_and_finding(
 ) -> None:
     """A comment on a different encounter or finding is not in the thread."""
     add_comment(
-        store, encounter_id="enc-1", finding_id="f-1",
-        author_id="biller-A", body="enc1/f1", comments_log=comments_log,
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="enc1/f1",
+        comments_log=comments_log,
     )
     add_comment(
-        store, encounter_id="enc-1", finding_id="f-2",
-        author_id="biller-A", body="enc1/f2", comments_log=comments_log,
+        store,
+        encounter_id="enc-1",
+        finding_id="f-2",
+        author_id="biller-A",
+        body="enc1/f2",
+        comments_log=comments_log,
     )
     add_comment(
-        store, encounter_id="enc-2", finding_id="f-1",
-        author_id="biller-A", body="enc2/f1", comments_log=comments_log,
+        store,
+        encounter_id="enc-2",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="enc2/f1",
+        comments_log=comments_log,
     )
     thread = list_comments(store, "enc-1", "f-1", comments_log=comments_log)
     assert [c.body for c in thread] == ["enc1/f1"]
@@ -251,8 +269,12 @@ def test_list_comments_empty_for_unknown_finding(
 ) -> None:
     """A finding with no comments returns an empty list, not a 500."""
     add_comment(
-        store, encounter_id="enc-1", finding_id="f-1",
-        author_id="biller-A", body="hi", comments_log=comments_log,
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="hi",
+        comments_log=comments_log,
     )
     thread = list_comments(store, "enc-1", "f-UNKNOWN", comments_log=comments_log)
     assert thread == []
@@ -263,12 +285,20 @@ def test_list_comments_round_trip_through_store_helper(
 ) -> None:
     """End-to-end: add_comment then list_comments via the store helper."""
     add_comment(
-        store, encounter_id="enc-1", finding_id="f-1",
-        author_id="biller-A", body="A", comments_log=comments_log,
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="A",
+        comments_log=comments_log,
     )
     add_comment(
-        store, encounter_id="enc-1", finding_id="f-1",
-        author_id="biller-B", body="B", comments_log=comments_log,
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-B",
+        body="B",
+        comments_log=comments_log,
     )
     thread = list_comments(store, "enc-1", "f-1", comments_log=comments_log)
     assert [c.body for c in thread] == ["A", "B"]
@@ -283,12 +313,30 @@ def test_feedback_log_grows_by_one_per_comment(
     store: FeedbackStore, comments_log: Path
 ) -> None:
     """Each add_comment call appends one row to the feedback log."""
-    add_comment(store, encounter_id="enc-1", finding_id="f-1",
-                author_id="biller-A", body="A", comments_log=comments_log)
-    add_comment(store, encounter_id="enc-1", finding_id="f-2",
-                author_id="biller-B", body="B", comments_log=comments_log)
-    add_comment(store, encounter_id="enc-2", finding_id="f-1",
-                author_id="biller-C", body="C", comments_log=comments_log)
+    add_comment(
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="A",
+        comments_log=comments_log,
+    )
+    add_comment(
+        store,
+        encounter_id="enc-1",
+        finding_id="f-2",
+        author_id="biller-B",
+        body="B",
+        comments_log=comments_log,
+    )
+    add_comment(
+        store,
+        encounter_id="enc-2",
+        finding_id="f-1",
+        author_id="biller-C",
+        body="C",
+        comments_log=comments_log,
+    )
     rows = store.read_all()
     assert len(rows) == 3
     assert all(r.action == "comment" for r in rows)
@@ -303,12 +351,30 @@ def test_comment_feedback_entries_link_into_hash_chain(
 ) -> None:
     """Comments written via add_comment are part of the existing
     hash chain — verify_chain passes for a log full of comments."""
-    add_comment(store, encounter_id="enc-1", finding_id="f-1",
-                author_id="biller-A", body="A", comments_log=comments_log)
-    add_comment(store, encounter_id="enc-1", finding_id="f-2",
-                author_id="biller-B", body="B", comments_log=comments_log)
-    add_comment(store, encounter_id="enc-2", finding_id="f-1",
-                author_id="biller-C", body="C", comments_log=comments_log)
+    add_comment(
+        store,
+        encounter_id="enc-1",
+        finding_id="f-1",
+        author_id="biller-A",
+        body="A",
+        comments_log=comments_log,
+    )
+    add_comment(
+        store,
+        encounter_id="enc-1",
+        finding_id="f-2",
+        author_id="biller-B",
+        body="B",
+        comments_log=comments_log,
+    )
+    add_comment(
+        store,
+        encounter_id="enc-2",
+        finding_id="f-1",
+        author_id="biller-C",
+        body="C",
+        comments_log=comments_log,
+    )
     assert store.verify_chain() is True
 
 
@@ -364,6 +430,7 @@ def _build_test_client(  # type: ignore[no-untyped-def]
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     monkeypatch.setenv("AUDIT_BEARER_TOKEN", "")
     import ai_billing_audit.feedback as _fb
+
     store = FeedbackStore(log_path=fb_log)
     monkeypatch.setattr(_fb, "get_default_store", lambda: store)
     # The per-path comment-store cache is keyed on the resolved
@@ -372,6 +439,7 @@ def _build_test_client(  # type: ignore[no-untyped-def]
 
     from fastapi.testclient import TestClient
     from ai_billing_audit.api import create_app
+
     return TestClient(create_app())
 
 
@@ -404,9 +472,7 @@ def test_post_top_level_comment_via_api(
     assert body["feedback_event_id"]
 
 
-def test_post_reply_via_api(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_post_reply_via_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """POST with parent_comment_id creates a reply."""
     client = _build_test_client(
         monkeypatch,

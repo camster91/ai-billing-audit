@@ -38,10 +38,10 @@ the contract: non-empty binary, key strings present, content-type
 right. A note is logged at WARNING on every fallback render so the
 operator notices the missing dep.
 """
+
 from __future__ import annotations
 
 import io
-import json
 import logging
 import os
 import statistics
@@ -69,6 +69,7 @@ try:  # pragma: no cover - exercised via the fallback path
         Table,
         TableStyle,
     )
+
     _REPORTLAB_AVAILABLE = True
     _REPORTLAB_IMPORT_ERROR = ""
 except Exception as _exc:  # pragma: no cover - defensive
@@ -94,6 +95,7 @@ def _feedback_store_or_default(store: Any = None) -> Any:
         return store
     try:
         from .feedback import get_default_store
+
         return get_default_store()
     except Exception as exc:  # pragma: no cover - defensive
         _log.warning("monthly_pdf: feedback store unavailable: %s", exc)
@@ -109,6 +111,7 @@ def _audit_actions_rows() -> list[dict[str, Any]]:
     """
     try:
         from .audit_actions import read_all as _read_actions
+
         return list(_read_actions() or [])
     except Exception as exc:  # pragma: no cover - defensive
         _log.warning("monthly_pdf: audit_actions read failed: %s", exc)
@@ -130,30 +133,23 @@ def _appeal_outcome_counts() -> dict[str, int]:
         path = Path(
             os.environ.get(
                 "APPEAL_OUTCOMES_LOG",
-                os.environ.get("ZORVA_LOGS_DIR", "/app/logs") + "/appeal_outcomes.jsonl",
+                os.environ.get("ZORVA_LOGS_DIR", "/app/logs")
+                + "/appeal_outcomes.jsonl",
             )
         )
         if not path.exists():
             return counts
+        from .clinical_note_storage import read_encrypted_json_records
+
         latest: dict[str, dict[str, Any]] = {}
-        with path.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    raw = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(raw, dict):
-                    continue
-                aid = raw.get("appeal_id")
-                ts = raw.get("timestamp", "")
-                if not aid or not ts:
-                    continue
-                existing = latest.get(str(aid))
-                if existing is None or ts >= existing.get("timestamp", ""):
-                    latest[str(aid)] = raw
+        for raw in read_encrypted_json_records(path):
+            aid = raw.get("appeal_id")
+            ts = raw.get("timestamp", "")
+            if not aid or not ts:
+                continue
+            existing = latest.get(str(aid))
+            if existing is None or ts >= existing.get("timestamp", ""):
+                latest[str(aid)] = raw
         for r in latest.values():
             status = str(r.get("status", ""))
             if status in counts:
@@ -229,24 +225,30 @@ def _top_revenue_opportunities(
     findings_list = list(findings)
     try:
         from .api import compute_revenue_opportunities
+
         opportunities = compute_revenue_opportunities(findings_list)
     except Exception as exc:  # pragma: no cover - defensive
         _log.warning("monthly_pdf: compute_revenue_opportunities failed: %s", exc)
         # Fallback: any finding that already carries an
         # estimated_dollar field passes through.
         opportunities = [
-            f for f in findings_list
+            f
+            for f in findings_list
             if isinstance(f.get("estimated_dollar"), (int, float))
         ]
-        opportunities.sort(key=lambda f: float(f.get("estimated_dollar", 0.0)), reverse=True)
+        opportunities.sort(
+            key=lambda f: float(f.get("estimated_dollar", 0.0)), reverse=True
+        )
     out: list[dict[str, Any]] = []
     for o in opportunities[:top_n]:
-        out.append({
-            "rule_id": o.get("opportunity_rule_id") or o.get("rule_id", ""),
-            "rule_name": o.get("rule_name", o.get("rule_id", "")),
-            "estimated_dollar": float(o.get("estimated_dollar", 0.0) or 0.0),
-            "suggested_action": o.get("suggested_action", ""),
-        })
+        out.append(
+            {
+                "rule_id": o.get("opportunity_rule_id") or o.get("rule_id", ""),
+                "rule_name": o.get("rule_name", o.get("rule_id", "")),
+                "estimated_dollar": float(o.get("estimated_dollar", 0.0) or 0.0),
+                "suggested_action": o.get("suggested_action", ""),
+            }
+        )
     return out
 
 
@@ -349,10 +351,9 @@ def build_report_payload(
     if encounters is None:
         try:
             from .job_queue import get_default_queue
+
             q = get_default_queue()
-            encounters = [
-                j.to_dict() for j in q.list_jobs()
-            ]
+            encounters = [j.to_dict() for j in q.list_jobs()]
         except Exception as exc:  # pragma: no cover - defensive
             _log.warning("monthly_pdf: encounter read failed: %s", exc)
             encounters = []
@@ -396,8 +397,7 @@ def build_report_payload(
 
     total_encounters = len(in_window)
     total_findings = sum(
-        int((e.get("result") or {}).get("findings_count") or 0)
-        for e in in_window
+        int((e.get("result") or {}).get("findings_count") or 0) for e in in_window
     )
     top_rules = _top_rules(
         feedback_entries=feedback_entries,
@@ -412,7 +412,7 @@ def build_report_payload(
     all_findings: list[dict[str, Any]] = []
     for e in in_window:
         result = e.get("result") or {}
-        for f in (result.get("findings") or []):
+        for f in result.get("findings") or []:
             if isinstance(f, dict):
                 all_findings.append(f)
     top_opportunities = _top_revenue_opportunities(all_findings, top_n=3)
@@ -462,10 +462,14 @@ def _render_text_fallback(payload: dict[str, Any]) -> bytes:
     should ``pip install reportlab`` to get a real PDF.
     """
     appeal = payload["appeal_counts"]
-    appeal_total = appeal["won"] + appeal["lost"] + appeal["pending"] + appeal["withdrawn"]
+    appeal_total = (
+        appeal["won"] + appeal["lost"] + appeal["pending"] + appeal["withdrawn"]
+    )
     lines: list[str] = []
     lines.append(f"ZORVA MONTHLY REPORT — {payload['clinic_name']}")
-    lines.append(f"Report month: {payload['month']}    Generated: {payload['generated_at']}")
+    lines.append(
+        f"Report month: {payload['month']}    Generated: {payload['generated_at']}"
+    )
     lines.append("=" * 72)
     lines.append("")
     lines.append("HEADLINE NUMBERS")
@@ -493,8 +497,7 @@ def _render_text_fallback(payload: dict[str, Any]) -> bytes:
     lines.append("")
     tta = payload["median_time_to_act_hours"]
     lines.append(
-        f"MEDIAN TIME-TO-ACT: "
-        f"{f'{tta:.1f} hours' if tta is not None else 'n/a'}"
+        f"MEDIAN TIME-TO-ACT: {f'{tta:.1f} hours' if tta is not None else 'n/a'}"
     )
     lines.append("")
     lines.append("APPEAL OUTCOMES")
@@ -529,12 +532,14 @@ def _render_reportlab_pdf(payload: dict[str, Any]) -> bytes:
     body = styles["BodyText"]
     small = ParagraphStyle("small", parent=body, fontSize=8, leading=10)
     story: list[Any] = []
-    story.append(Paragraph(f"Zorva Monthly Report", h1))
-    story.append(Paragraph(
-        f"<b>{payload['clinic_name']}</b> &middot; {payload['month']}"
-        f" &middot; generated {payload['generated_at']}",
-        small,
-    ))
+    story.append(Paragraph("Zorva Monthly Report", h1))
+    story.append(
+        Paragraph(
+            f"<b>{payload['clinic_name']}</b> &middot; {payload['month']}"
+            f" &middot; generated {payload['generated_at']}",
+            small,
+        )
+    )
     story.append(Spacer(1, 6 * mm))
 
     # Headline numbers
@@ -548,16 +553,20 @@ def _render_reportlab_pdf(payload: dict[str, Any]) -> bytes:
         ],
     ]
     head_tbl = Table(head_data, colWidths=[60 * mm, 60 * mm, 60 * mm])
-    head_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f3b8b")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-    ]))
+    head_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f3b8b")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ]
+        )
+    )
     story.append(head_tbl)
     story.append(Spacer(1, 4 * mm))
 
@@ -569,30 +578,42 @@ def _render_reportlab_pdf(payload: dict[str, Any]) -> bytes:
     if len(rules_rows) == 1:
         rules_rows.append(["(none)", "0"])
     rules_tbl = Table(rules_rows, colWidths=[55 * mm, 25 * mm])
-    rules_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-    ]))
+    rules_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ]
+        )
+    )
     opp_rows = [["Opportunity", "$"]]
     for o in payload["top_opportunities"]:
         opp_rows.append([o["rule_name"][:32], _format_dollar(o["estimated_dollar"])])
     if len(opp_rows) == 1:
         opp_rows.append(["(none)", "—"])
     opp_tbl = Table(opp_rows, colWidths=[80 * mm, 25 * mm])
-    opp_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-    ]))
+    opp_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ]
+        )
+    )
     side = Table([[rules_tbl, opp_tbl]], colWidths=[85 * mm, 110 * mm])
-    side.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
+    side.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
     story.append(side)
     story.append(Spacer(1, 4 * mm))
 
@@ -605,40 +626,52 @@ def _render_reportlab_pdf(payload: dict[str, Any]) -> bytes:
         appeal["won"] + appeal["lost"] + appeal["pending"] + appeal["withdrawn"]
     )
     appeal_rows = [["Outcome", "Count", "%"]]
-    for label, key in (("won", "won"), ("lost", "lost"), ("pending", "pending"),
-                       ("withdrawn", "withdrawn")):
+    for label, key in (
+        ("won", "won"),
+        ("lost", "lost"),
+        ("pending", "pending"),
+        ("withdrawn", "withdrawn"),
+    ):
         c = appeal[key]
         pct = f"{(100.0 * c / appeal_total):.0f}%" if appeal_total else "—"
         appeal_rows.append([label, str(c), pct])
     appeal_tbl = Table(appeal_rows, colWidths=[50 * mm, 30 * mm, 30 * mm])
-    appeal_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-    ]))
-    tta_para = Paragraph(
-        f"<b>Median time-to-act:</b> {tta_text}", body
+    appeal_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6e9f5")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ]
+        )
     )
+    tta_para = Paragraph(f"<b>Median time-to-act:</b> {tta_text}", body)
     tta_block = Table(
         [[tta_para], [appeal_tbl]],
         colWidths=[120 * mm],
     )
-    tta_block.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-    ]))
+    tta_block.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ]
+        )
+    )
     story.append(tta_block)
     story.append(Spacer(1, 6 * mm))
 
-    story.append(Paragraph(
-        "<font size=8 color='#666666'>"
-        "Zorva — AI medical-billing audit. Generated by the monthly "
-        "report endpoint. Numbers are derived from the feedback log, "
-        "appeal outcomes, and the audit-actions chain for this clinic."
-        "</font>",
-        small,
-    ))
+    story.append(
+        Paragraph(
+            "<font size=8 color='#666666'>"
+            "Zorva — AI medical-billing audit. Generated by the monthly "
+            "report endpoint. Numbers are derived from the feedback log, "
+            "appeal outcomes, and the audit-actions chain for this clinic."
+            "</font>",
+            small,
+        )
+    )
 
     doc.build(story)
     return buf.getvalue()

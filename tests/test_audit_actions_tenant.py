@@ -14,12 +14,10 @@ What's pinned
 * Legacy rows (no tenant_id key) default to 'default' so
   existing audit trails don't disappear after the upgrade
 """
+
 from __future__ import annotations
 
-import json
 import importlib
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -57,6 +55,23 @@ def _append(log, action, encounter_id, tenant_id=None, **kwargs):
 def test_append_records_tenant_id(tmp_log):
     row = _append(tmp_log, "accept_all", "E-1", tenant_id="acme")
     assert row.get("tenant_id") == "acme"
+
+
+def test_audit_trail_encrypts_encounter_and_note_at_rest(tmp_log):
+    _append(
+        tmp_log,
+        "dismiss",
+        "ENC-PHI-SECRET",
+        tenant_id="acme",
+        note="Patient Jane Doe has E11.9",
+    )
+
+    stored = tmp_log.read_bytes()
+    assert b"ENC-PHI-SECRET" not in stored
+    assert b"Jane Doe" not in stored
+    assert aa_mod.read_all(tenant_id="acme")[0]["data_elements"]["note"] == (
+        "Patient Jane Doe has E11.9"
+    )
 
 
 def test_append_default_tenant_when_omitted(tmp_log):
@@ -103,7 +118,9 @@ def test_read_all_none_tenant_matches_legacy_rows(tmp_log):
         "model_run_id": "",
         "cryptographic_signature": "0000000000000000000000000000000000000000000000000000000000000000",
     }
-    tmp_log.write_text(json.dumps(legacy_row) + "\n")
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    append_encrypted_json_record(tmp_log, legacy_row)
     _append(tmp_log, "accept_all", "E-NEW", tenant_id="default")
     rows = aa_mod.read_all(tenant_id=None)
     encs = [r["data_elements"]["encounter_id"] for r in rows]
@@ -162,8 +179,9 @@ def test_read_all_empty_when_no_matches(tmp_log):
 
 def test_append_returns_full_row_with_tenant(tmp_log):
     """The returned row includes the tenant_id and chain signature."""
-    row = _append(tmp_log, "accept_all", "E-1", tenant_id="acme",
-                  extra={"findings_count": 3})
+    row = _append(
+        tmp_log, "accept_all", "E-1", tenant_id="acme", extra={"findings_count": 3}
+    )
     assert "cryptographic_signature" in row
     assert row["tenant_id"] == "acme"
     assert row["data_elements"]["findings_count"] == 3

@@ -12,6 +12,7 @@ Verifies:
   filtered view (i.e. the rendered input ``value=`` attributes
   echo back what was submitted).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -87,9 +88,7 @@ def test_search_by_icd10_prefix(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     # Whitespace may sit between attributes; regex it.
-    assert _re.search(
-        r'<input[^>]*name="icd10"[^>]*value="I10"', body
-    ), body[:500]
+    assert _re.search(r'<input[^>]*name="icd10"[^>]*value="I10"', body), body[:500]
     # Form is rendered.
     assert 'class="encounter-search"' in body
 

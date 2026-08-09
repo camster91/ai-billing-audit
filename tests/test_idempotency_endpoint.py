@@ -13,6 +13,7 @@ fields). What matters for idempotency is that the endpoint
 behaves the same way on first call vs retry — independent of
 whether the underlying job queue is alive.
 """
+
 from __future__ import annotations
 
 import json
@@ -68,9 +69,7 @@ def test_post_without_idempotency_key_runs_endpoint(client):
     # Endpoint may 200 (jobs enqueued) or 500 (queue not running in
     # test client); both are acceptable for this assertion — what
     # matters is that the endpoint actually ran (no cache hit).
-    assert r.status_code != 409, (
-        "no Idempotency-Key should NOT trigger 409"
-    )
+    assert r.status_code != 409, "no Idempotency-Key should NOT trigger 409"
 
 
 def test_post_with_idempotency_key_then_replay(client):
@@ -103,9 +102,11 @@ def test_post_with_same_key_but_different_body_returns_409(client):
         "X-Forwarded-For": "10.1.2.4",
     }
     payload_a = _form_payload([VALID_ROW])
-    payload_b = _form_payload([
-        {**VALID_ROW, "encounter_id": "test-enc-DIFFERENT"},
-    ])
+    payload_b = _form_payload(
+        [
+            {**VALID_ROW, "encounter_id": "test-enc-DIFFERENT"},
+        ]
+    )
 
     r1 = client.post("/encounters/upload/submit", data=payload_a, headers=headers)
     assert r1.status_code != 409, "first POST must not 409"
@@ -129,12 +130,8 @@ def test_post_with_different_keys_runs_endpoint_twice(client):
     }
     payload = _form_payload([VALID_ROW])
 
-    r_a = client.post(
-        "/encounters/upload/submit", data=payload, headers=headers_a
-    )
-    r_b = client.post(
-        "/encounters/upload/submit", data=payload, headers=headers_b
-    )
+    r_a = client.post("/encounters/upload/submit", data=payload, headers=headers_a)
+    r_b = client.post("/encounters/upload/submit", data=payload, headers=headers_b)
     # Both should run (not replay). If status was 200 for both,
     # the response_json should be fresh each time.
     if r_a.status_code == 200 and r_b.status_code == 200:

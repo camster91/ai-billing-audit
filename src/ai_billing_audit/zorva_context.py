@@ -19,6 +19,7 @@ This is the same pattern as ``runner.SeverityRank`` or
 ``encounter.get("NPI")`` — operational hints passed as data,
 not prompt-engineered text.
 """
+
 from __future__ import annotations
 
 import json
@@ -110,12 +111,12 @@ SUPPORTED_MARKETS = tuple(MARKETS.keys())
 # identifiers but the universal pattern is the 10-digit NPI.
 
 _HEALTH_NUMBER_PATTERNS: dict[str, re.Pattern] = {
-    "CA_ON": re.compile(r"^\d{10}$"),    # OHIP: 10 digits
-    "CA_AB": re.compile(r"^\d{9}$"),     # AHCIP: 9 digits
-    "CA_BC": re.compile(r"^\d{10}$"),    # MSP: 10 digits (PHN)
-    "US":   re.compile(r"^\d{10}$"),      # NPI: 10 digits
-    "MX":   re.compile(r"^\d{10,11}$"),  # CURP-like
-    "CO":   re.compile(r"^\d{6,12}$"),   # Cédula / NUIP
+    "CA_ON": re.compile(r"^\d{10}$"),  # OHIP: 10 digits
+    "CA_AB": re.compile(r"^\d{9}$"),  # AHCIP: 9 digits
+    "CA_BC": re.compile(r"^\d{10}$"),  # MSP: 10 digits (PHN)
+    "US": re.compile(r"^\d{10}$"),  # NPI: 10 digits
+    "MX": re.compile(r"^\d{10,11}$"),  # CURP-like
+    "CO": re.compile(r"^\d{6,12}$"),  # Cédula / NUIP
 }
 
 
@@ -197,11 +198,7 @@ def build_context_for_encounter(
         health_number=health_number,
     )
     market_profile = MARKETS.get(market, {})
-    province_norm = (
-        province.upper().strip()
-        if (province and market == "CA")
-        else None
-    )
+    province_norm = province.upper().strip() if (province and market == "CA") else None
     if province_norm == "":
         province_norm = None
 
@@ -216,15 +213,11 @@ def build_context_for_encounter(
         "province": province_norm,
         "billing_authority": billing_authority,
         "compliance_law": market_profile.get("compliance_law"),
-        "data_residency_required": market_profile.get(
-            "data_residency_required", False
-        ),
+        "data_residency_required": market_profile.get("data_residency_required", False),
         "phi_identifiers_required": market_profile.get(
             "phi_identifiers_required", False
         ),
-        "ak_safe_harbor_pricing": market_profile.get(
-            "ak_safe_harbor_pricing", False
-        ),
+        "ak_safe_harbor_pricing": market_profile.get("ak_safe_harbor_pricing", False),
         "invoice_format": market_profile.get("invoice_format"),
         "long_term_vision": ZORVA_VISION.strip(),
     }

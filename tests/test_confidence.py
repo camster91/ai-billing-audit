@@ -6,6 +6,7 @@ Verifies the four-bucket contract:
   * low          — 1..2 accept decisions (some signal, not enough)
   * uncalibrated — 0 accept decisions, 0 total decisions
 """
+
 from __future__ import annotations
 
 import sys
@@ -26,8 +27,9 @@ def store(tmp_path: Path) -> FeedbackStore:
     return FeedbackStore(log_path=tmp_path / "fb.jsonl")
 
 
-def _entry(*, rule_id: str = "R-X", action: str = "accept",
-           finding_id: str = "f-1") -> FeedbackEntry:
+def _entry(
+    *, rule_id: str = "R-X", action: str = "accept", finding_id: str = "f-1"
+) -> FeedbackEntry:
     return FeedbackEntry(
         encounter_id="enc-1",
         finding_id=finding_id,

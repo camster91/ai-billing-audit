@@ -47,7 +47,6 @@ export function internalErrorResponse(
   const requestId = opts.requestId ?? randomUUID();
   const message = error instanceof Error ? error.message : String(error);
   // Server-side: full context for support correlation.
-  // eslint-disable-next-line no-console
   console.error(
     `[${route}] ${opts.hint ?? "internal_error"} requestId=${requestId} message=${message}`,
     error instanceof Error ? error.stack : undefined,

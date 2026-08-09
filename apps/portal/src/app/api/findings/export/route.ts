@@ -31,6 +31,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { FINDING_CATEGORY_LABEL, FINDING_STATUSES } from "@/lib/encounter-types";
 import { assertMembershipCapability } from "@/lib/membership-gate";
+import { decryptPortalString } from "@/lib/data-encryption";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,7 +204,7 @@ export async function GET(request: Request): Promise<Response> {
                 currentCode: r.currentCode,
                 suggestedCode: r.suggestedCode,
                 ruleRef: r.billingRuleReference,
-                evidenceQuote: r.evidenceQuote,
+                evidenceQuote: decryptPortalString(r.evidenceQuote),
                 payer: r.encounter.claim.payer,
                 providerName: r.encounter.claim.providerName,
                 providerNpi: r.encounter.claim.providerNpi,

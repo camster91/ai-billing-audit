@@ -23,6 +23,7 @@ and the v1 surface's existing webhook route (kanban t_4496cee1);
 this file focuses on the list + get-by-id surfaces that Zapier
 polls.
 """
+
 from __future__ import annotations
 
 import os
@@ -128,6 +129,7 @@ def _claim(**overrides: Any) -> dict[str, Any]:
         "NPI": "1234567890",
         "date_of_service": "2026-06-24",
         "CPT_codes": ["99213"],
+        "clinical_note": "Established patient follow-up with documented assessment.",
     }
     body.update(overrides)
     return body
@@ -224,7 +226,7 @@ def test_list_returns_summary_shape(
     """A single audited encounter → a list with one summary dict
     whose shape matches the contract Zapier publishes.
     """
-    q = _build_queue(tmp_log_dir, monkeypatch)
+    _build_queue(tmp_log_dir, monkeypatch)
     # Enqueue a real claim so the job lands in the queue.
     r = client.post("/v1/audits", json=_claim(), headers=_bearer())
     assert r.status_code == 202, r.text
@@ -238,8 +240,11 @@ def test_list_returns_summary_shape(
     enc = body["encounters"][0]
     # Required fields.
     for key in (
-        "encounter_id", "status", "n_findings",
-        "n_revenue_opportunities", "total_dollars",
+        "encounter_id",
+        "status",
+        "n_findings",
+        "n_revenue_opportunities",
+        "total_dollars",
     ):
         assert key in enc, f"missing {key!r} in {enc}"
     # The seeded encounter had R-MOD-25, which is in
@@ -290,7 +295,8 @@ def test_list_days_param_widens_window(
     )
     object.__setattr__(job, "submitted_at", time.time() - 100 * 86400)
     r = client.get(
-        "/v1/zapier/encounters?days=200", headers=_bearer(),
+        "/v1/zapier/encounters?days=200",
+        headers=_bearer(),
     )
     assert r.status_code == 200
     body = r.json()
@@ -310,7 +316,8 @@ def test_list_days_param_capped_at_max(
     misconfigured Zap still gets *some* data."""
     _build_queue(tmp_log_dir, monkeypatch)
     r = client.get(
-        "/v1/zapier/encounters?days=10000", headers=_bearer(),
+        "/v1/zapier/encounters?days=10000",
+        headers=_bearer(),
     )
     assert r.status_code == 200
     # We can't directly inspect the cap from the response, but
@@ -372,6 +379,7 @@ def test_list_pagination_with_page_size(
     into the module.
     """
     from ai_billing_audit import public_api
+
     page_size = public_api._ZAPIER_PAGE_SIZE
     n = page_size + 1
     q = _build_queue(tmp_log_dir, monkeypatch)
@@ -383,7 +391,8 @@ def test_list_pagination_with_page_size(
             tenant_id="default",
         )
     r = client.get(
-        "/v1/zapier/encounters?days=365", headers=_bearer(),
+        "/v1/zapier/encounters?days=365",
+        headers=_bearer(),
     )
     assert r.status_code == 200
     body = r.json()
@@ -399,7 +408,8 @@ def test_list_bad_days_param_returns_400(
 ) -> None:
     _build_queue(tmp_log_dir, monkeypatch)
     r = client.get(
-        "/v1/zapier/encounters?days=abc", headers=_bearer(),
+        "/v1/zapier/encounters?days=abc",
+        headers=_bearer(),
     )
     assert r.status_code == 400
     assert "days" in r.json().get("detail", "").lower()
@@ -413,7 +423,8 @@ def test_list_bad_offset_returns_400(
 ) -> None:
     _build_queue(tmp_log_dir, monkeypatch)
     r = client.get(
-        "/v1/zapier/encounters?offset=abc", headers=_bearer(),
+        "/v1/zapier/encounters?offset=abc",
+        headers=_bearer(),
     )
     assert r.status_code == 400
     assert "offset" in r.json().get("detail", "").lower()
@@ -453,13 +464,17 @@ def test_get_returns_same_shape_as_list(
     time.sleep(0.05)
     # Get-by-id
     r = client.get(
-        "/v1/zapier/encounters/ENC-ZAP-001", headers=_bearer(),
+        "/v1/zapier/encounters/ENC-ZAP-001",
+        headers=_bearer(),
     )
     assert r.status_code == 200, r.text
     summary = r.json()
     for key in (
-        "encounter_id", "status", "n_findings",
-        "n_revenue_opportunities", "total_dollars",
+        "encounter_id",
+        "status",
+        "n_findings",
+        "n_revenue_opportunities",
+        "total_dollars",
     ):
         assert key in summary
     assert summary["encounter_id"] == "ENC-ZAP-001"
@@ -488,7 +503,8 @@ def test_get_empty_findings_yields_zero_dollars(
     assert r.status_code == 202
     time.sleep(0.05)
     r = client.get(
-        "/v1/zapier/encounters/ENC-CLEAN", headers=_bearer(),
+        "/v1/zapier/encounters/ENC-CLEAN",
+        headers=_bearer(),
     )
     assert r.status_code == 200
     summary = r.json()
@@ -514,15 +530,17 @@ def test_list_and_get_emit_usage_log_rows(
     _build_queue(tmp_log_dir, monkeypatch)
     client.get("/v1/zapier/encounters", headers=_bearer())
     client.get(
-        "/v1/zapier/encounters/ENC-MISSING", headers=_bearer(),
+        "/v1/zapier/encounters/ENC-MISSING",
+        headers=_bearer(),
     )
     log_path = tmp_log_dir / "usage.jsonl"
     assert log_path.exists()
-    rows = [r for r in log_path.read_text().splitlines() if r.strip()]
+    from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
+
+    rows = read_encrypted_json_records(log_path)
     assert len(rows) >= 2
     # The endpoint field is what we'd grep for when building a
     # per-endpoint dashboard.
-    import json
-    endpoints = [json.loads(r).get("endpoint") for r in rows]
+    endpoints = [row.get("endpoint") for row in rows]
     assert "GET /v1/zapier/encounters" in endpoints
     assert "GET /v1/zapier/encounters/{id}" in endpoints

@@ -13,9 +13,9 @@ or 503.
 
 If you add a new public-facing marketing page, add it here too.
 """
+
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -84,6 +84,7 @@ def test_case_study_detail_public_get_route_returns_200(client):
     can match incomplete href targets and yield a 404).
     """
     from ai_billing_audit.case_studies import case_studies_index
+
     studies = case_studies_index()
     assert studies, "test fixture: case_studies_index() returned empty"
     for s in studies[:2]:

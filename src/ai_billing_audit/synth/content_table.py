@@ -19,7 +19,6 @@ then, the inline table is the source of truth.
 
 from __future__ import annotations
 
-from typing import Any
 
 from .template import Scenario
 
@@ -66,9 +65,7 @@ _EASY_SCENARIOS: tuple[Scenario, ...] = (
             "allergies. Reports mild nasal congestion, no rash, no "
             "wheezing."
         ),
-        exam=(
-            "Nares mildly congested. No polyps. Lungs clear. Skin clear."
-        ),
+        exam=("Nares mildly congested. No polyps. Lungs clear. Skin clear."),
         mdm=(
             "Single stable chronic problem of low complexity. No new data. "
             "Continue current over-the-counter regimen; no prescription."

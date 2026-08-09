@@ -33,17 +33,19 @@ What's pinned
 No LLM, no network. Test logs redirected to tmp JSONL files so
 the real /app/logs/* never gets touched.
 """
+
 from __future__ import annotations
 
 import importlib
 import json
 import sys
 import time as time_mod
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
+
+from ai_billing_audit.clinical_note_storage import read_encrypted_json_records
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -92,18 +94,7 @@ def client(fresh_logs) -> TestClient:
 
 
 def _read_jsonl(path: Path) -> list[dict]:
-    if not path.is_file():
-        return []
-    out: list[dict] = []
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            out.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return out
+    return read_encrypted_json_records(path)
 
 
 def _iso(ts: float) -> str:
@@ -142,6 +133,7 @@ def test_assignment_store_append_and_read(fresh_logs: dict[str, Path]) -> None:
     assert entry.finding_id == "f_1"
     assert entry.assignee_id == "biller_a"
     assert entry.assigned_by == "manager"
+    assert b"enc_1" not in fresh_logs["assignment_log"].read_bytes()
     rows = store.entries_for("enc_1")
     assert len(rows) == 1
     assert rows[0].assignee_id == "biller_a"
@@ -232,16 +224,18 @@ def test_workload_completed_and_overdue_counts(
     store.assign("enc_1", "f_2", "biller_a", due_date=_iso(now + 3600))  # future
     store.assign("enc_1", "f_3", "biller_a", due_date="")  # no due date
     # biller_a has accepted f_2 → counts as completed, no longer overdue
-    fb_store.append(FeedbackEntry(
-        encounter_id="enc_1",
-        finding_id="f_2",
-        action="accept",
-        severity="medium",
-        rule_id="rule_x",
-        category="dx_linkage",
-        timestamp=_iso(now),
-        biller_id="biller_a",
-    ))
+    fb_store.append(
+        FeedbackEntry(
+            encounter_id="enc_1",
+            finding_id="f_2",
+            action="accept",
+            severity="medium",
+            rule_id="rule_x",
+            category="dx_linkage",
+            timestamp=_iso(now),
+            biller_id="biller_a",
+        )
+    )
     rows = store.workload_for_clinic("biller_a")
     assert len(rows) == 1
     row = rows[0]
@@ -369,13 +363,9 @@ def test_assign_reassign_to_new_biller_writes_new_row(
         "biller_second",
     ]
     # Current assignee is the second one
-    cur = client.get(
-        f"/api/encounters/{_REAL_ENC}/finding/assignments"
-    )
+    cur = client.get(f"/api/encounters/{_REAL_ENC}/finding/assignments")
     assert cur.status_code == 200
-    assert cur.json()["assignments"][_REAL_FINDING]["assignee_id"] == (
-        "biller_second"
-    )
+    assert cur.json()["assignments"][_REAL_FINDING]["assignee_id"] == ("biller_second")
 
 
 def test_workload_endpoint_returns_per_biller_rows(
@@ -395,24 +385,26 @@ def test_workload_endpoint_returns_per_biller_rows(
     # learns about a biller in the first place.
     now = time_mod.time()
     for bid in ("biller_one", "biller_two"):
-        fb_store.append(FeedbackEntry(
-            encounter_id="warmup",
-            finding_id="warmup",
-            action="accept",
-            severity="low",
-            rule_id="warmup",
-            category="warmup",
-            timestamp=_iso(now),
-            biller_id=bid,
-        ))
+        fb_store.append(
+            FeedbackEntry(
+                encounter_id="warmup",
+                finding_id="warmup",
+                action="accept",
+                severity="low",
+                rule_id="warmup",
+                category="warmup",
+                timestamp=_iso(now),
+                biller_id=bid,
+            )
+        )
     # Two billers, three findings, one re-assigned
     client.post(
         f"/api/encounters/{_REAL_ENC}/finding/{_REAL_FINDING}/assign",
         json={"assignee_id": "biller_one"},
     )
     # Use a different finding for biller_two
-    other_finding = _TRAIN_DATA[0].get("ground_truth", [{}, {}])[1].get(
-        "finding_id", "ft_2"
+    other_finding = (
+        _TRAIN_DATA[0].get("ground_truth", [{}, {}])[1].get("finding_id", "ft_2")
     )
     client.post(
         f"/api/encounters/{_REAL_ENC}/finding/{other_finding}/assign",
@@ -441,9 +433,7 @@ def test_workload_endpoint_unknown_clinic_returns_404(
     client: TestClient, fresh_logs: dict[str, Path]
 ) -> None:
     """Unknown clinic_id returns 404 (matches the dashboard's 404 contract)."""
-    r = client.get(
-        "/api/clinics/does-not-exist-xyz-clinic/workload"
-    )
+    r = client.get("/api/clinics/does-not-exist-xyz-clinic/workload")
     assert r.status_code == 404
     assert "does-not-exist-xyz-clinic" in r.json()["detail"]
 
@@ -458,9 +448,7 @@ def test_encounter_assignments_endpoint_returns_current_map(
         f"/api/encounters/{_REAL_ENC}/finding/{_REAL_FINDING}/assign",
         json={"assignee_id": "biller_x"},
     )
-    r = client.get(
-        f"/api/encounters/{_REAL_ENC}/finding/assignments"
-    )
+    r = client.get(f"/api/encounters/{_REAL_ENC}/finding/assignments")
     assert r.status_code == 200
     body = r.json()
     assert body["encounter_id"] == _REAL_ENC

@@ -48,6 +48,7 @@ sees and emits a dict with whatever it could find. The upload
 validator (in ``api.py``) is the source of truth for the
 "required fields present" check.
 """
+
 from __future__ import annotations
 
 import re
@@ -142,7 +143,9 @@ def discover_separators(text: str) -> tuple[str, str]:
 # --- per-segment helpers ---------------------------------------------------
 
 
-def _split_segments(text: str, seg_term: str, element_separator: str = "*") -> list[list[str]]:
+def _split_segments(
+    text: str, seg_term: str, element_separator: str = "*"
+) -> list[list[str]]:
     """Split the X12 envelope into ``[[element, ...], ...]`` rows."""
     out: list[list[str]] = []
     for raw in text.split(seg_term):
@@ -206,7 +209,9 @@ def _iso_date_from_dtp_472(elements: list[str]) -> str | None:
     return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
 
 
-def _cpt_codes_from_sv1(elements: list[str], component_separator: str = ":") -> list[str]:
+def _cpt_codes_from_sv1(
+    elements: list[str], component_separator: str = ":"
+) -> list[str]:
     """Return a list of CPT/HCPCS code strings from an SV1 segment.
 
     SV1*<proc_code_with_qualifier>:<code>[:<mod1>:<mod2>:<mod3>:<mod4>]
@@ -243,7 +248,9 @@ def _cpt_codes_from_sv1(elements: list[str], component_separator: str = ":") -> 
     return [code]
 
 
-def _diagnosis_codes_from_hi(elements: list[str], component_separator: str = ":") -> list[str]:
+def _diagnosis_codes_from_hi(
+    elements: list[str], component_separator: str = ":"
+) -> list[str]:
     """Extract diagnosis codes from an ``HI`` segment (2300 loop).
 
     X12 5010 ``HI`` carries ICD-10-CM (qualifier ``ABK``/``ABF``/``ABJ``/
@@ -286,8 +293,10 @@ def _diagnosis_codes_from_hi(elements: list[str], component_separator: str = ":"
 
 
 def _extract_claim(
-    claim_segments: list[list[str]], element_separator: str = "*",
-    segment_terminator: str = "~", component_separator: str = ":",
+    claim_segments: list[list[str]],
+    element_separator: str = "*",
+    segment_terminator: str = "~",
+    component_separator: str = ":",
 ) -> dict[str, Any]:
     """Project a 2000-loop (one claim) into the normalised dict."""
     encounter_id: str | None = None
@@ -323,7 +332,7 @@ def _extract_claim(
                     patient_id = pid
             elif ent_qualifier == "85":
                 n = _npi_from_nm1(seg)
-                if n:
+                if n and not npi:
                     npi = n
 
         elif tag == "DTP":
@@ -440,9 +449,7 @@ def parse_837p(text: str) -> list[dict[str, Any]]:
         raise X12ParseError("input is empty")
     element, seg_term = discover_separators(text)
     component = (
-        text[104]
-        if text.startswith("ISA") and len(text) >= _ISA_FIXED_WIDTH
-        else ":"
+        text[104] if text.startswith("ISA") and len(text) >= _ISA_FIXED_WIDTH else ":"
     )
     if seg_term == element:
         # Both separators resolved to the same char; the file is
@@ -460,12 +467,10 @@ def parse_837p(text: str) -> list[dict[str, Any]]:
     claim_groups = _group_into_claims(segments)
     if not claim_groups:
         raise X12ParseError(
-            "no CLM segment found; the file is not a recognisable "
-            "837P payload"
+            "no CLM segment found; the file is not a recognisable 837P payload"
         )
     return [
-        _extract_claim(group, element, seg_term, component)
-        for group in claim_groups
+        _extract_claim(group, element, seg_term, component) for group in claim_groups
     ]
 
 
@@ -482,9 +487,7 @@ def validate_required_fields(claim: dict[str, Any]) -> list[str]:
         errors.append("missing encounter_id (no CLM01 segment or value empty)")
     pid = (claim.get("patient_id") or "").strip()
     if not pid:
-        errors.append(
-            "missing patient_id (no NM1*QC/MI/II subscriber loop found)"
-        )
+        errors.append("missing patient_id (no NM1*QC/MI/II subscriber loop found)")
     npi = (claim.get("NPI") or "").strip()
     if not npi:
         errors.append(
@@ -498,9 +501,7 @@ def validate_required_fields(claim: dict[str, Any]) -> list[str]:
             "missing date_of_service (no DTP*472*D8*<YYYYMMDD> segment found)"
         )
     elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", dos):
-        errors.append(
-            f"date_of_service {dos!r} is not in YYYY-MM-DD format"
-        )
+        errors.append(f"date_of_service {dos!r} is not in YYYY-MM-DD format")
     cpts = claim.get("CPT_codes") or []
     if not cpts:
         errors.append("missing CPT codes (no SV1*HC:... segments found)")

@@ -16,10 +16,10 @@ endpoints are JSON because the Next.js portal needs structured
 responses (not HTML form posts) and a stable
 ``/api/encounters/{id}/...`` URL prefix.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -27,9 +27,7 @@ from fastapi.testclient import TestClient
 
 from ai_billing_audit import appeal_letter, demo_registry
 from ai_billing_audit.appeal_letter import (
-    AppealOutcome,
     log_appeal_letter,
-    log_appeal_outcome,
 )
 
 
@@ -44,11 +42,13 @@ def temp_logs_dir(tmp_path, monkeypatch):
     touch the real /app/logs."""
     monkeypatch.setattr(appeal_letter, "_LOGS_DIR", tmp_path)
     monkeypatch.setattr(
-        appeal_letter, "_APPEAL_LOG",
+        appeal_letter,
+        "_APPEAL_LOG",
         tmp_path / "appeal_letters.jsonl",
     )
     monkeypatch.setattr(
-        appeal_letter, "_APPEAL_OUTCOMES_LOG",
+        appeal_letter,
+        "_APPEAL_OUTCOMES_LOG",
         tmp_path / "appeal_outcomes.jsonl",
     )
     return tmp_path
@@ -76,16 +76,18 @@ def stub_llm_client(monkeypatch):
             "Dear Payer,\n\nThe claim was denied in error. "
             "See attached clinical documentation."
         ),
-        "appeal_basis": (
-            "The clinical documentation supports medical necessity."
-        ),
+        "appeal_basis": ("The clinical documentation supports medical necessity."),
         "cited_rule_ids": ["DX_LINKAGE_REQUIRED"],
         "requested_action": "Reconsider and pay claim in full.",
     }
+
     class _StubLLMClient:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
-        def complete(self, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+
+        def complete(
+            self, messages: list[dict[str, str]], **kwargs: Any
+        ) -> dict[str, Any]:
             return {
                 "choices": [
                     {
@@ -96,7 +98,9 @@ def stub_llm_client(monkeypatch):
                 ],
                 "usage": {"prompt_tokens": 1, "completion_tokens": 1},
             }
+
     from ai_billing_audit import llm
+
     monkeypatch.setattr(llm, "LLMClient", _StubLLMClient)
     return _StubLLMClient
 
@@ -107,6 +111,7 @@ def client(monkeypatch):
     (``AUDIT_ALLOW_NO_AUTH=1``) so we don't need a bearer token."""
     monkeypatch.setenv("AUDIT_ALLOW_NO_AUTH", "1")
     from ai_billing_audit.api import create_app
+
     app = create_app()
     return TestClient(app)
 
@@ -121,7 +126,9 @@ def registered_encounter(monkeypatch):
     patch the function to return our synthetic record directly.
     """
     demo_registry.register_demo_encounter(
-        "ENC-API-001", "MEDIUM", "synthetic encounter for API tests",
+        "ENC-API-001",
+        "MEDIUM",
+        "synthetic encounter for API tests",
     )
 
     fake_record: dict[str, Any] = {
@@ -180,7 +187,8 @@ def registered_encounter(monkeypatch):
         return None
 
     monkeypatch.setattr(
-        "ai_billing_audit.api.load_encounter_record", _fake_load,
+        "ai_billing_audit.api.load_encounter_record",
+        _fake_load,
     )
     return "ENC-API-001"
 
@@ -227,7 +235,9 @@ def test_denial_risk_for_registered_encounter_returns_score(
     assert body["denial_probability"] > 0.60
 
 
-def test_denial_risk_attaches_min_severity_used(client, temp_logs_dir, registered_encounter):
+def test_denial_risk_attaches_min_severity_used(
+    client, temp_logs_dir, registered_encounter
+):
     """The response includes the min_severity threshold used to
     score, so the portal can decide whether to apply a stricter
     threshold client-side."""
@@ -348,9 +358,7 @@ def test_appeal_letter_unknown_finding_returns_404(
     assert r.status_code == 404
 
 
-def test_appeal_letter_unknown_encounter_returns_404(
-    client, temp_logs_dir
-):
+def test_appeal_letter_unknown_encounter_returns_404(client, temp_logs_dir):
     """POST against an unregistered encounter → 404."""
     r = _post_json(
         client,
@@ -369,10 +377,13 @@ def test_appeal_letter_template_only_when_no_llm(
     The template-only letter has ``template_only: True`` so the
     biller knows it's not LLM-generated.
     """
+
     class _BrokenLLMClient:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise RuntimeError("simulated offline")
+
     from ai_billing_audit import llm
+
     monkeypatch.setattr(llm, "LLMClient", _BrokenLLMClient)
 
     r = _post_json(
@@ -422,8 +433,7 @@ def test_appeal_letters_returns_logged_letters(
     body = r2.json()
     assert body["count"] >= 1
     assert any(
-        l.get("encounter_id") == registered_encounter
-        for l in body["letters"]
+        letter.get("encounter_id") == registered_encounter for letter in body["letters"]
     )
 
 
@@ -457,9 +467,7 @@ def _seed_one_letter(
     )
 
 
-def test_appeal_letter_outcome_accepts_valid_status(
-    client, temp_logs_dir
-):
+def test_appeal_letter_outcome_accepts_valid_status(client, temp_logs_dir):
     """POST with valid status → 200, outcome appended to log."""
     _seed_one_letter()
     r = _post_json(
@@ -482,28 +490,24 @@ def test_appeal_letter_outcome_accepts_valid_status(
     assert outcomes[0].status == "won"
 
 
-def test_appeal_letter_outcome_rejects_unknown_status(
-    client, temp_logs_dir
-):
+def test_appeal_letter_outcome_rejects_unknown_status(client, temp_logs_dir):
     """POST with status outside the closed enum → 400."""
     _seed_one_letter()
     r = _post_json(
         client,
         "/api/encounters/ENC-API-001/appeal-letter/L-1/outcome",
-        {"status": "victorious"},  # not in {won, lost, withdrawn, pending, did_not_file}
+        {
+            "status": "victorious"
+        },  # not in {won, lost, withdrawn, pending, did_not_file}
     )
     assert r.status_code == 400
     assert "status" in r.json()["detail"].lower()
 
 
-def test_appeal_letter_outcome_accepts_all_five_statuses(
-    client, temp_logs_dir
-):
+def test_appeal_letter_outcome_accepts_all_five_statuses(client, temp_logs_dir):
     """Pin the full closed enum: won / lost / withdrawn /
     pending / did_not_file all return 200."""
-    for i, status in enumerate(
-        ["won", "lost", "withdrawn", "pending", "did_not_file"]
-    ):
+    for i, status in enumerate(["won", "lost", "withdrawn", "pending", "did_not_file"]):
         letter_id = f"L-{status}"
         _seed_one_letter(letter_id=letter_id)
         r = _post_json(
@@ -515,9 +519,7 @@ def test_appeal_letter_outcome_accepts_all_five_statuses(
         assert r.json()["status"] == status
 
 
-def test_appeal_letter_outcome_missing_status_returns_400(
-    client, temp_logs_dir
-):
+def test_appeal_letter_outcome_missing_status_returns_400(client, temp_logs_dir):
     """POST without status → 400 (status is empty, not in enum)."""
     _seed_one_letter()
     r = _post_json(
@@ -528,9 +530,7 @@ def test_appeal_letter_outcome_missing_status_returns_400(
     assert r.status_code == 400
 
 
-def test_appeal_letter_outcome_letter_id_in_path_required(
-    client, temp_logs_dir
-):
+def test_appeal_letter_outcome_letter_id_in_path_required(client, temp_logs_dir):
     """POST with empty letter_id → 400 (path segment is empty)."""
     # FastAPI would 404 the route match for a literal empty segment;
     # we test the URL-encoded-space variant which still hits the route.

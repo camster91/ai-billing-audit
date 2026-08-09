@@ -65,6 +65,7 @@ the chain walk order, and a backfill procedure for existing rows:
 The verifier is re-runnable as a one-line command — see
 ``docs/RUNBOOK.md`` for the OIPC auditor procedure.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -218,5 +219,7 @@ def walk_chain(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
     each time.
     """
     materialized = list(rows)
-    materialized.sort(key=lambda r: (_coerce_field(r, "timestamp"), _coerce_field(r, "event_id")))
+    materialized.sort(
+        key=lambda r: (_coerce_field(r, "timestamp"), _coerce_field(r, "event_id"))
+    )
     return materialized

@@ -36,19 +36,23 @@ Run with::
 
 which starts uvicorn on 127.0.0.1:8765.
 """
+
 from __future__ import annotations
 
 import hmac
+import base64
 import io
 import json
 import os
+import re
+import secrets
 import re as _re
 import time
 import zipfile
 from html import escape
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fastapi import (
     Depends,
@@ -70,7 +74,17 @@ from ai_billing_audit.demo_registry import (
     list_demo_encounters,
     load_encounter_record,
 )
-from ai_billing_audit.job_queue import get_default_queue
+from ai_billing_audit.clinical_note_storage import (
+    PhiStorageConfigurationError,
+    load_clinical_note,
+    phi_encryption_configured,
+    store_clinical_note,
+)
+from ai_billing_audit.job_queue import (
+    get_default_queue,
+    load_uploaded_note_for_encounter,
+    read_encrypted_job_records,
+)
 from ai_billing_audit.zorva_context import lookup_somb_descriptor, lookup_somb_fee
 from ai_billing_audit.x12_parser import (
     X12ParseError,
@@ -150,11 +164,18 @@ class UserContext:
     trail's ``user_id`` / ``user_role`` columns.
     """
 
-    __slots__ = ("user_id", "role", "user_identifier")
+    __slots__ = ("user_id", "role", "tenant_id", "user_identifier")
 
-    def __init__(self, user_id: str, role: str, user_identifier: str) -> None:
+    def __init__(
+        self,
+        user_id: str,
+        role: str,
+        user_identifier: str,
+        tenant_id: str = "default",
+    ) -> None:
         self.user_id = user_id
         self.role = role
+        self.tenant_id = tenant_id
         self.user_identifier = user_identifier
 
     def as_audit_kwargs(self) -> dict[str, str]:
@@ -189,10 +210,53 @@ def _header_rbac_trusted() -> bool:
     (``AUDIT_ALLOW_HEADER_RBAC=1``) or we are in local-dev mode
     (``AUDIT_ALLOW_NO_AUTH=1``).
     """
-    env = _os_for_rbac.environ
+    env = os.environ
     return (
         env.get("AUDIT_ALLOW_HEADER_RBAC", "") == "1"
         or env.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
+    )
+
+
+def _resolve_signed_principal(request: Request) -> UserContext | None:
+    encoded = request.headers.get("X-Zorva-Principal")
+    signature = request.headers.get("X-Zorva-Signature")
+    if not encoded and not signature:
+        return None
+    if not encoded or not signature:
+        raise HTTPException(status_code=401, detail="invalid_principal_signature")
+    secret = os.environ.get("ZORVA_PRINCIPAL_SIGNING_SECRET", "")
+    if len(secret.encode("utf-8")) < 32:
+        raise HTTPException(status_code=503, detail="principal_signing_not_configured")
+    expected = hmac.new(
+        secret.encode("utf-8"), encoded.encode("ascii"), "sha256"
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=401, detail="invalid_principal_signature")
+    try:
+        padding = "=" * (-len(encoded) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded + padding))
+        subject = str(payload["subject"]).strip()
+        role = _coerce_role(str(payload["role"]))
+        tenant_id = str(payload["tenant_id"]).strip()
+        expires_at = int(payload["expires_at"])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        raise HTTPException(
+            status_code=401, detail="invalid_principal_payload"
+        ) from None
+    if not subject or not role or not tenant_id:
+        raise HTTPException(status_code=401, detail="invalid_principal_payload")
+    now = int(time.time())
+    if expires_at < now:
+        raise HTTPException(status_code=401, detail="principal_expired")
+    if expires_at > now + 300:
+        raise HTTPException(status_code=401, detail="principal_lifetime_too_long")
+    if tenant_id != os.environ.get("TENANT_ID", "default"):
+        raise HTTPException(status_code=403, detail="principal_tenant_mismatch")
+    return UserContext(
+        user_id=subject,
+        role=role,
+        tenant_id=tenant_id,
+        user_identifier=subject,
     )
 
 
@@ -215,13 +279,15 @@ def _resolve_user_from_request(request: Request) -> UserContext:
         dev fallback lives — every other caller relies on this
         function for the same shape.
     """
+    signed = _resolve_signed_principal(request)
+    if signed is not None:
+        return signed
     user_id = request.headers.get("X-User-Id")
     user_role = request.headers.get("X-User-Role")
     role = _coerce_role(user_role)
+    if (user_id or user_role) and not _header_rbac_trusted():
+        raise HTTPException(status_code=401, detail="verified_principal_required")
     if user_id and role:
-        # Clamp admin escalation when header RBAC is untrusted.
-        if role == "admin" and not _header_rbac_trusted():
-            role = "biller"
         return UserContext(
             user_id=str(user_id).strip(),
             role=role,
@@ -234,15 +300,14 @@ def _resolve_user_from_request(request: Request) -> UserContext:
         raise HTTPException(
             status_code=403,
             detail=(
-                f"unknown role {user_role!r}; expected one of "
-                "admin, biller, viewer"
+                f"unknown role {user_role!r}; expected one of admin, biller, viewer"
             ),
         )
     # Headers missing entirely.
     # Read AUDIT_ALLOW_NO_AUTH at call-time so tests that
     # ``monkeypatch.setenv`` AFTER module import take effect.
     # (The module-level cache is just an import-time default.)
-    if _os_for_rbac.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1":
+    if os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1":
         # Dev-mode fallback so legacy tests (bulk_actions, etc.)
         # that POST without headers keep working under
         # AUDIT_ALLOW_NO_AUTH=1.
@@ -281,16 +346,9 @@ def get_request_user_or_anonymous(request: Request) -> UserContext:
     default-anonymous :class:`UserContext` when no ``X-User-Id`` /
     ``X-User-Role`` headers are present, instead of raising 401.
 
-    Used by the public-read endpoints (denial-risk, appeal-letter,
-    appeal-letters) that the marketing portal at zorva.ashbi.ca
-    fetches cross-origin without bearer credentials. The portal
-    *could* pass the signed-in user's ``X-User-Id`` headers, but
-    omitting them is simpler and matches the public-read posture:
-    anyone on the internet can fetch these endpoints, and the
-    data is the same regardless of who is asking (the
-    audit-trail POST endpoints that mutate state still require
-    real auth via ``require_biller_or_admin`` + the bearer
-    middleware).
+    Used only by intentionally public, non-clinical read endpoints.
+    Encounter-level endpoints must use :func:`get_request_user`
+    because their identifiers and findings may belong to real uploads.
 
     The returned UserContext has ``user_id="anonymous"`` and
     ``role="guest"`` so downstream code that branches on role
@@ -356,8 +414,7 @@ def require_admin(
 # honors ``AUDIT_ALLOW_NO_AUTH`` flips via os.environ inside
 # ``_resolve_user_from_request`` so the existing test suite's
 # monkeypatch.setenv pattern works.
-import os as _os_for_rbac
-_ALLOW_NO_AUTH = _os_for_rbac.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
+_ALLOW_NO_AUTH = os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
 
 
 def _highlight_quote(text: str, quote: str) -> str:
@@ -481,6 +538,7 @@ def _attach_model_confidence(findings: list[dict[str, Any]]) -> list[dict[str, A
     """
     try:
         from .feedback import get_default_store
+
         store = get_default_store()
     except Exception:
         store = None
@@ -575,13 +633,11 @@ def _attach_appeal_context(
     # whose appeal_id matches.
     latest_outcome: dict[str, Any] = {}
     for o in outcomes or []:
-        aid = str(o.get("appeal_id") or "")
+        aid = str(o.appeal_id or "")
         if not aid:
             continue
         prev = latest_outcome.get(aid)
-        if prev is None or str(o.get("timestamp", "")) > str(
-            prev.get("timestamp", "")
-        ):
+        if prev is None or str(o.timestamp) > str(prev.timestamp):
             latest_outcome[aid] = o
 
     for f in findings:
@@ -838,6 +894,7 @@ def compute_revenue_opportunities(
     opportunities.sort(key=lambda x: x.get("estimated_dollar", 0.0), reverse=True)
     return opportunities
 
+
 # Dismissal reasons — the closed-loop learning signal. When the biller
 # dismisses a finding, they pick one of these + an optional free-text
 # note. The categories are coarse on purpose: they're meant to bucket
@@ -845,12 +902,14 @@ def compute_revenue_opportunities(
 # later. ``false_positive`` is the most valuable bucket — every
 # dismissal in this category becomes a candidate few-shot example
 # for the next prompt revision.
-_DISMISS_CATEGORIES = frozenset({
-    "false_positive",     # The finding is wrong; the auditor is overcalling
-    "already_documented", # The finding is right but the note already covers it
-    "not_applicable",     # Payer-specific override (e.g. this payer doesn't require modifier-25)
-    "other",              # Free text; review later for new categories
-})
+_DISMISS_CATEGORIES = frozenset(
+    {
+        "false_positive",  # The finding is wrong; the auditor is overcalling
+        "already_documented",  # The finding is right but the note already covers it
+        "not_applicable",  # Payer-specific override (e.g. this payer doesn't require modifier-25)
+        "other",  # Free text; review later for new categories
+    }
+)
 
 
 def _min_severity_threshold() -> int:
@@ -885,9 +944,8 @@ INDUSTRY_DENIAL_RATE = 0.075
 # until the first pilot signs; v2 reads from a per-session auth
 # payload. Setting TENANT_ID explicitly to a non-"default"
 # value gives the activity feed row-level isolation per clinic.
-import os as _os
-_TENANT_NAME = _os.environ.get("TENANT_NAME", "Acme Family Practice")
-_TENANT_ID = _os.environ.get("TENANT_ID", "default")
+_TENANT_NAME = os.environ.get("TENANT_NAME", "Acme Family Practice")
+_TENANT_ID = os.environ.get("TENANT_ID", "default")
 
 
 def compute_clean_rate_metrics(
@@ -967,9 +1025,7 @@ def compute_clean_rate_metrics(
         extra_clean_pct = max(0.0, this_month_clean_rate - baseline_clean_rate)
     else:
         extra_clean_pct = 0.0
-    avoided_denial_dollar = (
-        extra_clean_pct * this_month_total * AVG_CLAIM_VALUE_USD
-    )
+    avoided_denial_dollar = extra_clean_pct * this_month_total * AVG_CLAIM_VALUE_USD
 
     return {
         "ready": True,
@@ -983,6 +1039,44 @@ def compute_clean_rate_metrics(
         "clean_rate_delta": clean_rate_delta,
         "avg_claim_value_usd": AVG_CLAIM_VALUE_USD,
     }
+
+
+def read_latest_completed_audit(
+    *,
+    tenant_id: str,
+    log_path: str | os.PathLike[str] = "/app/logs/upload_jobs.jsonl",
+) -> dict[str, Any] | None:
+    """Return the newest successful encrypted audit for one tenant."""
+    from pathlib import Path as _P
+
+    log = _P(log_path)
+    if not log.is_file():
+        return None
+    try:
+        records = read_encrypted_job_records(log)
+    except OSError:
+        return None
+    for rec in reversed(records):
+        if rec.get("tenant_id", "default") != tenant_id:
+            continue
+        if rec.get("status") != "done":
+            continue
+        res = rec.get("result", {}) or {}
+        if res.get("audit_status") != "ok":
+            continue
+        return {
+            "job_id": rec.get("job_id"),
+            "encounter_id": rec.get("encounter_id"),
+            "source": rec.get("source"),
+            "submitted_at": rec.get("submitted_at"),
+            "finished_at": rec.get("finished_at"),
+            "findings_count": res.get("findings_count", 0),
+            "summary": res.get("summary", ""),
+            "difficulty_tier": res.get("difficulty_tier"),
+            "variant": res.get("variant"),
+            "tenant_id": rec.get("tenant_id", "default"),
+        }
+    return None
 
 
 def read_latest_real_audit(
@@ -1008,22 +1102,15 @@ def read_latest_real_audit(
     live LLM audit results alongside the demo cards.
     """
     from pathlib import Path as _P
+
     log = _P(log_path)
     if not log.is_file():
         return None
     try:
-        with log.open() as fh:
-            lines = fh.readlines()
+        records = read_encrypted_job_records(log)
     except OSError:
         return None
-    for line in reversed(lines):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    for rec in reversed(records):
         if rec.get("encounter_id") != encounter_id:
             continue
         # Tenant filter: skip rows that belong to a different
@@ -1114,12 +1201,13 @@ def create_app() -> FastAPI:
         # accept application/json (so API consumers and the React
         # portal don't get a 2 KB HTML page in their error path).
         from fastapi.responses import JSONResponse
+
         path = request.url.path
         accept = request.headers.get("accept", "")
         wants_json = (
             path.startswith("/api/")
             or "application/json" in accept
-            or path.startswith("/encounter/")   # JSON encounter detail route
+            or path.startswith("/encounter/")  # JSON encounter detail route
             or path.startswith("/encounters/")  # plural — encounter audit + others
         )
         if wants_json:
@@ -1142,6 +1230,7 @@ def create_app() -> FastAPI:
         # Log to the standard error log so the operator can correlate.
         import logging as _logging_err
         import uuid as _uuid_err
+
         request_id = _uuid_err.uuid4().hex[:12]
         _logging_err.getLogger("ai_billing_audit").exception(
             "500 on %s %s request_id=%s: %s",
@@ -1194,6 +1283,7 @@ def create_app() -> FastAPI:
     # requires its AUDIT_BEARER_TOKEN only for non-CORS endpoints.
     from fastapi.middleware.cors import CORSMiddleware
     import re as _re_cors
+
     _CORS_ALLOW_ORIGIN_RE = _re_cors.compile(r"^https://([a-z0-9-]+\.)?ashbi\.ca$")
     app.add_middleware(
         CORSMiddleware,
@@ -1211,6 +1301,7 @@ def create_app() -> FastAPI:
     # to match the AUDIT_BEARER_TOKEN env var, or to be in
     # AUDIT_ALLOW_NO_AUTH (set to "1" only for local dev).
     import os as _os
+
     _BEARER = _os.environ.get("AUDIT_BEARER_TOKEN", "")
     _ALLOW_NO_AUTH = _os.environ.get("AUDIT_ALLOW_NO_AUTH", "") == "1"
 
@@ -1226,6 +1317,7 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         if request.url.path != "/metrics":
             from .metrics import bump_http_request
+
             bump_http_request(
                 request.url.path,
                 request.method,
@@ -1236,7 +1328,9 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def _bearer_auth(request, call_next):
         # Whitelist: healthz/readyz + static
-        if request.url.path in ("/healthz", "/readyz") or request.url.path.startswith("/static"):
+        if request.url.path in ("/healthz", "/readyz") or request.url.path.startswith(
+            "/static"
+        ):
             return await call_next(request)
         # CORS preflight from the portal at zorva.ashbi.ca must pass
         # through without auth — the browser sends OPTIONS without
@@ -1247,42 +1341,13 @@ def create_app() -> FastAPI:
         # preflight first and the browser would never reach CORS.
         if request.method == "OPTIONS":
             return await call_next(request)
-        # Public demo paths: the home page, the docs path, the upload
-        # portal HTML, plus the JSON endpoints the portal fetches to
-        # surface denial-risk + appeal-letter UI on its encounter-
-        # detail page. All of these are GET-only and operate on the
-        # demo encounter registry (no PHI, no real claims). The
+        # Public demo paths: the home page, docs path, and upload
+        # portal HTML. Encounter JSON is never exempted because an
+        # encounter id may refer to a real upload, not just demo data. The
         # mutation endpoints (upload/preview, upload/submit,
         # upload/notes, upload/paste, /encounter/{id}/accept-all,
         # /encounter/{id}/dismiss, etc.) still require auth.
-        #
-        # NOTE: `/appeal-letters` (list) is NOT public — it enumerates
-        # letter metadata / encounter IDs. Only the single-letter
-        # generate+read paths used by the marketing demo stay open.
         if _ALLOW_NO_AUTH:
-            return await call_next(request)
-        # Public-read bypass (GET-only): the portal at zorva.ashbi.ca
-        # fetches denial-risk + appeal-letter to surface the audit
-        # results on the encounter-detail page. These endpoints are
-        # read-only, work on the demo encounter registry (no PHI, no
-        # real claims), and the data is the same the portal would
-        # compute locally. They are public-read **regardless of
-        # whether AUDIT_BEARER_TOKEN is configured** — so the bypass
-        # runs BEFORE the bearer-required branch.
-        #
-        # Without this bypass, the portal can never call these
-        # endpoints from the browser (it doesn't have the bearer
-        # token), and the CORS preflight succeeds only for the
-        # caller to then 401 on the actual GET.
-        if request.method == "GET" and request.url.path.startswith(
-            "/api/encounters/"
-        ) and any(
-            request.url.path.endswith(suffix)
-            for suffix in (
-                "/denial-risk",
-                "/appeal-letter",
-            )
-        ):
             return await call_next(request)
         # Legacy whitelists: /, /healthz, /readyz, /static. GET-only on / + probes.
         # Marketing / funnel pages are also public-read (no PHI, no
@@ -1335,18 +1400,9 @@ def create_app() -> FastAPI:
                 request.method == "GET"
                 and request.url.path.startswith("/case-studies/")
             )
-            or (
-                request.method == "GET"
-                and request.url.path.startswith("/blog/")
-            )
-            or (
-                request.method == "GET"
-                and request.url.path.startswith("/glossary/")
-            )
-            or (
-                request.method == "GET"
-                and request.url.path.startswith("/changelog/")
-            )
+            or (request.method == "GET" and request.url.path.startswith("/blog/"))
+            or (request.method == "GET" and request.url.path.startswith("/glossary/"))
+            or (request.method == "GET" and request.url.path.startswith("/changelog/"))
             or (
                 # Any GET to a non-API / non-internal path is
                 # public-read so the branded 404 handler (and any
@@ -1387,19 +1443,24 @@ def create_app() -> FastAPI:
             # was misleading (P11 bug-sweep finding). Surface the
             # real reason: the operator hasn't provisioned auth.
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
-                {"detail": "server has no AUDIT_BEARER_TOKEN configured; non-public requests refused. Contact operator."},
+                {
+                    "detail": "server has no AUDIT_BEARER_TOKEN configured; non-public requests refused. Contact operator."
+                },
                 status_code=503,
             )
         auth = request.headers.get("authorization", "")
         if not auth.startswith("Bearer "):
             from fastapi.responses import JSONResponse
+
             return JSONResponse({"detail": "missing bearer token"}, status_code=401)
-        token = auth[len("Bearer "):].strip()
+        token = auth[len("Bearer ") :].strip()
         # Constant-time compare — plain `!=` leaks timing on the
         # shared operator bearer.
         if not hmac.compare_digest(token, _BEARER):
             from fastapi.responses import JSONResponse
+
             return JSONResponse({"detail": "invalid bearer token"}, status_code=401)
         return await call_next(request)
 
@@ -1443,9 +1504,8 @@ def create_app() -> FastAPI:
 
         path = request.url.path
         method = request.method
-        is_limited = (
-            (method == "POST" and path == "/contact")
-            or (method == "POST" and path.startswith("/api/encounters/upload"))
+        is_limited = (method == "POST" and path == "/contact") or (
+            method == "POST" and path.startswith("/api/encounters/upload")
         )
         if not is_limited:
             return await call_next(request)
@@ -1499,11 +1559,10 @@ def create_app() -> FastAPI:
         user_role = request.headers.get("X-User-Role")
         role = _coerce_role(user_role)
         if user_id and role:
-            request.state.user = UserContext(
-                user_id=str(user_id).strip(),
-                role=role,
-                user_identifier=str(user_id).strip(),
-            )
+            try:
+                request.state.user = _resolve_user_from_request(request)
+            except HTTPException as exc:
+                return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
         elif user_role and not role:
             # Bad role in header — leave state.user unset. The
             # dependency will raise 403 when invoked.
@@ -1535,7 +1594,8 @@ def create_app() -> FastAPI:
             encounter_id=encounter_id,
             tenant_id=_TENANT_ID,
             log_path=_os.environ.get(
-                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl",
+                "UPLOAD_AUDIT_LOG_PATH",
+                "/app/logs/upload_jobs.jsonl",
             ),
         )
 
@@ -1554,9 +1614,13 @@ def create_app() -> FastAPI:
         handler with the same name). See the home.html template
         for the four-question landing structure.
         """
-        return templates.TemplateResponse(request, "home.html", {
-            "request": request,
-        })
+        return templates.TemplateResponse(
+            request,
+            "home.html",
+            {
+                "request": request,
+            },
+        )
 
     @app.get("/audits", response_class=HTMLResponse)
     def audits_dashboard(request: Request) -> HTMLResponse:
@@ -1698,14 +1762,14 @@ def create_app() -> FastAPI:
             visible_for_card = []
             if record is not None:
                 visible_for_card = [
-                    f for f in _finding_dicts(record)
+                    f
+                    for f in _finding_dicts(record)
                     if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
                 ]
             from .denial_risk import compute_denial_risk
+
             if visible_for_card:
-                card_risk = compute_denial_risk(
-                    visible_for_card, min_severity=min_sev
-                )
+                card_risk = compute_denial_risk(visible_for_card, min_severity=min_sev)
             else:
                 card_risk = {
                     "denial_probability": 0.0,
@@ -1717,9 +1781,7 @@ def create_app() -> FastAPI:
             # biller can scan for highest-value encounters first.
             # Tier thresholds: green < $50, yellow $50-200, red >= $200.
             opp = compute_revenue_opportunities(visible_for_card)
-            opp_total = round(
-                sum(o.get("estimated_dollar", 0.0) for o in opp), 2
-            )
+            opp_total = round(sum(o.get("estimated_dollar", 0.0) for o in opp), 2)
             if opp_total >= 200:
                 opp_tier = "high"
             elif opp_total >= 50:
@@ -1738,9 +1800,7 @@ def create_app() -> FastAPI:
             _cpt_codes = _claim.get("cpt_codes", []) or []
             _icd10_codes = _claim.get("icd10_codes", []) or []
             _patient_id = (
-                _claim.get("patient_id")
-                or (record or {}).get("patient_id")
-                or ""
+                _claim.get("patient_id") or (record or {}).get("patient_id") or ""
             )
             _provider_npis = _claim.get("provider_npis", []) or []
             cards.append(
@@ -1785,9 +1845,7 @@ def create_app() -> FastAPI:
         elif active_filter == "clean":
             visible_cards = [c for c in cards if not c["is_flagged"]]
         elif active_filter == "opportunities":
-            visible_cards = [
-                c for c in cards if c["revenue_opportunity_total"] > 0
-            ]
+            visible_cards = [c for c in cards if c["revenue_opportunity_total"] > 0]
         else:
             visible_cards = list(cards)
         # Encounter search (kanban t_171d24b3): the index page can
@@ -1804,12 +1862,8 @@ def create_app() -> FastAPI:
         search_q_raw = request.query_params.get("q", "").strip()
         search_cpt_raw = request.query_params.get("cpt", "").strip()
         search_icd10_raw = request.query_params.get("icd10", "").strip()
-        search_patient_raw = request.query_params.get(
-            "patient_id", ""
-        ).strip()
-        search_npi_raw = request.query_params.get(
-            "provider_npi", ""
-        ).strip()
+        search_patient_raw = request.query_params.get("patient_id", "").strip()
+        search_npi_raw = request.query_params.get("provider_npi", "").strip()
         search_q = search_q_raw.lower()
         search_cpt = search_cpt_raw.lower()
         search_icd10 = search_icd10_raw.lower()
@@ -1819,6 +1873,7 @@ def create_app() -> FastAPI:
             [search_q, search_cpt, search_icd10, search_patient, search_npi]
         )
         if search_active:
+
             def _card_matches(card: dict[str, Any]) -> bool:
                 if search_q and search_q not in (card["encounter_id"] or "").lower():
                     return False
@@ -1850,40 +1905,13 @@ def create_app() -> FastAPI:
         # Most recent real-audit run. Walk the job-queue JSONL log
         # back to the last line with audit_status=ok (no per-encounter
         # filter — we want the latest one for the home page).
-        latest_real_audit: dict[str, Any] | None = None
-        try:
-            from pathlib import Path as _P
-            log_path = _P("/app/logs/upload_jobs.jsonl")
-            if log_path.is_file():
-                with log_path.open() as fh:
-                    lines = fh.readlines()
-                for line in reversed(lines):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if rec.get("status") != "done":
-                        continue
-                    res = rec.get("result", {}) or {}
-                    if res.get("audit_status") != "ok":
-                        continue
-                    latest_real_audit = {
-                        "job_id": rec.get("job_id"),
-                        "encounter_id": rec.get("encounter_id"),
-                        "source": rec.get("source"),
-                        "submitted_at": rec.get("submitted_at"),
-                        "finished_at": rec.get("finished_at"),
-                        "findings_count": res.get("findings_count", 0),
-                        "summary": res.get("summary", ""),
-                        "difficulty_tier": res.get("difficulty_tier"),
-                        "variant": res.get("variant"),
-                    }
-                    break
-        except Exception:
-            latest_real_audit = None
+        latest_real_audit = read_latest_completed_audit(
+            tenant_id=_TENANT_ID,
+            log_path=os.environ.get(
+                "UPLOAD_AUDIT_LOG_PATH",
+                "/app/logs/upload_jobs.jsonl",
+            ),
+        )
         # Top missed-revenue patterns this month — feeds the
         # "Revenue opportunity by rule" bar chart in the dashboard.
         # Computed after cards so the aggregation can reuse the
@@ -1891,9 +1919,9 @@ def create_app() -> FastAPI:
         try:
             from .dashboard import (
                 aggregate_missed_revenue_by_rule,
-                aggregate_monthly_revenue_kpi,
                 month_label as _month_label,
             )
+
             top_missed_revenue_rules = aggregate_missed_revenue_by_rule(top_n=5)
             missed_revenue_month_label = _month_label()
         except Exception:
@@ -1906,6 +1934,7 @@ def create_app() -> FastAPI:
         # the rule aggregator above — empty state if anything fails.
         try:
             from .dashboard import aggregate_monthly_revenue_kpi as _amrk
+
             monthly_revenue_kpi = _amrk()
         except Exception:
             monthly_revenue_kpi = {
@@ -1928,13 +1957,14 @@ def create_app() -> FastAPI:
         try:
             from .per_clinic_f1 import (
                 insufficient_data_state,
-                per_rule_metrics as _pcf1_per_rule,
+                per_rule_metrics as get_per_rule_metrics,
             )
+
             _pcf1_clinic = _TENANT_ID or "default_biller"
-            _pcf1_per_rule = _pcf1_per_rule(clinic_id=_pcf1_clinic, days=30)
+            pcf1_per_rule = get_per_rule_metrics(clinic_id=_pcf1_clinic, days=30)
             per_clinic_f1_widget = insufficient_data_state(
                 clinic_id=_pcf1_clinic,
-                per_rule=_pcf1_per_rule,
+                per_rule=pcf1_per_rule,
                 window_days=30,
             )
         except Exception:
@@ -2021,6 +2051,7 @@ def create_app() -> FastAPI:
         # Resolve the active snooze map for this encounter once;
         # both the demo path and the uploaded path need it.
         from .snooze import SnoozeStore, filter_findings_by_snooze
+
         snooze_store = SnoozeStore()
         active_snoozes = snooze_store.active_snoozes_for_encounter(encounter_id)
         n_snoozed = len(active_snoozes)
@@ -2034,6 +2065,7 @@ def create_app() -> FastAPI:
         assignment_map: dict[str, dict[str, Any]] = {}
         try:
             from .finding_assignments import FindingAssignmentStore
+
             _fa_store = FindingAssignmentStore()
             for fid, entry in _fa_store.current_assignees_for_encounter(
                 encounter_id
@@ -2056,7 +2088,8 @@ def create_app() -> FastAPI:
             findings = _finding_dicts(record)
             min_sev = _min_severity_threshold()
             severity_visible = [
-                f for f in findings
+                f
+                for f in findings
                 if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
             ]
             # Apply the snooze filter on top of the severity
@@ -2077,9 +2110,8 @@ def create_app() -> FastAPI:
             # because the gold findings are deterministic; we
             # score from the same finding list the page shows.
             from .denial_risk import compute_denial_risk
-            denial_risk = compute_denial_risk(
-                visible_findings, min_severity=min_sev
-            )
+
+            denial_risk = compute_denial_risk(visible_findings, min_severity=min_sev)
             # Surface missed-revenue findings as a distinct card so the
             # biller sees dollar uplifts separately from denial risks.
             # We derive from visible_findings (not raw findings) so the
@@ -2163,7 +2195,8 @@ def create_app() -> FastAPI:
         uploaded_findings = uploaded_audit.get("findings", []) or []
         min_sev = _min_severity_threshold()
         severity_visible = [
-            f for f in uploaded_findings
+            f
+            for f in uploaded_findings
             if SEVERITY_RANK.get(str(f.get("severity", "info")).lower(), 0) >= min_sev
         ]
         # Snooze filter — same shape as the demo path above.
@@ -2178,9 +2211,8 @@ def create_app() -> FastAPI:
         # clinic's data, not the demo's gold findings. This is
         # the number the biller actually cares about.
         from .denial_risk import compute_denial_risk
-        denial_risk = compute_denial_risk(
-            uploaded_findings, min_severity=min_sev
-        )
+
+        denial_risk = compute_denial_risk(uploaded_findings, min_severity=min_sev)
         # Same revenue-opportunity pass for uploaded encounters.
         revenue_opportunities = compute_revenue_opportunities(visible_uploaded)
         total_opportunity_dollars = round(
@@ -2291,7 +2323,7 @@ def create_app() -> FastAPI:
             }
             for o in opportunities
         ]
-        total = round(sum(r["estimated_dollar"] for r in rows), 2)
+        total = round(sum(float(r["estimated_dollar"]) for r in rows), 2)
         return JSONResponse(
             {
                 "encounter_id": encounter_id,
@@ -2317,7 +2349,8 @@ def create_app() -> FastAPI:
                 return None
             findings = _finding_dicts(record)
             return [
-                f for f in findings
+                f
+                for f in findings
                 if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
             ]
         # Path 2: uploaded encounter with a completed audit.
@@ -2326,7 +2359,8 @@ def create_app() -> FastAPI:
             return None
         uploaded_findings = uploaded_audit.get("findings", []) or []
         return [
-            f for f in uploaded_findings
+            f
+            for f in uploaded_findings
             if SEVERITY_RANK.get(f.get("severity", "info"), 0) >= min_sev
         ]
 
@@ -2338,7 +2372,9 @@ def create_app() -> FastAPI:
     # "training data" layer that seeds the learning loop (per-encounter
     # accept/dismiss/modify log with severity, rule_id, category).
 
-    def _lookup_finding_meta(encounter_id: str, finding_id: str) -> tuple[str, str, str]:
+    def _lookup_finding_meta(
+        encounter_id: str, finding_id: str
+    ) -> tuple[str, str, str]:
         """Return (severity, rule_id, category) for a finding, or '' if unknown."""
         record = load_encounter_record(encounter_id)
         if not record:
@@ -2392,6 +2428,7 @@ def create_app() -> FastAPI:
         # Forward-compatible: if FeedbackEntry has these fields, attach them.
         try:
             from dataclasses import fields as _dc_fields
+
             field_names = {f.name for f in _dc_fields(FeedbackEntry)}
             if "correct_finding" in field_names and correct_finding is not None:
                 entry_kwargs["correct_finding"] = correct_finding
@@ -2410,7 +2447,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         body = {}
         try:
             body = await request.json()
@@ -2449,7 +2488,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         body = {}
         try:
             body = await request.json()
@@ -2491,12 +2532,14 @@ def create_app() -> FastAPI:
             action="dismiss",
             user_identifier=user.user_identifier,
         )
-        return JSONResponse({
-            "ok": True,
-            "finding_id": finding_id,
-            "reason_category": reason_category,
-            "event": event,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "finding_id": finding_id,
+                "reason_category": reason_category,
+                "event": event,
+            }
+        )
 
     # ---- Per-finding Accept / Dismiss / Modify ------------------------
     # These endpoints mirror the encounter-level accept-all / dismiss
@@ -2523,7 +2566,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
         event = audit_append(
@@ -2541,7 +2586,9 @@ def create_app() -> FastAPI:
             action="accept",
             user_identifier=user.user_identifier,
         )
-        return JSONResponse({"ok": True, "finding_id": finding_id, "action": "accept", "event": event})
+        return JSONResponse(
+            {"ok": True, "finding_id": finding_id, "action": "accept", "event": event}
+        )
 
     @app.post("/encounter/{encounter_id}/finding/{finding_id}/dismiss")
     async def finding_dismiss(
@@ -2567,7 +2614,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
         body: dict[str, Any] = {}
@@ -2606,7 +2655,9 @@ def create_app() -> FastAPI:
             cf_summary = ", ".join(
                 f"{k}={v}" for k, v in sorted(correct_finding.items())
             )
-            note = f"{note} | correct: {cf_summary}" if note else f"correct: {cf_summary}"
+            note = (
+                f"{note} | correct: {cf_summary}" if note else f"correct: {cf_summary}"
+            )
         event = audit_append(
             action="dismiss",
             encounter_id=encounter_id,
@@ -2624,14 +2675,16 @@ def create_app() -> FastAPI:
             user_identifier=user.user_identifier,
             correct_finding=correct_finding,
         )
-        return JSONResponse({
-            "ok": True,
-            "finding_id": finding_id,
-            "action": "dismiss",
-            "reason_category": reason_category,
-            "correct_finding_recorded": bool(correct_finding),
-            "event": event,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "finding_id": finding_id,
+                "action": "dismiss",
+                "reason_category": reason_category,
+                "correct_finding_recorded": bool(correct_finding),
+                "event": event,
+            }
+        )
 
     @app.post("/encounter/{encounter_id}/finding/{finding_id}/modify")
     async def finding_modify(
@@ -2650,7 +2703,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
         body = {}
@@ -2709,6 +2764,7 @@ def create_app() -> FastAPI:
         # effort; never raises.
         try:
             from .feedback import record_biller_correction
+
             record_biller_correction(
                 encounter_id=encounter_id,
                 finding_id=finding_id,
@@ -2719,15 +2775,17 @@ def create_app() -> FastAPI:
             )
         except Exception:
             pass
-        return JSONResponse({
-            "ok": True,
-            "finding_id": finding_id,
-            "action": "modify",
-            "new_severity": new_severity,
-            "new_category": new_category,
-            "why": why,
-            "event": event,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "finding_id": finding_id,
+                "action": "modify",
+                "new_severity": new_severity,
+                "new_category": new_category,
+                "why": why,
+                "event": event,
+            }
+        )
 
     # ---- Per-finding comment thread ----------------------------------
     # A "comment" is a biller's free-form note attached to a finding:
@@ -2761,9 +2819,7 @@ def create_app() -> FastAPI:
             from .feedback import add_comment as _add_comment
             from .feedback import get_default_store
         except ImportError:
-            raise HTTPException(
-                status_code=503, detail="feedback module unavailable"
-            )
+            raise HTTPException(status_code=503, detail="feedback module unavailable")
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
         body: dict[str, Any] = {}
@@ -2776,9 +2832,7 @@ def create_app() -> FastAPI:
         # in the body and it doesn't match the authenticated
         # user, we honor the explicit one (allows impersonation
         # in tests) but the canonical row stores the real user.
-        author_id = str(
-            body.get("author_id") or user.user_identifier
-        ).strip() or "anon"
+        author_id = str(body.get("author_id") or user.user_identifier).strip() or "anon"
         text = str(body.get("body", "") or "").strip()
         if not text:
             raise HTTPException(status_code=400, detail="body required")
@@ -2796,11 +2850,13 @@ def create_app() -> FastAPI:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
-        return JSONResponse({
-            "ok": True,
-            "comment": comment.to_dict(),
-            "feedback_event_id": entry.event_id,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "comment": comment.to_dict(),
+                "feedback_event_id": entry.event_id,
+            }
+        )
 
     @app.get("/encounter/{encounter_id}/finding/{finding_id}/comments")
     async def finding_list_comments(
@@ -2816,9 +2872,7 @@ def create_app() -> FastAPI:
             from .feedback import list_comments as _list_comments
             from .feedback import get_default_store
         except ImportError:
-            raise HTTPException(
-                status_code=503, detail="feedback module unavailable"
-            )
+            raise HTTPException(status_code=503, detail="feedback module unavailable")
         if not finding_id:
             raise HTTPException(status_code=400, detail="finding_id required")
         try:
@@ -2829,10 +2883,12 @@ def create_app() -> FastAPI:
             )
         except Exception:
             thread = []
-        return JSONResponse({
-            "comments": [c.to_dict() for c in thread],
-            "count": len(thread),
-        })
+        return JSONResponse(
+            {
+                "comments": [c.to_dict() for c in thread],
+                "count": len(thread),
+            }
+        )
 
     # ---- Snooze / re-audit reminder (kanban t_993c411c) ----------
     # A snooze hides a finding from the default encounter view until
@@ -2881,6 +2937,7 @@ def create_app() -> FastAPI:
         # silently confusing. Biller can always snooze for "now
         # + 1 minute" if they want to clear the flag.
         from datetime import datetime
+
         try:
             ts = datetime.fromisoformat(until_raw.replace("Z", "+00:00")).timestamp()
         except (TypeError, ValueError):
@@ -2922,11 +2979,13 @@ def create_app() -> FastAPI:
             # already the source of truth and a missing audit row
             # only affects the privacy view, not the biller.
             pass
-        return JSONResponse({
-            "ok": True,
-            "finding_id": finding_id,
-            "snooze": entry.to_dict(),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "finding_id": finding_id,
+                "snooze": entry.to_dict(),
+            }
+        )
 
     @app.post("/encounter/{encounter_id}/finding/{finding_id}/unsnooze")
     async def finding_unsnooze(
@@ -2972,11 +3031,13 @@ def create_app() -> FastAPI:
             )
         except Exception:
             pass
-        return JSONResponse({
-            "ok": True,
-            "cleared": True,
-            "snooze": entry.to_dict(),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "cleared": True,
+                "snooze": entry.to_dict(),
+            }
+        )
 
     @app.get("/encounter/{encounter_id}/snoozes")
     async def encounter_list_snoozes(encounter_id: str) -> JSONResponse:
@@ -2992,19 +3053,21 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="snooze module unavailable")
         store = SnoozeStore()
         active = store.active_snoozes_for_encounter(encounter_id)
-        return JSONResponse({
-            "snoozes": [
-                {
-                    "finding_id": fid,
-                    "until": e.snooze_until,
-                    "reason": e.reason,
-                    "by": e.user_identifier,
-                    "event_id": e.event_id,
-                }
-                for fid, e in active.items()
-            ],
-            "count": len(active),
-        })
+        return JSONResponse(
+            {
+                "snoozes": [
+                    {
+                        "finding_id": fid,
+                        "until": e.snooze_until,
+                        "reason": e.reason,
+                        "by": e.user_identifier,
+                        "event_id": e.event_id,
+                    }
+                    for fid, e in active.items()
+                ],
+                "count": len(active),
+            }
+        )
 
     # ---- Finding assignments (kanban t_54262d96) ---------------------
     # Mid-clinic tier processes ~2,000 audits/month and one biller
@@ -3051,17 +3114,13 @@ def create_app() -> FastAPI:
                 detail="finding_assignments module unavailable",
             )
         if not finding_id:
-            raise HTTPException(
-                status_code=400, detail="finding_id required"
-            )
+            raise HTTPException(status_code=400, detail="finding_id required")
         body: dict[str, Any] = {}
         try:
             body = await request.json()
         except Exception:
             body = {}
-        assignee_id = (
-            str(body.get("assignee_id", "") or "").strip()
-        )
+        assignee_id = str(body.get("assignee_id", "") or "").strip()
         if not assignee_id:
             raise HTTPException(
                 status_code=400,
@@ -3080,9 +3139,8 @@ def create_app() -> FastAPI:
             # this yesterday" for retrospective triage).
             try:
                 from datetime import datetime
-                datetime.fromisoformat(
-                    due_date_raw.replace("Z", "+00:00")
-                )
+
+                datetime.fromisoformat(due_date_raw.replace("Z", "+00:00"))
             except (TypeError, ValueError):
                 raise HTTPException(
                     status_code=400,
@@ -3136,15 +3194,16 @@ def create_app() -> FastAPI:
                 )
             except Exception:
                 pass
-        return JSONResponse({
-            "ok": True,
-            "finding_id": finding_id,
-            "assignment": entry.to_dict(),
-            "reassigned": (
-                existing is not None
-                and existing.assignee_id != assignee_id
-            ),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "finding_id": finding_id,
+                "assignment": entry.to_dict(),
+                "reassigned": (
+                    existing is not None and existing.assignee_id != assignee_id
+                ),
+            }
+        )
 
     @app.get("/api/encounters/{encounter_id}/finding/assignments")
     async def api_encounter_assignments(encounter_id: str) -> JSONResponse:
@@ -3163,13 +3222,13 @@ def create_app() -> FastAPI:
             )
         store = FindingAssignmentStore()
         current = store.current_assignees_for_encounter(encounter_id)
-        return JSONResponse({
-            "encounter_id": encounter_id,
-            "assignments": {
-                fid: e.to_dict() for fid, e in current.items()
-            },
-            "count": len(current),
-        })
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "assignments": {fid: e.to_dict() for fid, e in current.items()},
+                "count": len(current),
+            }
+        )
 
     # ---- Denial-risk + appeal-letter API (denial_risk.py + appeal_letter.py) -
     # The denial-risk scorer and the appeal-letter generator are both
@@ -3183,13 +3242,7 @@ def create_app() -> FastAPI:
     @app.get("/api/encounters/{encounter_id}/denial-risk")
     async def api_encounter_denial_risk(
         encounter_id: str,
-        # Public-read endpoint; the bearer middleware's
-        # _PUBLIC_READ_ENDPOINTS check passes the request through
-        # without auth, and get_request_user_or_anonymous returns
-        # an "anonymous" / "guest" UserContext instead of 401ing
-        # when the caller omits X-User-Id headers. See the comment
-        # on get_request_user_or_anonymous for the rationale.
-        user: UserContext = Depends(get_request_user_or_anonymous),
+        user: UserContext = Depends(get_request_user),
     ) -> JSONResponse:
         """Compute the per-claim denial risk from the encounter's findings.
 
@@ -3211,6 +3264,7 @@ def create_app() -> FastAPI:
         what the encounter-detail HTML page shows.
         """
         from .denial_risk import compute_denial_risk
+
         if not encounter_id or not encounter_id.strip():
             raise HTTPException(
                 status_code=400,
@@ -3347,19 +3401,14 @@ def create_app() -> FastAPI:
                 # "DX_LINKAGE_REQUIREMENT") and underscore/dash
                 # variations. Same approach as the existing
                 # /encounter/{id}/appeal route.
-                rule_norm = (
-                    rule_id.upper().replace("_", "").replace("-", "")
-                )
+                rule_norm = rule_id.upper().replace("_", "").replace("-", "")
                 for f in findings:
                     rid = f.get("rule_id") or (
-                        f.get("rule_ids", [None])[0]
-                        if f.get("rule_ids") else None
+                        f.get("rule_ids", [None])[0] if f.get("rule_ids") else None
                     )
                     if not rid:
                         continue
-                    rid_norm = (
-                        rid.upper().replace("_", "").replace("-", "")
-                    )
+                    rid_norm = rid.upper().replace("_", "").replace("-", "")
                     if (
                         rule_norm[:12] == rid_norm[:12]
                         or rule_norm in rid_norm
@@ -3368,11 +3417,7 @@ def create_app() -> FastAPI:
                         target_finding = f
                         break
         if target_finding is None:
-            key = (
-                f"finding_id={finding_id!r}"
-                if finding_id
-                else f"rule_id={rule_id!r}"
-            )
+            key = f"finding_id={finding_id!r}" if finding_id else f"rule_id={rule_id!r}"
             raise HTTPException(
                 status_code=404,
                 detail=f"{key} not present in the latest audit",
@@ -3384,7 +3429,8 @@ def create_app() -> FastAPI:
         record = load_encounter_record(encounter_id) or {}
         zctx = (
             (real_audit or {}).get("zorva_context")
-            if isinstance(real_audit, dict) else None
+            if isinstance(real_audit, dict)
+            else None
         ) or {}
         clinical_note = body.get("clinical_note")
         if not isinstance(clinical_note, str) or not clinical_note.strip():
@@ -3393,9 +3439,8 @@ def create_app() -> FastAPI:
             # at audit time anyway). For uploaded encounters, the
             # real audit's full note isn't persisted to JSONL yet
             # so we fall back to the quote.
-            clinical_note = (
-                target_finding.get("quote", "")
-                or record.get("clinical_note", "")
+            clinical_note = target_finding.get("quote", "") or record.get(
+                "clinical_note", ""
             )
         encounter_dict = {
             "encounter_id": encounter_id,
@@ -3409,6 +3454,7 @@ def create_app() -> FastAPI:
         # truly exceptional.
         try:
             from .llm import LLMClient
+
             llm_client = LLMClient()
 
             def _llm_complete(prompt: str) -> str:
@@ -3416,9 +3462,11 @@ def create_app() -> FastAPI:
                     messages=[{"role": "user", "content": prompt}],
                 )
                 if isinstance(response, dict):
-                    return (response.get("choices", [{}])[0]
-                                  .get("message", {})
-                                  .get("content", ""))
+                    return (
+                        response.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                    )
                 return str(response or "")
 
             llm_complete = _llm_complete
@@ -3447,6 +3495,7 @@ def create_app() -> FastAPI:
             )
         except Exception as e:
             import logging as _log_appeal
+
             _log_appeal.getLogger("ai_billing_audit").exception(
                 "appeal-letter generation failed: %s", e
             )
@@ -3463,8 +3512,7 @@ def create_app() -> FastAPI:
         # something to attach to. ``log_appeal_letter`` handles
         # PHI-scrubbing of the markdown body before writing.
         resolved_finding_id = (
-            (target_finding or {}).get("finding_id")
-            if target_finding else finding_id
+            (target_finding or {}).get("finding_id") if target_finding else finding_id
         ) or None
         try:
             log_appeal_letter(
@@ -3476,20 +3524,20 @@ def create_app() -> FastAPI:
         except Exception:
             # Persisting is best-effort.
             pass
-        return JSONResponse({
-            "ok": True,
-            "encounter_id": encounter_id,
-            "finding_id": finding_id or (
-                target_finding.get("finding_id", "") if target_finding else ""
-            ),
-            "letter": letter,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "encounter_id": encounter_id,
+                "finding_id": finding_id
+                or (target_finding.get("finding_id", "") if target_finding else ""),
+                "letter": letter,
+            }
+        )
 
     @app.get("/api/encounters/{encounter_id}/appeal-letters")
     async def api_encounter_appeal_letters(
         encounter_id: str,
-        # Public-read; see _PUBLIC_READ_ENDPOINTS for the rationale.
-        user: UserContext = Depends(get_request_user_or_anonymous),
+        user: UserContext = Depends(get_request_user),
     ) -> JSONResponse:
         """List every appeal letter generated for this encounter.
 
@@ -3515,11 +3563,13 @@ def create_app() -> FastAPI:
         # Newest-first ordering. read_appeal_letters returns the file
         # in append order; reverse it for "most recent at top" UX.
         letters = list(reversed(letters or []))
-        return JSONResponse({
-            "encounter_id": encounter_id,
-            "letters": letters,
-            "count": len(letters),
-        })
+        return JSONResponse(
+            {
+                "encounter_id": encounter_id,
+                "letters": letters,
+                "count": len(letters),
+            }
+        )
 
     @app.post("/api/encounters/{encounter_id}/appeal-letter/{letter_id}/outcome")
     async def api_encounter_appeal_letter_outcome(
@@ -3557,14 +3607,17 @@ def create_app() -> FastAPI:
             )
         status = str(body.get("status", "") or "").strip().lower()
         allowed_statuses = {
-            "won", "lost", "withdrawn", "pending", "did_not_file",
+            "won",
+            "lost",
+            "withdrawn",
+            "pending",
+            "did_not_file",
         }
         if status not in allowed_statuses:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"status must be one of {sorted(allowed_statuses)}; "
-                    f"got {status!r}"
+                    f"status must be one of {sorted(allowed_statuses)}; got {status!r}"
                 ),
             )
         notes = str(body.get("notes", "") or "").strip()
@@ -3588,6 +3641,7 @@ def create_app() -> FastAPI:
         try:
             from .appeal_letter import (
                 AppealOutcome,
+                AppealOutcomeStatus,
                 log_appeal_outcome,
             )
         except ImportError:
@@ -3601,19 +3655,21 @@ def create_app() -> FastAPI:
         outcome = AppealOutcome.now(
             appeal_id=letter_id,
             encounter_id=encounter_id,
-            status=status,
+            status=cast("AppealOutcomeStatus", status),
             biller_id=biller_id,
             notes=notes,
         )
         log_appeal_outcome(outcome)
-        return JSONResponse({
-            "ok": True,
-            "encounter_id": encounter_id,
-            "appeal_id": letter_id,
-            "status": status,
-            "notes": notes,
-            "timestamp": getattr(outcome, "timestamp", ""),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "encounter_id": encounter_id,
+                "appeal_id": letter_id,
+                "status": status,
+                "notes": notes,
+                "timestamp": getattr(outcome, "timestamp", ""),
+            }
+        )
 
     @app.get("/api/clinics/{clinic_id}/workload")
     async def api_clinic_workload(clinic_id: str) -> JSONResponse:
@@ -3651,11 +3707,13 @@ def create_app() -> FastAPI:
             )
         store = FindingAssignmentStore()
         rows = store.workload_for_clinic(clinic_id)
-        return JSONResponse({
-            "clinic_id": clinic_id,
-            "workload": rows,
-            "n_billers": len(rows),
-        })
+        return JSONResponse(
+            {
+                "clinic_id": clinic_id,
+                "workload": rows,
+                "n_billers": len(rows),
+            }
+        )
 
     # ---- CARC / RARC lookup (kanban t_7743e5d5) --------------------
     # Two lookup endpoints serving the per-payer denial reason code
@@ -3742,7 +3800,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         event = audit_append(
             action="rerun",
             encounter_id=encounter_id,
@@ -3773,7 +3833,9 @@ def create_app() -> FastAPI:
         try:
             from .audit_actions import append as audit_append
         except ImportError:
-            raise HTTPException(status_code=503, detail="audit_actions module unavailable")
+            raise HTTPException(
+                status_code=503, detail="audit_actions module unavailable"
+            )
         event = audit_append(
             action="flag",
             encounter_id=encounter_id,
@@ -3916,9 +3978,8 @@ def create_app() -> FastAPI:
 
         per_encounter_summary: list[dict[str, Any]] = []
         try:
-            from .feedback import FeedbackStore, get_default_store
+            from .feedback import get_default_store
         except ImportError:
-            FeedbackStore = None  # type: ignore[assignment,misc]
             get_default_store = None  # type: ignore[assignment]
 
         # Track which (encounter_id, finding_id) pairs have already
@@ -3934,9 +3995,7 @@ def create_app() -> FastAPI:
                     # don't lock the underlying finding out of a
                     # subsequent bulk action.
                     if entry.action in ("accept", "dismiss"):
-                        already_decided.add(
-                            (entry.encounter_id, entry.finding_id)
-                        )
+                        already_decided.add((entry.encounter_id, entry.finding_id))
             except Exception:
                 # History read failure is non-fatal; we just lose
                 # the dedup signal for this call.
@@ -3957,19 +4016,19 @@ def create_app() -> FastAPI:
             if not findings:
                 # Encounter with no findings is a no-op; record it
                 # so the dashboard can show "0 findings touched".
-                per_encounter_summary.append({
-                    "encounter_id": eid,
-                    "applied_finding_ids": [],
-                    "skipped_finding_ids": [],
-                })
+                per_encounter_summary.append(
+                    {
+                        "encounter_id": eid,
+                        "applied_finding_ids": [],
+                        "skipped_finding_ids": [],
+                    }
+                )
                 continue
 
             applied_finding_ids: list[str] = []
             skipped_finding_ids: list[str] = []
             for f in findings:
-                fid = str(
-                    f.get("finding_id") or f.get("id") or ""
-                ).strip()
+                fid = str(f.get("finding_id") or f.get("id") or "").strip()
                 if not fid:
                     continue
                 fid_rule = str(f.get("rule_id") or "").strip()
@@ -3992,11 +4051,13 @@ def create_app() -> FastAPI:
                     and (eid, fid) in already_decided
                 ):
                     skipped_finding_ids.append(fid)
-                    skipped.append({
-                        "encounter_id": eid,
-                        "finding_id": fid,
-                        "reason": "already_decided",
-                    })
+                    skipped.append(
+                        {
+                            "encounter_id": eid,
+                            "finding_id": fid,
+                            "reason": "already_decided",
+                        }
+                    )
                     continue
                 # Write the per-finding feedback row using the same
                 # helper the per-encounter endpoints use, so the
@@ -4024,39 +4085,42 @@ def create_app() -> FastAPI:
                         user_identifier=user_identifier,
                     )
                 applied_finding_ids.append(fid)
-                applied.append({
-                    "encounter_id": eid,
-                    "finding_id": fid,
-                    "rule_id": fid_rule,
-                    "severity": str(f.get("severity") or "").strip().lower(),
-                    "quote": f.get("quote"),
-                })
+                applied.append(
+                    {
+                        "encounter_id": eid,
+                        "finding_id": fid,
+                        "rule_id": fid_rule,
+                        "severity": str(f.get("severity") or "").strip().lower(),
+                        "quote": f.get("quote"),
+                    }
+                )
 
-            per_encounter_summary.append({
-                "encounter_id": eid,
-                "applied_finding_ids": applied_finding_ids,
-                "skipped_finding_ids": skipped_finding_ids,
-            })
+            per_encounter_summary.append(
+                {
+                    "encounter_id": eid,
+                    "applied_finding_ids": applied_finding_ids,
+                    "skipped_finding_ids": skipped_finding_ids,
+                }
+            )
 
         # 4. ONE bulk audit_actions row covering the whole batch.
         # The chain signature still covers this row — the
         # affected_encounter_ids list is hashed as part of
         # data_elements so any tampering breaks the chain.
         affected_encounter_ids = [
-            row["encounter_id"] for row in per_encounter_summary
+            row["encounter_id"]
+            for row in per_encounter_summary
             if row.get("applied_finding_ids")
         ]
         event = audit_append(
             action="bulk",
-            encounter_id=affected_encounter_ids[0] if affected_encounter_ids else (
-                encounter_ids[0] if encounter_ids else ""
-            ),
+            encounter_id=affected_encounter_ids[0]
+            if affected_encounter_ids
+            else (encounter_ids[0] if encounter_ids else ""),
             user_identifier=user_identifier,
             tenant_id=_TENANT_ID,
             findings=[
-                {"finding_id": fid} for fid in [
-                    row["finding_id"] for row in applied
-                ]
+                {"finding_id": fid} for fid in [row["finding_id"] for row in applied]
             ],
             note=audit_note,
             extra={
@@ -4271,6 +4335,11 @@ def create_app() -> FastAPI:
         checks = {
             "database_url_configured": bool(os.environ.get("DATABASE_URL")),
             "audit_trail_db_configured": bool(os.environ.get("AUDIT_TRAIL_DB")),
+            "phi_encryption_key_configured": phi_encryption_configured(),
+            "principal_signing_secret_configured": len(
+                os.environ.get("ZORVA_PRINCIPAL_SIGNING_SECRET", "").encode("utf-8")
+            )
+            >= 32,
             "upload_job_log_directory_writable": (
                 log_parent.is_dir() and os.access(log_parent, os.W_OK)
             ),
@@ -4292,7 +4361,10 @@ def create_app() -> FastAPI:
         the full schema.
         """
         from .metrics import render_metrics
-        return Response(content=render_metrics(), media_type="text/plain; version=0.0.4")
+
+        return Response(
+            content=render_metrics(), media_type="text/plain; version=0.0.4"
+        )
 
     # Admin-only stub. The team management UI lives in the Next.js
     # portal (kanban t_23bfd49c); this FastAPI stub exists so the
@@ -4310,15 +4382,17 @@ def create_app() -> FastAPI:
         (kanban t_23bfd49c) will hit when it needs server-side
         permission enforcement. Biller and viewer both get 403.
         """
-        return JSONResponse({
-            "ok": True,
-            "user": {
-                "user_id": user.user_id,
-                "role": user.role,
-            },
-            "users": [],  # populated when real team CRUD lands
-            "note": "stub endpoint; real team CRUD is in the Next.js portal (kanban t_23bfd49c)",
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "user": {
+                    "user_id": user.user_id,
+                    "role": user.role,
+                },
+                "users": [],  # populated when real team CRUD lands
+                "note": "stub endpoint; real team CRUD is in the Next.js portal (kanban t_23bfd49c)",
+            }
+        )
 
     @app.get("/reports/by-clinic", response_class=HTMLResponse)
     def by_clinic_monthly(request: Request) -> HTMLResponse:
@@ -4337,6 +4411,7 @@ def create_app() -> FastAPI:
                 aggregate_monthly_revenue_by_encounter,
                 aggregate_monthly_revenue_kpi,
             )
+
             kpi = aggregate_monthly_revenue_kpi()
             rollup = aggregate_monthly_revenue_by_encounter(top_n=10)
         except Exception:
@@ -4360,8 +4435,7 @@ def create_app() -> FastAPI:
             request,
             "reports/by_clinic.html",
             {
-                "month_label": kpi.get("month_label")
-                or rollup.get("month_label", ""),
+                "month_label": kpi.get("month_label") or rollup.get("month_label", ""),
                 "total_dollar": kpi.get("total_dollar", 0.0),
                 "recovered_dollar": kpi.get("recovered_dollar", 0.0),
                 "pending_dollar": kpi.get("pending_dollar", 0.0),
@@ -4449,6 +4523,7 @@ def create_app() -> FastAPI:
         #    pattern as the sibling route's `from .feedback import
         #    get_default_store` call above).
         from .monthly_report import compute_clinic_month
+
         year_s, month_s = month_str.split("-")
         try:
             payload = compute_clinic_month(
@@ -4502,21 +4577,26 @@ def create_app() -> FastAPI:
             "status": payload.get("status", "insufficient_data"),
         }
         if context["status"] == "ok":
-            context.update({
-                "total_findings": payload.get("total_findings", 0),
-                "accepted": payload.get("accepted", 0),
-                "dismissed": payload.get("dismissed", 0),
-                "modified": payload.get("modified", 0),
-                "top_3_modified_rules": payload.get(
-                    "top_3_modified_rules", [],
-                ),
-                "confidence_calibration": payload.get(
-                    "confidence_calibration", "LOW",
-                ),
-                "tuning_recommendations": payload.get(
-                    "tuning_recommendations", [],
-                ),
-            })
+            context.update(
+                {
+                    "total_findings": payload.get("total_findings", 0),
+                    "accepted": payload.get("accepted", 0),
+                    "dismissed": payload.get("dismissed", 0),
+                    "modified": payload.get("modified", 0),
+                    "top_3_modified_rules": payload.get(
+                        "top_3_modified_rules",
+                        [],
+                    ),
+                    "confidence_calibration": payload.get(
+                        "confidence_calibration",
+                        "LOW",
+                    ),
+                    "tuning_recommendations": payload.get(
+                        "tuning_recommendations",
+                        [],
+                    ),
+                }
+            )
         else:
             context["required_months"] = payload.get("required_months", 3)
             context["current_months"] = payload.get("current_months", 0)
@@ -4643,10 +4723,10 @@ def create_app() -> FastAPI:
         reading the message text.
         """
         from .contact import (
-            _append_contact_event,
             valid_email,
             valid_volume,
         )
+
         success = False
         error: str | None = None
         email_hash_prefix: str | None = None
@@ -4673,6 +4753,7 @@ def create_app() -> FastAPI:
                 from . import audit_actions as _aa
                 import hashlib
                 from .api import _TENANT_ID  # type: ignore[attr-defined]
+
                 email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
                 extra = {
                     "request_type": "demo_request",
@@ -4745,6 +4826,7 @@ def create_app() -> FastAPI:
             append_newsletter_signup,
             valid_newsletter_email,
         )
+
         success = False
         error: str | None = None
         email_hash_prefix: str | None = None
@@ -4788,6 +4870,7 @@ def create_app() -> FastAPI:
         long-form version that lives only here.
         """
         from .blog_posts import get_post
+
         post = get_post(slug)
         if post is None:
             raise HTTPException(
@@ -4839,6 +4922,7 @@ def create_app() -> FastAPI:
         :mod:`ai_billing_audit.feeds` for the RSS feed.
         """
         from .changelog_releases import get_release
+
         release = get_release(version)
         if release is None:
             raise HTTPException(
@@ -4864,6 +4948,7 @@ def create_app() -> FastAPI:
         shares the same data.
         """
         from .glossary import list_terms
+
         return templates.TemplateResponse(
             request,
             "glossary.html",
@@ -4884,6 +4969,7 @@ def create_app() -> FastAPI:
         2026-07-13).
         """
         from .glossary import get_term, get_terms_by_slugs
+
         term = get_term(slug)
         if term is None:
             raise HTTPException(
@@ -4951,6 +5037,7 @@ def create_app() -> FastAPI:
         bypass.
         """
         from .feeds import build_atom_feed
+
         host = (
             request.headers.get("x-forwarded-proto", "https")
             + "://"
@@ -4970,6 +5057,7 @@ def create_app() -> FastAPI:
         pick this up from robots.txt.
         """
         from .feeds import build_sitemap, PUBLIC_MARKETING_PATHS
+
         host = (
             request.headers.get("x-forwarded-proto", "https")
             + "://"
@@ -4990,6 +5078,7 @@ def create_app() -> FastAPI:
         route handler.
         """
         from .robots import ROBOTS_TXT
+
         return Response(
             content=ROBOTS_TXT,
             media_type="text/plain; charset=utf-8",
@@ -5004,6 +5093,7 @@ def create_app() -> FastAPI:
         (vs. a search bot) can find out who's responsible.
         """
         from pathlib import Path as _P
+
         p = _P(__file__).resolve().parent / "templates" / "humans.txt"
         return Response(
             content=p.read_text(encoding="utf-8"),
@@ -5021,6 +5111,7 @@ def create_app() -> FastAPI:
         don't follow the .well-known convention.
         """
         from pathlib import Path as _P
+
         p = _P(__file__).resolve().parent / "templates" / "security.txt"
         return Response(
             content=p.read_text(encoding="utf-8"),
@@ -5036,7 +5127,6 @@ def create_app() -> FastAPI:
         URL during a deploy. The 503 status code signals
         to crawlers that the page is temporary.
         """
-        from fastapi.responses import HTMLResponse as _HR
         is_maintenance = _os.environ.get("ZORVA_MAINTENANCE", "") == "1"
         return templates.TemplateResponse(
             request,
@@ -5096,9 +5186,7 @@ def create_app() -> FastAPI:
             elif not clinic or len(clinic) > 200:
                 error = "Please enter your clinic name (max 200 chars)."
             elif not valid_email(email):
-                error = (
-                    "Please enter a valid email address."
-                )
+                error = "Please enter a valid email address."
             elif not valid_volume(monthly_claims):
                 error = (
                     "Please enter a positive number for "
@@ -5125,9 +5213,7 @@ def create_app() -> FastAPI:
                     upload=upload_staged,
                 )
                 success = True
-                email_hash_prefix = (
-                    row["user_identifier"][:16] + "..."
-                )
+                email_hash_prefix = row["user_identifier"][:16] + "..."
 
         return templates.TemplateResponse(
             request,
@@ -5152,6 +5238,7 @@ def create_app() -> FastAPI:
     def case_studies_index(request: Request) -> HTMLResponse:
         """Marketing index of worked-example case studies."""
         from .case_studies import case_studies_index as _index
+
         return templates.TemplateResponse(
             request,
             "case_studies.html",
@@ -5165,6 +5252,7 @@ def create_app() -> FastAPI:
     def case_study_detail(slug: str, request: Request) -> HTMLResponse:
         """One case study by slug."""
         from .case_studies import get_case_study
+
         cs = get_case_study(slug)
         if cs is None:
             raise HTTPException(
@@ -5282,6 +5370,7 @@ def create_app() -> FastAPI:
         """
         try:
             from .audit_actions import read_all
+
             events = read_all(limit=50, tenant_id=_TENANT_ID)
         except Exception:
             events = []
@@ -5342,7 +5431,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=404,
                 detail=f"no audit found for {encounter_id!r}; "
-                       "upload + audit a claim first",
+                "upload + audit a claim first",
             )
         target_finding = None
         for f in real_audit.get("findings", []):
@@ -5413,15 +5502,16 @@ def create_app() -> FastAPI:
         # falls through to a template-only letter if the LLM call
         # fails.
         llm_client = LLMClient()
+
         def llm_complete(prompt: str) -> str:
             response = llm_client.complete(
                 messages=[{"role": "user", "content": prompt}],
             )
             # litellm returns a dict with the OpenAI response shape;
             # pull the content string out of the first choice.
-            return (response.get("choices", [{}])[0]
-                          .get("message", {})
-                          .get("content", ""))
+            return (
+                response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            )
 
         try:
             letter = generate_appeal_letter(
@@ -5434,6 +5524,7 @@ def create_app() -> FastAPI:
             )
         except Exception as e:
             import logging as _log_appeal
+
             _log_appeal.getLogger("ai_billing_audit").exception(
                 "appeal-letter generation failed: %s", e
             )
@@ -5459,12 +5550,14 @@ def create_app() -> FastAPI:
             tenant_id=_TENANT_ID,
             finding_id=resolved_finding_id,
         )
-        return JSONResponse({
-            "ok": True,
-            "encounter_id": encounter_id,
-            "finding_id": finding_id,
-            "letter": letter,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "encounter_id": encounter_id,
+                "finding_id": finding_id,
+                "letter": letter,
+            }
+        )
 
     # ---- Appeal outcome tracking ----------------------------------------
     # After a biller submits an appeal letter, the payer's response
@@ -5521,14 +5614,17 @@ def create_app() -> FastAPI:
         # Five values per the learning-loop spec: won / lost /
         # withdrawn / pending / did_not_file. Anything else is a 400.
         allowed_statuses = {
-            "won", "lost", "withdrawn", "pending", "did_not_file",
+            "won",
+            "lost",
+            "withdrawn",
+            "pending",
+            "did_not_file",
         }
         if status not in allowed_statuses:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"status must be one of {sorted(allowed_statuses)}; "
-                    f"got {status!r}"
+                    f"status must be one of {sorted(allowed_statuses)}; got {status!r}"
                 ),
             )
         notes = str(body.get("notes", "") or "").strip()
@@ -5544,17 +5640,19 @@ def create_app() -> FastAPI:
             notes=notes,
         )
         log_appeal_outcome(outcome)
-        return JSONResponse({
-            "ok": True,
-            "encounter_id": encounter_id,
-            "appeal_id": appeal_id,
-            "outcome": {
-                "status": outcome.status,
-                "notes": outcome.notes,
-                "biller_id": outcome.biller_id,
-                "timestamp": outcome.timestamp,
-            },
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "encounter_id": encounter_id,
+                "appeal_id": appeal_id,
+                "outcome": {
+                    "status": outcome.status,
+                    "notes": outcome.notes,
+                    "biller_id": outcome.biller_id,
+                    "timestamp": outcome.timestamp,
+                },
+            }
+        )
 
     # -------------------------------------------------------------------
     # /encounters/upload — staff upload portal
@@ -5566,7 +5664,7 @@ def create_app() -> FastAPI:
     # staff user clicks "submit" the form posts to
     # ``/encounters/upload/submit`` to enqueue jobs; the JS polls
     # ``/encounters/upload/jobs/<job_id>`` for status. Clinical note
-    # PDF/image uploads are stored on disk via
+    # PDF/image uploads are encrypted on disk via
     # ``/encounters/upload/notes`` and the note id is rendered in the
     # preview UI so the staff user can confirm what they uploaded.
     #
@@ -5578,6 +5676,25 @@ def create_app() -> FastAPI:
 
     _ALLOWED_NOTE_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".tiff"}
     _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB; portal is for staff uploads
+
+    def _store_note_or_503(target: Path, data: bytes) -> None:
+        try:
+            store_clinical_note(target, data)
+        except PhiStorageConfigurationError as exc:
+            raise HTTPException(
+                status_code=503, detail="phi_storage_not_configured"
+            ) from exc
+
+    def _store_text_note_for_encounter(encounter_id: str, clinical_note: str) -> Path:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id).strip("._")[:80]
+        if not safe:
+            raise HTTPException(status_code=400, detail="encounter_id is empty")
+        notes_dir = Path(os.environ.get("ZORVA_UPLOADED_NOTES_DIR", str(_NOTES_DIR)))
+        notes_dir.mkdir(parents=True, exist_ok=True)
+        note_id = secrets.token_hex(12)
+        target = notes_dir / f"{safe}.{note_id}.txt.enc"
+        _store_note_or_503(target, clinical_note.encode("utf-8"))
+        return target
 
     def _normalise_paste_form(payload: dict[str, Any]) -> dict[str, Any]:
         """Build a claim-shaped dict from the paste-form fields.
@@ -5594,7 +5711,9 @@ def create_app() -> FastAPI:
             except json.JSONDecodeError:
                 cpts = [s.strip() for s in cpts.split(",") if s.strip()]
         if not cpts and payload.get("cpt_codes"):
-            cpts = [s.strip() for s in str(payload["cpt_codes"]).split(",") if s.strip()]
+            cpts = [
+                s.strip() for s in str(payload["cpt_codes"]).split(",") if s.strip()
+            ]
         return {
             "encounter_id": str(payload.get("encounter_id") or "").strip(),
             "patient_id": str(payload.get("patient_id") or "").strip(),
@@ -5629,7 +5748,13 @@ def create_app() -> FastAPI:
                     if entry.is_dir():
                         continue
                     inner_name = entry.filename
-                    if Path(inner_name).suffix.lower() not in (".837", ".txt", ".x12", ".edi", ""):
+                    if Path(inner_name).suffix.lower() not in (
+                        ".837",
+                        ".txt",
+                        ".x12",
+                        ".edi",
+                        "",
+                    ):
                         # Skip non-EDI files inside the ZIP — e.g.
                         # a README. The portal shows a per-file
                         # status for the user.
@@ -5642,16 +5767,18 @@ def create_app() -> FastAPI:
                     try:
                         claims = parse_837p(text)
                     except X12ParseError as exc:
-                        out.append({
-                            "encounter_id": None,
-                            "patient_id": None,
-                            "NPI": None,
-                            "date_of_service": None,
-                            "CPT_codes": [],
-                            "raw": f"<<{inner_name}: {exc}>>",
-                            "_source_filename": inner_name,
-                            "_parse_error": str(exc),
-                        })
+                        out.append(
+                            {
+                                "encounter_id": None,
+                                "patient_id": None,
+                                "NPI": None,
+                                "date_of_service": None,
+                                "CPT_codes": [],
+                                "raw": f"<<{inner_name}: {exc}>>",
+                                "_source_filename": inner_name,
+                                "_parse_error": str(exc),
+                            }
+                        )
                         continue
                     for c in claims:
                         c["_source_filename"] = inner_name
@@ -5683,6 +5810,7 @@ def create_app() -> FastAPI:
     @app.post("/encounters/upload/preview")
     async def encounters_upload_preview(
         file: UploadFile = File(...),
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Return a parse preview for a single uploaded file (or ZIP).
 
@@ -5775,6 +5903,7 @@ def create_app() -> FastAPI:
     async def encounters_upload_submit(
         request: Request,
         payload: str = Form(...),
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Accept a parse-preview payload and enqueue audit jobs.
 
@@ -5808,6 +5937,7 @@ def create_app() -> FastAPI:
             lookup as idem_lookup,
             store as idem_store,
         )
+
         idem_key = request.headers.get("Idempotency-Key", "").strip()[:255]
         body_fp = fingerprint_request_body(payload)
         try:
@@ -5815,9 +5945,7 @@ def create_app() -> FastAPI:
         except IdempotencyMismatch as exc:
             raise HTTPException(status_code=409, detail=str(exc))
         if cached is not None:
-            return JSONResponse(
-                cached.response_json, status_code=cached.status_code
-            )
+            return JSONResponse(cached.response_json, status_code=cached.status_code)
 
         try:
             data = json.loads(payload)
@@ -5855,16 +5983,14 @@ def create_app() -> FastAPI:
             # Re-validate server-side; the preview's "errors" array
             # is the source of truth but we never trust the client
             # to decide what's accepted.
-            claim = {
+            claim: dict[str, Any] = {
                 "encounter_id": (row.get("encounter_id") or "").strip(),
                 "patient_id": (row.get("patient_id") or "").strip(),
                 "NPI": (row.get("NPI") or "").strip(),
                 "date_of_service": (row.get("date_of_service") or "").strip(),
                 "CPT_codes": list(row.get("CPT_codes") or []),
                 "diagnosis_codes": list(
-                    row.get("diagnosis_codes")
-                    or row.get("icd10_codes")
-                    or []
+                    row.get("diagnosis_codes") or row.get("icd10_codes") or []
                 ),
             }
             errs2 = validate_required_fields(claim)
@@ -5873,6 +5999,14 @@ def create_app() -> FastAPI:
                     {
                         "source_filename": row.get("source_filename") or "",
                         "errors": errs2,
+                    }
+                )
+                continue
+            if not load_uploaded_note_for_encounter(claim["encounter_id"]):
+                rejected.append(
+                    {
+                        "source_filename": row.get("source_filename") or "",
+                        "errors": ["clinical_note_required"],
                     }
                 )
                 continue
@@ -5915,6 +6049,7 @@ def create_app() -> FastAPI:
     @app.post("/upload/837i")
     async def upload_837i(
         payload: dict[str, Any] | list[Any],
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Accept an institutional 837I claim and enqueue an audit.
 
@@ -5936,6 +6071,7 @@ def create_app() -> FastAPI:
         Request body (JSON)::
 
             {
+              "clinical_note": "Inpatient admission and operative course...",
               "patient_id": "PT-001",
               "facility_id": "FAC-MAIN",
               "attending_provider_npi": "1234567890",
@@ -5993,9 +6129,7 @@ def create_app() -> FastAPI:
         rule set.
         """
         try:
-            data = (
-                payload if isinstance(payload, dict) else {}
-            )
+            data = payload if isinstance(payload, dict) else {}
         except Exception:  # noqa: BLE001
             raise HTTPException(
                 status_code=400,
@@ -6009,8 +6143,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "request body must be a JSON object; got "
-                    f"{type(payload).__name__}"
+                    f"request body must be a JSON object; got {type(payload).__name__}"
                 ),
             )
         errs = _validate_837i(data)
@@ -6034,6 +6167,12 @@ def create_app() -> FastAPI:
                 status_code=400,
             )
         enqueue_payload = _map_837i_to_enqueue(mapped)
+        clinical_note = data.get("clinical_note")
+        if not isinstance(clinical_note, str) or not clinical_note.strip():
+            raise HTTPException(status_code=422, detail="clinical_note_required")
+        _store_text_note_for_encounter(
+            str(enqueue_payload["encounter_id"]), clinical_note.strip()
+        )
         queue = get_default_queue()
         job = queue.enqueue(
             encounter=enqueue_payload,
@@ -6049,6 +6188,78 @@ def create_app() -> FastAPI:
                 "claim": mapped["claim"],
             }
         )
+
+    @app.post("/api/audits", status_code=202)
+    async def submit_internal_audit(
+        request: Request,
+        payload: dict[str, Any],
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
+        """Atomically validate and enqueue one portal-originated audit.
+
+        The authenticated portal sends the structured claim and clinical note
+        together. The note is encrypted before the job becomes visible to the
+        worker, preventing a queued real claim from racing ahead of its evidence.
+        """
+        from .idempotency import (
+            IdempotencyMismatch,
+            fingerprint_request_body,
+            lookup as idem_lookup,
+            store as idem_store,
+        )
+
+        raw_idem_key = request.headers.get("Idempotency-Key", "").strip()[:255]
+        scoped_idem_key = f"{_TENANT_ID}:{raw_idem_key}" if raw_idem_key else ""
+        body_fingerprint = fingerprint_request_body(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        )
+        try:
+            cached = idem_lookup(scoped_idem_key, body_fingerprint)
+        except IdempotencyMismatch as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if cached is not None:
+            return JSONResponse(
+                cached.response_json,
+                status_code=cached.status_code,
+            )
+
+        claim: dict[str, Any] = {
+            "encounter_id": str(payload.get("encounter_id") or "").strip(),
+            "patient_id": str(payload.get("patient_id") or "").strip(),
+            "NPI": str(payload.get("NPI") or "").strip(),
+            "date_of_service": str(payload.get("date_of_service") or "").strip(),
+            "CPT_codes": list(payload.get("CPT_codes") or []),
+            "diagnosis_codes": list(payload.get("diagnosis_codes") or []),
+        }
+        errors = validate_required_fields(claim)
+        if errors:
+            raise HTTPException(status_code=400, detail={"errors": errors})
+        clinical_note = payload.get("clinical_note")
+        if not isinstance(clinical_note, str) or not clinical_note.strip():
+            raise HTTPException(status_code=422, detail="clinical_note_required")
+        note_bytes = clinical_note.strip().encode("utf-8")
+        if len(note_bytes) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"clinical_note is {len(note_bytes)} bytes, max is {_MAX_UPLOAD_BYTES}",
+            )
+
+        _store_text_note_for_encounter(claim["encounter_id"], clinical_note.strip())
+        job = get_default_queue().enqueue(
+            encounter=claim,
+            source="portal_api",
+            source_filename=None,
+            tenant_id=_TENANT_ID,
+        )
+        response_payload = {
+            "job_id": job.job_id,
+            "encounter_id": job.encounter_id,
+            "status": "queued",
+            "status_url": f"/encounters/upload/jobs/{job.job_id}",
+            "dedup_hit": bool(getattr(job, "dedup_hit", False)),
+        }
+        idem_store(scoped_idem_key, body_fingerprint, 202, response_payload)
+        return JSONResponse(response_payload, status_code=202)
 
     @app.post("/upload/csv")
     async def upload_csv(
@@ -6068,9 +6279,9 @@ def create_app() -> FastAPI:
              (case-insensitive match against the per-PM dictionary).
           2. Maps the PM's columns to Zorva's canonical schema
              (procedure_code, billed_amount, date_of_service, ...).
-          3. Converts each row to an encounter + claim pair and
-             enqueues it on the audit job-queue (the same path
-             ``/encounters/upload/submit`` uses).
+          3. Converts each row to an encounter + claim pair. A row is
+             enqueued only when it has an encounter id and an encrypted
+             clinical note was uploaded for that encounter first.
           4. Returns ``{accepted_count, rejected_count, errors:
              [{row, reason}], detected_format, enqueued:
              [{job_id, encounter_id}, ...]}``.
@@ -6119,16 +6330,27 @@ def create_app() -> FastAPI:
             )
 
         queue = get_default_queue()
+
+        def _enqueue_csv_with_note(**kwargs: Any) -> Any:
+            encounter = kwargs.get("encounter") or {}
+            encounter_id = str(encounter.get("encounter_id") or "").strip()
+            if not encounter_id or not load_uploaded_note_for_encounter(encounter_id):
+                raise ValueError("clinical_note_required")
+            return queue.enqueue(**kwargs)
+
         result = ingest_csv(
             file_bytes=raw,
             payer_id=payer_id,
             clinic_id=clinic_id,
-            enqueue=queue.enqueue,
+            enqueue=_enqueue_csv_with_note,
         )
         return JSONResponse(result)
 
     @app.get("/encounters/upload/jobs/{job_id}")
-    def encounters_upload_job_status(job_id: str) -> JSONResponse:
+    def encounters_upload_job_status(
+        job_id: str,
+        _user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         """Return the current status of one queued audit job.
 
         The frontend polls this endpoint every second until the
@@ -6138,7 +6360,9 @@ def create_app() -> FastAPI:
         """
         queue = get_default_queue()
         job = queue.get(job_id)
-        if job is None:
+        # Treat cross-tenant ids exactly like unknown ids. This avoids both
+        # audit-result disclosure and an existence oracle for another clinic.
+        if job is None or job.tenant_id != _TENANT_ID:
             raise HTTPException(
                 status_code=404,
                 detail=f"job {job_id!r} not found",
@@ -6148,6 +6372,7 @@ def create_app() -> FastAPI:
     @app.post("/encounters/upload/paste")
     async def encounters_upload_paste(
         payload: str = Form(...),
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Shortcut endpoint: accept a paste-form payload, run the
         same validation/preview as the 837P path, and return the
@@ -6180,14 +6405,17 @@ def create_app() -> FastAPI:
         return JSONResponse({"filename": "(paste form)", "rows": [row]})
 
     @app.post("/encounters/upload/notes")
-    async def encounters_upload_note(file: UploadFile = File(...)) -> JSONResponse:
+    async def encounters_upload_note(
+        file: UploadFile = File(...),
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         """Accept a clinical note PDF or image and store it on disk.
 
         The OCR step is deferred (see task body: "OCR via LayoutLMv3
         is a later step, so do not block the upload flow on it").
-        We persist the file under ``logs/uploaded_notes/`` with a
-        uuid-prefixed filename so the staff user can later pull
-        them into a LayoutLMv3 batch run.
+        We persist the encrypted file under ``logs/uploaded_notes/`` with a
+        uuid-prefixed filename. Any later OCR worker must use the same PHI
+        encryption key and decrypt in memory.
         """
         raw = await file.read()
         if len(raw) > _MAX_UPLOAD_BYTES:
@@ -6209,9 +6437,10 @@ def create_app() -> FastAPI:
         # the same filename. Keep the original name as the suffix
         # so the file is recognisable on disk.
         import uuid as _uuid
+
         note_id = _uuid.uuid4().hex[:12]
-        target = _NOTES_DIR / f"{note_id}{suffix}"
-        target.write_bytes(raw)
+        target = _NOTES_DIR / f"{note_id}{suffix}.enc"
+        _store_note_or_503(target, raw)
         return JSONResponse(
             {
                 "note_id": note_id,
@@ -6226,12 +6455,13 @@ def create_app() -> FastAPI:
     async def encounters_upload_text_note(
         encounter_id: str = Form(...),
         clinical_note: str = Form(...),
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         """Accept a plain-text clinical note for a given encounter.
 
         The MVP pilot's most common flow: a clinic exports an 837P
         file from their EHR and pastes the corresponding clinical
-        note text into the upload form. The text is stored on disk
+        note text into the upload form. The text is encrypted on disk
         under ``logs/uploaded_notes/`` with the encounter_id in the
         filename, and the runner picks it up on the next audit job
         for that encounter.
@@ -6249,6 +6479,7 @@ def create_app() -> FastAPI:
         # and limit length so we don't blow the filesystem's
         # name limit on pathological inputs.
         import re as _re
+
         safe = _re.sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id).strip("._")[:80]
         if not safe:
             raise HTTPException(
@@ -6256,18 +6487,14 @@ def create_app() -> FastAPI:
                 detail="encounter_id must contain at least one alphanumeric",
             )
         if not clinical_note.strip():
-            raise HTTPException(
-                status_code=400, detail="clinical_note is empty"
-            )
+            raise HTTPException(status_code=400, detail="clinical_note is empty")
         if len(clinical_note) > _MAX_UPLOAD_BYTES:
             raise HTTPException(
                 status_code=413,
                 detail=f"clinical_note is {len(clinical_note)} bytes, max is {_MAX_UPLOAD_BYTES}",
             )
-        import uuid as _uuid
-        note_id = _uuid.uuid4().hex[:12]
-        target = _NOTES_DIR / f"{safe}.{note_id}.txt"
-        target.write_text(clinical_note, encoding="utf-8")
+        target = _store_text_note_for_encounter(encounter_id, clinical_note)
+        note_id = target.name.split(".")[-3]
         return JSONResponse(
             {
                 "note_id": note_id,
@@ -6388,12 +6615,8 @@ def create_app() -> FastAPI:
         # over the per-rule TP/FP totals) so the dashboard can
         # render a single "Clinic F1: 0.62" tile next to the
         # per-rule table.
-        total_tp = sum(
-            v["precision"] * v["support"] for v in per_rule.values()
-        )
-        total_fp = sum(
-            (1.0 - v["precision"]) * v["support"] for v in per_rule.values()
-        )
+        total_tp = sum(v["precision"] * v["support"] for v in per_rule.values())
+        total_fp = sum((1.0 - v["precision"]) * v["support"] for v in per_rule.values())
         total_sup = sum(v["support"] for v in per_rule.values())
         # Empty-state: if the clinic has fewer than the threshold
         # feedback events in the window, surface the friendly
@@ -6412,19 +6635,21 @@ def create_app() -> FastAPI:
             p = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
             r = 1.0  # within-clinic recall proxy saturates at 1.0 in the rollup
             clinic_f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
-        return JSONResponse({
-            "ok": True,
-            "clinic_id": clinic_id,
-            "days": days,
-            "per_rule": per_rule,
-            "weekly": weekly,
-            "clinics": clinics,
-            "clinic_f1": round(clinic_f1, 4),
-            "n_rules": len(per_rule),
-            "n_feedback": total_sup,
-            "insufficient_data": empty_state["is_insufficient"],
-            "empty_state": empty_state,
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "clinic_id": clinic_id,
+                "days": days,
+                "per_rule": per_rule,
+                "weekly": weekly,
+                "clinics": clinics,
+                "clinic_f1": round(clinic_f1, 4),
+                "n_rules": len(per_rule),
+                "n_feedback": total_sup,
+                "insufficient_data": empty_state["is_insufficient"],
+                "empty_state": empty_state,
+            }
+        )
 
     # ──────────────────── clinic dashboard (t_1ef7beb3) ─────────────
     # The clinic owner / biller sees a one-screen summary: "this
@@ -6493,6 +6718,7 @@ def create_app() -> FastAPI:
         # signalled via ``ready=False`` in the payload.
         try:
             from .per_clinic_f1 import list_clinics
+
             known = {c["clinic_id"] for c in list_clinics()}
         except Exception:
             known = set()
@@ -6520,6 +6746,7 @@ def create_app() -> FastAPI:
                     list_demo_encounters,
                     load_encounter_record,
                 )
+
                 for entry in list_demo_encounters():
                     record = load_encounter_record(entry.encounter_id)
                     if not record:
@@ -6527,19 +6754,28 @@ def create_app() -> FastAPI:
                     # Per-tenant scoping for the demo registry uses
                     # the env-set tenant_id; in single-tenant dev
                     # every record is in scope.
-                    if record.get("tenant_id") and record.get("tenant_id") != _TENANT_ID:
+                    if (
+                        record.get("tenant_id")
+                        and record.get("tenant_id") != _TENANT_ID
+                    ):
                         continue
                     enc_id = str(record.get("encounter_id") or entry.encounter_id)
                     for f in record.get("ground_truth", []) or []:
-                        out.append({
-                            "encounter_id": enc_id,
-                            "finding_id": str(f.get("finding_id") or f.get("id") or ""),
-                            "rule_id": str(f.get("rule_id") or ""),
-                            "rule_ids": f.get("rule_ids") or [f.get("rule_id")] if f.get("rule_id") else [],
-                            "severity": str(f.get("severity") or ""),
-                            "category": str(f.get("category") or ""),
-                            "suggested_code": str(f.get("suggested_code") or ""),
-                        })
+                        out.append(
+                            {
+                                "encounter_id": enc_id,
+                                "finding_id": str(
+                                    f.get("finding_id") or f.get("id") or ""
+                                ),
+                                "rule_id": str(f.get("rule_id") or ""),
+                                "rule_ids": f.get("rule_ids") or [f.get("rule_id")]
+                                if f.get("rule_id")
+                                else [],
+                                "severity": str(f.get("severity") or ""),
+                                "category": str(f.get("category") or ""),
+                                "suggested_code": str(f.get("suggested_code") or ""),
+                            }
+                        )
             except Exception:
                 pass
             # Uploaded-audit findings (real LLM audits). Scoped by
@@ -6549,22 +6785,14 @@ def create_app() -> FastAPI:
             # already does the same scoping in the detail handler.
             try:
                 log_path = _os.environ.get(
-                    "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl",
+                    "UPLOAD_AUDIT_LOG_PATH",
+                    "/app/logs/upload_jobs.jsonl",
                 )
                 p = Path(log_path)
                 if p.is_file():
-                    with p.open() as fh:
-                        lines = fh.readlines()
                     # Map encounter_id -> latest done row for the tenant.
                     latest: dict[str, dict[str, Any]] = {}
-                    for line in lines:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            rec = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
+                    for rec in read_encrypted_job_records(p):
                         if rec.get("status") != "done":
                             continue
                         if rec.get("tenant_id", "default") != _TENANT_ID:
@@ -6583,15 +6811,19 @@ def create_app() -> FastAPI:
                             continue
                         eid = str(rec.get("encounter_id") or "")
                         for f in res.get("findings", []) or []:
-                            out.append({
-                                "encounter_id": eid,
-                                "finding_id": str(f.get("finding_id") or ""),
-                                "rule_id": str(f.get("rule_id") or ""),
-                                "rule_ids": f.get("rule_ids") or [],
-                                "severity": str(f.get("severity") or ""),
-                                "category": str(f.get("category") or ""),
-                                "suggested_code": str(f.get("suggested_code") or ""),
-                            })
+                            out.append(
+                                {
+                                    "encounter_id": eid,
+                                    "finding_id": str(f.get("finding_id") or ""),
+                                    "rule_id": str(f.get("rule_id") or ""),
+                                    "rule_ids": f.get("rule_ids") or [],
+                                    "severity": str(f.get("severity") or ""),
+                                    "category": str(f.get("category") or ""),
+                                    "suggested_code": str(
+                                        f.get("suggested_code") or ""
+                                    ),
+                                }
+                            )
             except Exception:
                 pass
             return out
@@ -6619,6 +6851,7 @@ def create_app() -> FastAPI:
     def _window_for_days(days: int) -> tuple[float, float]:
         """Return ``(start_ts, end_ts)`` covering the last ``days`` UTC."""
         import time as _t
+
         end_ts = _t.time()
         start_ts = end_ts - (days * 86400)
         return start_ts, end_ts
@@ -6634,6 +6867,7 @@ def create_app() -> FastAPI:
         if not s:
             return None
         from datetime import datetime as _dt
+
         try:
             return _dt.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
         except (TypeError, ValueError):
@@ -6690,7 +6924,6 @@ def create_app() -> FastAPI:
         """
         try:
             from .industry_baseline import (
-                INDUSTRY_DISCLAIMER,
                 benchmark_payload,
                 known_metrics,
             )
@@ -6728,8 +6961,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "metric required; known metrics: "
-                    + ", ".join(known_metrics())
+                    "metric required; known metrics: " + ", ".join(known_metrics())
                 ),
             )
         if metric not in known_metrics():
@@ -6754,9 +6986,7 @@ def create_app() -> FastAPI:
         # rather than 500 (the dashboard renders "no data yet"
         # on zero values, same as the existing clinic dashboard).
         try:
-            clinic_value = _compute_clinic_metric(
-                clinic_id, metric, days
-            )
+            clinic_value = _compute_clinic_metric(clinic_id, metric, days)
         except Exception:
             clinic_value = 0.0
 
@@ -6764,16 +6994,12 @@ def create_app() -> FastAPI:
         if payload is None:
             # Defensive: shouldn't happen because we validated
             # above, but guard the contract.
-            raise HTTPException(
-                status_code=400, detail=f"unknown metric {metric!r}"
-            )
+            raise HTTPException(status_code=400, detail=f"unknown metric {metric!r}")
         payload["clinic_id"] = clinic_id
         payload["window_days"] = days
         return JSONResponse(payload)
 
-    def _compute_clinic_metric(
-        clinic_id: str, metric: str, days: int
-    ) -> float:
+    def _compute_clinic_metric(clinic_id: str, metric: str, days: int) -> float:
         """Derive the clinic's value for one industry metric over ``days``.
 
         Returns a float in the metric's native unit (percent for
@@ -6792,6 +7018,7 @@ def create_app() -> FastAPI:
             # lost but not the upstream denial-rate number).
             try:
                 from .audit_actions import read_all
+
                 rows = read_all()
             except Exception:
                 return 0.0
@@ -6803,9 +7030,7 @@ def create_app() -> FastAPI:
                     continue
                 if row.get("tenant_id", "default") != _TENANT_ID:
                     continue
-                eid = str(
-                    row.get("data_elements", {}).get("encounter_id", "")
-                )
+                eid = str(row.get("data_elements", {}).get("encounter_id", ""))
                 if not eid:
                     continue
                 in_window_total.add(eid)
@@ -6813,9 +7038,7 @@ def create_app() -> FastAPI:
                     in_window_denied.add(eid)
             if not in_window_total:
                 return 0.0
-            return round(
-                100.0 * len(in_window_denied) / len(in_window_total), 2
-            )
+            return round(100.0 * len(in_window_denied) / len(in_window_total), 2)
         if metric == "time_to_act":
             # Median hours between audit_actions 'append' (finding
             # surfaced) and the first feedback accept/dismiss/modify
@@ -6832,9 +7055,7 @@ def create_app() -> FastAPI:
                 ts = _parse_iso_ts(row.get("timestamp", ""))
                 if ts is None:
                     continue
-                eid = str(
-                    row.get("data_elements", {}).get("encounter_id", "")
-                )
+                eid = str(row.get("data_elements", {}).get("encounter_id", ""))
                 fids = (
                     row.get("data_elements", {}).get("finding_ids")
                     or row.get("data_elements", {}).get("finding_id")
@@ -6885,14 +7106,14 @@ def create_app() -> FastAPI:
             # endpoint to compute "what's your top category?".
             try:
                 from .industry_baseline import INDUSTRY_BASELINES
-                breakdown = (
-                    INDUSTRY_BASELINES["top_category"]["category_breakdown"]
-                )
+
+                breakdown = INDUSTRY_BASELINES["top_category"]["category_breakdown"]
             except Exception:
                 return 0.0
             # Determine the clinic's top category by feedback / rule.
             try:
                 from .feedback import get_default_store
+
                 store = get_default_store()
                 entries = store.read_all()
             except Exception:
@@ -6918,8 +7139,8 @@ def create_app() -> FastAPI:
                 "e/m_level": "em_level",
                 "em-level": "em_level",
             }
-            key = aliases.get(top_cat, top_cat)
-            return float(breakdown.get(key, 0.0))
+            alias_key = aliases.get(top_cat, top_cat)
+            return float(breakdown.get(alias_key, 0.0))
         # Unknown metric — defensive. Validation above should
         # have caught this; return 0 so the response is still
         # 200 rather than 500.
@@ -6991,6 +7212,7 @@ def create_app() -> FastAPI:
         #    summarise.
         try:
             from .feedback import get_default_store
+
             _store = get_default_store()
             _entries = _store.read_all() or []
         except Exception:
@@ -7017,14 +7239,16 @@ def create_app() -> FastAPI:
 
         # 4. Gate: < 3 months → insufficient_data stub.
         if current_months < 3:
-            return JSONResponse({
-                "status": "insufficient_data",
-                "message": "Need 3+ months of feedback to generate a monthly report.",
-                "required_months": 3,
-                "current_months": current_months,
-                "clinic_id": clinic,
-                "month": month,
-            })
+            return JSONResponse(
+                {
+                    "status": "insufficient_data",
+                    "message": "Need 3+ months of feedback to generate a monthly report.",
+                    "required_months": 3,
+                    "current_months": current_months,
+                    "clinic_id": clinic,
+                    "month": month,
+                }
+            )
 
         # 5. Full report branch: call monthly_summary with a window
         #    large enough to cover all the feedback months the gate
@@ -7032,6 +7256,7 @@ def create_app() -> FastAPI:
         #    picks up the data instead of an empty 30-day slice.
         try:
             from .monthly_report import monthly_summary
+
             days = max(30, current_months * 31)
             payload = monthly_summary(clinic_id=clinic, days=days)
         except Exception as e:
@@ -7093,6 +7318,7 @@ def create_app() -> FastAPI:
             INSUFFICIENT_DATA_THRESHOLD = 3
         try:
             from .feedback import get_default_store
+
             _store = get_default_store()
             _entries = _store.read_all() or []
         except Exception:
@@ -7128,6 +7354,7 @@ def create_app() -> FastAPI:
         #    surface as a document with zeros for that section.
         try:
             from .monthly_pdf import build_report_payload, render_monthly_pdf
+
             payload = build_report_payload(
                 clinic_id=clinic_id,
                 clinic_name=_TENANT_NAME,
@@ -7198,52 +7425,35 @@ def create_app() -> FastAPI:
 
         try:
             from .audit_actions import read_all
+
             audit_rows = read_all(tenant_id=_TENANT_ID)
         except Exception:
             audit_rows = []
 
         appeal_rows: list[dict[str, Any]] = []
-        appeal_log = _P(
-            os.environ.get("ZORVA_LOGS_DIR", "/app/logs")
-        ) / "appeal_letters.jsonl"
+        appeal_log = (
+            _P(os.environ.get("ZORVA_LOGS_DIR", "/app/logs")) / "appeal_letters.jsonl"
+        )
         if appeal_log.is_file():
-            with appeal_log.open() as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if row.get("tenant_id", "default") == _TENANT_ID:
-                        appeal_rows.append(row)
+            from .clinical_note_storage import read_encrypted_json_records
+
+            for row in read_encrypted_json_records(appeal_log):
+                if row.get("tenant_id", "default") == _TENANT_ID:
+                    appeal_rows.append(row)
 
         upload_rows: list[dict[str, Any]] = []
         upload_log = _P(
-            os.environ.get(
-                "UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl"
-            )
+            os.environ.get("UPLOAD_AUDIT_LOG_PATH", "/app/logs/upload_jobs.jsonl")
         )
         if upload_log.is_file():
-            with upload_log.open() as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if row.get("tenant_id", "default") == _TENANT_ID:
-                        upload_rows.append(row)
+            for row in read_encrypted_job_records(upload_log):
+                if row.get("tenant_id", "default") == _TENANT_ID:
+                    upload_rows.append(row)
 
         def _sha256(rows: list[dict]) -> str:
             h = hashlib.sha256()
             for r in rows:
-                h.update(
-                    (json.dumps(r, sort_keys=True) + "\n").encode("utf-8")
-                )
+                h.update((json.dumps(r, sort_keys=True) + "\n").encode("utf-8"))
             return h.hexdigest()
 
         manifest = {
@@ -7274,6 +7484,7 @@ def create_app() -> FastAPI:
         # export itself is part of the tenant's permanent record.
         try:
             from .audit_actions import append as _audit_append
+
             _audit_append(
                 action="data_export",
                 encounter_id="*",  # tenant-wide; not a single encounter
@@ -7341,6 +7552,7 @@ def create_app() -> FastAPI:
         # Write the deletion event BEFORE purging anything.
         try:
             from .audit_actions import append as _audit_append
+
             _audit_append(
                 action="tenant_purge",
                 encounter_id="*",
@@ -7358,15 +7570,17 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
-        return JSONResponse({
-            "ok": True,
-            "tenant_id": _TENANT_ID,
-            "purge_status": "audit_recorded",
-            "note": (
-                "v1: deletion is recorded in the audit trail. "
-                "v2: actual file purge is queued in a background worker."
-            ),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "tenant_id": _TENANT_ID,
+                "purge_status": "audit_recorded",
+                "note": (
+                    "v1: deletion is recorded in the audit trail. "
+                    "v2: actual file purge is queued in a background worker."
+                ),
+            }
+        )
 
     @app.post("/encounters/{encounter_id}/audit")
     async def encounters_audit(
@@ -7378,9 +7592,8 @@ def create_app() -> FastAPI:
 
         Request body (JSON or form):
 
-        - ``clinical_note`` (optional): the clinical narrative.
-          When omitted, falls back to a stored stub note so the
-          endpoint still returns a valid audit result.
+        - ``clinical_note``: an optional request override. If omitted,
+          an encrypted note must already exist for the encounter.
 
         Response (HTTP 200):
 
@@ -7391,15 +7604,13 @@ def create_app() -> FastAPI:
           rule_id, suggested_code, quote, explanation)
         - ``summary``: the auditor's plain-text synopsis
         - ``source_job_id``: the job_id the cached claim came from
-        - ``note_source``: ``"request"``, ``"uploaded"``, or
-          ``"stub"`` — useful for the dashboard to show which
-          clinical note was used
+        - ``note_source``: ``"request"`` or ``"uploaded"``
 
         Error responses:
 
         - 404 if no cached job exists for ``encounter_id``
-        - 400 if the cached claim is missing the audit-ready
-          fields the auditor expects
+        - 409 if the cached job does not contain the original claim
+        - 422 if neither the request nor encrypted storage supplies a note
         - 502 if the LLM call itself errors (the synth runner
           has its own retry; the audit route does not, since
           the request is synchronous)
@@ -7426,12 +7637,12 @@ def create_app() -> FastAPI:
         # per-app-instance, but we keep the dependency to make the
         # intent (defense in depth) explicit at the route signature.
 
-        # ---- 1. read the optional clinical_note from the body ----
+        # ---- 1. read a request clinical_note override, if present ----
         # Accept JSON or form. JSON is the dashboard's preferred
         # shape; form is a fallback so a curl-based smoke test
         # can do `-F "clinical_note=..."`.
         clinical_note: str | None = None
-        note_source = "stub"
+        note_source = "uploaded"
         content_type = (request.headers.get("content-type") or "").lower()
         try:
             if "application/json" in content_type:
@@ -7448,8 +7659,7 @@ def create_app() -> FastAPI:
                     clinical_note = raw
                     note_source = "request"
         except Exception:  # noqa: BLE001 (deliberately broad)
-            # Malformed body — fall through to the stub path
-            # rather than 400. The dashboard can re-submit.
+            # A malformed or empty body may still use an encrypted note.
             clinical_note = None
 
         # ---- 2. look up the cached job for this encounter ----
@@ -7536,10 +7746,6 @@ def create_app() -> FastAPI:
         # compatibility — we do NOT fabricate a claim.
         result = job.result or {}
         synth_encounter_id = result.get("synth_encounter_id")
-        ran_via = result.get("ran_via", "upload_portal")
-        used_uploaded_note = bool(result.get("used_uploaded_note")) or (
-            ran_via == "upload_portal_with_user_note"
-        )
         persisted_claim = result.get("claim")
 
         # Resolve the clinical_note: request > uploaded on-disk
@@ -7547,30 +7753,50 @@ def create_app() -> FastAPI:
         if clinical_note is None:
             try:
                 from pathlib import Path as _P
+
                 notes_dir = (
                     _P(__file__).resolve().parent.parent.parent
-                    / "logs" / "uploaded_notes"
+                    / "logs"
+                    / "uploaded_notes"
                 )
                 if notes_dir.is_dir():
-                    safe = __import__("re").sub(
-                        r"[^A-Za-z0-9_.-]+", "_", encounter_id
-                    ).strip("._")[:80]
+                    safe = (
+                        __import__("re")
+                        .sub(r"[^A-Za-z0-9_.-]+", "_", encounter_id)
+                        .strip("._")[:80]
+                    )
                     if safe:
                         candidates = sorted(
-                            notes_dir.glob(f"{safe}.*.txt"),
+                            notes_dir.glob(f"{safe}.*.txt.enc"),
                             key=lambda p: p.stat().st_mtime,
                             reverse=True,
                         )
                         if candidates:
-                            clinical_note = candidates[0].read_text(encoding="utf-8")
+                            clinical_note = load_clinical_note(candidates[0]).decode(
+                                "utf-8"
+                            )
                             note_source = "uploaded"
             except Exception:  # noqa: BLE001 (deliberately broad)
                 clinical_note = None
         if clinical_note is None:
-            clinical_note = _STUB_CLINICAL_NOTE
-            note_source = "stub"
+            raise HTTPException(
+                status_code=422,
+                detail="clinical_note_required",
+            )
+
+        if not isinstance(persisted_claim, dict) or not persisted_claim.get(
+            "line_items"
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="reaudit_claim_unavailable",
+            )
 
         # ---- 4. rebuild the audit encounter and run the auditor ----
+        # The validated claim and note above make the real-data branch the
+        # only reachable path. Keep the legacy branch temporarily for old
+        # serialized demo jobs, but never select it for this endpoint.
+        used_uploaded_note = True
         # Read-from-uploaded-data branch: prefer the on-disk
         # uploaded clinical note over a re-synthesised one. Two
         # sub-branches:
@@ -7600,9 +7826,8 @@ def create_app() -> FastAPI:
                 # PT_REAUDIT placeholder ONLY for jobs that ran
                 # before the fix landed — those will not have
                 # result['claim'].
-                if (
-                    isinstance(persisted_claim, dict)
-                    and persisted_claim.get("line_items")
+                if isinstance(persisted_claim, dict) and persisted_claim.get(
+                    "line_items"
                 ):
                     claim = dict(persisted_claim)
                 else:
@@ -7753,9 +7978,7 @@ def create_app() -> FastAPI:
                 status_code=400,
                 detail="channel is required",
             )
-        if not isinstance(events, list) or not all(
-            isinstance(e, str) for e in events
-        ):
+        if not isinstance(events, list) or not all(isinstance(e, str) for e in events):
             raise HTTPException(
                 status_code=400,
                 detail="events must be a list of strings",

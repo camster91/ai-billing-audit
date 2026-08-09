@@ -4,6 +4,7 @@ Ingest adapters may accept the historical field aliases, but the queue and
 auditor receive one stable shape.  Keeping this boundary deliberately small
 lets old JSONL records remain readable while preventing new alias drift.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping

@@ -43,7 +43,6 @@ from unittest.mock import MagicMock, patch
 import litellm
 import pytest
 
-import src.llm_client as llm_client
 from src.llm_client import LLMClient, create_llm_client
 
 
@@ -57,9 +56,9 @@ from src.llm_client import LLMClient, create_llm_client
 # parametrization table tidy.
 PROVIDER_API_KEY_ENV: dict[str, str] = {
     "minimax": "MINIMAX_API_KEY",
-    "claude":  "ANTHROPIC_API_KEY",
-    "openai":  "OPENAI_API_KEY",
-    "gemini":  "GEMINI_API_KEY",
+    "claude": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "gemini": "GEMINI_API_KEY",
 }
 
 
@@ -94,8 +93,8 @@ def _stub_litellm_completion(text: str) -> Any:
 SAMPLE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "answer":  {"type": "string"},
-        "mood":    {"type": "string"},
+        "answer": {"type": "string"},
+        "mood": {"type": "string"},
     },
     "required": ["answer", "mood"],
     "additionalProperties": False,

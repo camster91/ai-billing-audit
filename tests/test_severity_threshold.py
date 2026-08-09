@@ -13,9 +13,9 @@ What's pinned
 * The handler still reports the total count so the biller knows
   there were hidden ones
 """
+
 from __future__ import annotations
 
-import pytest
 
 from ai_billing_audit.api import (
     SEVERITY_RANK,
@@ -26,24 +26,28 @@ from ai_billing_audit.api import (
 def test_default_is_info():
     """No env var => show everything (rank 0)."""
     import os
+
     os.environ.pop("MIN_SEVERITY_TO_SHOW", None)
     assert _min_severity_threshold() == SEVERITY_RANK["info"]
 
 
 def test_unknown_value_falls_back_to_info():
     import os
+
     os.environ["MIN_SEVERITY_TO_SHOW"] = "bogus"
     assert _min_severity_threshold() == SEVERITY_RANK["info"]
 
 
 def test_explicit_high_threshold():
     import os
+
     os.environ["MIN_SEVERITY_TO_SHOW"] = "high"
     assert _min_severity_threshold() == SEVERITY_RANK["high"]
 
 
 def test_case_insensitive():
     import os
+
     os.environ["MIN_SEVERITY_TO_SHOW"] = "HIGH"
     assert _min_severity_threshold() == SEVERITY_RANK["high"]
     os.environ["MIN_SEVERITY_TO_SHOW"] = "Critical"

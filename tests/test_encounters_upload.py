@@ -23,22 +23,23 @@ would in production. The synth call inside the default runner is
 exercised end-to-end (no monkeypatching), but tests that need
 deterministic timing use the ``JobQueue`` with a custom runner.
 """
+
 from __future__ import annotations
 
 import io
 import json
-import tempfile
 import time
 import zipfile
 from pathlib import Path
 from typing import Any
 
 import pytest
+from cryptography.fernet import Fernet
 from starlette.testclient import TestClient
 
 from ai_billing_audit import api
+from ai_billing_audit.clinical_note_storage import load_clinical_note
 from ai_billing_audit.job_queue import (
-    Job,
     JobQueue,
     get_default_queue,
     reset_default_queue_for_tests,
@@ -95,9 +96,7 @@ def _missing_fields_837p() -> str:
     fixed-width ISA header (the parser is permissive on missing
     envelopes) so the fixture stays short and human-readable."""
     return (
-        "ST*837*0001*005010X222A1~"
-        "CLM*ENC-MISSING-001*100***11:B:1*Y*A*Y*Y~"
-        "SE*2*0001~"
+        "ST*837*0001*005010X222A1~CLM*ENC-MISSING-001*100***11:B:1*Y*A*Y*Y~SE*2*0001~"
     )
 
 
@@ -121,13 +120,14 @@ def _make_zip(entries: dict[str, str]) -> bytes:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """A TestClient with a fresh JobQueue that uses a tmp log path.
 
     The default module-level queue is reset per-test so the synth
     call inside the runner doesn't leak state across tests.
     """
     reset_default_queue_for_tests()
+    monkeypatch.setattr(api, "load_uploaded_note_for_encounter", lambda _id: "note")
     return TestClient(api.app)
 
 
@@ -142,6 +142,13 @@ def tmp_log_queue(tmp_path: Path) -> JobQueue:
     log = tmp_path / "jobs.jsonl"
     q = JobQueue(log_path=log, worker_count=2, runner=lambda enc: {"echo": enc})
     return q
+
+
+@pytest.fixture
+def phi_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "ZORVA_PHI_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii")
+    )
 
 
 # --- 1. page exists with three input modes + bulk ZIP ---------------------
@@ -159,18 +166,18 @@ def test_upload_page_renders(client: TestClient) -> None:
     # input modes" (837P, clinical note, paste-form); the bulk ZIP
     # is an additional control on top of the 837P path.
     for needle in (
-        "id=\"tab-837p\"",
-        "id=\"tab-zip\"",
-        "id=\"tab-note\"",
-        "id=\"tab-paste\"",
+        'id="tab-837p"',
+        'id="tab-zip"',
+        'id="tab-note"',
+        'id="tab-paste"',
     ):
         assert needle in body, f"upload page missing {needle!r}"
     # Bulk-upload control is in the ZIP tab.
     assert "837P ZIP" in body
     # The page loads the JS that drives drag-drop + preview.
-    assert "src=\"/static/upload.js\"" in body
+    assert 'src="/static/upload.js"' in body
     # The 837P dropzone is the default-active tab.
-    assert "data-target=\"tab-837p\"" in body
+    assert 'data-target="tab-837p"' in body
     # The 837P dropzone's hidden file input has the right accept list.
     assert 'accept=".837,.txt,.x12,.edi"' in body
 
@@ -205,6 +212,40 @@ def test_preview_single_837p_parses_to_normalised_dict(
     assert "CLM*ENC-PORTAL-001" in row["raw"]
 
 
+def test_837p_diagnoses_survive_preview_submit_and_queued_claim(
+    client: TestClient, tmp_log_queue: JobQueue
+) -> None:
+    """HI diagnoses must reach the worker's canonical queued claim unchanged."""
+    api.get_default_queue = lambda: tmp_log_queue  # type: ignore[assignment]
+    payload = _FULL_837P.replace(
+        "DTP*472*D8*20240510~",
+        "HI*ABK:I10*ABF:E119~DTP*472*D8*20240510~",
+    )
+    preview = client.post(
+        "/encounters/upload/preview",
+        files={"file": ("diagnoses.837", payload.encode("utf-8"), "text/plain")},
+    )
+    assert preview.status_code == 200, preview.text
+    row = preview.json()["rows"][0]
+    assert row["diagnosis_codes"] == ["I10", "E119"]
+
+    submitted = client.post(
+        "/encounters/upload/submit",
+        data={"payload": json.dumps({"rows": [row]})},
+    )
+    assert submitted.status_code == 200, submitted.text
+    job_id = submitted.json()["jobs"][0]["job_id"]
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        job = tmp_log_queue.get(job_id)
+        if job and job.status in ("done", "failed"):
+            break
+        time.sleep(0.02)
+    assert job is not None
+    assert job.status == "done"
+    assert job.result["echo"]["diagnosis_codes"] == ["I10", "E119"]
+
+
 def test_zip_of_837p_files_parses_each_individually(
     client: TestClient,
 ) -> None:
@@ -231,9 +272,7 @@ def test_zip_of_837p_files_parses_each_individually(
     # Each row carries a `source: "zip"` flag (bulk upload).
     assert all(r["source"] == "zip" for r in rows)
     # And the per-file source filename is the inner archive entry.
-    assert {r["source_filename"] for r in rows} == {
-        "claims/a.837", "claims/b.837"
-    }
+    assert {r["source_filename"] for r in rows} == {"claims/a.837", "claims/b.837"}
     assert all(r["errors"] == [] for r in rows)
 
 
@@ -365,6 +404,129 @@ def test_submit_with_no_accepted_rows_rejects_all(client: TestClient) -> None:
 # --- 5. accepted files enqueue jobs, status is pollable -------------------
 
 
+def test_submit_rejects_claim_without_clinical_note_before_enqueue(
+    client: TestClient,
+    tmp_log_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api, "get_default_queue", lambda: tmp_log_queue)
+    monkeypatch.setattr(api, "load_uploaded_note_for_encounter", lambda _id: None)
+    rows = [
+        {
+            "encounter_id": "ENC-NO-NOTE-001",
+            "patient_id": "MBR-000123",
+            "NPI": "1234567890",
+            "date_of_service": "2024-05-10",
+            "CPT_codes": ["99213"],
+            "source": "837p",
+            "source_filename": "missing-note.837",
+            "errors": [],
+        }
+    ]
+
+    response = client.post(
+        "/encounters/upload/submit",
+        data={"payload": json.dumps({"rows": rows})},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["jobs"] == []
+    assert response.json()["rejected"][0]["errors"] == ["clinical_note_required"]
+    assert tmp_log_queue.list_jobs() == []
+
+
+def test_internal_audit_submission_persists_note_and_enqueues_real_claim(
+    client: TestClient,
+    tmp_log_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    phi_key: None,
+) -> None:
+    notes_dir = tmp_path / "internal-notes"
+    monkeypatch.setenv("ZORVA_UPLOADED_NOTES_DIR", str(notes_dir))
+    monkeypatch.setattr(api, "get_default_queue", lambda: tmp_log_queue)
+    note = "Established visit with documented assessment and plan."
+
+    response = client.post(
+        "/api/audits",
+        json={
+            "encounter_id": "ENC-INTERNAL-001",
+            "patient_id": "patient-hash-001",
+            "NPI": "1234567890",
+            "date_of_service": "2026-08-08",
+            "CPT_codes": ["99213"],
+            "diagnosis_codes": ["I10"],
+            "clinical_note": note,
+        },
+    )
+
+    assert response.status_code == 202, response.text
+    body = response.json()
+    assert body["encounter_id"] == "ENC-INTERNAL-001"
+    assert body["status"] == "queued"
+    assert body["status_url"] == f"/encounters/upload/jobs/{body['job_id']}"
+    assert len(tmp_log_queue.list_jobs()) == 1
+    stored = list(notes_dir.glob("ENC-INTERNAL-001.*.txt.enc"))
+    assert len(stored) == 1
+    assert note.encode("utf-8") not in stored[0].read_bytes()
+    assert load_clinical_note(stored[0]).decode("utf-8") == note
+
+
+def test_internal_audit_submission_rejects_missing_note_before_enqueue(
+    client: TestClient,
+    tmp_log_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api, "get_default_queue", lambda: tmp_log_queue)
+
+    response = client.post(
+        "/api/audits",
+        json={
+            "encounter_id": "ENC-INTERNAL-NO-NOTE",
+            "patient_id": "patient-hash-002",
+            "NPI": "1234567890",
+            "date_of_service": "2026-08-08",
+            "CPT_codes": ["99213"],
+        },
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "clinical_note_required"
+    assert tmp_log_queue.list_jobs() == []
+
+
+def test_internal_audit_submission_rejects_reused_idempotency_key_for_new_claim(
+    client: TestClient,
+    tmp_log_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    phi_key: None,
+) -> None:
+    monkeypatch.setenv("ZORVA_UPLOADED_NOTES_DIR", str(tmp_path / "notes"))
+    monkeypatch.setenv("IDEMPOTENCY_LOG", str(tmp_path / "idempotency.jsonl"))
+    monkeypatch.setattr(api, "get_default_queue", lambda: tmp_log_queue)
+    headers = {"Idempotency-Key": "portal-audit-stable-key"}
+    base = {
+        "encounter_id": "ENC-IDEM-001",
+        "patient_id": "patient-hash-001",
+        "NPI": "1234567890",
+        "date_of_service": "2026-08-08",
+        "CPT_codes": ["99213"],
+        "clinical_note": "Assessment and plan documented.",
+    }
+
+    first = client.post("/api/audits", json=base, headers=headers)
+    changed = client.post(
+        "/api/audits",
+        json={**base, "encounter_id": "ENC-IDEM-002"},
+        headers=headers,
+    )
+
+    assert first.status_code == 202, first.text
+    assert changed.status_code == 409, changed.text
+    assert len(tmp_log_queue.list_jobs()) == 1
+
+
 def test_submit_accepted_row_enqueues_job_and_status_is_pollable(
     client: TestClient, tmp_log_queue: JobQueue
 ) -> None:
@@ -433,6 +595,57 @@ def test_job_status_404_for_unknown_id(client: TestClient) -> None:
     assert r.status_code == 404
 
 
+def test_job_status_hides_other_tenant_job(
+    client: TestClient, tmp_log_queue: JobQueue
+) -> None:
+    """Knowing another clinic's opaque job id must not reveal its audit."""
+    api.get_default_queue = lambda: tmp_log_queue  # type: ignore[assignment]
+    job = tmp_log_queue.enqueue(
+        encounter={
+            "encounter_id": "ENC-OTHER-TENANT",
+            "patient_id": "member-other",
+            "NPI": "1234567890",
+            "date_of_service": "2026-08-08",
+            "CPT_codes": ["99213"],
+        },
+        source="portal_api",
+        tenant_id="another-clinic",
+    )
+
+    response = client.get(f"/encounters/upload/jobs/{job.job_id}")
+
+    assert response.status_code == 404
+
+
+def test_runner_audit_failure_is_not_reported_as_done(tmp_path: Path) -> None:
+    """A caught auditor failure must not be interpreted as a clean audit."""
+    queue = JobQueue(
+        log_path=tmp_path / "failed-audit.jsonl",
+        runner=lambda _encounter: {
+            "audit_status": "failed",
+            "audit_error": "audit_job_failed",
+            "findings": [],
+        },
+    )
+    job = queue.enqueue(
+        encounter={
+            "encounter_id": "ENC-AUDITOR-FAILED",
+            "patient_id": "member-failed",
+            "NPI": "1234567890",
+            "date_of_service": "2026-08-08",
+            "CPT_codes": ["99213"],
+        },
+        source="portal_api",
+        tenant_id="default",
+    )
+    deadline = time.time() + 3
+    while time.time() < deadline and job.status not in ("done", "failed"):
+        time.sleep(0.02)
+
+    assert job.status == "failed"
+    assert job.public_error() == "audit_job_failed"
+
+
 def test_default_runner_calls_synth_pipeline(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -481,6 +694,50 @@ def test_default_runner_calls_synth_pipeline(
     enc = captured[0]
     assert enc["encounter_id"] == "ENC-SYNTH-001"
     assert enc["CPT_codes"] == ["99213", "99214"]
+
+
+def test_default_runner_rejects_uploaded_claim_without_clinical_note(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A real 837P must never be silently replaced with a synthetic chart."""
+    import ai_billing_audit.job_queue as jq
+    import ai_billing_audit.auditor as auditor_module
+    import ai_billing_audit.synth_agent as synth_module
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("ZORVA_UPLOADED_NOTES_DIR", str(tmp_path / "notes"))
+    monkeypatch.setattr(
+        jq,
+        "_load_uploaded_note",
+        lambda encounter_id: None,
+    )
+    monkeypatch.setattr(
+        synth_module,
+        "generate",
+        lambda *args, **kwargs: {
+            "encounter_id": "synthetic-should-not-run",
+            "provider_note": {"hpi": "synthetic note"},
+            "cpt_codes": [{"code": "99213"}],
+            "icd10_codes": [],
+            "difficulty_tier": "EASY",
+            "variant": "clean",
+        },
+    )
+    monkeypatch.setattr(
+        auditor_module,
+        "run_audit",
+        lambda encounter: SimpleNamespace(findings=[], summary="synthetic ran"),
+    )
+    with pytest.raises(ValueError, match="clinical note"):
+        jq._default_runner(
+            {
+                "encounter_id": "ENC-REAL-NO-NOTE",
+                "patient_id": "PATIENT-1",
+                "NPI": "1234567890",
+                "date_of_service": "2026-08-01",
+                "CPT_codes": ["99213"],
+            }
+        )
 
 
 # --- 6. parse preview is shown before submit -------------------------------
@@ -554,7 +811,9 @@ def test_submit_button_disabled_when_no_accepted_rows_in_preview(
 # --- 7. clinical note PDF/image uploads accepted, OCR deferred -------------
 
 
-def test_clinical_note_pdf_is_accepted(client: TestClient, tmp_path: Path) -> None:
+def test_clinical_note_pdf_is_encrypted_at_rest(
+    client: TestClient, phi_key: None
+) -> None:
     # A minimal valid PDF header (just enough bytes to look PDF-y).
     pdf_bytes = b"%PDF-1.4\n%fake content for test\n%%EOF\n"
     r = client.post(
@@ -574,10 +833,11 @@ def test_clinical_note_pdf_is_accepted(client: TestClient, tmp_path: Path) -> No
     project_root = Path(api.__file__).resolve().parent.parent.parent
     target = project_root / stored
     assert target.exists()
-    assert target.read_bytes() == pdf_bytes
+    assert pdf_bytes not in target.read_bytes()
+    assert load_clinical_note(target) == pdf_bytes
 
 
-def test_clinical_note_image_is_accepted(client: TestClient) -> None:
+def test_clinical_note_image_is_accepted(client: TestClient, phi_key: None) -> None:
     png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
     r = client.post(
         "/encounters/upload/notes",
@@ -587,6 +847,39 @@ def test_clinical_note_image_is_accepted(client: TestClient) -> None:
     body = r.json()
     assert body["ocr_status"] == "deferred"
     assert body["filename"] == "scan.png"
+
+
+def test_clinical_text_note_is_encrypted_at_rest(
+    client: TestClient, phi_key: None
+) -> None:
+    clinical_note = "Patient has persistent chest pain."
+
+    response = client.post(
+        "/encounters/upload/text-note",
+        data={"encounter_id": "enc-phi-001", "clinical_note": clinical_note},
+    )
+
+    assert response.status_code == 200
+    stored = (
+        Path(api.__file__).resolve().parent.parent.parent
+        / response.json()["stored_path"]
+    )
+    assert clinical_note.encode("utf-8") not in stored.read_bytes()
+    assert load_clinical_note(stored).decode("utf-8") == clinical_note
+
+
+def test_clinical_note_upload_fails_closed_without_encryption_key(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ZORVA_PHI_ENCRYPTION_KEY", raising=False)
+
+    response = client.post(
+        "/encounters/upload/notes",
+        files={"file": ("note.pdf", b"%PDF-1.4\nPHI", "application/pdf")},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "phi_storage_not_configured"
 
 
 def test_clinical_note_rejects_unsupported_extension(
@@ -698,9 +991,13 @@ def test_job_queue_persists_across_instances(tmp_path: Path) -> None:
     log = tmp_path / "jobs.jsonl"
     q1 = JobQueue(log_path=log, runner=lambda e: {"ok": True})
     job = q1.enqueue(
-        encounter={"encounter_id": "ENC-RESTART-1", "patient_id": "x",
-                    "NPI": "1234567890", "date_of_service": "2024-05-10",
-                    "CPT_codes": ["99213"]},
+        encounter={
+            "encounter_id": "ENC-RESTART-1",
+            "patient_id": "x",
+            "NPI": "1234567890",
+            "date_of_service": "2024-05-10",
+            "CPT_codes": ["99213"],
+        },
         source="837p",
         source_filename="x.837",
     )
@@ -727,9 +1024,13 @@ def test_job_queue_marks_failure_on_runner_exception(
 
     q = JobQueue(log_path=log, runner=boom)
     job = q.enqueue(
-        encounter={"encounter_id": "ENC-FAIL-1", "patient_id": "x",
-                    "NPI": "1234567890", "date_of_service": "2024-05-10",
-                    "CPT_codes": ["99213"]},
+        encounter={
+            "encounter_id": "ENC-FAIL-1",
+            "patient_id": "x",
+            "NPI": "1234567890",
+            "date_of_service": "2024-05-10",
+            "CPT_codes": ["99213"],
+        },
         source="837p",
         source_filename="x.837",
     )
@@ -740,7 +1041,8 @@ def test_job_queue_marks_failure_on_runner_exception(
         time.sleep(0.05)
     final = q.get(job.job_id)
     assert final.status == "failed"
-    assert "synth exploded" in final.error
+    assert final.error == "audit_job_failed"
+    assert "synth exploded" not in final.to_dict()["error"]
 
 
 def test_job_result_sanitizes_nested_exception_canaries(tmp_path: Path) -> None:

@@ -29,9 +29,9 @@ The default :class:`JobQueue` is replaced with a fresh queue
 whose runner writes a deterministic ``result`` so the test
 suite doesn't have to wait for the real synth / LLM path.
 """
+
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -51,6 +51,9 @@ from starlette.testclient import TestClient  # noqa: E402
 
 from ai_billing_audit import api  # noqa: E402
 from ai_billing_audit import public_api  # noqa: E402
+from ai_billing_audit.clinical_note_storage import (  # noqa: E402
+    read_encrypted_json_records,
+)
 from ai_billing_audit.job_queue import (  # noqa: E402
     JobQueue,
     reset_default_queue_for_tests,
@@ -89,9 +92,7 @@ def no_api_key(tmp_log_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def fast_queue(
-    tmp_log_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> JobQueue:
+def fast_queue(tmp_log_dir: Path, monkeypatch: pytest.MonkeyPatch) -> JobQueue:
     """A JobQueue with a no-op runner so tests don't hit the real synth.
 
     The runner writes a fixed-shape result so the GET endpoint
@@ -147,9 +148,23 @@ def _claim_body(**overrides: Any) -> dict[str, Any]:
         "NPI": "1234567890",
         "date_of_service": "2026-06-24",
         "CPT_codes": ["99213"],
+        "clinical_note": "Established patient follow-up with documented assessment.",
     }
     body.update(overrides)
     return body
+
+
+def test_post_audits_rejects_missing_clinical_note_before_enqueue(
+    client: TestClient, with_api_key: None, fast_queue: JobQueue
+) -> None:
+    body = _claim_body()
+    body.pop("clinical_note")
+
+    response = client.post("/v1/audits", json=body, headers=_bearer())
+
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "clinical_note_required"
+    assert fast_queue.list_jobs() == []
 
 
 def _bearer(key: str = "test-key-abc") -> dict[str, str]:
@@ -253,6 +268,33 @@ def test_post_audits_returns_202_with_id(
     assert body["status"] == "queued"
     assert body["status_url"] == f"/v1/audits/{body['audit_id']}"
     assert body["encounter_id"] == "ENC-V1-001"
+
+
+def test_post_audits_encrypts_clinical_note_at_rest(
+    client: TestClient,
+    with_api_key: None,
+    fast_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    notes_dir = tmp_path / "uploaded_notes"
+    monkeypatch.setenv("ZORVA_UPLOADED_NOTES_DIR", str(notes_dir))
+    note = "Patient Jane Doe has diagnosis E11.9"
+
+    response = client.post(
+        "/v1/audits",
+        json=_claim_body(encounter_id="ENC-V1-PHI", clinical_note=note),
+        headers=_bearer(),
+    )
+
+    assert response.status_code == 202, response.text
+    stored = list(notes_dir.iterdir())
+    assert len(stored) == 1
+    assert stored[0].name.endswith(".txt.enc")
+    assert note not in stored[0].read_text(encoding="ascii")
+    from ai_billing_audit.clinical_note_storage import load_clinical_note
+
+    assert load_clinical_note(stored[0]).decode("utf-8") == note
 
 
 def test_post_audits_accepts_comma_separated_cpts(
@@ -371,11 +413,14 @@ def test_usage_log_appended_for_each_endpoint(
     # GET unknown → 404
     client.get("/v1/audits/va_unknown", headers=_bearer())
     # Wrong key → 401
-    client.post("/v1/audits", json=_claim_body(), headers={"Authorization": "Bearer wrong"})
+    client.post(
+        "/v1/audits", json=_claim_body(), headers={"Authorization": "Bearer wrong"}
+    )
 
     log_path = tmp_log_dir / "usage.jsonl"
     assert log_path.exists(), "usage log was not created"
-    rows = [json.loads(line) for line in log_path.read_text().splitlines() if line]
+    assert b"ENC-V1-001" not in log_path.read_bytes()
+    rows = read_encrypted_json_records(log_path)
     endpoints = {(r["endpoint"], r["status"]) for r in rows}
     # 202 POST, 404 GET, 401 POST — all logged.
     assert ("POST /v1/audits", 202) in endpoints

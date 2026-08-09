@@ -13,12 +13,12 @@ Three contracts:
    ``sys.argv`` — it uses an empty argv list so a caller without
    args doesn't trip over pytest's CLI flags.
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
@@ -32,6 +32,7 @@ def test_optimize_main_with_no_argv_uses_defaults():
     Now it uses an empty argv list and falls back to defaults.
     """
     from scripts import optimize as opt
+
     rc = opt.main(argv=None)
     # The default --split is 'synth'; running optimize on the
     # synth split should succeed (return 0). If a real LLM is
@@ -49,7 +50,9 @@ def test_optimize_main_with_explicit_argv_uses_those():
     OR a clean rc=0 return.
     """
     from scripts import optimize as opt
-    import contextlib, io
+    import contextlib
+    import io
+
     with contextlib.redirect_stdout(io.StringIO()):
         try:
             rc = opt.main(argv=["--help"])
@@ -66,8 +69,10 @@ def test_optimize_main_does_not_swallow_pytest_argv(monkeypatch):
     pytest flags as positional script args, and called
     SystemExit(2)."""
     from scripts import optimize as opt
+
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         ["pytest", "tests/", "-q", "--tb=short", "-p", "no:randomly"],
     )
     rc = opt.main(argv=None)

@@ -19,6 +19,7 @@ What's pinned
 * An empty findings array is a no-op (audit produced no findings — the
   encounter is clean).
 """
+
 from __future__ import annotations
 
 import pytest

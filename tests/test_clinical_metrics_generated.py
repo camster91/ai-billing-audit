@@ -21,7 +21,6 @@ What's pinned
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Iterator
 
@@ -87,8 +86,10 @@ def test_teaching_verdict_dataclass_defaults(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import TeachingVerdict
 
     v = TeachingVerdict(
-        feedback_id="fb_1", clinic_id="clinic_a",
-        finding_id="f1", verdict="doctor_right",
+        feedback_id="fb_1",
+        clinic_id="clinic_a",
+        finding_id="f1",
+        verdict="doctor_right",
     )
     d = v.to_dict()
     assert d["verdict"] == "doctor_right"
@@ -125,7 +126,9 @@ def test_compute_doctor_effectiveness_groups_by_encounter(tmp_logs) -> None:
         {"encounter_id": "e3", "doctor_id": "other", "action": "accept"},
     ]
     payload = compute_doctor_effectiveness(
-        "doc_1", "clinic_a", feedback_log=log,
+        "doc_1",
+        "clinic_a",
+        feedback_log=log,
     )
     assert payload["status"] == "ok"
     assert payload["encounters_with_feedback"] == 2
@@ -141,7 +144,9 @@ def test_compute_doctor_effectiveness_no_matches_for_doctor(tmp_logs) -> None:
         {"encounter_id": "e1", "doctor_id": "someone_else", "action": "accept"},
     ]
     payload = compute_doctor_effectiveness(
-        "doc_1", "clinic_a", feedback_log=log,
+        "doc_1",
+        "clinic_a",
+        feedback_log=log,
     )
     assert payload["status"] == "insufficient_data"
     assert "No feedback entries" in payload["message"]
@@ -156,13 +161,17 @@ def test_compute_doctor_effectiveness_skips_rows_without_encounter_id(tmp_logs) 
         {"encounter_id": "e1", "doctor_id": "doc_1", "action": "accept"},
     ]
     payload = compute_doctor_effectiveness(
-        "doc_1", "clinic_a", feedback_log=log,
+        "doc_1",
+        "clinic_a",
+        feedback_log=log,
     )
     assert payload["status"] == "ok"
     assert payload["encounters_with_feedback"] == 1
 
 
-def test_compute_doctor_effectiveness_swallows_feedback_store_error(tmp_logs, monkeypatch) -> None:
+def test_compute_doctor_effectiveness_swallows_feedback_store_error(
+    tmp_logs, monkeypatch
+) -> None:
     """If ``FeedbackStore.read_all`` raises, the helper returns insufficient_data
     rather than bubbling the exception. This is the lazy-import fallback path.
     """
@@ -201,9 +210,9 @@ def _seed_incorrect_feedback_row(path: Path, **fields) -> None:
         "event_id": "fb_seed_1",
     }
     row.update(fields)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row) + "\n")
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    append_encrypted_json_record(path, row)
 
 
 def test_list_teaching_signal_queue_filters_by_clinic(tmp_logs) -> None:
@@ -243,19 +252,19 @@ def test_list_teaching_signal_queue_ignores_non_incorrect_rows(tmp_logs) -> None
     from ai_billing_audit.clinical_metrics import list_teaching_signal_queue
 
     log_path = Path(__import__("os").environ["FEEDBACK_LOG"])
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as fh:
-        # Non-incorrect action
-        fh.write(
-            json.dumps(
-                {
-                    "encounter_id": "e1", "finding_id": "f1",
-                    "action": "accept", "clinic_id": "clinic_a",
-                    "event_id": "fb_accept_1",
-                }
-            ) + "\n"
-        )
-        _seed_incorrect_feedback_row(log_path)
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    append_encrypted_json_record(
+        log_path,
+        {
+            "encounter_id": "e1",
+            "finding_id": "f1",
+            "action": "accept",
+            "clinic_id": "clinic_a",
+            "event_id": "fb_accept_1",
+        },
+    )
+    _seed_incorrect_feedback_row(log_path)
 
     assert len(list_teaching_signal_queue()) == 1
 
@@ -293,20 +302,26 @@ def test_list_do_not_flag_rules_isolates_clinics(tmp_logs) -> None:
 
     record_teaching_verdict(
         TeachingVerdict(
-            feedback_id="fb_a", clinic_id="clinic_a",
-            finding_id="f1", verdict="doctor_right",
+            feedback_id="fb_a",
+            clinic_id="clinic_a",
+            finding_id="f1",
+            verdict="doctor_right",
         )
     )
     record_teaching_verdict(
         TeachingVerdict(
-            feedback_id="fb_b", clinic_id="clinic_b",
-            finding_id="f2", verdict="doctor_right",
+            feedback_id="fb_b",
+            clinic_id="clinic_b",
+            finding_id="f2",
+            verdict="doctor_right",
         )
     )
     record_teaching_verdict(
         TeachingVerdict(
-            feedback_id="fb_c", clinic_id="clinic_a",
-            finding_id="f3", verdict="auditor_right",  # different verdict
+            feedback_id="fb_c",
+            clinic_id="clinic_a",
+            finding_id="f3",
+            verdict="auditor_right",  # different verdict
         )
     )
 
@@ -390,11 +405,14 @@ def test_list_pinned_clinics_drops_blank_ids(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import list_pinned_clinics
 
     log_path = Path(os.environ["CLINIC_PROMPT_PIN_LOG"])
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("w", encoding="utf-8") as fh:
-        fh.write(json.dumps({"clinic_id": "", "prompt_version_id": "v0"}) + "\n")
-        fh.write(json.dumps({"clinic_id": "clinic_a", "prompt_version_id": ""}) + "\n")
-        fh.write(json.dumps({"clinic_id": "clinic_b", "prompt_version_id": "v9"}) + "\n")
+    from ai_billing_audit.clinical_note_storage import append_encrypted_json_record
+
+    for row in (
+        {"clinic_id": "", "prompt_version_id": "v0"},
+        {"clinic_id": "clinic_a", "prompt_version_id": ""},
+        {"clinic_id": "clinic_b", "prompt_version_id": "v9"},
+    ):
+        append_encrypted_json_record(log_path, row)
 
     pinned = list_pinned_clinics()
     assert pinned == {"clinic_b": "v9"}
@@ -412,9 +430,12 @@ def test_log_doctor_dashboard_view_round_trip(tmp_logs) -> None:
     )
 
     payload = log_doctor_dashboard_view(
-        "doc_1", "clinic_a",
-        flagged_encounters=3, awaiting_review=1,
-        clean_rate=0.94, savings_usd=340.0,
+        "doc_1",
+        "clinic_a",
+        flagged_encounters=3,
+        awaiting_review=1,
+        clean_rate=0.94,
+        savings_usd=340.0,
     )
     assert payload["doctor_id"] == "doc_1"
     assert payload["flagged_encounters"] == 3
@@ -438,7 +459,9 @@ def test_record_note_suggestion_round_trip(tmp_logs) -> None:
     )
 
     record_note_suggestion(
-        finding_id="f1", encounter_id="enc_1", clinic_id="clinic_a",
+        finding_id="f1",
+        encounter_id="enc_1",
+        clinic_id="clinic_a",
         suggested_addition="Patient has failed 6 weeks of NSAIDs + PT.",
     )
     rows = list_note_suggestions("enc_1")
@@ -453,8 +476,10 @@ def test_record_note_suggestion_blank_raises(tmp_logs, bad_text) -> None:
 
     with pytest.raises(ValueError, match="non-empty"):
         record_note_suggestion(
-            finding_id="f1", encounter_id="enc_1",
-            clinic_id="clinic_a", suggested_addition=bad_text,
+            finding_id="f1",
+            encounter_id="enc_1",
+            clinic_id="clinic_a",
+            suggested_addition=bad_text,
         )
 
 
@@ -471,8 +496,10 @@ def test_queue_owner_monthly_email_round_trip(tmp_logs) -> None:
 
     payload = queue_owner_monthly_email(
         "clinic_a",
-        claims_submitted=412, clean_rate=0.94,
-        estimated_savings_usd=14200.0, review_resolution_days=2.0,
+        claims_submitted=412,
+        clean_rate=0.94,
+        estimated_savings_usd=14200.0,
+        review_resolution_days=2.0,
         peer_percentile=75,
     )
     assert payload["status"] == "queued"
@@ -494,9 +521,12 @@ def test_record_submit_webhook_round_trip(tmp_logs) -> None:
     )
 
     record_submit_webhook(
-        clinic_id="clinic_a", encounter_id="enc_1",
-        verdict="flagged", findings=[{"id": "f1"}, {"id": "f2"}],
-        hmac_ok=True, latency_ms=2400,
+        clinic_id="clinic_a",
+        encounter_id="enc_1",
+        verdict="flagged",
+        findings=[{"id": "f1"}, {"id": "f2"}],
+        hmac_ok=True,
+        latency_ms=2400,
     )
     rows = list_submit_webhooks("clinic_a")
     assert len(rows) == 1
@@ -511,9 +541,12 @@ def test_record_submit_webhook_bad_verdict_raises(tmp_logs, bad_verdict) -> None
 
     with pytest.raises(ValueError, match="verdict must be one of"):
         record_submit_webhook(
-            clinic_id="clinic_a", encounter_id="enc_1",
-            verdict=bad_verdict, findings=[],
-            hmac_ok=False, latency_ms=0,
+            clinic_id="clinic_a",
+            encounter_id="enc_1",
+            verdict=bad_verdict,
+            findings=[],
+            hmac_ok=False,
+            latency_ms=0,
         )
 
 
@@ -561,13 +594,19 @@ def test_add_tenant_rule_filters_disabled(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import add_tenant_rule, list_tenant_rules
 
     add_tenant_rule(
-        "clinic_a", rule_id="no_99211", description="We don't bill 99211",
-        severity="low", pattern="code==99211",
+        "clinic_a",
+        rule_id="no_99211",
+        description="We don't bill 99211",
+        severity="low",
+        pattern="code==99211",
     )
     add_tenant_rule(
-        "clinic_a", rule_id="chronic_modifier",
+        "clinic_a",
+        rule_id="chronic_modifier",
         description="Always append modifier-25 on chronic visits",
-        severity="info", pattern="visit_type==chronic", enabled=False,
+        severity="info",
+        pattern="visit_type==chronic",
+        enabled=False,
     )
     rules = list_tenant_rules("clinic_a")
     ids = sorted(r["rule_id"] for r in rules)
@@ -579,12 +618,18 @@ def test_add_tenant_rule_duplicate_overwrites(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import add_tenant_rule, list_tenant_rules
 
     add_tenant_rule(
-        "clinic_a", rule_id="dup", description="old",
-        severity="low", pattern="x==1",
+        "clinic_a",
+        rule_id="dup",
+        description="old",
+        severity="low",
+        pattern="x==1",
     )
     add_tenant_rule(
-        "clinic_a", rule_id="dup", description="new",
-        severity="low", pattern="x==2",
+        "clinic_a",
+        rule_id="dup",
+        description="new",
+        severity="low",
+        pattern="x==2",
     )
     rules = list_tenant_rules("clinic_a")
     assert len(rules) == 1
@@ -598,8 +643,11 @@ def test_add_tenant_rule_bad_severity_raises(tmp_logs, bad_severity) -> None:
 
     with pytest.raises(ValueError, match="severity must be one of"):
         add_tenant_rule(
-            "clinic_a", rule_id="bad",
-            description="d", severity=bad_severity, pattern="p",
+            "clinic_a",
+            rule_id="bad",
+            description="d",
+            severity=bad_severity,
+            pattern="p",
         )
 
 
@@ -613,11 +661,14 @@ def test_save_onboarding_low_volume_recommends_haiku_weekly_medium(tmp_logs) -> 
     from ai_billing_audit.clinical_metrics import save_onboarding_answers
 
     payload = save_onboarding_answers(
-        "clinic_a", ehr="AdvancedMD",
-        providers=4, billers=2, monthly_claim_volume=120,
+        "clinic_a",
+        ehr="AdvancedMD",
+        providers=4,
+        billers=2,
+        monthly_claim_volume=120,
         biggest_denial_type="modifier-25",
     )
-    assert payload["recommended_default_model"] == "haiku"   # < 200
+    assert payload["recommended_default_model"] == "haiku"  # < 200
     assert payload["recommended_email_cadence"] == "weekly"  # < 500
     assert payload["recommended_severity_threshold"] == "medium"  # >= 100
 
@@ -627,8 +678,11 @@ def test_save_onboarding_high_volume_recommends_sonnet_daily(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import save_onboarding_answers
 
     payload = save_onboarding_answers(
-        "clinic_a", ehr="Epic",
-        providers=12, billers=8, monthly_claim_volume=800,
+        "clinic_a",
+        ehr="Epic",
+        providers=12,
+        billers=8,
+        monthly_claim_volume=800,
         biggest_denial_type="auth",
     )
     assert payload["recommended_default_model"] == "sonnet"
@@ -641,8 +695,11 @@ def test_save_onboarding_very_low_volume_uses_low_severity(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import save_onboarding_answers
 
     payload = save_onboarding_answers(
-        "clinic_a", ehr="Other",
-        providers=1, billers=1, monthly_claim_volume=50,
+        "clinic_a",
+        ehr="Other",
+        providers=1,
+        billers=1,
+        monthly_claim_volume=50,
         biggest_denial_type="",
     )
     assert payload["recommended_severity_threshold"] == "low"
@@ -657,13 +714,19 @@ def test_get_onboarding_returns_latest_or_none(tmp_logs) -> None:
     assert get_onboarding("clinic_a") is None
 
     save_onboarding_answers(
-        "clinic_a", ehr="AdvancedMD",
-        providers=4, billers=2, monthly_claim_volume=120,
+        "clinic_a",
+        ehr="AdvancedMD",
+        providers=4,
+        billers=2,
+        monthly_claim_volume=120,
         biggest_denial_type="modifier-25",
     )
     save_onboarding_answers(
-        "clinic_a", ehr="Epic",
-        providers=4, billers=2, monthly_claim_volume=120,
+        "clinic_a",
+        ehr="Epic",
+        providers=4,
+        billers=2,
+        monthly_claim_volume=120,
         biggest_denial_type="auth",
     )
     out = get_onboarding("clinic_a")
@@ -682,14 +745,19 @@ def test_get_onboarding_returns_latest_or_none(tmp_logs) -> None:
     ],
 )
 def test_save_onboarding_non_positive_counts_raise(
-    tmp_logs, providers, billers, volume,
+    tmp_logs,
+    providers,
+    billers,
+    volume,
 ) -> None:
     from ai_billing_audit.clinical_metrics import save_onboarding_answers
 
     with pytest.raises(ValueError, match="must be > 0"):
         save_onboarding_answers(
-            "clinic_a", ehr="AdvancedMD",
-            providers=providers, billers=billers,
+            "clinic_a",
+            ehr="AdvancedMD",
+            providers=providers,
+            billers=billers,
             monthly_claim_volume=volume,
             biggest_denial_type="x",
         )
@@ -707,12 +775,18 @@ def test_record_pre_submit_block_round_trip(tmp_logs) -> None:
     )
 
     record_pre_submit_block(
-        "clinic_a", encounter_id="enc_1", finding_count=3,
-        blocked=True, override_reason="",
+        "clinic_a",
+        encounter_id="enc_1",
+        finding_count=3,
+        blocked=True,
+        override_reason="",
     )
     record_pre_submit_block(
-        "clinic_a", encounter_id="enc_2", finding_count=2,
-        blocked=True, override_reason="patient is terminal, billing is moot",
+        "clinic_a",
+        encounter_id="enc_2",
+        finding_count=2,
+        blocked=True,
+        override_reason="patient is terminal, billing is moot",
     )
     rows = list_pre_submit_blocks("clinic_a")
     assert len(rows) == 2
@@ -729,8 +803,11 @@ def test_record_extension_audit_round_trip(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import record_extension_audit
 
     payload = record_extension_audit(
-        clinic_id="clinic_a", ehr="athena", encounter_id="enc_1",
-        findings_count=2, user_action="edited_then_submitted",
+        clinic_id="clinic_a",
+        ehr="athena",
+        encounter_id="enc_1",
+        findings_count=2,
+        user_action="edited_then_submitted",
         extension_version="0.4.1",
     )
     assert payload["ehr"] == "athena"
@@ -744,21 +821,30 @@ def test_record_extension_audit_bad_ehr_raises(tmp_logs, bad_ehr) -> None:
 
     with pytest.raises(ValueError, match="ehr must be one of"):
         record_extension_audit(
-            clinic_id="clinic_a", ehr=bad_ehr, encounter_id="enc_1",
-            findings_count=0, user_action="submitted", extension_version="0.0",
+            clinic_id="clinic_a",
+            ehr=bad_ehr,
+            encounter_id="enc_1",
+            findings_count=0,
+            user_action="submitted",
+            extension_version="0.0",
         )
 
 
 @pytest.mark.parametrize(
-    "bad_action", ["panic_clicked", "edited", "", "SUBMITTED"],
+    "bad_action",
+    ["panic_clicked", "edited", "", "SUBMITTED"],
 )
 def test_record_extension_audit_bad_user_action_raises(tmp_logs, bad_action) -> None:
     from ai_billing_audit.clinical_metrics import record_extension_audit
 
     with pytest.raises(ValueError, match="user_action must be"):
         record_extension_audit(
-            clinic_id="clinic_a", ehr="athena", encounter_id="enc_1",
-            findings_count=0, user_action=bad_action, extension_version="0.0",
+            clinic_id="clinic_a",
+            ehr="athena",
+            encounter_id="enc_1",
+            findings_count=0,
+            user_action=bad_action,
+            extension_version="0.0",
         )
 
 
@@ -773,7 +859,8 @@ def test_compute_specialty_mix_sums_to_one(tmp_logs) -> None:
 
     encounters = ["primary_care"] * 60 + ["surgery"] * 30 + ["psych"] * 10
     payload = compute_specialty_mix(
-        clinic_id="clinic_a", encounter_specialties=encounters,
+        clinic_id="clinic_a",
+        encounter_specialties=encounters,
     )
     assert payload["encounter_count"] == 100
     assert abs(sum(payload["specialty_mix"].values()) - 1.0) < 0.01
@@ -785,7 +872,8 @@ def test_compute_specialty_mix_dominant_ordering(tmp_logs) -> None:
 
     encounters = ["primary_care"] * 60 + ["surgery"] * 30 + ["psych"] * 10
     payload = compute_specialty_mix(
-        clinic_id="clinic_a", encounter_specialties=encounters,
+        clinic_id="clinic_a",
+        encounter_specialties=encounters,
     )
     assert payload["dominant_specialties"][0] == "primary_care"
     assert payload["dominant_specialties"][1] == "surgery"
@@ -829,10 +917,12 @@ def test_get_specialty_mix_returns_latest_or_none(tmp_logs) -> None:
     assert get_specialty_mix("clinic_a") is None
 
     compute_specialty_mix(
-        clinic_id="clinic_a", encounter_specialties=["primary_care"],
+        clinic_id="clinic_a",
+        encounter_specialties=["primary_care"],
     )
     compute_specialty_mix(
-        clinic_id="clinic_a", encounter_specialties=["surgery"],
+        clinic_id="clinic_a",
+        encounter_specialties=["surgery"],
     )
     payload = get_specialty_mix("clinic_a")
     assert payload is not None
@@ -849,16 +939,23 @@ def test_get_specialty_mix_returns_latest_or_none(tmp_logs) -> None:
 def test_detect_bulk_accept_pattern_below_threshold_returns_none(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import detect_bulk_accept_pattern
 
-    assert detect_bulk_accept_pattern(
-        "clinic_a", rule_id="mod_25", dismissal_count=5,
-    ) is None
+    assert (
+        detect_bulk_accept_pattern(
+            "clinic_a",
+            rule_id="mod_25",
+            dismissal_count=5,
+        )
+        is None
+    )
 
 
 def test_detect_bulk_accept_pattern_above_threshold_persists(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import detect_bulk_accept_pattern
 
     proposal = detect_bulk_accept_pattern(
-        "clinic_a", rule_id="mod_25", dismissal_count=12,
+        "clinic_a",
+        rule_id="mod_25",
+        dismissal_count=12,
     )
     assert proposal is not None
     assert proposal["opt_in"] is False
@@ -873,12 +970,21 @@ def test_detect_bulk_accept_pattern_custom_min_dismissals(tmp_logs) -> None:
     from ai_billing_audit.clinical_metrics import detect_bulk_accept_pattern
 
     # 12 dismissals, min_dismissals=20 → still below threshold
-    assert detect_bulk_accept_pattern(
-        "clinic_a", rule_id="mod_25", dismissal_count=12, min_dismissals=20,
-    ) is None
+    assert (
+        detect_bulk_accept_pattern(
+            "clinic_a",
+            rule_id="mod_25",
+            dismissal_count=12,
+            min_dismissals=20,
+        )
+        is None
+    )
     # 25 dismissals, min_dismissals=20 → proposal emitted
     proposal = detect_bulk_accept_pattern(
-        "clinic_a", rule_id="mod_25", dismissal_count=25, min_dismissals=20,
+        "clinic_a",
+        rule_id="mod_25",
+        dismissal_count=25,
+        min_dismissals=20,
     )
     assert proposal is not None
 
@@ -890,7 +996,9 @@ def test_opt_in_bulk_accept_round_trip(tmp_logs) -> None:
     )
 
     proposal = detect_bulk_accept_pattern(
-        "clinic_a", rule_id="mod_25", dismissal_count=12,
+        "clinic_a",
+        rule_id="mod_25",
+        dismissal_count=12,
     )
     assert proposal is not None
     pattern_id = proposal["event_id"]
@@ -920,8 +1028,12 @@ def test_queue_doctor_positive_digest_round_trip(tmp_logs) -> None:
     )
 
     payload = queue_doctor_positive_digest(
-        "doc_1", "clinic_a", week_of="2026-W26",
-        notes_written=47, notes_clean=45, notes_with_quick_fix=2,
+        "doc_1",
+        "clinic_a",
+        week_of="2026-W26",
+        notes_written=47,
+        notes_clean=45,
+        notes_with_quick_fix=2,
         estimated_savings_usd=9200.0,
     )
     assert payload["status"] == "queued"

@@ -36,6 +36,7 @@ Usage
     .venv/bin/python scripts/aggregate_acceptance.py --skip-run # compare only
     .venv/bin/python scripts/aggregate_acceptance.py --compare-only  # same
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,7 +89,7 @@ def main() -> int:
 
     py = str(args.python)
 
-    print(f"=== MVP acceptance aggregate run ===")
+    print("=== MVP acceptance aggregate run ===")
     print(f"Started: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     print(f"Python:  {py}")
     print(f"Mode:    {'dry-run' if args.dry_run else 'real'}")

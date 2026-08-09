@@ -25,7 +25,6 @@
 import { headers } from "next/headers";
 import { getStripe, isDemoMode } from "@/lib/stripe";
 import {
-  getPricingConfig,
   getStripePriceId,
   isValidCurrencyCode,
   isValidTierId,

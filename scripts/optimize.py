@@ -44,10 +44,9 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import dspy
-from dspy.teleprompt import MIPROv2
 from dspy.utils.dummies import DummyLM
 from dspy.utils.exceptions import AdapterParseError
 
@@ -62,7 +61,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 # the dual import strategy.
 
 from ai_billing_audit.grading import (  # noqa: E402
-    MatchResult,
     match_findings,
 )
 
@@ -411,15 +409,12 @@ def _load_val_ca_split(
     """
     if not path.exists():
         raise FileNotFoundError(
-            f"val_ca split file not found at {path}. "
-            f"Expected the 19 AHCIP encounters."
+            f"val_ca split file not found at {path}. Expected the 19 AHCIP encounters."
         )
     with path.open() as f:
         raw = json.load(f)
     if not isinstance(raw, list):
-        raise ValueError(
-            f"val_ca.json root must be a list, got {type(raw).__name__}"
-        )
+        raise ValueError(f"val_ca.json root must be a list, got {type(raw).__name__}")
 
     split: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
     for i, enc in enumerate(raw):
@@ -446,9 +441,7 @@ def _load_val_ca_split(
                 {
                     "category": g.get("category", ""),
                     "suggested_code": g.get("suggested_code", ""),
-                    "clinical_evidence_quote": g.get(
-                        "clinical_evidence_quote", ""
-                    ),
+                    "clinical_evidence_quote": g.get("clinical_evidence_quote", ""),
                     "severity": g.get("severity", "info"),
                     # SYNTHETIC split uses rule_ids (list); val_ca uses
                     # rule_id (singular). Map once here so downstream
@@ -460,7 +453,9 @@ def _load_val_ca_split(
     return split
 
 
-def _select_split(name: str) -> tuple[
+def _select_split(
+    name: str,
+) -> tuple[
     list[tuple[dict[str, Any], list[dict[str, Any]]]],
     str,
 ]:
@@ -502,7 +497,9 @@ class AuditEncounter(dspy.Signature):
     severity, and rule_ids (the retrieved rules that justify it).
     """
 
-    encounter = dspy.InputField(desc="Rendered encounter (claim + rules + clinical note).")
+    encounter = dspy.InputField(
+        desc="Rendered encounter (claim + rules + clinical note)."
+    )
     findings_json = dspy.OutputField(
         desc=(
             "JSON object: {summary: str, findings: [{category, "
@@ -997,9 +994,7 @@ def main(argv: list[str] | None = None) -> int:
     # can pass ``main()`` with no args and get the defaults.
     args = parser.parse_args(argv if argv is not None else [])
     selected_val_split, split_label = _select_split(args.split)
-    print(
-        f"[optimize] split={split_label} val_size={len(selected_val_split)}"
-    )
+    print(f"[optimize] split={split_label} val_size={len(selected_val_split)}")
 
     start = time.time()
     random.seed(0)
@@ -1166,35 +1161,22 @@ def main(argv: list[str] | None = None) -> int:
                 "For each rule violation, include a verbatim quote from the "
                 "clinical note, the suggested code, and the rule_id."
             ),
-            "proposed_prefix_for_output_field": (
-                "Output the JSON object now."
-            ),
+            "proposed_prefix_for_output_field": ("Output the JSON object now."),
         },
         {
             "proposed_instruction": (
                 "Audit the encounter by comparing the claim to the clinical "
                 "note. Cite the retrieved rules."
             ),
-            "proposed_prefix_for_output_field": (
-                "JSON:"
-            ),
+            "proposed_prefix_for_output_field": ("JSON:"),
         },
         {
             "proposed_instruction": (
                 "Determine whether each retrieved rule is satisfied by the "
                 "encounter documentation; report any violations."
             ),
-            "proposed_prefix_for_output_field": (
-                "Findings:"
-            ),
+            "proposed_prefix_for_output_field": ("Findings:"),
         },
-    ]
-    cycle_tail = [
-        {
-            "proposed_instruction": "Audit the encounter per the rules.",
-            "proposed_prefix_for_output_field": "JSON:",
-        },
-        {"findings_json": json.dumps({"summary": "No findings.", "findings": []})},
     ]
     # The DummyLM has to satisfy TWO different output signatures in
     # the same call sequence: the instruction proposer wants
@@ -1251,7 +1233,9 @@ def main(argv: list[str] | None = None) -> int:
         eval_lm_baseline, _ = _build_dev_loop_lm()
     with dspy.context(lm=eval_lm_baseline):
         baseline_program = AuditorProgram()
-        baseline_scores, baseline_mean_f1 = evaluate_program(baseline_program, selected_val_split)
+        baseline_scores, baseline_mean_f1 = evaluate_program(
+            baseline_program, selected_val_split
+        )
 
     # 3. MIPROv2 teleprompter — instantiated exactly as the spec says.
     teleprompter = dspy.MIPROv2(
@@ -1312,8 +1296,6 @@ def main(argv: list[str] | None = None) -> int:
         for i in range(0, len(post_compile_scores) - chunk + 1):
             window = post_compile_scores[i : i + chunk]
             trial_scores.append(sum(window) / len(window))
-    best_train_f1 = max(trial_scores) if trial_scores else 0.0
-
     # 8. Final evaluation of the optimized program on the val split.
     #    Use the eval-only LM (all `findings_json` responses) so the
     #    cycle is locked to the val examples; the compile-time cycle is
@@ -1323,7 +1305,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         eval_lm, _ = _build_dev_loop_lm()
     with dspy.context(lm=eval_lm):
-        final_scores, final_mean_f1 = evaluate_program(optimized_program, selected_val_split)
+        final_scores, final_mean_f1 = evaluate_program(
+            optimized_program, selected_val_split
+        )
 
     # 9. Choose the saved artifact: the program MIPROv2 returned IS the
     #    best-by-train-F1 program (per MIPROv2's internal Optuna
@@ -1411,7 +1395,9 @@ def main(argv: list[str] | None = None) -> int:
         # We trust our own artifacts/miprov2_best_val_f1_*/ because we
         # wrote it ourselves a few lines above.
         reloaded = dspy.load(str(prog_dir), allow_pickle=True)
-        reloaded_scores, reloaded_mean_f1 = evaluate_program(reloaded, selected_val_split)
+        reloaded_scores, reloaded_mean_f1 = evaluate_program(
+            reloaded, selected_val_split
+        )
     assert abs(reloaded_mean_f1 - best_f1) <= 1e-6, (
         f"Reloaded program mean F1 {reloaded_mean_f1} does not match "
         f"reported best F1 {best_f1} (delta > 1e-6)"

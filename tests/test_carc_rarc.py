@@ -24,6 +24,7 @@ What's pinned
 No LLM, no network. The CSVs come from the repo at
 ``data/tables/{carc,rarc}.csv``.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -133,8 +134,8 @@ def test_csv_files_have_minimum_rows() -> None:
     rarc_path = PROJECT_ROOT / "data" / "tables" / "rarc.csv"
     assert carc_path.is_file(), f"missing {carc_path}"
     assert rarc_path.is_file(), f"missing {rarc_path}"
-    carc_lines = [l for l in carc_path.read_text().splitlines() if l.strip()]
-    rarc_lines = [l for l in rarc_path.read_text().splitlines() if l.strip()]
+    carc_lines = [line for line in carc_path.read_text().splitlines() if line.strip()]
+    rarc_lines = [line for line in rarc_path.read_text().splitlines() if line.strip()]
     # Header + N data rows.
     assert len(carc_lines) >= 51, f"carc.csv has only {len(carc_lines) - 1} data rows"
     assert len(rarc_lines) >= 51, f"rarc.csv has only {len(rarc_lines) - 1} data rows"

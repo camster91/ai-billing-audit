@@ -209,13 +209,10 @@ const sections: { id: string; title: string; items: QA[] }[] = [
         a: (
           <>
             <p>
-              REST + bearer token. <code>POST /api/audit/run</code> with
-              an encounter payload returns findings + per-finding
-              confidence. Webhooks fire on{" "}
-              <code>audit.completed</code>,{" "}
-              <code>finding.created</code>, and{" "}
-              <code>encounter.uploaded</code>. Full reference at{" "}
-              <Link href="/api/REFERENCE.md">docs/api/REFERENCE.md</Link>.
+              The portal-to-audit-engine contract is not active yet. The
+              authenticated <code>POST /api/audit/run</code> boundary returns
+              HTTP 503 without consuming quota until durable dispatch and
+              result import are implemented.
             </p>
           </>
         ),

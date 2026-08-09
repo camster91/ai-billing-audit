@@ -38,6 +38,7 @@ This is also the way Cam's vision talks about it: "every claim
 a physician submits should be clean". That's a per-claim
 contract, not an aggregate one.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -251,16 +252,23 @@ def _aggregate(results: list[EncounterResult]) -> dict[str, Any]:
     micro_gold = sum(r.n_gold for r in results)
     micro_p = micro_tp / micro_pred if micro_pred > 0 else 0.0
     micro_r = micro_tp / micro_gold if micro_gold > 0 else 0.0
-    micro_f1 = 2 * micro_p * micro_r / (micro_p + micro_r) if (micro_p + micro_r) > 0 else 0.0
-    n_clean_gold = sum(1 for r in results if r.n_gold == 0 and r.is_flagged_gold is False)
+    micro_f1 = (
+        2 * micro_p * micro_r / (micro_p + micro_r) if (micro_p + micro_r) > 0 else 0.0
+    )
+    n_clean_gold = sum(
+        1 for r in results if r.n_gold == 0 and r.is_flagged_gold is False
+    )
     n_clean_pred = sum(1 for r in results if r.n_pred == 0 and r.n_gold == 0)
     n_overcalled_clean = sum(
-        1 for r in results
+        1
+        for r in results
         if r.n_gold == 0 and r.n_pred > 0 and r.is_flagged_gold is False
     )
 
     # Per-rule: precision and recall by rule_id (from gold findings).
-    per_rule: dict[str, dict[str, int]] = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
+    per_rule: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"tp": 0, "fp": 0, "fn": 0}
+    )
     for r in results:
         matched_pred_idx = set()
         matched_gold_idx = set()
@@ -292,16 +300,21 @@ def _aggregate(results: list[EncounterResult]) -> dict[str, Any]:
             gold_in_sev = [g for g in r.gold_findings if g.get("severity") == sev]
             if not gold_in_sev:
                 continue
-            tp = sum(1 for g in gold_in_sev if any(
-                _findings_match(p, g) for p in r.pred_findings
-            ))
-            rows.append({
-                "p": tp / r.n_pred if r.n_pred > 0 else 0.0,
-                "r": tp / len(gold_in_sev),
-                "f1": 2 * tp / (r.n_pred + len(gold_in_sev))
-                       if (r.n_pred + len(gold_in_sev)) > 0 else 0.0,
-                "n": len(gold_in_sev),
-            })
+            tp = sum(
+                1
+                for g in gold_in_sev
+                if any(_findings_match(p, g) for p in r.pred_findings)
+            )
+            rows.append(
+                {
+                    "p": tp / r.n_pred if r.n_pred > 0 else 0.0,
+                    "r": tp / len(gold_in_sev),
+                    "f1": 2 * tp / (r.n_pred + len(gold_in_sev))
+                    if (r.n_pred + len(gold_in_sev)) > 0
+                    else 0.0,
+                    "n": len(gold_in_sev),
+                }
+            )
         if rows:
             per_sev[sev] = {
                 "n_encounters": len(rows),
@@ -342,9 +355,11 @@ def _aggregate(results: list[EncounterResult]) -> dict[str, Any]:
                 "fp": counts["fp"],
                 "fn": counts["fn"],
                 "precision": counts["tp"] / (counts["tp"] + counts["fp"])
-                            if (counts["tp"] + counts["fp"]) > 0 else None,
+                if (counts["tp"] + counts["fp"]) > 0
+                else None,
                 "recall": counts["tp"] / (counts["tp"] + counts["fn"])
-                          if (counts["tp"] + counts["fn"]) > 0 else None,
+                if (counts["tp"] + counts["fn"]) > 0
+                else None,
             }
             for rid, counts in sorted(per_rule.items())
         },
@@ -372,13 +387,17 @@ def _print_report(summary: dict[str, Any], results: list[EncounterResult]) -> No
     print(f"  F1:        {m['f1']:.3f}")
     print()
     m = summary["micro_aggregate"]
-    print(f"Micro-aggregate (pooled):")
-    print(f"  Precision: {m['precision']:.3f}  ({m['true_positives']}/{m['total_predicted']} predicted)")
-    print(f"  Recall:    {m['recall']:.3f}  ({m['true_positives']}/{m['total_gold']} gold)")
+    print("Micro-aggregate (pooled):")
+    print(
+        f"  Precision: {m['precision']:.3f}  ({m['true_positives']}/{m['total_predicted']} predicted)"
+    )
+    print(
+        f"  Recall:    {m['recall']:.3f}  ({m['true_positives']}/{m['total_gold']} gold)"
+    )
     print(f"  F1:        {m['f1']:.3f}")
     print()
     c = summary["clean_encounters"]
-    print(f"Clean encounters (gold says no findings):")
+    print("Clean encounters (gold says no findings):")
     print(f"  Total:              {c['n_gold_clean']}")
     print(f"  Auditor said clean: {c['n_pred_clean']}")
     print(f"  Auditor overcalled: {c['n_overcalled_clean']}")
@@ -389,16 +408,22 @@ def _print_report(summary: dict[str, Any], results: list[EncounterResult]) -> No
         r = stats["recall"]
         p_str = f"{p:.2f}" if p is not None else "—"
         r_str = f"{r:.2f}" if r is not None else "—"
-        print(f"  {rid:30s}  TP={stats['tp']:2d} FP={stats['fp']:2d} FN={stats['fn']:2d}  P={p_str}  R={r_str}")
+        print(
+            f"  {rid:30s}  TP={stats['tp']:2d} FP={stats['fp']:2d} FN={stats['fn']:2d}  P={p_str}  R={r_str}"
+        )
     print()
     print("Per-severity (gold severity):")
     for sev, stats in summary["per_severity"].items():
-        print(f"  {sev:8s}  n_gold={stats['n_gold_findings']:2d}  "
-              f"P={stats['mean_p']:.3f}  R={stats['mean_r']:.3f}  "
-              f"F1={stats['mean_f1']:.3f}")
+        print(
+            f"  {sev:8s}  n_gold={stats['n_gold_findings']:2d}  "
+            f"P={stats['mean_p']:.3f}  R={stats['mean_r']:.3f}  "
+            f"F1={stats['mean_f1']:.3f}"
+        )
     print()
     lat = summary["latency"]
-    print(f"Latency: mean={lat['mean_s']:.2f}s  p95={lat['p95_s']:.2f}s  errors={lat['n_errors']}")
+    print(
+        f"Latency: mean={lat['mean_s']:.2f}s  p95={lat['p95_s']:.2f}s  errors={lat['n_errors']}"
+    )
     print()
     # Failure mode finder: encounters where R=0 (gold findings missed)
     print("Failure modes:")
@@ -407,19 +432,22 @@ def _print_report(summary: dict[str, Any], results: list[EncounterResult]) -> No
     print(f"Encounters where ALL gold findings were missed: {len(missed_all)}")
     for r in missed_all[:5]:
         gold_rules = ", ".join(g.get("rule_id", "?") for g in r.gold_findings)
-        pred_rules = ", ".join(p.get("rule_id") or (p.get("rule_ids") or ["?"])[0]
-                                for p in r.pred_findings)
+        pred_rules = ", ".join(
+            p.get("rule_id") or (p.get("rule_ids") or ["?"])[0] for p in r.pred_findings
+        )
         print(f"  {r.encounter_id}: gold=[{gold_rules}] pred=[{pred_rules}]")
     if len(missed_all) > 5:
         print(f"  ... and {len(missed_all) - 5} more")
     overcalled = [
-        r for r in results
+        r
+        for r in results
         if r.n_gold == 0 and r.n_pred > 0 and r.is_flagged_gold is False
     ]
     print(f"\nEncounters where auditor flagged a clean claim: {len(overcalled)}")
     for r in overcalled[:5]:
-        pred_rules = ", ".join(p.get("rule_id") or (p.get("rule_ids") or ["?"])[0]
-                                for p in r.pred_findings)
+        pred_rules = ", ".join(
+            p.get("rule_id") or (p.get("rule_ids") or ["?"])[0] for p in r.pred_findings
+        )
         print(f"  {r.encounter_id}: pred=[{pred_rules}]  pred_count={r.n_pred}")
     errors = [r for r in results if r.error]
     if errors:
@@ -454,12 +482,14 @@ SMOKE_ENC_ID = "enc_10000"
 # "known answer" — if the LLM no longer emits these rule_ids for this
 # input, something about the LLM config (model, prompt, or signature)
 # has drifted and we should not trust the rest of the run.
-SMOKE_EXPECTED_RULE_IDS: frozenset[str] = frozenset({
-    "rule_em_002",
-    "rule_icd_002",
-    "rule_ecg_001",
-    "rule_missing_dx_001",
-})
+SMOKE_EXPECTED_RULE_IDS: frozenset[str] = frozenset(
+    {
+        "rule_em_002",
+        "rule_icd_002",
+        "rule_ecg_001",
+        "rule_missing_dx_001",
+    }
+)
 
 
 def _load_smoke_encounter(val_paths: list[str] | None = None) -> dict[str, Any]:
@@ -484,7 +514,9 @@ def _load_smoke_encounter(val_paths: list[str] | None = None) -> dict[str, Any]:
     )
 
 
-def _run_smoke_audit(enc: dict[str, Any], *, prompt_path: str | None = None) -> list[dict[str, Any]]:
+def _run_smoke_audit(
+    enc: dict[str, Any], *, prompt_path: str | None = None
+) -> list[dict[str, Any]]:
     """Run the auditor on one encounter and return the predicted findings
     as plain dicts (mirroring ``_score_encounter``'s shape)."""
     audit_input = {
@@ -577,12 +609,9 @@ def _assert_smoke_test_passes(
     detail = "; ".join(bits)
 
     predicted_str = (
-        f"[{', '.join(sorted(predicted_rule_ids))}]"
-        if predicted_rule_ids else "[]"
+        f"[{', '.join(sorted(predicted_rule_ids))}]" if predicted_rule_ids else "[]"
     )
-    expected_str = (
-        f"[{', '.join(sorted(expected_rule_ids))}]"
-    )
+    expected_str = f"[{', '.join(sorted(expected_rule_ids))}]"
     raise SmokeTestError(
         "Smoke test FAILED for "
         f"{SMOKE_ENC_ID}: {detail}. "
@@ -616,20 +645,29 @@ def _run_smoke_test(*, prompt_path: str | None = None) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Zorva auditor smartness test")
-    parser.add_argument("--n", type=int, default=50,
-                        help="Number of val encounters to score (default: all 50)")
-    parser.add_argument("--start", type=int, default=0,
-                        help="Start index in val.json (default: 0)")
-    parser.add_argument("--val", action="append", default=None,
-                        help="Path to val.json (repeatable; default: data/synth/val.json)")
-    parser.add_argument("--out", default=None,
-                        help="Write JSON results to this path")
-    parser.add_argument("--quiet", action="store_true",
-                        help="Don't print per-encounter progress")
-    parser.add_argument("--model", default=None,
-                        help="Override LLM_MODEL for this run")
-    parser.add_argument("--prompt", default=None,
-                        help="Path to a non-default auditor prompt")
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=50,
+        help="Number of val encounters to score (default: all 50)",
+    )
+    parser.add_argument(
+        "--start", type=int, default=0, help="Start index in val.json (default: 0)"
+    )
+    parser.add_argument(
+        "--val",
+        action="append",
+        default=None,
+        help="Path to val.json (repeatable; default: data/synth/val.json)",
+    )
+    parser.add_argument("--out", default=None, help="Write JSON results to this path")
+    parser.add_argument(
+        "--quiet", action="store_true", help="Don't print per-encounter progress"
+    )
+    parser.add_argument("--model", default=None, help="Override LLM_MODEL for this run")
+    parser.add_argument(
+        "--prompt", default=None, help="Path to a non-default auditor prompt"
+    )
     args = parser.parse_args()
 
     if args.model:
@@ -647,7 +685,10 @@ def main() -> int:
             _run_smoke_test(prompt_path=args.prompt)
         except SmokeTestError as e:
             print(f"\n{'=' * 72}", file=sys.stderr)
-            print("SMARTNESS-TEST SMOKE FAILED — aborting before main loop", file=sys.stderr)
+            print(
+                "SMARTNESS-TEST SMOKE FAILED — aborting before main loop",
+                file=sys.stderr,
+            )
             print("=" * 72, file=sys.stderr)
             print(str(e), file=sys.stderr)
             print(
@@ -674,12 +715,15 @@ def main() -> int:
     for path in val_paths:
         print(f"  {path}")
     print()
-    encounters = data[args.start:args.start + args.n] if args.n else data[args.start:]
-
+    encounters = (
+        data[args.start : args.start + args.n] if args.n else data[args.start :]
+    )
 
     if not args.quiet:
-        print(f"Scoring {len(encounters)} encounters (start={args.start}) "
-              f"against LLM_MODEL={os.environ.get('LLM_MODEL', '<default>')}")
+        print(
+            f"Scoring {len(encounters)} encounters (start={args.start}) "
+            f"against LLM_MODEL={os.environ.get('LLM_MODEL', '<default>')}"
+        )
         print()
 
     results: list[EncounterResult] = []
@@ -688,10 +732,12 @@ def main() -> int:
         results.append(r)
         if not args.quiet:
             status = "OK" if not r.error else f"ERR ({r.error[:30]})"
-            print(f"  [{i+1:2d}/{len(encounters)}] {r.encounter_id}  "
-                  f"P={r.p:.2f}  R={r.r:.2f}  F1={r.f1:.2f}  "
-                  f"gold={r.n_gold} pred={r.n_pred} match={r.n_matched}  "
-                  f"{r.latency_s:.1f}s  {status}")
+            print(
+                f"  [{i + 1:2d}/{len(encounters)}] {r.encounter_id}  "
+                f"P={r.p:.2f}  R={r.r:.2f}  F1={r.f1:.2f}  "
+                f"gold={r.n_gold} pred={r.n_pred} match={r.n_matched}  "
+                f"{r.latency_s:.1f}s  {status}"
+            )
 
     summary = _aggregate(results)
     _print_report(summary, results)
@@ -731,6 +777,7 @@ def main() -> int:
         # defaults to "default" when no --prompt was given.
         try:
             from scripts.prompt_history import append_history_row
+
             if args.prompt:
                 prompt_version = Path(args.prompt).stem
             else:

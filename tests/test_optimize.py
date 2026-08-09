@@ -221,9 +221,7 @@ class TestCheckBudget:
 
 
 class TestRunOptimization:
-    def test_writes_three_lines_for_three_rounds(
-        self, def_config: dict
-    ) -> None:
+    def test_writes_three_lines_for_three_rounds(self, def_config: dict) -> None:
         opt.run_optimization(def_config)
         log_path: Path = def_config["log_path"]
         text = log_path.read_text(encoding="utf-8").splitlines()
@@ -262,9 +260,7 @@ class TestRunOptimization:
         assert f1 == pytest.approx(0.9)
         assert calls["i"] == 3
 
-    def test_zero_budget_returns_none_no_history(
-        self, def_config: dict
-    ) -> None:
+    def test_zero_budget_returns_none_no_history(self, def_config: dict) -> None:
         def_config["max_budget"] = 0.0
         # Use a counter so we can assert compile_and_evaluate was never called.
         calls = {"i": 0}
@@ -363,9 +359,7 @@ class TestRunOptimization:
 
 
 class TestCLI:
-    def test_max_budget_zero_exits_zero_no_history(
-        self, tmp_path: Path
-    ) -> None:
+    def test_max_budget_zero_exits_zero_no_history(self, tmp_path: Path) -> None:
         log_path = tmp_path / "h.jsonl"
         result = subprocess.run(
             [
@@ -387,9 +381,7 @@ class TestCLI:
         assert result.returncode == 0, result.stderr
         assert not log_path.exists()
 
-    def test_max_budget_five_runs_and_exits_zero(
-        self, tmp_path: Path
-    ) -> None:
+    def test_max_budget_five_runs_and_exits_zero(self, tmp_path: Path) -> None:
         log_path = tmp_path / "h.jsonl"
         result = subprocess.run(
             [

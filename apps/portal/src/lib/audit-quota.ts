@@ -4,8 +4,8 @@
 // and "what should the portal / dashboard show the user about their
 // usage?" Used by:
 //
-//   - /api/audit/run (POST) — the gate that all audit submissions
-//     flow through. Returns 402 + upgrade_url on overage.
+//   - /api/audit/run (POST) — reserved dispatch boundary. It currently
+//     returns 503 before calling this helper because engine dispatch is absent.
 //   - /api/usage (GET) — reads the snapshot for the /billing card.
 //   - /api/billing/webhook (invoice.payment_succeeded) — resets the
 //     counter to 0 once per period.
@@ -14,10 +14,8 @@
 //
 // Design notes:
 //
-// 1. The hard cap is server-side authoritative. The client cannot
-//    pass a flag to bypass the check; the only way to call this lib
-//    is through the /api/audit/run route (or webhook) which always
-//    re-reads the live row.
+// 1. The hard cap is server-side authoritative. A future dispatch path must
+//    call this helper only when it can durably enqueue the audit.
 //
 // 2. The atomic-increment + re-check pattern is the only safe way
 //    to handle concurrent calls. Prisma's `update` with
@@ -82,11 +80,224 @@
 // reads from the database; there is no browser code path.
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   isValidTierId,
   type TierId,
 } from "@/lib/pricing";
 import { startOfCurrentMonthUtc } from "@/lib/billing-page-helpers";
+
+async function serializableTransaction<T>(
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await prisma.$transaction(operation, {
+        isolationLevel: "Serializable",
+      });
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code: unknown }).code)
+          : "";
+      if (code !== "P2034" || attempt >= 2) throw error;
+    }
+  }
+}
+
+export type ReserveAuditDispatchResult =
+  | { kind: "ready"; retry: boolean }
+  | { kind: "existing"; engineJobId: string; engineStatusUrl: string }
+  | { kind: "not_found" }
+  | {
+      kind: "blocked";
+      used: number;
+      reserved: number;
+      quota: number;
+      upgradeUrl: string;
+    };
+
+/**
+ * Reserve one quota slot for an encounter before contacting the engine.
+ * The reservation is durable and encounter-unique, so a client retry never
+ * consumes a second slot. It becomes billable usage only in
+ * `finalizeAuditDispatch`, after the engine returns its durable job id.
+ */
+export async function reserveAuditDispatch(args: {
+  tenantId: string;
+  encounterId: string;
+  origin?: string | null;
+}): Promise<ReserveAuditDispatchResult> {
+  return serializableTransaction(async (tx) => {
+    const encounter = await tx.encounter.findFirst({
+      where: { id: args.encounterId, tenantId: args.tenantId },
+      select: { id: true },
+    });
+    if (!encounter) return { kind: "not_found" } as const;
+
+    const existing = await tx.auditDispatch.findUnique({
+      where: { encounterId: encounter.id },
+      select: {
+        engineJobId: true,
+        engineStatusUrl: true,
+        quotaReserved: true,
+      },
+    });
+    if (existing?.engineJobId) {
+      return {
+        kind: "existing",
+        engineJobId: existing.engineJobId,
+        engineStatusUrl: existing.engineStatusUrl ??
+          `/encounters/upload/jobs/${existing.engineJobId}`,
+      } as const;
+    }
+    if (existing?.quotaReserved) return { kind: "ready", retry: true } as const;
+
+    const tenant = await tx.tenant.findUnique({
+      where: { id: args.tenantId },
+      select: {
+        tier: true,
+        auditQuotaUsed: true,
+        auditQuotaReserved: true,
+        auditQuotaLimit: true,
+      },
+    });
+    if (!tenant) return { kind: "not_found" } as const;
+    const quota = effectiveAuditQuotaLimit(tenant);
+    if (tenant.auditQuotaUsed + tenant.auditQuotaReserved >= quota) {
+      return {
+        kind: "blocked",
+        used: tenant.auditQuotaUsed,
+        reserved: tenant.auditQuotaReserved,
+        quota,
+        upgradeUrl: buildUpgradeUrl(args.origin),
+      } as const;
+    }
+
+    await tx.tenant.update({
+      where: { id: args.tenantId },
+      data: { auditQuotaReserved: { increment: 1 } },
+    });
+    await tx.auditDispatch.upsert({
+      where: { encounterId: encounter.id },
+      create: {
+        tenantId: args.tenantId,
+        encounterId: encounter.id,
+      },
+      update: {
+        status: "dispatching",
+        quotaReserved: true,
+        dispatchStartedAt: new Date(),
+        lastError: null,
+      },
+    });
+    return { kind: "ready", retry: false } as const;
+  });
+}
+
+export type FinalizeAuditDispatchResult =
+  | { kind: "queued"; used: number; quota: number; alreadyFinalized: boolean }
+  | { kind: "not_found" }
+  | { kind: "not_reserved" };
+
+export type ReleaseAuditDispatchResult =
+  | { kind: "released" }
+  | { kind: "already_released" }
+  | { kind: "not_found" }
+  | { kind: "already_enqueued" };
+
+/** Release a reservation only when the engine has not acknowledged a job. */
+export async function releaseAuditDispatchReservation(args: {
+  tenantId: string;
+  encounterId: string;
+  reason: "encounter_data_unavailable" | "encounter_not_found";
+}): Promise<ReleaseAuditDispatchResult> {
+  return serializableTransaction(async (tx) => {
+    const dispatch = await tx.auditDispatch.findFirst({
+      where: { tenantId: args.tenantId, encounterId: args.encounterId },
+    });
+    if (!dispatch) return { kind: "not_found" } as const;
+    if (dispatch.engineJobId) return { kind: "already_enqueued" } as const;
+    if (!dispatch.quotaReserved) return { kind: "already_released" } as const;
+
+    await tx.auditDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: "failed",
+        quotaReserved: false,
+        completedAt: new Date(),
+        lastError: args.reason,
+      },
+    });
+    await tx.tenant.update({
+      where: { id: args.tenantId },
+      data: { auditQuotaReserved: { decrement: 1 } },
+    });
+    return { kind: "released" } as const;
+  });
+}
+
+/** Atomically convert a reservation into one charged audit. */
+export async function finalizeAuditDispatch(args: {
+  tenantId: string;
+  encounterId: string;
+  engineJobId: string;
+  engineStatusUrl: string;
+}): Promise<FinalizeAuditDispatchResult> {
+  return serializableTransaction(async (tx) => {
+    const dispatch = await tx.auditDispatch.findFirst({
+      where: { encounterId: args.encounterId, tenantId: args.tenantId },
+    });
+    if (!dispatch) return { kind: "not_found" } as const;
+    const tenant = await tx.tenant.findUnique({
+      where: { id: args.tenantId },
+      select: { tier: true, auditQuotaLimit: true, auditQuotaUsed: true },
+    });
+    if (!tenant) return { kind: "not_found" } as const;
+    const quota = effectiveAuditQuotaLimit(tenant);
+    if (dispatch.engineJobId) {
+      return {
+        kind: "queued",
+        used: tenant.auditQuotaUsed,
+        quota,
+        alreadyFinalized: true,
+      } as const;
+    }
+    if (!dispatch.quotaReserved) return { kind: "not_reserved" } as const;
+
+    const now = new Date();
+    await tx.auditDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        engineJobId: args.engineJobId,
+        engineStatusUrl: args.engineStatusUrl,
+        status: "queued",
+        quotaReserved: false,
+        quotaChargedAt: now,
+        submittedAt: now,
+        lastError: null,
+      },
+    });
+    await tx.encounter.update({
+      where: { id: dispatch.encounterId },
+      data: { status: "auditing" },
+    });
+    const updated = await tx.tenant.update({
+      where: { id: args.tenantId },
+      data: {
+        auditQuotaReserved: { decrement: 1 },
+        auditQuotaUsed: { increment: 1 },
+      },
+      select: { auditQuotaUsed: true },
+    });
+    return {
+      kind: "queued",
+      used: updated.auditQuotaUsed,
+      quota,
+      alreadyFinalized: false,
+    } as const;
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Tier caps

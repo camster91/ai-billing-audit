@@ -20,17 +20,17 @@ What's pinned
   and dispatches via their own mail client.
 * NPI lookup: malformed NPI returns None without an API call.
 """
+
 from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
-
 import pytest
+
+from ai_billing_audit.clinical_note_storage import PhiStorageConfigurationError
 
 from ai_billing_audit.doctor_email import (
     DoctorSummary,
     build_doctor_summary,
+    read_doctor_summaries,
     send_doctor_summary,
     _one_sentence_reason,
     _default_fix_suggestion,
@@ -142,7 +142,7 @@ def test_subject_mentions_severity():
     assert "critical" in s.subject.lower()
 
 
-def test_send_writes_to_operator_outbox_jsonl(tmp_path, monkeypatch):
+def test_send_encrypts_operator_outbox_at_rest(tmp_path, monkeypatch):
     """``send_doctor_summary`` appends ONE JSONL record to
     ``_LOGS_DIR / doctor_emails.jsonl``. No network call, no SMTP,
     no auto-send — the operator reads the file and dispatches via
@@ -164,7 +164,10 @@ def test_send_writes_to_operator_outbox_jsonl(tmp_path, monkeypatch):
     assert result is True
     mailbox = tmp_path / "doctor_emails.jsonl"
     assert mailbox.is_file()
-    record = json.loads(mailbox.read_text().strip())
+    stored = mailbox.read_bytes()
+    assert b"dr.lee@clinic.ca" not in stored
+    assert b"E-1" not in stored
+    record = read_doctor_summaries()[0]
     assert record["to"] == "dr.lee@clinic.ca"
     assert record["encounter_id"] == "E-1"
     # Every field is a JSON-serializable primitive — no nested
@@ -187,11 +190,28 @@ def test_send_appends_one_record_per_call(tmp_path, monkeypatch):
     send_doctor_summary(DoctorSummary(finding_id="F-1", **base))
     send_doctor_summary(DoctorSummary(finding_id="F-2", **base))
     mailbox = tmp_path / "doctor_emails.jsonl"
-    lines = [ln for ln in mailbox.read_text().splitlines() if ln.strip()]
+    lines = [ln for ln in mailbox.read_bytes().splitlines() if ln.strip()]
     assert len(lines) == 2
-    records = [json.loads(ln) for ln in lines]
+    records = read_doctor_summaries()
     assert records[0]["finding_id"] == "F-1"
     assert records[1]["finding_id"] == "F-2"
+
+
+def test_send_fails_closed_without_phi_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("DOCTOR_SUMMARY_OPT_IN", "1")
+    monkeypatch.delenv("ZORVA_PHI_ENCRYPTION_KEY", raising=False)
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
+
+    with pytest.raises(PhiStorageConfigurationError):
+        send_doctor_summary(
+            DoctorSummary(
+                to_email="dr.lee@clinic.ca",
+                subject="test",
+                body_text="Patient Jane Doe",
+                encounter_id="E-1",
+                finding_id="F-1",
+            )
+        )
 
 
 def test_send_does_not_make_network_calls(tmp_path, monkeypatch):
@@ -252,9 +272,7 @@ def test_default_fix_suggestion_known_rule():
 
 def test_npi_lookup_rejects_malformed_npi(tmp_path, monkeypatch):
     """Bad NPI returns None without an API call."""
-    monkeypatch.setattr(
-        "ai_billing_audit.doctor_email._LOGS_DIR", tmp_path
-    )
+    monkeypatch.setattr("ai_billing_audit.doctor_email._LOGS_DIR", tmp_path)
     assert doctor_email_for_provider("") is None
     assert doctor_email_for_provider("not-a-number") is None
     assert doctor_email_for_provider("123") is None  # too short

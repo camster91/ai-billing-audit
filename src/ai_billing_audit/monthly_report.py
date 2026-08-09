@@ -22,11 +22,12 @@ copy in both contexts. Defining it once in ``per_clinic_f1.py`` and
 re-exporting it here keeps the two UIs from drifting apart (which
 would be a brand-voice violation per docs/VOICE.md).
 """
+
 from __future__ import annotations
 
 import datetime as _dt
 import time
-from typing import Any, Mapping
+from typing import Any
 
 from .feedback import FeedbackEntry, FeedbackStore, get_default_store
 from .per_clinic_f1 import (
@@ -205,7 +206,10 @@ def _safe_per_rule_for_window(
     """
     try:
         return per_rule_metrics(
-            clinic_id=clinic_id, now=now, days=days, store=store,
+            clinic_id=clinic_id,
+            now=now,
+            days=days,
+            store=store,
         )
     except Exception:
         return {}
@@ -219,9 +223,11 @@ def _safe_per_rule_for_window(
 # public :func:`calibrate_confidence` docstring and the tuning
 # recommendations (:func:`tuning_recommendation`) so the calibration
 # string and the recommendation strings stay in lock-step.
-_CALIBRATION_ACCEPTANCE_HIGH_MIN = 0.8   # acceptance_rate >= this → candidate for HIGH
-_CALIBRATION_MODIFICATION_HIGH_MAX = 0.1 # modification_rate <= this → candidate for HIGH
-_CALIBRATION_ACCEPTANCE_LOW_MAX = 0.5    # acceptance_rate <  this → LOW
+_CALIBRATION_ACCEPTANCE_HIGH_MIN = 0.8  # acceptance_rate >= this → candidate for HIGH
+_CALIBRATION_MODIFICATION_HIGH_MAX = (
+    0.1  # modification_rate <= this → candidate for HIGH
+)
+_CALIBRATION_ACCEPTANCE_LOW_MAX = 0.5  # acceptance_rate <  this → LOW
 _CALIBRATION_MODIFICATION_LOW_MIN = 0.3  # modification_rate >  this → LOW
 
 # Tuning-recommendation thresholds (kanban t_cb95d540).
@@ -229,8 +235,12 @@ _CALIBRATION_MODIFICATION_LOW_MIN = 0.3  # modification_rate >  this → LOW
 # These drive :func:`tuning_recommendation`. Each branch fires when
 # its condition is true; multiple branches can fire in the same
 # month (e.g. a low acceptance rate AND a high modify rate).
-_TUNING_MODIFICATION_OVERFLAG_MIN = 0.2   # modification_rate > this → "review modified rules"
-_TUNING_ACCEPTANCE_RAISE_MAX = 0.5        # acceptance_rate  < this → "raise confidence threshold"
+_TUNING_MODIFICATION_OVERFLAG_MIN = (
+    0.2  # modification_rate > this → "review modified rules"
+)
+_TUNING_ACCEPTANCE_RAISE_MAX = (
+    0.5  # acceptance_rate  < this → "raise confidence threshold"
+)
 
 # Public, human-readable recommendation strings. Kept as module-level
 # constants so tests can pin them and the copy never drifts between
@@ -297,7 +307,9 @@ def calibrate_confidence(acceptance_rate: float, modification_rate: float) -> st
     return "MEDIUM"
 
 
-def tuning_recommendation(acceptance_rate: float, modification_rate: float) -> list[str]:
+def tuning_recommendation(
+    acceptance_rate: float, modification_rate: float
+) -> list[str]:
     """Generate tuning recommendations from a month's rate pair.
 
     Returns at least one recommendation, never an empty list. The
@@ -368,13 +380,7 @@ def _top_modified_rules(
         counts[rule] = counts.get(rule, 0) + 1
     # Sort: count desc, then rule_name asc for ties.
     ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-    return [
-        {"rule_name": rule, "count": count}
-        for rule, count in ordered[:limit]
-    ]
-
-
-
+    return [{"rule_name": rule, "count": count} for rule, count in ordered[:limit]]
 
 
 def compute_clinic_month(
@@ -497,24 +503,26 @@ def compute_clinic_month(
             modified += 1
     total_findings = accepted + dismissed + modified
 
-    # Per-rule table from per_clinic_f1 (single source of truth).
-    # Use a 30-day window ending ``now`` so the calibration bucket
-    # matches what the biller sees on the per-clinic dashboard.
     if now is None:
         now = time.time()
-    per_rule = _safe_per_rule_for_window(
-        clinic_id=clinic_id, now=now, days=30, store=store,
+    _safe_per_rule_for_window(
+        clinic_id=clinic_id,
+        now=now,
+        days=30,
+        store=store,
     )
 
     top_modified = _top_modified_rules(
-        entries, clinic_id=clinic_id, year=year, month=month,
+        entries,
+        clinic_id=clinic_id,
+        year=year,
+        month=month,
     )
 
     # Compute the per-month acceptance / modification fractions and
     # feed them into the public calibration + tuning helpers
     # (kanban t_cb95d540). The rates are computed locally on the
-    # requested-month counts; ``per_rule`` is still kept in scope in
-    # case a future enrichment pass wants to surface it.
+    # requested-month counts.
     if total_findings > 0:
         acceptance_rate = accepted / total_findings
         modification_rate = modified / total_findings

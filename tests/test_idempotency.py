@@ -20,13 +20,18 @@ Contract:
    serialised differently produces different fingerprints, but
    byte-identical bodies produce identical fingerprints).
 """
+
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 import pytest
+
+from ai_billing_audit.clinical_note_storage import (
+    PhiStorageIntegrityError,
+    read_encrypted_json_records,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -84,13 +89,21 @@ def test_store_then_lookup_replays_response(idem_log):
         key="client-req-001",
         fingerprint=fp,
         status_code=201,
-        response_json={"jobs": [{"job_id": "j-1"}], "rejected": []},
+        response_json={
+            "jobs": [{"job_id": "j-1", "encounter_id": "ENC-SECRET"}],
+            "rejected": [],
+        },
     )
+
+    assert b"ENC-SECRET" not in idem_log.read_bytes()
 
     hit = lookup("client-req-001", fp)
     assert hit is not None
     assert hit.status_code == 201
-    assert hit.response_json == {"jobs": [{"job_id": "j-1"}], "rejected": []}
+    assert hit.response_json == {
+        "jobs": [{"job_id": "j-1", "encounter_id": "ENC-SECRET"}],
+        "rejected": [],
+    }
 
 
 def test_lookup_raises_on_key_reuse_with_different_body(idem_log):
@@ -145,8 +158,7 @@ def test_store_then_eviction_frees_slot_for_new_key(idem_log, monkeypatch):
     store("k3", "fp3", 200, {})
     store("k4", "fp4", 200, {})  # k1 should be evicted
     # Read the log directly and confirm k1 is gone
-    lines = idem_log.read_text().splitlines()
-    keys = [json.loads(ln).get("key") for ln in lines if ln.strip()]
+    keys = [entry.get("key") for entry in read_encrypted_json_records(idem_log)]
     assert "k1" not in keys
     assert keys == ["k2", "k3", "k4"]
 
@@ -168,17 +180,14 @@ def test_missing_log_file_returns_empty_cache(idem_log):
     assert lookup("anything", fingerprint_request_body("x")) is None
 
 
-def test_corrupted_log_line_is_skipped_not_raised(idem_log):
-    """A partial write (crash mid-flush) leaves a truncated JSON line.
-    The reader must skip it, not crash."""
+def test_plaintext_or_corrupted_log_fails_closed(idem_log):
+    """An unauthenticated cache must never be replayed."""
     from ai_billing_audit.idempotency import lookup
 
     idem_log.parent.mkdir(parents=True, exist_ok=True)
     idem_log.write_text(
-        'NOT VALID JSON\n'
+        "NOT VALID JSON\n"
         '{"key": "valid", "fingerprint": "fp1", "status_code": 200, "response_json": {"v": 1}}\n'
     )
-    # The corrupted line is skipped; the valid one is found
-    hit = lookup("valid", "fp1")
-    assert hit is not None
-    assert hit.response_json == {"v": 1}
+    with pytest.raises(PhiStorageIntegrityError):
+        lookup("valid", "fp1")

@@ -19,6 +19,7 @@ for real PHI and is excluded from the image via .dockerignore. This
 loader points at `data/synth/` so production encounters can never resolve
 to a private record.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

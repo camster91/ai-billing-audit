@@ -36,6 +36,7 @@ not the underlying survey data, so the dashboard ships a fair-use
 "non-substitute for the live MGMA/HFMA feed" disclaimer in the
 template (see ``encounter_detail.html``).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -76,7 +77,6 @@ INDUSTRY_BASELINES: dict[str, dict[str, Any]] = {
             "deny 18%+, driven by modifier-25 / dx-linkage gaps."
         ),
     },
-
     # ─── time_to_act ────────────────────────────────────────────
     # Hours between finding creation and the biller's first
     # accept/dismiss/modify action. Lower is better.
@@ -98,7 +98,6 @@ INDUSTRY_BASELINES: dict[str, dict[str, Any]] = {
             "revenue-target KPIs."
         ),
     },
-
     # ─── top_category ───────────────────────────────────────────
     # Special case: NOT a numeric distribution. Each row in
     # ``category_breakdown`` is a finding category and the % of
@@ -152,9 +151,7 @@ def get_metric(name: str) -> dict[str, Any] | None:
     return INDUSTRY_BASELINES.get(name)
 
 
-def classify_value(
-    metric: dict[str, Any], value: float
-) -> str:
+def classify_value(metric: dict[str, Any], value: float) -> str:
     """Classify ``value`` against the metric's percentiles.
 
     Returns one of:

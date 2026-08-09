@@ -6,11 +6,8 @@
 // ai-billing-audit.ashbi.ca is where the auditor actually runs and
 // produces the audited findings + denial-risk score + appeal letters.
 //
-// The two data stores use the same encounter_id when an encounter
-// is uploaded via the FastAPI's upload portal (which both the
-// FastAPI and the portal read from via /api/tenants/{id}/export.jsonl).
-// When the IDs match, this panel shows the real audit results. When
-// they don't (e.g. portal-only demo encounters), the panel renders
+// Portal dispatch uses the same encounter id for the signed engine job. Legacy
+// demo rows and work that has not been dispatched render
 // a graceful "deep audit not available for this encounter" fallback
 // with a "Open in Zorva API" link so the biller can still navigate
 // to the FastAPI directly.
@@ -19,10 +16,9 @@
 // because the data is fetched at request time on the server. The
 // panel is a pure data sink; future interactive bits (a "generate
 // appeal letter" button that POSTs back to the FastAPI) would
-// require either a Client Component sub-tree or a service-to-service
-// auth between the portal and the FastAPI (out of scope here).
+// require a Client Component sub-tree; the shared server wrapper supplies
+// service authentication.
 
-import Link from "next/link";
 import type {
   AppealLetterSummary,
   DenialRisk,
@@ -54,7 +50,6 @@ export function DeepAuditPanel({
   appealLetter,
   appealLetterUnavailable,
   appealLetters,
-  appealLettersUnavailable,
   fastapiEncounterUrl,
   fastapiOrigin,
 }: DeepAuditPanelProps) {

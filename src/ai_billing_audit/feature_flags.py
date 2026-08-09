@@ -40,6 +40,7 @@ We deliberately do NOT use a heavyweight flag service (LaunchDarkly
 et al.) — this is a single-process Python app. When/if we migrate,
 the ``FlagRegistry`` is the seam.
 """
+
 from __future__ import annotations
 
 import json
@@ -48,37 +49,38 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 FlagName = str
 
 # Reserved / pre-declared flags. Adding a new feature? Add the flag
 # name here so the dashboard and audit log can show a stable list.
 KNOWN_FLAGS: tuple[FlagName, ...] = (
-    "doctor_dashboard",                # t_af26abdb
-    "doctor_note_suggestion",          # t_df188436
-    "doctor_fixit_workflow",           # t_f5ea3bf2
-    "monthly_owner_email",             # t_a8eeb0de
-    "submit_time_webhook",             # t_3b15809f
-    "reviewer_feedback_loop",          # t_2ab66102
-    "per_tenant_rules",                # t_06ceaa04
-    "onboarding_wizard",               # t_58fbe2dd
-    "doctor_effectiveness_metric",     # t_267a1ad6
-    "pre_submit_claim_blocking",       # t_d080595b
-    "browser_extension",               # t_8b915264
-    "rejected_fix_teaching_signal",    # t_a26d25be
-    "per_tenant_prompt_version",       # t_17ec5fec
-    "specialty_mix_detection",         # t_da44c384
-    "bulk_accept_known_good",          # t_f3d392b2
-    "locale_fr_ca",                    # t_843317a2
-    "locale_es_us",                    # t_843317a2
-    "configurable_audit_depth",        # t_e2c5afab
-    "doctor_positive_feedback",        # t_585dcaed
+    "doctor_dashboard",  # t_af26abdb
+    "doctor_note_suggestion",  # t_df188436
+    "doctor_fixit_workflow",  # t_f5ea3bf2
+    "monthly_owner_email",  # t_a8eeb0de
+    "submit_time_webhook",  # t_3b15809f
+    "reviewer_feedback_loop",  # t_2ab66102
+    "per_tenant_rules",  # t_06ceaa04
+    "onboarding_wizard",  # t_58fbe2dd
+    "doctor_effectiveness_metric",  # t_267a1ad6
+    "pre_submit_claim_blocking",  # t_d080595b
+    "browser_extension",  # t_8b915264
+    "rejected_fix_teaching_signal",  # t_a26d25be
+    "per_tenant_prompt_version",  # t_17ec5fec
+    "specialty_mix_detection",  # t_da44c384
+    "bulk_accept_known_good",  # t_f3d392b2
+    "locale_fr_ca",  # t_843317a2
+    "locale_es_us",  # t_843317a2
+    "configurable_audit_depth",  # t_e2c5afab
+    "doctor_positive_feedback",  # t_585dcaed
 )
 
 # Known-flag registry — extra flags passed at runtime are accepted
 # (so a deploy doesn't break) but won't show in dashboard listings.
-_REGISTRY_PATH = Path(os.environ.get("FEATURE_FLAG_REGISTRY", "/app/logs/feature_flags_registry.json"))
+_REGISTRY_PATH = Path(
+    os.environ.get("FEATURE_FLAG_REGISTRY", "/app/logs/feature_flags_registry.json")
+)
 
 
 @dataclass
@@ -118,6 +120,7 @@ class FlagEvent:
 # takes effect immediately.
 _LOG_PATH = Path(os.environ.get("FEATURE_FLAG_LOG", "/app/logs/feature_flags.jsonl"))
 
+
 def feature_flag_log_path() -> Path:
     """Return the audit-trail JSONL path.
 
@@ -129,6 +132,8 @@ def feature_flag_log_path() -> Path:
     back to ``/app/logs/feature_flags.jsonl`` (the production layout).
     """
     return _LOG_PATH
+
+
 _GENESIS_SIG = "0" * 64
 
 
@@ -153,7 +158,9 @@ def _sign(previous: str, row: dict[str, object]) -> str:
     import hashlib
 
     payload = "|".join(
-        str(row.get(k, "")) for k in sorted(row.keys()) if k != "cryptographic_signature"
+        str(row.get(k, ""))
+        for k in sorted(row.keys())
+        if k != "cryptographic_signature"
     )
     return hashlib.sha256(f"{previous}|{payload}".encode("utf-8")).hexdigest()
 
@@ -174,7 +181,9 @@ def _read_log(path: Path) -> list[dict[str, object]]:
     return out
 
 
-def _state_for(rows: list[dict[str, object]], tenant_id: str, flag: FlagName) -> bool | None:
+def _state_for(
+    rows: list[dict[str, object]], tenant_id: str, flag: FlagName
+) -> bool | None:
     """Most-recent state for (tenant, flag) or None if no events yet."""
     state: bool | None = None
     for row in rows:
@@ -201,8 +210,13 @@ def register_flag(name: FlagName, description: str = "") -> bool:
             registry = {}
     if name in registry:
         return False
-    registry[name] = {"description": description, "added_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-    registry_path.write_text(json.dumps(registry, indent=2, sort_keys=True), encoding="utf-8")
+    registry[name] = {
+        "description": description,
+        "added_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    registry_path.write_text(
+        json.dumps(registry, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return True
 
 
@@ -252,7 +266,9 @@ def is_enabled(
     return state if state is not None else default
 
 
-def list_enabled(tenant_id: str, *, log_path: Path | str | None = None) -> set[FlagName]:
+def list_enabled(
+    tenant_id: str, *, log_path: Path | str | None = None
+) -> set[FlagName]:
     """Return the set of flags currently enabled for ``tenant_id``."""
     path = Path(log_path) if log_path is not None else feature_flag_log_path()
     rows = _read_log(path)
@@ -329,6 +345,8 @@ def bucket_for(flag: FlagName, tenant_id: str) -> int:
 
     h = hashlib.sha256(f"{flag}|{tenant_id}".encode("utf-8")).hexdigest()
     return int(h[:8], 16) % 100
+
+
 # Module-level ``__getattr__`` (Python 3.7+) defers legacy
 # ``module._LOG_PATH`` reads to the accessor function so late-set
 # env vars (the bulk_actions / rbac / monthly_report test suites
