@@ -133,11 +133,14 @@ test("contact form: invalid payload returns 400 + invalid_input", async () => {
   assert.ok(fieldErrs.billingSetup, "billingSetup should be flagged");
 });
 
-test("contact form: home page exposes Talk to sales CTA", async () => {
+test("contact form: home page exposes contact CTA", async () => {
   const res = await fetch(`${BASE}/`);
   assert.equal(res.status, 200, "GET / should return 200 (public)");
   const html = await res.text();
-  assert.ok(html.includes("Talk to sales"), "home should have Talk to sales CTA");
+  assert.ok(
+    html.includes("Start a conversation"),
+    "home should have a contact CTA",
+  );
   assert.ok(html.includes('href="/contact"'), "home should link to /contact");
 });
 

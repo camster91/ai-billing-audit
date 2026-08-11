@@ -25,6 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zorva.ashbi.ca"),
   title: {
     default: "Zorva — AI pre-bill audit for Alberta clinics",
     template: "%s — Zorva",

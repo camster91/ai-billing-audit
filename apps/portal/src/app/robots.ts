@@ -55,9 +55,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [...DISALLOWED_ROUTES],
       },
     ],
-    // Sitemap route doesn't exist yet (see audit task for adding it).
-    // Pointing at the canonical URL lets search engines 404 cleanly
-    // today and pick it up automatically once we add the route.
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://ashbi.ca"}/sitemap.xml`,
+    // The App Router sitemap is implemented in sitemap.ts. Keep this
+    // fallback aligned with the live portal host when build-time env is absent.
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://zorva.ashbi.ca"}/sitemap.xml`,
   };
 }

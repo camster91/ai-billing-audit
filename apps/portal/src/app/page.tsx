@@ -1,150 +1,205 @@
-// / — marketing landing page (t_fa2149e1 wiring).
-//
-// Lightweight, single-column landing: a one-line value prop, the three
-// pillars the spec leans on (audit every claim / region-pinned data /
-// flat-fee pricing), and a "Talk to sales" CTA that links to the
-// /contact form. Server component — no client hooks, no fetch.
-//
-// The previous incarnation was the `create-next-app` starter
-// ("To get started, edit the page.tsx file"), which is fine for a
-// greenfield scaffold but is the wrong message to ship to a
-// prospective clinic operator. Replacing it with a real landing
-// page was a natural side effect of adding the /contact form, so
-// the marketing surface has a CTA at every entry point.
-
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./page.module.css";
 
+const SITE_URL = "https://zorva.ashbi.ca";
+
 export const metadata: Metadata = {
-  title: "Zorva — AI pre-bill audit for Alberta clinics",
+  title: "Zorva | Pre-submit review for Alberta clinic billing teams",
   description:
-    "Zorva reads every Alberta claim against AHCIP and the SOMB before submission, surfacing missed codes and underbilled modifiers that drain your monthly revenue. Human-reviewed.",
+    "Explore Zorva's human-reviewed pre-submit billing workflow for Alberta clinics, including the audit flow, security information, and how to request a conversation.",
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    title: "Zorva | Pre-submit review for Alberta clinic billing teams",
+    description:
+      "A human-reviewed pre-submit workflow for billing teams that want a clearer review queue before claims are sent.",
+    url: SITE_URL,
+  },
 };
+
+const STEPS = [
+  {
+    number: "01",
+    title: "Bring the encounter into review",
+    body: "Start with the encounter narrative and billed services your team wants to review before submission.",
+  },
+  {
+    number: "02",
+    title: "Compare against the relevant context",
+    body: "The workflow is designed to put billing context and source references beside the encounter instead of asking a biller to reconstruct them from memory.",
+  },
+  {
+    number: "03",
+    title: "Review findings as a team",
+    body: "Your team can assess a finding, its supporting context, and the next action in one review surface.",
+  },
+  {
+    number: "04",
+    title: "Keep the final decision human",
+    body: "Zorva supports review; it does not replace the billing team's judgment or submit a claim on its own.",
+  },
+];
+
+const PRINCIPLES = [
+  ["Built around review", "Keep the biller in control of the decision, context, and follow-up."],
+  ["Traceable context", "Make it easier to see the rule or note passage behind a finding."],
+  ["A deliberate rollout", "Start with a conversation about your clinic, workflow, and readiness."],
+] as const;
+
+function Arrow() {
+  return <span aria-hidden="true">→</span>;
+}
 
 export default function Home() {
   return (
     <div className={styles.page}>
-      <main id="main" className={styles.main}>
-        <header className={styles.hero}>
-          <span className={styles.eyebrow}>Pre-submit audit for Alberta clinic billing teams</span>
-          <h1 className={styles.headline}>
-            Find the revenue your billers are leaving on the table.
-          </h1>
-          <p className={styles.subhead}>
-            Zorva reads every Alberta claim against AHCIP and the SOMB
-            before it leaves your desk — catching the missed codes,
-            underbilled modifiers, and shadow-billed services that
-            quietly drain your monthly revenue. Your billing team
-            reviews what it finds. Nothing ships until a human signs
-            off.
-          </p>
-          <div className={styles.ctaRow}>
-            <Link href="/contact" className={styles.primary}>
-              Talk to sales
-            </Link>
-            <Link href="/how-it-works" className={styles.secondary}>
-              Calculate your revenue opportunity →
-            </Link>
-            <Link href="/pricing" className={styles.secondary}>
-              See pricing
-            </Link>
-          </div>
-        </header>
-
-        <section
-          className={styles.videoWrap}
-          aria-label="Product walkthrough — coming soon"
-        >
-          <div className={styles.videoFrame}>
-            <div
-              className={styles.videoPlaceholder}
-              role="img"
-              aria-label="Product walkthrough video coming soon"
-            >
-              <span className={styles.videoPlaceholderTitle}>
-                Product walkthrough coming soon
-              </span>
-              <span className={styles.videoPlaceholderSub}>
-                We&apos;re recording a fresh demo. In the meantime, the
-                <Link href="/how-it-works" className={styles.link}>
-                  {" "}how-it-works
-                </Link>{" "}
-                page walks through the same flow.
-              </span>
+      <main id="main">
+        <section className={styles.hero} aria-labelledby="hero-title">
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>For Alberta clinic billing teams</p>
+            <h1 id="hero-title">
+              Give every claim a more deliberate <em>last look.</em>
+            </h1>
+            <p className={styles.lede}>
+              Zorva is a pre-submit review workflow for teams that want a
+              clearer way to assess billing context before a claim leaves the
+              clinic. The final decision stays with your people.
+            </p>
+            <div className={styles.actions}>
+              <Link className={styles.primaryAction} href="/contact">
+                Start a conversation <Arrow />
+              </Link>
+              <Link className={styles.secondaryAction} href="/how-it-works">
+                See how the workflow works <Arrow />
+              </Link>
             </div>
+            <p className={styles.heroNote}>
+              No automatic claim submission. No replacement for clinical or
+              billing judgment.
+            </p>
           </div>
-          <p className={styles.videoCaption}>
-            Until the walkthrough is ready, the how-it-works page covers
-            the same flow in text — what the auditor reads, what rules it
-            pulls, and how the findings surface to your billing team for
-            review before anything is submitted.
-          </p>
+
+          <aside className={styles.reviewCard} aria-label="Illustrative pre-submit review">
+            <div className={styles.reviewTopline}>
+              <span>Illustrative review</span>
+              <span>Pre-submit</span>
+            </div>
+            <div className={styles.reviewBody}>
+              <div className={styles.reviewHeader}>
+                <span>Encounter queue</span>
+                <span className={styles.status}>Ready for review</span>
+              </div>
+              <div className={styles.reviewRow}>
+                <span>Billing context</span>
+                <strong>Included</strong>
+              </div>
+              <div className={styles.reviewRow}>
+                <span>Supporting reference</span>
+                <strong>Linked</strong>
+              </div>
+              <div className={styles.finding}>
+                <p className={styles.findingLabel}>Review prompt</p>
+                <p>
+                  Confirm that the billed service and the documented encounter
+                  support the intended submission.
+                </p>
+                <span>Illustrative only — not patient data</span>
+              </div>
+            </div>
+            <div className={styles.reviewFooter}>
+              <span>Human decision required</span>
+              <span>01 item</span>
+            </div>
+          </aside>
         </section>
 
-        <section className={styles.pillars} aria-label="What the product does">
-          <article className={styles.pillar}>
-            <h2>Audit every claim, not just the flagged ones</h2>
-            <p>
-              The auditor reads the clinical narrative, the billed
-              codes, and the retrieved rules for every encounter —
-              E/M level, NCCI edits, MUE limits, modifier pairs, payer
-              policy. Findings cite the exact rule and the exact
-              passage in the note.
-            </p>
-          </article>
-          <article className={styles.pillar}>
-            <h2>Region-pinned data</h2>
-            <p>
-              Your data is stored in a single, region-pinned facility
-              documented in the executed IMA / BAA. No cross-region
-              replication, no sale of customer data, no analytics
-              egress. The current HIA / PHIPA / HIPAA posture is
-              detailed on the security page.
-            </p>
-          </article>
-          <article className={styles.pillar}>
-            <h2>Flat monthly fee, no recovery share</h2>
-            <p>
-              No percentage of revenue, no per-claim charge, no
-              recovery-linked fee. Three tiers bracketed by audit
-              volume. AKS safe-harbor-aligned for any US pilots;
-              published in the executed IMA for Canadian clinics so
-              counsel can sign off without further review.
-            </p>
-          </article>
+        <section className={styles.signalBand} aria-label="What Zorva is designed to support">
+          <p>Designed to support</p>
+          <ul>
+            <li>Pre-submit review</li>
+            <li>Billing context</li>
+            <li>Human decision-making</li>
+            <li>Clinic-led rollout</li>
+          </ul>
         </section>
 
-        <section className={styles.altPath} aria-label="Other ways to learn more">
-          <h2>Want the full picture first?</h2>
+        <section className={styles.section} aria-labelledby="workflow-title">
+          <p className={styles.eyebrow}>A clearer review path</p>
+          <div className={styles.sectionHeading}>
+            <h2 id="workflow-title">From encounter to a decision your team can stand behind.</h2>
+            <p>
+              The workflow is intentionally simple: put the relevant context in
+              front of the right person, then make the review and next action
+              explicit.
+            </p>
+          </div>
+          <ol className={styles.steps}>
+            {STEPS.map((step) => (
+              <li key={step.number} className={styles.step}>
+                <span className={styles.stepNumber}>{step.number}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className={styles.principles} aria-labelledby="principles-title">
+          <div>
+            <p className={styles.eyebrow}>The working principles</p>
+            <h2 id="principles-title">Useful review software should feel calm, legible, and accountable.</h2>
+          </div>
+          <div className={styles.principleList}>
+            {PRINCIPLES.map(([title, body], index) => (
+              <article key={title} className={styles.principle}>
+                <span>0{index + 1}</span>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.resourceGrid} aria-label="Learn more about Zorva">
+          <Link className={styles.resource} href="/security">
+            <span>Security</span>
+            <strong>Read the current security and privacy posture.</strong>
+            <Arrow />
+          </Link>
+          <Link className={styles.resource} href="/pricing">
+            <span>Pricing</span>
+            <strong>Review the current package and contact options.</strong>
+            <Arrow />
+          </Link>
+          <Link className={styles.resource} href="/contact">
+            <span>Conversation</span>
+            <strong>Tell us about the workflow you want to improve.</strong>
+            <Arrow />
+          </Link>
+        </section>
+
+        <section className={styles.cta} aria-labelledby="cta-title">
+          <p className={styles.eyebrow}>Start with your workflow</p>
+          <h2 id="cta-title">See whether a more deliberate pre-submit review fits your clinic.</h2>
           <p>
-            <Link href="/pricing" className={styles.link}>
-              See pricing
-            </Link>{" "}
-            ·{" "}
-            <Link href="/how-it-works" className={styles.link}>
-              How it works
-            </Link>{" "}
-            ·{" "}
-            <Link href="/security" className={styles.link}>
-              Security and compliance
-            </Link>
+            Start with a practical conversation about your billing process,
+            current tools, and the questions your team needs answered.
           </p>
+          <Link className={styles.inverseAction} href="/contact">
+            Contact Zorva <Arrow />
+          </Link>
         </section>
       </main>
+
       <footer className={styles.footer}>
-        <div className={styles.footerLinks}>
-          <Link href="/pricing">Pricing</Link>
-          <span aria-hidden="true">·</span>
+        <p>Zorva</p>
+        <nav aria-label="Footer">
           <Link href="/how-it-works">How it works</Link>
-          <span aria-hidden="true">·</span>
           <Link href="/security">Security</Link>
-          <span aria-hidden="true">·</span>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/legal/privacy">Privacy</Link>
-          <span aria-hidden="true">·</span>
           <Link href="/legal/terms">Terms</Link>
-        </div>
-        <p>Questions? Email us at hello@ashbi.ca</p>
+        </nav>
       </footer>
     </div>
   );
