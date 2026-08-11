@@ -62,6 +62,11 @@ noindex redirect, but they are excluded from the sitemap.
   overflow, an English document language, named contact controls, a visible
   skip-link focus target, and no internal links to deferred routes on each
   reviewed page.
+- `pnpm audit --prod --json` reports zero production dependency advisories
+  after the bounded Next, Auth, Prisma, PostCSS, Fast URI, and Sharp updates.
+  The upgraded Next 15.5.21 / Prisma 7.9.1 Docker image also completed its
+  healthy-container smoke with the reviewed homepage at HTTP 200 and deferred
+  `/security` at a 307 noindex redirect.
 - That local container smoke is not production evidence: the production
   trusted host and its real runtime configuration still require an HTTPS
   smoke test after deployment.

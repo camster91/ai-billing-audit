@@ -10,8 +10,8 @@
 # .next and node_modules before the COPY.
 #
 # Why pnpm: pnpm-lock.yaml pins exact dep versions; the portal uses pnpm
-# overrides in package.json (`@hono/node-server`, `postcss`) that npm does
-# not honor. npm install would silently drift.
+# overrides in package.json (`postcss`) that npm does not honor. npm install
+# would silently drift.
 #
 # Runtime port: 3020. The api stack runs on 8000 + Caddy; this container
 # is exposed to the Traefik reverse proxy via the `ai-billing-audit_net`
