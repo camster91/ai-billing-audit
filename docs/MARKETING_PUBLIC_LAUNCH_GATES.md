@@ -36,7 +36,7 @@ and the sitemap until their published claims are approved.
 | Contact and email | Verified recipient workflow, sender domain, delivery/bounce handling, response owner, retention policy, and abuse controls | Open |
 | Status and monitoring | Real monitored source, incident owner, public update process, and evidence-backed uptime history | Open |
 | Accessibility | Keyboard, automated accessibility, responsive, and manual browser checks on the deployed public routes | Open |
-| Release operations | Restore-verified backups, immutable release SHA, migration gate, container health, trusted HTTPS smoke, and rollback procedure | Open |
+| Release operations | Restore-verified backups, immutable release SHA, migration gate, a deterministic Docker artifact build with a migration-compatible isolated build database (or no build-time database reads), container health, trusted HTTPS smoke, and rollback procedure | Open |
 
 ## Local verification recorded for this change
 
@@ -48,6 +48,10 @@ and the sitemap until their published claims are approved.
   apps/portal build`, and removed after the check. The production build
   completed successfully, including route-data collection and static-page
   generation.
+- The Dockerfile's loopback placeholder database was not enough to complete a
+  local image-build validation. A controlled build database or removal of
+  build-time database reads remains required before a Docker artifact can be
+  treated as release evidence.
 
 ## Promotion checklist
 
