@@ -35,6 +35,22 @@ const DISALLOWED_ROUTES = [
   "/settings/",
   "/login",
   "/api/",
+  "/about",
+  "/calculator",
+  "/case-studies",
+  "/changelog",
+  "/compare",
+  "/faq",
+  "/for/",
+  "/legal/",
+  "/pilot",
+  "/press",
+  "/pricing",
+  "/security",
+  "/status",
+  "/technical",
+  "/trust",
+  "/what-zorva-finds",
 ] as const;
 
 export default function robots(): MetadataRoute.Robots {

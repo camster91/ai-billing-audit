@@ -160,24 +160,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={styles.resourceGrid} aria-label="Learn more about Zorva">
-          <Link className={styles.resource} href="/security">
-            <span>Security</span>
-            <strong>Read the current security and privacy posture.</strong>
-            <Arrow />
-          </Link>
-          <Link className={styles.resource} href="/pricing">
-            <span>Pricing</span>
-            <strong>Review the current package and contact options.</strong>
-            <Arrow />
-          </Link>
-          <Link className={styles.resource} href="/contact">
-            <span>Conversation</span>
-            <strong>Tell us about the workflow you want to improve.</strong>
-            <Arrow />
-          </Link>
-        </section>
-
         <section className={styles.cta} aria-labelledby="cta-title">
           <p className={styles.eyebrow}>Start with your workflow</p>
           <h2 id="cta-title">See whether a more deliberate pre-submit review fits your clinic.</h2>
@@ -195,10 +177,7 @@ export default function Home() {
         <p>Zorva</p>
         <nav aria-label="Footer">
           <Link href="/how-it-works">How it works</Link>
-          <Link href="/security">Security</Link>
-          <Link href="/pricing">Pricing</Link>
-          <Link href="/legal/privacy">Privacy</Link>
-          <Link href="/legal/terms">Terms</Link>
+          <Link href="/contact">Contact</Link>
         </nav>
       </footer>
     </div>

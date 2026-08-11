@@ -106,6 +106,28 @@ const PUBLIC_PREFIXES = [
   "/sitemap.xml",      // future sitemap route
 ];
 
+// These pages are still reachable for existing recipients, but their public
+// claims are under evidence review. Do not let crawlers index them until the
+// relevant product, legal, security, or operations owner has approved copy.
+const NOINDEX_MARKETING_PREFIXES = [
+  "/about",
+  "/calculator",
+  "/case-studies",
+  "/changelog",
+  "/compare",
+  "/faq",
+  "/for",
+  "/legal",
+  "/pilot",
+  "/press",
+  "/pricing",
+  "/security",
+  "/status",
+  "/technical",
+  "/trust",
+  "/what-zorva-finds",
+] as const;
+
 function isPublicPath(pathname: string): boolean {
   // Exact match OR prefix with a path boundary. Special-case
   // `/api/billing/tiers`: GET is public; PUT is still "public" at
@@ -113,6 +135,20 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
+}
+
+function isNoindexMarketingPath(pathname: string): boolean {
+  return NOINDEX_MARKETING_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+  );
+}
+
+function publicResponse(pathname: string): NextResponse {
+  const response = NextResponse.next();
+  if (isNoindexMarketingPath(pathname)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  return response;
 }
 
 /** Edge-runtime-safe "is the user signed in?" probe. Returns true if
@@ -165,7 +201,7 @@ export default function proxy(request: NextRequest) {
 
   // Public path → no auth check, no redirects.
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return publicResponse(pathname);
   }
 
   // No session cookie → redirect to /login (or 401 for API routes).

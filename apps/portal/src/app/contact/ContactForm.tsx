@@ -198,9 +198,8 @@ export default function ContactForm({ defaults }: Props) {
       <div className={styles.card} role="status" aria-live="polite">
         <h2 className={styles.successHeading}>Thanks — we got it.</h2>
         <p className={styles.successBody}>
-          A sales lead has been created for <strong>{submittedEmail}</strong>.
-          We&apos;ll be in touch within one business day with next steps and
-          a link to book a 20-minute walkthrough.
+          We received your request for <strong>{submittedEmail}</strong>. A
+          member of the Zorva team will review it before following up.
         </p>
         <p className={styles.successBody}>
           In the meantime, the{" "}
@@ -211,8 +210,7 @@ export default function ContactForm({ defaults }: Props) {
           <a href="/security" className={styles.link}>
             security
           </a>{" "}
-          page has the HIA / PHIPA / HIPAA explainer you can forward to
-          your privacy officer.
+          page explains the review workflow in plain language.
         </p>
         <button
           type="button"
@@ -312,8 +310,8 @@ export default function ContactForm({ defaults }: Props) {
           </output>
         </div>
         <p id="claimVolume-hint" className={styles.hint}>
-          Drag the slider to roughly match your monthly claim volume. We
-          use this to recommend a tier on the call.
+          Drag the slider to roughly match your monthly claim volume. We use
+          this to understand the scale of the workflow you want to discuss.
         </p>
         {fieldErrors.claimVolume && (
           <p id="claimVolume-error" className={styles.fieldError}>
@@ -364,8 +362,8 @@ export default function ContactForm({ defaults }: Props) {
           {disabled ? "Sending…" : "Talk to sales"}
         </button>
         <p className={styles.fineprint}>
-          We&apos;ll email you back within one business day. No marketing
-          list signup, no automated drip.
+          We use this information to review your request and respond about the
+          workflow you described.
         </p>
       </div>
     </form>
