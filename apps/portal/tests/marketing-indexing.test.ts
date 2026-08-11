@@ -18,19 +18,19 @@ test("marketing sitemap exposes only reviewed core routes", () => {
   );
 });
 
-test("robots disallows deferred marketing routes", () => {
+test("robots disallows protected routes but leaves deferred routes crawlable", () => {
   const rules = robots().rules;
   assert.ok(Array.isArray(rules));
   const disallow = rules[0]?.disallow;
   assert.ok(Array.isArray(disallow));
   for (const route of DEFERRED_MARKETING_PREFIXES) {
-    assert.ok(disallow.includes(route), `${route} must be disallowed`);
+    assert.ok(!disallow.includes(route), `${route} must remain crawlable`);
   }
   assert.ok(disallow.includes("/team/"));
   assert.ok(disallow.includes("/onboarding/"));
 });
 
-test("all deferred marketing responses emit noindex", () => {
+test("all deferred marketing responses redirect with noindex", () => {
   for (const route of DEFERRED_MARKETING_PREFIXES) {
     const response = middleware(
       new NextRequest(`https://zorva.ashbi.ca${route}`),
@@ -39,6 +39,12 @@ test("all deferred marketing responses emit noindex", () => {
       response.headers.get("X-Robots-Tag"),
       "noindex, nofollow",
       `${route} must emit X-Robots-Tag`,
+    );
+    assert.equal(response.status, 307, `${route} must redirect temporarily`);
+    assert.equal(
+      new URL(response.headers.get("location") ?? "").pathname,
+      "/contact",
+      `${route} must redirect to contact`,
     );
   }
 });

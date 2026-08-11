@@ -1,22 +1,20 @@
 // Dynamic robots.txt for the Zorva portal.
 //
-// Only the reviewed core routes (/, /how-it-works, and /contact) are
-// indexable. Authenticated routes and marketing routes that still need claim,
-// legal, security, or operational evidence are disallowed until reviewed.
+// Only the reviewed core routes (/, /how-it-works, and /contact) are served
+// as indexable marketing pages. Deferred marketing URLs remain crawlable long
+// enough for search engines to observe their temporary noindex redirect; only
+// authenticated routes are disallowed here.
 //
 // Note: robots.txt is a HINT, not a security control. The portal
 // routes are also gated by the next-auth middleware in middleware.ts
 // (or src/proxy.ts in this app) — robots.txt is the SEO layer on
 // top of that, not a substitute for it.
 import type { MetadataRoute } from "next";
-import { DEFERRED_MARKETING_PREFIXES } from "@/lib/marketing-indexing";
-
 // Routes that are NOT indexable. Prefix entries also cover nested paths
 // (for example, /portal/ covers /portal/onboarding).
 //
-// Keep this list in sync with `NOINDEX_MARKETING_PREFIXES` in middleware.ts.
-// Robots rules are crawl guidance; middleware also returns X-Robots-Tag on
-// deferred marketing routes.
+// Marketing URLs intentionally stay out of this list: their middleware
+// response must be crawlable for a noindex redirect to be observed.
 const DISALLOWED_ROUTES = [
   "/portal/",
   "/encounters/",
@@ -28,7 +26,6 @@ const DISALLOWED_ROUTES = [
   "/onboarding/",
   "/login",
   "/api/",
-  ...DEFERRED_MARKETING_PREFIXES,
 ] as const;
 
 export default function robots(): MetadataRoute.Robots {

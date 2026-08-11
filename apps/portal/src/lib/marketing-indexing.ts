@@ -27,6 +27,7 @@ export const DEFERRED_MARKETING_PREFIXES = [
   "/press",
   "/pricing",
   "/security",
+  "/security.pdf",
   "/status",
   "/technical",
   "/trust",

@@ -4,16 +4,17 @@
 
 The public marketing release is **not approved for launch**. The indexable
 surface is deliberately limited to the evidence-conscious core routes below.
-All other public pages remain reachable for existing recipients but emit an
-`X-Robots-Tag: noindex, nofollow` response and are excluded from `robots.txt`
-and the sitemap until their published claims are approved.
+All other public marketing URLs temporarily redirect to `/contact` with an
+`X-Robots-Tag: noindex, nofollow` response until their published claims are
+approved. They are intentionally crawlable so search engines can observe the
+noindex redirect, but they are excluded from the sitemap.
 
 | Route | Discovery posture | Reason |
 | --- | --- | --- |
 | `/` | Indexable | Capability-focused homepage; no testimonial, performance metric, pricing, or operational promise. |
 | `/how-it-works` | Indexable | Human-reviewed workflow explanation; no promise of integrations, outcomes, or automated submission. |
 | `/contact` | Indexable | Request form without a response-time, calendar, or service-level promise. |
-| About, blog, calculator, careers, case studies, changelog, comparison, demo request, FAQ, specialty, glossary, legal, pilot, press, pricing, security, status, technical, trust, and try pages | Noindex | Content requires product-owner, legal, security, operational, or publication evidence before search discovery. |
+| About, blog, calculator, careers, case studies, changelog, comparison, demo request, FAQ, specialty, glossary, legal, pilot, press, pricing, security (including the one-pager), status, technical, trust, and try pages | Temporary noindex redirect | Content requires product-owner, legal, security, operational, or publication evidence before it is served or eligible for search discovery. |
 
 ## Evidence required before a deferred route can be indexed
 
@@ -53,8 +54,10 @@ and the sitemap until their published claims are approved.
   The resulting local image reached Docker `healthy` and returned HTTP 200
   from `/login` with disposable test configuration.
 - The same local image returned HTTP 200 without `X-Robots-Tag` for all three
-  reviewed routes and HTTP 200 with `X-Robots-Tag: noindex, nofollow` for all
-  21 deferred public routes. Its `robots.txt` and sitemap matched that policy.
+  reviewed routes and a 307 `X-Robots-Tag: noindex, nofollow` redirect to
+  `/contact` for all 22 deferred public URLs. Its `robots.txt` permits those
+  redirects to be crawled, disallows protected routes, and its sitemap matched
+  the reviewed-route policy.
 - That local container smoke is not production evidence: the production
   trusted host and its real runtime configuration still require an HTTPS
   smoke test after deployment.
@@ -62,8 +65,8 @@ and the sitemap until their published claims are approved.
 ## Promotion checklist
 
 1. Approve a deferred route's claim register.
-2. Remove that route from the noindex lists in `src/middleware.ts` and
-   `src/app/robots.ts`.
+2. Remove that route from `src/lib/marketing-indexing.ts` so middleware serves
+   its approved page instead of the temporary noindex redirect.
 3. Add the route to `src/app/sitemap.ts` only after its live public smoke and
    accessibility evidence is attached to the release.
 4. Build an immutable release, run migrations, verify health, and test the

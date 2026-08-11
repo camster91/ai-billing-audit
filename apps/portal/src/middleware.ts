@@ -125,12 +125,18 @@ function isNoindexMarketingPath(pathname: string): boolean {
   );
 }
 
-function publicResponse(pathname: string): NextResponse {
-  const response = NextResponse.next();
+function publicResponse(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl;
   if (isNoindexMarketingPath(pathname)) {
+    // Do not expose unsupported marketing copy while it is being reviewed.
+    // A temporary redirect lets previously indexed URLs converge on the
+    // reviewed contact page. The noindex header is deliberately paired with
+    // crawlable robots rules so crawlers can observe it.
+    const response = NextResponse.redirect(new URL("/contact", request.url));
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
   }
-  return response;
+  return NextResponse.next();
 }
 
 /** Edge-runtime-safe "is the user signed in?" probe. Returns true if
@@ -183,7 +189,7 @@ export default function proxy(request: NextRequest) {
 
   // Public path → no auth check, no redirects.
   if (isPublicPath(pathname)) {
-    return publicResponse(pathname);
+    return publicResponse(request);
   }
 
   // No session cookie → redirect to /login (or 401 for API routes).
