@@ -7,7 +7,7 @@ const SITE_URL = "https://zorva.ashbi.ca";
 export const metadata: Metadata = {
   title: "Zorva | Pre-submit review for Alberta clinic billing teams",
   description:
-    "Explore Zorva's human-reviewed pre-submit billing workflow for Alberta clinics, including the audit flow, security information, and how to request a conversation.",
+    "Explore Zorva's human-reviewed pre-submit billing workflow for Alberta clinics and how to request a conversation.",
   alternates: { canonical: SITE_URL },
   openGraph: {
     title: "Zorva | Pre-submit review for Alberta clinic billing teams",

@@ -174,7 +174,7 @@ export default function ContactForm({ defaults }: Props) {
       }
 
       setTopError(
-        "Something went wrong submitting the form. Please try again, or email us directly at sales@ashbi.ca.",
+        "Something went wrong submitting the form. Please try again later.",
       );
       setStatus("idle");
     } catch {
@@ -198,19 +198,15 @@ export default function ContactForm({ defaults }: Props) {
       <div className={styles.card} role="status" aria-live="polite">
         <h2 className={styles.successHeading}>Thanks — we got it.</h2>
         <p className={styles.successBody}>
-          We received your request for <strong>{submittedEmail}</strong>. A
-          member of the Zorva team will review it before following up.
+          Your request for <strong>{submittedEmail}</strong> has been
+          recorded.
         </p>
         <p className={styles.successBody}>
           In the meantime, the{" "}
           <a href="/how-it-works" className={styles.link}>
             how-it-works
           </a>{" "}
-          page walks through the audit loop in plain English, and the{" "}
-          <a href="/security" className={styles.link}>
-            security
-          </a>{" "}
-          page explains the review workflow in plain language.
+          page walks through the review path in plain English.
         </p>
         <button
           type="button"
@@ -299,6 +295,7 @@ export default function ContactForm({ defaults }: Props) {
             value={claimVolume}
             onChange={(e) => setClaimVolume(Number(e.target.value))}
             className={styles.slider}
+            aria-label="Monthly claim volume"
             aria-describedby="claimVolume-hint"
           />
           <output

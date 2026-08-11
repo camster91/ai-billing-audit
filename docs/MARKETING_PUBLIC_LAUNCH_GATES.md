@@ -58,6 +58,10 @@ noindex redirect, but they are excluded from the sitemap.
   `/contact` for all 22 deferred public URLs. Its `robots.txt` permits those
   redirects to be crawled, disallows protected routes, and its sitemap matched
   the reviewed-route policy.
+- A local Chrome check at 375px and 1440px found one H1, no horizontal
+  overflow, an English document language, named contact controls, a visible
+  skip-link focus target, and no internal links to deferred routes on each
+  reviewed page.
 - That local container smoke is not production evidence: the production
   trusted host and its real runtime configuration still require an HTTPS
   smoke test after deployment.
