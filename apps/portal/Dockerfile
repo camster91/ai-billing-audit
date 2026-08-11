@@ -47,7 +47,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 FROM deps AS migrate
 
 COPY prisma ./prisma
-COPY prisma.config.ts prisma.postgresql.config.ts ./
+COPY prisma.config.ts prisma.postgresql.config.ts tsconfig.json ./
 # The PHI migration uses the portal Prisma client and local encryption/audit
 # helpers. Keep the migration image self-contained so its one-shot command
 # cannot depend on files from the runtime image.
