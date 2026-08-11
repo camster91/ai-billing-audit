@@ -48,7 +48,12 @@ FROM deps AS migrate
 
 COPY prisma ./prisma
 COPY prisma.config.ts prisma.postgresql.config.ts ./
-COPY scripts/prepare-postgresql-schema.mjs ./scripts/prepare-postgresql-schema.mjs
+# The PHI migration uses the portal Prisma client and local encryption/audit
+# helpers. Keep the migration image self-contained so its one-shot command
+# cannot depend on files from the runtime image.
+COPY src ./src
+COPY scripts ./scripts
+RUN pnpm prisma:generate
 
 CMD ["pnpm", "prisma:migrate:deploy:postgresql"]
 
