@@ -43,10 +43,11 @@ and the sitemap until their published claims are approved.
 - `git diff --check` passes.
 - `pnpm --dir apps/portal lint` passes.
 - `pnpm --dir apps/portal exec tsc --noEmit` passes.
-- `pnpm --dir apps/portal build` compiles and type-checks but cannot complete
-  route-data collection without a configured production-compatible
-  `DATABASE_URL`; it fails at `/api/audit/export` before a local database is
-  available. This is an environment gate, not proof of a releasable build.
+- An isolated disposable PostgreSQL 16 database was created, migrated with the
+  two committed portal PostgreSQL migrations, used for `pnpm --dir
+  apps/portal build`, and removed after the check. The production build
+  completed successfully, including route-data collection and static-page
+  generation.
 
 ## Promotion checklist
 
