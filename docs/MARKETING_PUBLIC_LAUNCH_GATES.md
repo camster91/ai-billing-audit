@@ -36,7 +36,7 @@ and the sitemap until their published claims are approved.
 | Contact and email | Verified recipient workflow, sender domain, delivery/bounce handling, response owner, retention policy, and abuse controls | Open |
 | Status and monitoring | Real monitored source, incident owner, public update process, and evidence-backed uptime history | Open |
 | Accessibility | Keyboard, automated accessibility, responsive, and manual browser checks on the deployed public routes | Open |
-| Release operations | Restore-verified backups, immutable release SHA, migration gate, a deterministic Docker artifact build with a migration-compatible isolated build database (or no build-time database reads), container health, trusted HTTPS smoke, and rollback procedure | Open |
+| Release operations | Restore-verified backups, immutable release SHA, migration gate, deterministic Docker artifact build evidence, container health, trusted HTTPS smoke, and rollback procedure | Open |
 
 ## Local verification recorded for this change
 
@@ -48,10 +48,13 @@ and the sitemap until their published claims are approved.
   apps/portal build`, and removed after the check. The production build
   completed successfully, including route-data collection and static-page
   generation.
-- The Dockerfile's loopback placeholder database was not enough to complete a
-  local image-build validation. A controlled build database or removal of
-  build-time database reads remains required before a Docker artifact can be
-  treated as release evidence.
+- `docker build -f apps/portal/Dockerfile -t zorva-portal:marketing-pr64
+  apps/portal` completed using its deliberately unreachable build database.
+  The resulting local image reached Docker `healthy` and returned HTTP 200
+  from `/login` with disposable test configuration.
+- That local container smoke is not production evidence: the production
+  trusted host and its real runtime configuration still require an HTTPS
+  smoke test after deployment.
 
 ## Promotion checklist
 

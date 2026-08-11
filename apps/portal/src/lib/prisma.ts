@@ -35,8 +35,28 @@ export function buildClient(
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? buildClient();
+function buildTimeClientProxy(): PrismaClient {
+  let client: PrismaClient | undefined;
 
-if (process.env.NODE_ENV !== "production") {
+  // Next imports dynamic route modules while collecting build metadata. Those
+  // modules import `prisma`, but should not open a database connection until a
+  // request executes a query. Keep this mode strictly build-only; the runtime
+  // continues to construct its client normally and fails closed on bad config.
+  return new Proxy({} as PrismaClient, {
+    get(_target, property, receiver) {
+      client ??= buildClient();
+      const value = Reflect.get(client, property, receiver);
+      return typeof value === "function" ? value.bind(client) : value;
+    },
+  });
+}
+
+const isBuildWithoutDatabase = process.env.ZORVA_BUILD_SKIP_DATABASE === "1";
+
+export const prisma = isBuildWithoutDatabase
+  ? buildTimeClientProxy()
+  : globalForPrisma.prisma ?? buildClient();
+
+if (!isBuildWithoutDatabase && process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
