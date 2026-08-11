@@ -13,7 +13,7 @@ and the sitemap until their published claims are approved.
 | `/` | Indexable | Capability-focused homepage; no testimonial, performance metric, pricing, or operational promise. |
 | `/how-it-works` | Indexable | Human-reviewed workflow explanation; no promise of integrations, outcomes, or automated submission. |
 | `/contact` | Indexable | Request form without a response-time, calendar, or service-level promise. |
-| Pricing, security, trust, pilot, status, case studies, comparison, technical, press, FAQ, legal, and specialty pages | Noindex | Content requires product-owner, legal, security, operational, or publication evidence before search discovery. |
+| About, blog, calculator, careers, case studies, changelog, comparison, demo request, FAQ, specialty, glossary, legal, pilot, press, pricing, security, status, technical, trust, and try pages | Noindex | Content requires product-owner, legal, security, operational, or publication evidence before search discovery. |
 
 ## Evidence required before a deferred route can be indexed
 
@@ -52,6 +52,9 @@ and the sitemap until their published claims are approved.
   apps/portal` completed using its deliberately unreachable build database.
   The resulting local image reached Docker `healthy` and returned HTTP 200
   from `/login` with disposable test configuration.
+- The same local image returned HTTP 200 without `X-Robots-Tag` for all three
+  reviewed routes and HTTP 200 with `X-Robots-Tag: noindex, nofollow` for all
+  21 deferred public routes. Its `robots.txt` and sitemap matched that policy.
 - That local container smoke is not production evidence: the production
   trusted host and its real runtime configuration still require an HTTPS
   smoke test after deployment.

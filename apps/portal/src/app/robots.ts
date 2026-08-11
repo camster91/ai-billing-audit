@@ -1,31 +1,22 @@
 // Dynamic robots.txt for the Zorva portal.
 //
-// Split rules: marketing routes (/, /pricing, /pilot, /security,
-// /trust, /changelog, /how-it-works, /compare, /case-studies,
-// /press, /careers, /team, /glossary, /technical, /status,
-// /contact) are ALLOWED. Portal / auth routes (/portal/*,
-// /encounters/*, /findings/*, /billing, /dashboard, /settings,
-// /login, /api/*) are DISALLOWED so PHI / auth state is never
-// accidentally indexed.
-//
-// The static fallback at apps/portal/public/robots.txt mirrors the
-// same rules; this route handler is the authoritative version because
-// Next.js serves /robots.txt from app/robots.ts when present.
+// Only the reviewed core routes (/, /how-it-works, and /contact) are
+// indexable. Authenticated routes and marketing routes that still need claim,
+// legal, security, or operational evidence are disallowed until reviewed.
 //
 // Note: robots.txt is a HINT, not a security control. The portal
 // routes are also gated by the next-auth middleware in middleware.ts
 // (or src/proxy.ts in this app) — robots.txt is the SEO layer on
 // top of that, not a substitute for it.
 import type { MetadataRoute } from "next";
+import { DEFERRED_MARKETING_PREFIXES } from "@/lib/marketing-indexing";
 
-// Routes that are NOT indexable. Each must start with "/" and end
-// with "/" so that robots.txt matches every nested path under it
-// (e.g. /portal/onboarding matches /portal/).
+// Routes that are NOT indexable. Prefix entries also cover nested paths
+// (for example, /portal/ covers /portal/onboarding).
 //
-// Keep this list in sync with the per-page `robots: { index: false,
-// follow: false }` exports in the corresponding app/<route>/page.tsx
-// files. The list below is the *complete* deny list for the live
-// site as of 2026-06-24.
+// Keep this list in sync with `NOINDEX_MARKETING_PREFIXES` in middleware.ts.
+// Robots rules are crawl guidance; middleware also returns X-Robots-Tag on
+// deferred marketing routes.
 const DISALLOWED_ROUTES = [
   "/portal/",
   "/encounters/",
@@ -33,24 +24,11 @@ const DISALLOWED_ROUTES = [
   "/billing/",
   "/dashboard/",
   "/settings/",
+  "/team/",
+  "/onboarding/",
   "/login",
   "/api/",
-  "/about",
-  "/calculator",
-  "/case-studies",
-  "/changelog",
-  "/compare",
-  "/faq",
-  "/for/",
-  "/legal/",
-  "/pilot",
-  "/press",
-  "/pricing",
-  "/security",
-  "/status",
-  "/technical",
-  "/trust",
-  "/what-zorva-finds",
+  ...DEFERRED_MARKETING_PREFIXES,
 ] as const;
 
 export default function robots(): MetadataRoute.Robots {

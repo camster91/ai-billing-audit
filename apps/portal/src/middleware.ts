@@ -28,6 +28,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { DEFERRED_MARKETING_PREFIXES } from "@/lib/marketing-indexing";
 
 // NextAuth.js (Auth.js v5) session cookie. Two variants: the
 // HTTPS-scoped version (`__Secure-`) on production (Cloudflare +
@@ -109,25 +110,6 @@ const PUBLIC_PREFIXES = [
 // These pages are still reachable for existing recipients, but their public
 // claims are under evidence review. Do not let crawlers index them until the
 // relevant product, legal, security, or operations owner has approved copy.
-const NOINDEX_MARKETING_PREFIXES = [
-  "/about",
-  "/calculator",
-  "/case-studies",
-  "/changelog",
-  "/compare",
-  "/faq",
-  "/for",
-  "/legal",
-  "/pilot",
-  "/press",
-  "/pricing",
-  "/security",
-  "/status",
-  "/technical",
-  "/trust",
-  "/what-zorva-finds",
-] as const;
-
 function isPublicPath(pathname: string): boolean {
   // Exact match OR prefix with a path boundary. Special-case
   // `/api/billing/tiers`: GET is public; PUT is still "public" at
@@ -138,7 +120,7 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function isNoindexMarketingPath(pathname: string): boolean {
-  return NOINDEX_MARKETING_PREFIXES.some(
+  return DEFERRED_MARKETING_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
   );
 }

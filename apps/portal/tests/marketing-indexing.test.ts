@@ -4,15 +4,17 @@ import { NextRequest } from "next/server";
 import middleware from "../src/middleware";
 import robots from "../src/app/robots";
 import sitemap from "../src/app/sitemap";
+import {
+  DEFERRED_MARKETING_PREFIXES,
+  REVIEWED_MARKETING_ROUTES,
+} from "../src/lib/marketing-indexing";
 
 test("marketing sitemap exposes only reviewed core routes", () => {
   assert.deepEqual(
     sitemap().map((entry) => entry.url),
-    [
-      "https://zorva.ashbi.ca",
-      "https://zorva.ashbi.ca/contact",
-      "https://zorva.ashbi.ca/how-it-works",
-    ],
+    REVIEWED_MARKETING_ROUTES.map(
+      (route) => `https://zorva.ashbi.ca${route}`,
+    ),
   );
 });
 
@@ -21,22 +23,31 @@ test("robots disallows deferred marketing routes", () => {
   assert.ok(Array.isArray(rules));
   const disallow = rules[0]?.disallow;
   assert.ok(Array.isArray(disallow));
-  assert.ok(disallow.includes("/status"));
-  assert.ok(disallow.includes("/pricing"));
-  assert.ok(disallow.includes("/security"));
-  assert.ok(disallow.includes("/case-studies"));
+  for (const route of DEFERRED_MARKETING_PREFIXES) {
+    assert.ok(disallow.includes(route), `${route} must be disallowed`);
+  }
+  assert.ok(disallow.includes("/team/"));
+  assert.ok(disallow.includes("/onboarding/"));
 });
 
-test("deferred marketing responses emit noindex", () => {
-  const response = middleware(
-    new NextRequest("https://zorva.ashbi.ca/status"),
-  );
-  assert.equal(response.headers.get("X-Robots-Tag"), "noindex, nofollow");
+test("all deferred marketing responses emit noindex", () => {
+  for (const route of DEFERRED_MARKETING_PREFIXES) {
+    const response = middleware(
+      new NextRequest(`https://zorva.ashbi.ca${route}`),
+    );
+    assert.equal(
+      response.headers.get("X-Robots-Tag"),
+      "noindex, nofollow",
+      `${route} must emit X-Robots-Tag`,
+    );
+  }
 });
 
 test("reviewed core routes remain indexable", () => {
-  const response = middleware(
-    new NextRequest("https://zorva.ashbi.ca/contact"),
-  );
-  assert.equal(response.headers.get("X-Robots-Tag"), null);
+  for (const route of REVIEWED_MARKETING_ROUTES) {
+    const response = middleware(
+      new NextRequest(`https://zorva.ashbi.ca${route}`),
+    );
+    assert.equal(response.headers.get("X-Robots-Tag"), null);
+  }
 });
