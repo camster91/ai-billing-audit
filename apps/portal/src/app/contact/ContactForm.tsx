@@ -174,7 +174,7 @@ export default function ContactForm({ defaults }: Props) {
       }
 
       setTopError(
-        "Something went wrong submitting the form. Please try again, or email us directly at sales@ashbi.ca.",
+        "Something went wrong submitting the form. Please try again later.",
       );
       setStatus("idle");
     } catch {
@@ -198,21 +198,15 @@ export default function ContactForm({ defaults }: Props) {
       <div className={styles.card} role="status" aria-live="polite">
         <h2 className={styles.successHeading}>Thanks — we got it.</h2>
         <p className={styles.successBody}>
-          A sales lead has been created for <strong>{submittedEmail}</strong>.
-          We&apos;ll be in touch within one business day with next steps and
-          a link to book a 20-minute walkthrough.
+          Your request for <strong>{submittedEmail}</strong> has been
+          recorded.
         </p>
         <p className={styles.successBody}>
           In the meantime, the{" "}
           <a href="/how-it-works" className={styles.link}>
             how-it-works
           </a>{" "}
-          page walks through the audit loop in plain English, and the{" "}
-          <a href="/security" className={styles.link}>
-            security
-          </a>{" "}
-          page has the HIA / PHIPA / HIPAA explainer you can forward to
-          your privacy officer.
+          page walks through the review path in plain English.
         </p>
         <button
           type="button"
@@ -301,6 +295,7 @@ export default function ContactForm({ defaults }: Props) {
             value={claimVolume}
             onChange={(e) => setClaimVolume(Number(e.target.value))}
             className={styles.slider}
+            aria-label="Monthly claim volume"
             aria-describedby="claimVolume-hint"
           />
           <output
@@ -312,8 +307,8 @@ export default function ContactForm({ defaults }: Props) {
           </output>
         </div>
         <p id="claimVolume-hint" className={styles.hint}>
-          Drag the slider to roughly match your monthly claim volume. We
-          use this to recommend a tier on the call.
+          Drag the slider to roughly match your monthly claim volume. We use
+          this to understand the scale of the workflow you want to discuss.
         </p>
         {fieldErrors.claimVolume && (
           <p id="claimVolume-error" className={styles.fieldError}>
@@ -364,8 +359,8 @@ export default function ContactForm({ defaults }: Props) {
           {disabled ? "Sending…" : "Talk to sales"}
         </button>
         <p className={styles.fineprint}>
-          We&apos;ll email you back within one business day. No marketing
-          list signup, no automated drip.
+          We use this information to review your request and respond about the
+          workflow you described.
         </p>
       </div>
     </form>

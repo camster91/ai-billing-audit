@@ -25,6 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zorva.ashbi.ca"),
   title: {
     default: "Zorva — AI pre-bill audit for Alberta clinics",
     template: "%s — Zorva",
@@ -83,9 +84,7 @@ export const viewport: Viewport = {
 // the portal-root pages start with their own <main>.
 const NAV = [
   { href: "/", label: "Home" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/how-it-works", label: "How it works" },
-  { href: "/security", label: "Security" },
   { href: "/contact", label: "Contact" },
 ];
 

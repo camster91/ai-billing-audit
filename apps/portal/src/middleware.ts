@@ -28,6 +28,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { DEFERRED_MARKETING_PREFIXES } from "@/lib/marketing-indexing";
 
 // NextAuth.js (Auth.js v5) session cookie. Two variants: the
 // HTTPS-scoped version (`__Secure-`) on production (Cloudflare +
@@ -106,6 +107,9 @@ const PUBLIC_PREFIXES = [
   "/sitemap.xml",      // future sitemap route
 ];
 
+// These pages are still reachable for existing recipients, but their public
+// claims are under evidence review. Do not let crawlers index them until the
+// relevant product, legal, security, or operations owner has approved copy.
 function isPublicPath(pathname: string): boolean {
   // Exact match OR prefix with a path boundary. Special-case
   // `/api/billing/tiers`: GET is public; PUT is still "public" at
@@ -113,6 +117,26 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
+}
+
+function isNoindexMarketingPath(pathname: string): boolean {
+  return DEFERRED_MARKETING_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+  );
+}
+
+function publicResponse(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl;
+  if (isNoindexMarketingPath(pathname)) {
+    // Do not expose unsupported marketing copy while it is being reviewed.
+    // A temporary redirect lets previously indexed URLs converge on the
+    // reviewed contact page. The noindex header is deliberately paired with
+    // crawlable robots rules so crawlers can observe it.
+    const response = NextResponse.redirect(new URL("/contact", request.url));
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
+  }
+  return NextResponse.next();
 }
 
 /** Edge-runtime-safe "is the user signed in?" probe. Returns true if
@@ -165,7 +189,7 @@ export default function proxy(request: NextRequest) {
 
   // Public path → no auth check, no redirects.
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return publicResponse(request);
   }
 
   // No session cookie → redirect to /login (or 401 for API routes).

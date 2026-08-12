@@ -1,31 +1,20 @@
 // Dynamic robots.txt for the Zorva portal.
 //
-// Split rules: marketing routes (/, /pricing, /pilot, /security,
-// /trust, /changelog, /how-it-works, /compare, /case-studies,
-// /press, /careers, /team, /glossary, /technical, /status,
-// /contact) are ALLOWED. Portal / auth routes (/portal/*,
-// /encounters/*, /findings/*, /billing, /dashboard, /settings,
-// /login, /api/*) are DISALLOWED so PHI / auth state is never
-// accidentally indexed.
-//
-// The static fallback at apps/portal/public/robots.txt mirrors the
-// same rules; this route handler is the authoritative version because
-// Next.js serves /robots.txt from app/robots.ts when present.
+// Only the reviewed core routes (/, /how-it-works, and /contact) are served
+// as indexable marketing pages. Deferred marketing URLs remain crawlable long
+// enough for search engines to observe their temporary noindex redirect; only
+// authenticated routes are disallowed here.
 //
 // Note: robots.txt is a HINT, not a security control. The portal
 // routes are also gated by the next-auth middleware in middleware.ts
 // (or src/proxy.ts in this app) — robots.txt is the SEO layer on
 // top of that, not a substitute for it.
 import type { MetadataRoute } from "next";
-
-// Routes that are NOT indexable. Each must start with "/" and end
-// with "/" so that robots.txt matches every nested path under it
-// (e.g. /portal/onboarding matches /portal/).
+// Routes that are NOT indexable. Prefix entries also cover nested paths
+// (for example, /portal/ covers /portal/onboarding).
 //
-// Keep this list in sync with the per-page `robots: { index: false,
-// follow: false }` exports in the corresponding app/<route>/page.tsx
-// files. The list below is the *complete* deny list for the live
-// site as of 2026-06-24.
+// Marketing URLs intentionally stay out of this list: their middleware
+// response must be crawlable for a noindex redirect to be observed.
 const DISALLOWED_ROUTES = [
   "/portal/",
   "/encounters/",
@@ -33,6 +22,8 @@ const DISALLOWED_ROUTES = [
   "/billing/",
   "/dashboard/",
   "/settings/",
+  "/team/",
+  "/onboarding/",
   "/login",
   "/api/",
 ] as const;
@@ -55,9 +46,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [...DISALLOWED_ROUTES],
       },
     ],
-    // Sitemap route doesn't exist yet (see audit task for adding it).
-    // Pointing at the canonical URL lets search engines 404 cleanly
-    // today and pick it up automatically once we add the route.
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://ashbi.ca"}/sitemap.xml`,
+    // The App Router sitemap is implemented in sitemap.ts. Keep this
+    // fallback aligned with the live portal host when build-time env is absent.
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://zorva.ashbi.ca"}/sitemap.xml`,
   };
 }
