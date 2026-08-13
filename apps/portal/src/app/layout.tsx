@@ -27,12 +27,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://zorva.ashbi.ca"),
   title: {
-    default: "Zorva — AI pre-bill audit for Alberta clinics",
-    template: "%s — Zorva",
+    default: "Zorva | Pre-submit review for Alberta clinic billing teams",
+    template: "%s | Zorva",
   },
   description:
-    "AI pre-bill audit catches what your billing team misses. Region-pinned " +
-    "data, hash-chain audit log, flat-fee pricing published in the IMA.",
+    "A human-reviewed pre-submit workflow for Alberta clinic billing teams.",
   // Marketing pages are indexable so search engines can surface them.
   // Authenticated portal routes (/encounters, /findings, /billing,
   // /dashboard, /settings, /portal/*) each override this in their own
@@ -50,17 +49,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Zorva",
-    title: "Zorva — AI pre-bill audit for Alberta clinics",
+    title: "Zorva | Pre-submit review for Alberta clinic billing teams",
     description:
-      "Zorva reads every Alberta claim against AHCIP and the SOMB before " +
-      "submission, surfacing missed codes and underbilled modifiers that " +
-      "drain your monthly revenue. Human-reviewed.",
+      "A human-reviewed pre-submit workflow for billing teams that want a clearer review queue before claims are sent.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Zorva — AI pre-bill audit for Alberta clinics",
+    title: "Zorva | Pre-submit review for Alberta clinic billing teams",
     description:
-      "Find the revenue your billers are leaving on the table.",
+      "A human-reviewed pre-submit workflow for Alberta clinic billing teams.",
   },
 };
 

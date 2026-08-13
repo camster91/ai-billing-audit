@@ -2,8 +2,8 @@
 
 ## Current release posture
 
-The public marketing release is **not approved for launch**. The indexable
-surface is deliberately limited to the evidence-conscious core routes below.
+The public marketing release is **not approved for a full marketing launch**.
+The indexable surface is deliberately limited to the evidence-conscious core routes below.
 All other public marketing URLs temporarily redirect to `/contact` with an
 `X-Robots-Tag: noindex, nofollow` response until their published claims are
 approved. They are intentionally crawlable so search engines can observe the
@@ -15,6 +15,31 @@ noindex redirect, but they are excluded from the sitemap.
 | `/how-it-works` | Indexable | Human-reviewed workflow explanation; no promise of integrations, outcomes, or automated submission. |
 | `/contact` | Indexable | Request form without a response-time, calendar, or service-level promise. |
 | About, blog, calculator, careers, case studies, changelog, comparison, demo request, FAQ, specialty, glossary, legal, pilot, press, pricing, security (including the one-pager), status, technical, trust, and try pages | Temporary noindex redirect | Content requires product-owner, legal, security, operational, or publication evidence before it is served or eligible for search discovery. |
+
+## Production evidence recorded — 2026-08-12
+
+The core surface was deployed on the trusted host from immutable merge commit
+`f835efe7308f7a6b8723103087437d70eb4d93a5`.
+
+- `/`, `/how-it-works`, and `/contact` returned HTTPS 200 and remained
+  indexable; the sitemap listed exactly those routes.
+- `/security`, `/pricing`, and `/security.pdf` returned a 307 to `/contact`
+  with `X-Robots-Tag: noindex, nofollow`; `/.git/HEAD` returned 404.
+- `robots.txt` permits the deferred redirects to be crawled and blocks
+  protected application routes. HTTP redirects to HTTPS. CSP, HSTS,
+  `X-Content-Type-Options`, and `X-Frame-Options` were present.
+- The portal was healthy from that immutable working directory. The API,
+  worker, Caddy, and both PostgreSQL services remained healthy. Fresh logical
+  backups were taken, and the portal backup was restored successfully into an
+  isolated PostgreSQL 16 rehearsal database. A tagged prior portal image was
+  retained for rollback.
+- Browser checks on the deployed core routes at 375px and 1440px found exactly
+  one H1, no horizontal overflow, English document language, labelled contact
+  controls, and no captured browser-console errors.
+
+This is release evidence, not evidence that every deferred route, business
+claim, external operational process, or cross-browser accessibility gate is
+ready to publish.
 
 ## Evidence required before a deferred route can be indexed
 
@@ -36,8 +61,8 @@ noindex redirect, but they are excluded from the sitemap.
 | Pricing and payments | Approved offer, Stripe products/keys/webhooks, sandbox checkout/cancel/refund evidence, and an owner for price changes | Open |
 | Contact and email | Verified recipient workflow, sender domain, delivery/bounce handling, response owner, retention policy, and abuse controls | Open |
 | Status and monitoring | Real monitored source, incident owner, public update process, and evidence-backed uptime history | Open |
-| Accessibility | Keyboard, automated accessibility, responsive, and manual browser checks on the deployed public routes | Open |
-| Release operations | Restore-verified backups, immutable release SHA, migration gate, deterministic Docker artifact build evidence, container health, trusted HTTPS smoke, and rollback procedure | Open |
+| Accessibility | Keyboard, automated accessibility, responsive, and manual browser checks on the deployed public routes | Partial — Chrome-derived responsive/browser checks passed for the three core routes; Safari, Firefox, assistive-technology, and independent automated accessibility evidence remain open |
+| Release operations | Restore-verified backups, immutable release SHA, migration gate, deterministic Docker artifact build evidence, container health, trusted HTTPS smoke, and rollback procedure | Passed for the 2026-08-12 portal cutover; repeat for every release |
 
 ## Local verification recorded for this change
 
