@@ -40,6 +40,7 @@ import { isDisposableEmail } from "@/lib/disposable-email-domains";
 import { sendLeadNotificationEmail } from "@/lib/leads-email";
 import { postLeadNotificationToSlack } from "@/lib/leads-slack";
 import { internalErrorResponse } from "@/lib/api-errors";
+import { takeLeadSubmission } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,20 @@ const leadInputSchema = z.object({
 type LeadInput = z.infer<typeof leadInputSchema>;
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const rateLimit = takeLeadSubmission(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": "no-store",
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
   // 1. Parse + validate
   let body: unknown;
   try {
