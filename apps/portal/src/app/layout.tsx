@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
+import { publicMarketingMetadata } from "@/lib/public-marketing-metadata";
 import "./globals.css";
 
 // Zorva brand typefaces (see docs/BRANDING_TYPOGRAPHY.md).
@@ -24,42 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://zorva.ashbi.ca"),
-  title: {
-    default: "Zorva | Pre-submit review for Alberta clinic billing teams",
-    template: "%s | Zorva",
-  },
-  description:
-    "A human-reviewed pre-submit workflow for Alberta clinic billing teams.",
-  // Marketing pages are indexable so search engines can surface them.
-  // Authenticated portal routes (/encounters, /findings, /billing,
-  // /dashboard, /settings, /portal/*) each override this in their own
-  // page.tsx with `robots: { index: false, follow: false }`.
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
-  },
-  // OpenGraph + Twitter card defaults (kanban t_05e9b86a). Pages can
-  // override per-route via their own `export const metadata: Metadata`.
-  openGraph: {
-    type: "website",
-    siteName: "Zorva",
-    title: "Zorva | Pre-submit review for Alberta clinic billing teams",
-    description:
-      "A human-reviewed pre-submit workflow for billing teams that want a clearer review queue before claims are sent.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Zorva | Pre-submit review for Alberta clinic billing teams",
-    description:
-      "A human-reviewed pre-submit workflow for Alberta clinic billing teams.",
-  },
-};
+export const metadata: Metadata = publicMarketingMetadata;
 
 // P11 UX sweep 2026-07-01: viewport meta tag. In Next.js 13+ the
 // canonical pattern is to export `viewport` from the layout, NOT
