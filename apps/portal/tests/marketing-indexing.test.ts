@@ -8,6 +8,17 @@ import {
   DEFERRED_MARKETING_PREFIXES,
   REVIEWED_MARKETING_ROUTES,
 } from "../src/lib/marketing-indexing";
+import { publicMarketingMetadata } from "../src/lib/public-marketing-metadata";
+
+test("public metadata fallback stays evidence-conscious", () => {
+  const rendered = JSON.stringify(publicMarketingMetadata);
+
+  assert.match(rendered, /human-reviewed pre-submit workflow/i);
+  assert.doesNotMatch(rendered, /revenue your billers are leaving/i);
+  assert.doesNotMatch(rendered, /reads every Alberta claim/i);
+  assert.doesNotMatch(rendered, /underbilled modifiers/i);
+  assert.doesNotMatch(rendered, /region-pinned data/i);
+});
 
 test("marketing sitemap exposes only reviewed core routes", () => {
   assert.deepEqual(
