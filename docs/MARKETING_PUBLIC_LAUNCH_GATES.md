@@ -60,9 +60,22 @@ ready to publish.
 | Legal | Approved privacy policy, terms, pilot agreement language, and regional regulatory wording | Open |
 | Pricing and payments | Approved offer, Stripe products/keys/webhooks, sandbox checkout/cancel/refund evidence, and an owner for price changes | Open |
 | Contact and email | Verified recipient workflow, sender domain, delivery/bounce handling, response owner, retention policy, and abuse controls | Partial — `/api/leads` has a bounded per-client application backstop; verify a managed edge/WAF limit, recipient delivery/bounce handling, retention policy, and response ownership before launch |
-| Status and monitoring | Real monitored source, incident owner, public update process, and evidence-backed uptime history | Open |
+| Status and monitoring | Real monitored source, incident owner, public update process, and evidence-backed uptime history | Partial — a host cron probes `https://ai-billing-audit.ashbi.ca/healthz` every five minutes and records state/logs; configure an alert destination, incident owner, public update process, and uptime history before launch |
 | Accessibility | Keyboard, automated accessibility, responsive, and manual browser checks on the deployed public routes | Partial — Chrome-derived responsive/browser checks passed for the three core routes; Safari, Firefox, assistive-technology, and independent automated accessibility evidence remain open |
 | Release operations | Restore-verified backups, immutable release SHA, migration gate, deterministic Docker artifact build evidence, container health, trusted HTTPS smoke, and rollback procedure | Passed for the 2026-08-12 portal cutover; repeat for every release |
+
+### Monitoring installation evidence — 2026-08-17
+
+The VPS now runs `/usr/local/bin/zorva-monitor` from `/etc/cron.d/zorva-monitor`
+every five minutes. It invokes the committed `monitor_live_url.py` probe against
+the authenticated API health endpoint, keeps its failure counter in
+`/var/lib/zorva/monitor_state.json`, and appends a heartbeat to
+`/var/log/zorva-monitor.log`. The first production check returned HTTP 200.
+
+`/etc/zorva-monitor.env` is root-readable only and intentionally contains an
+empty webhook setting. Do not represent this log-only monitor as a page or
+incident-notification service until an approved alert destination and owner
+are configured and tested.
 
 ## Local verification recorded for this change
 
