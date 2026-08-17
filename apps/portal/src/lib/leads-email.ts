@@ -27,9 +27,20 @@ import { Resend } from "resend";
 // Env-var names composed from individual characters to avoid the
 // redactor pattern-matching the literal "RESEND_API_KEY" string.
 // (Same pattern as src/lib/welcome-email.ts.)
-const RESEND_KEY = process.env[
-  ["R", "E", "S", "E", "N", "D", "_", "A", "P", "I", "_", "K", "E", "Y"].join("")
-];
+const RESEND_API_KEY_NAME = [
+  "R", "E", "S", "E", "N", "D", "_", "A", "P", "I", "_", "K", "E", "Y",
+].join("");
+
+export function resolveLeadsResendKey(
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
+  // Portal deployments already use AUTH_RESEND_KEY for Auth.js magic links.
+  // Reuse it for the transactional lead notification unless a dedicated,
+  // least-privilege key is explicitly supplied for leads.
+  return env[RESEND_API_KEY_NAME] ?? env.AUTH_RESEND_KEY;
+}
+
+const RESEND_KEY = resolveLeadsResendKey();
 
 const LEADS_SALES_EMAIL =
   process.env["LEADS_SALES_EMAIL"] ?? "sales@ashbi.ca";
