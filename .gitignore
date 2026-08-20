@@ -140,5 +140,4 @@ scripts/clean_claims.py
 scripts/llm_outage.py
 scripts/refusal_probe.py
 scripts/take-screenshots.mjs
-prompts/v13/
 .mavis/
