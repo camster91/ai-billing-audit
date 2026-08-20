@@ -1,5 +1,13 @@
 # Security Policy
 
+> **Historical context.** This file is the project's external-facing
+> security policy. For the canonical operator and deployment runbook
+> (versions, secrets, deploy, rollback, backup, topology, retention)
+> see [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
+> Do not infer live retention, compliance posture, or supported
+> release line from this file alone; the repository version is not
+> proof of a deployed image. Tracked in issue #15.
+
 The Zorva (ai-billing-audit) team takes the security of the
 operator dashboard, the public v1 API, and the in-flight claim data
 we process seriously. This document explains how to report a
@@ -10,14 +18,26 @@ response-time commitments are.
 
 ## Supported versions
 
-The project is in pre-1.0 (`0.x.y`). The API package, runtime health/metrics
-identity, and API image tag currently use `0.4.0`. A deployed image still
+> **Release-line support is unresolved.** The repository contains
+> a version mismatch that must be resolved before any supported-release
+> or backport promise is published:
+>
+> - `CHANGELOG.md` records a `0.5.0` release on 2026-06-24.
+> - `pyproject.toml`, `src/ai_billing_audit/__init__.py`, and the
+>   `docker-compose.yml` API image tag are still at `0.4.0`.
+>
+> Until the package source of truth, the image tag, and the changelog
+> agree, the supported-version table below is informational only and
+> must not be cited as a backport or security-fix commitment.
+
+The project is in pre-1.0 (`0.x.y`). A deployed image still
 requires commit and environment verification; a repository version is not
 proof of the live release.
 
 | Release line | Status            | Notes                                  |
 |--------------|-------------------|----------------------------------------|
-| `0.4.x` | **Repository-supported** | Current API release line; verify deployed commit before support decisions. |
+| `0.4.x` | **Repository-supported** | Current package + image version; verify deployed commit before support decisions. |
+| `0.5.x` | **Documented in CHANGELOG only** | Entry exists in `CHANGELOG.md` from 2026-06-24 but is not currently cut as a package or image. Do not cite as a supported line until the version bump lands. |
 
 Keep the supported-version policy aligned with the release tags and deployment
 runbook. See `docs/OPERATIONS_RUNBOOK.md` and issue #15.
@@ -187,4 +207,4 @@ they just don't get a public credit.
 
 ---
 
-_Last updated: 2026-08-06 - API release metadata aligned to 0.4.0._
+_Last updated: 2026-08-20 - supported-version table updated to flag the 0.4.0 / 0.5.0 mismatch as a release-blocker; canonical operator guidance moved to `docs/OPERATIONS_RUNBOOK.md` (issue #15)._
