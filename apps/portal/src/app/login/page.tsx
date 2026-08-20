@@ -6,19 +6,21 @@
 // email (or, in dev mode without AUTH_RESEND_KEY, logs the link to
 // the terminal — see src/auth.ts).
 //
-// NextAuth's `signIn` is documented to throw a NEXT_REDIRECT on
-// success (it's the framework's way of navigating to the post-login
-// page). Server actions must let that throw — wrapping it in a
-// try/catch breaks the redirect. We do server-side validation
-// (empty email) by redirecting to /login?error=... BEFORE calling
-// signIn, so the catch never has to see the redirect error.
-//
-// After a successful sign-in, NextAuth redirects to the URL we pass
-// in `redirectTo`, defaulting to /dashboard.
+// Flow (issue #47 — magic-link lifecycle):
+//   1. User submits the form with their email.
+//   2. We call signIn(..., { redirect: false }) so NextAuth does
+//      NOT navigate us away — we want to land on /verify-request
+//      ourselves so the biller sees a durable waiting state.
+//   3. We redirect to /verify-request?from=<callbackUrl>&email=<email>
+//      with the email passed as a query param. /verify-request
+//      masks the address in the rendered HTML so a screenshot or
+//      shoulder-surf does not leak it.
+//   4. The user clicks the link in their email. NextAuth verifies
+//      the token and redirects to the `from` URL.
 //
 // Auth gate: src/proxy.ts lists "/login" in PUBLIC_PREFIXES, so the
 // middleware lets unauthenticated users reach this page. Anyone
-// already signed in is bounced to /dashboard.
+// already signed in is bounced to the callbackUrl (or /dashboard).
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -39,29 +41,51 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/**
+ * Allow-list the callbackUrl to a same-origin portal path. Any
+ * external URL is dropped back to /dashboard. This prevents
+ * open-redirect via the magic-link flow.
+ */
+function safeReturnUrl(raw: string | undefined, fallback = "/dashboard"): string {
+  if (!raw) return fallback;
+  if (!raw.startsWith("/")) return fallback;
+  if (raw.startsWith("//")) return fallback;
+  if (/^\/[^/]*$/.test(raw) && raw.includes(":")) return fallback;
+  return raw;
+}
+
 async function sendMagicLink(formData: FormData): Promise<void> {
   "use server";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const callbackUrl = String(formData.get("callbackUrl") ?? "/dashboard");
+  const safeFrom = safeReturnUrl(callbackUrl);
 
   if (!email) {
     redirect("/login?error=missing_email");
   }
 
-  // signIn() throws NEXT_REDIRECT on success — do not wrap in try/catch.
-  await signIn("resend", {
-    email,
-    redirectTo: callbackUrl,
-  });
+  // Issue the magic link. redirect: false prevents NextAuth from
+  // navigating to its default verify-request page; we redirect
+  // ourselves to /verify-request so the biller sees the masked
+  // email + resend UI.
+  try {
+    await signIn("resend", { email, redirectTo: safeFrom, redirect: false });
+  } catch {
+    // signIn() may still throw NEXT_REDIRECT in some NextAuth
+    // versions; ignore and let our own redirect win.
+  }
+  const params = new URLSearchParams({ from: safeFrom, email });
+  redirect(`/verify-request?${params.toString()}`);
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
   const { callbackUrl, error } = await searchParams;
   const session = await auth();
+  const safeFrom = safeReturnUrl(callbackUrl);
 
   // If the user is already signed in, skip the form.
   if (session?.user?.id) {
-    redirect(callbackUrl || "/dashboard");
+    redirect(safeFrom);
   }
 
   return (
@@ -86,7 +110,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
         ) : null}
 
         <form action={sendMagicLink}>
-          <input type="hidden" name="callbackUrl" value={callbackUrl || "/dashboard"} />
+          <input type="hidden" name="callbackUrl" value={safeFrom} />
           <label className={styles.label} htmlFor="email">Work email</label>
           <input
             id="email"

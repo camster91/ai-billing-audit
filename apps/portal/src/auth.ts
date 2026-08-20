@@ -160,6 +160,8 @@ export const authConfig: NextAuthConfig = {
 
   pages: {
     signIn: "/login",
+    verifyRequest: "/verify-request",
+    error: "/auth/error",
   },
 
   callbacks: {
