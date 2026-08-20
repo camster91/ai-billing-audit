@@ -508,3 +508,181 @@ def test_verify_webhook_signature_rejects_tamper_stale_and_replay() -> None:
         now=1700000000,
         seen_delivery_ids=seen,
     )
+
+
+# ---------------------------------------------------------------------------
+# Issue #21: rotation with bounded overlap.
+# ---------------------------------------------------------------------------
+
+def test_rotate_signing_secret_accepts_previous_during_overlap(tmp_path) -> None:
+    """During a rotation overlap, deliveries signed with EITHER
+    secret verify. Outside the overlap, only the new secret
+    verifies."""
+    from ai_billing_audit import webhooks
+    from ai_billing_audit.clinical_note_storage import (
+        read_encrypted_json_records,
+    )
+
+    old_secret = "old-secret-very-long-string-32-bytes"
+    new_secret = "new-secret-very-long-string-32-bytes"
+
+    log = tmp_path / "webhooks.jsonl"
+    log_path_str = str(log)
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+
+    # Seed a registration with the old secret.
+    webhooks.register_webhook(
+        url="http://127.0.0.1:1/hook",
+        events=["audit_complete"],
+        signing_secret=old_secret,
+    )
+
+    # Rotate to the new secret with a 1h overlap.
+    rotation = webhooks.rotate_webhook_signing_secret(
+        _last_webhook_id(webhooks),
+        new_secret=new_secret,
+        overlap_seconds=3600,
+    )
+    assert rotation["signing_secret"] == new_secret
+    assert rotation["overlap_seconds"] == 3600
+    # The previous_secret is NOT returned; only the new one.
+    assert "previous_secret" not in rotation
+
+    # Read the current record to confirm the previous_secret field.
+    # Use list_webhooks (which de-duplicates by webhook_id) so we
+    # see the post-rotation state, not the original registration.
+    rows = webhooks.list_webhooks()
+    rec = next(r for r in rows if r.get("webhook_id") == _last_webhook_id(webhooks))
+    assert rec["_signing_secret"] == new_secret
+    assert rec["previous_secret"] == old_secret
+    assert rec["previous_secret_expires_at"]
+
+    # Sign a delivery during the overlap with the OLD secret. The
+    # consumer should still accept it because previous_secret is
+    # supplied.
+    body = b'{"event":"audit_complete","data":{"audit_id":"a1"}}'
+    timestamp = "1700000000"
+    digest_old = hmac.new(
+        old_secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256
+    ).hexdigest()
+    assert webhooks.verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id="dlv_overlap_old",
+        signature=f"v1={digest_old}",
+        secret=new_secret,
+        now=1700000000,
+        previous_secret=old_secret,
+        previous_signature=f"v1={digest_old}",
+    )
+
+    # And with the NEW secret (current primary) it also verifies.
+    digest_new = hmac.new(
+        new_secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256
+    ).hexdigest()
+    assert webhooks.verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id="dlv_overlap_new",
+        signature=f"v1={digest_new}",
+        secret=new_secret,
+        now=1700000000,
+        previous_secret=old_secret,
+        previous_signature=f"v1={digest_old}",
+    )
+
+    # A signature signed with a completely different secret
+    # does NOT verify, even with previous_secret supplied.
+    bogus = hmac.new(
+        b"not-the-secret",
+        timestamp.encode() + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    assert not webhooks.verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id="dlv_overlap_bogus",
+        signature=f"v1={bogus}",
+        secret=new_secret,
+        now=1700000000,
+        previous_secret=old_secret,
+        previous_signature=f"v1={bogus}",
+    )
+
+
+def test_rotate_caps_overlap_to_maximum(tmp_path) -> None:
+    """A caller requesting a 30-day overlap is silently capped to
+    _MAX_ROTATION_OVERLAP_SECONDS (24h) so a misconfigured
+    operator cannot keep a stolen former secret alive."""
+    from ai_billing_audit import webhooks
+    log = tmp_path / "webhooks.jsonl"
+    log_path_str = str(log)
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+    webhooks.register_webhook(
+        url="http://127.0.0.1:1/hook",
+        events=["audit_complete"],
+    )
+
+    rotation = webhooks.rotate_webhook_signing_secret(
+        _last_webhook_id(webhooks),
+        overlap_seconds=30 * 24 * 60 * 60,  # 30 days
+    )
+    assert rotation["overlap_seconds"] == webhooks._MAX_ROTATION_OVERLAP_SECONDS
+
+
+def test_rotate_rejects_invalid_overlap(tmp_path) -> None:
+    from ai_billing_audit import webhooks
+    log = tmp_path / "webhooks.jsonl"
+    log_path_str = str(log)
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+    webhooks.register_webhook(
+        url="http://127.0.0.1:1/hook",
+        events=["audit_complete"],
+    )
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        webhooks.rotate_webhook_signing_secret(
+            _last_webhook_id(webhooks),
+            overlap_seconds=0,
+        )
+    with _pytest.raises(ValueError):
+        webhooks.rotate_webhook_signing_secret(
+            _last_webhook_id(webhooks),
+            overlap_seconds=-10,
+        )
+
+
+def test_rotate_rejects_too_short_secret(tmp_path) -> None:
+    from ai_billing_audit import webhooks
+    import pytest as _pytest
+    log = tmp_path / "webhooks.jsonl"
+    log_path_str = str(log)
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+    webhooks.register_webhook(
+        url="http://127.0.0.1:1/hook",
+        events=["audit_complete"],
+    )
+    with _pytest.raises(ValueError):
+        webhooks.rotate_webhook_signing_secret(
+            _last_webhook_id(webhooks),
+            new_secret="too-short",
+        )
+
+
+def test_rotate_unknown_webhook_raises(tmp_path) -> None:
+    from ai_billing_audit import webhooks
+    import pytest as _pytest
+    log = tmp_path / "webhooks.jsonl"
+    log_path_str = str(log)
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+    with _pytest.raises(KeyError):
+        webhooks.rotate_webhook_signing_secret("wh_does_not_exist")
+
+
+def _last_webhook_id(webhooks) -> str:
+    """Helper: read the most recently registered webhook id."""
+    rows = read_encrypted_json_records(webhooks._log_path())
+    for rec in reversed(rows):
+        if rec.get("_kind") != "delivery" and rec.get("webhook_id"):
+            return rec["webhook_id"]
+    raise AssertionError("no registration found in log")
