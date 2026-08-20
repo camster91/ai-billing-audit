@@ -1,6 +1,9 @@
 // /not-found — custom 404 page with search instead of "page not found".
 //
-// Kanban: t_968c868b on board 'product-ux'.
+// Kanban: t_968c868b on board 'product-ux'. Issue #67 — distinguish
+// failed encounter search from a verified empty result so a biller
+// never sees "No matches in this clinic." when the API is down,
+// the session expired, or the response was malformed.
 //
 // Default Next.js 404 is "404 — This page could not be found." That's
 // a dead end for a biller who followed a stale bookmark to an old
@@ -9,43 +12,71 @@
 //   - A search box that searches recent encounters in the active tenant
 //   - Two quick-jump links: /encounters, /dashboard
 //
-// The search is a client-side fetch to /api/encounters/search.
+// The search is a client-side fetch to /api/encounters/search. The
+// fetch + outcome mapping lives in ./encounter-search.ts so the
+// failure-vs-empty distinction is unit-testable without mounting
+// this component.
 
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import styles from "./not-found.module.css";
+import { searchEncounters, type SearchResult } from "./encounter-search";
 
-interface SearchResult {
-  id: string;
-  dateOfService: string;
-  patientHash: string;
-  isFlagged: boolean;
+interface SearchUI {
+  searched: boolean;
+  searching: boolean;
+  results: SearchResult[];
+  /** A user-presentable failure message. Non-null blocks the "no matches" message. */
+  errorMessage: string | null;
 }
+
+const INITIAL: SearchUI = {
+  searched: false,
+  searching: false,
+  results: [],
+  errorMessage: null,
+};
 
 export default function NotFound() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [state, setState] = useState<SearchUI>(INITIAL);
 
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!query.trim()) return;
-    setSearching(true);
-    setSearched(false);
-    try {
-      const r = await fetch(`/api/encounters/search?q=${encodeURIComponent(query)}`);
-      if (r.ok) {
-        const j = await r.json();
-        setResults(j.results ?? []);
-      } else {
-        setResults([]);
-      }
-    } finally {
-      setSearching(false);
-      setSearched(true);
+    const q = query.trim();
+    if (!q) return;
+    setState({ searched: false, searching: true, results: [], errorMessage: null });
+    const outcome = await searchEncounters(q);
+    if (outcome.outcome === "results") {
+      setState({
+        searched: true,
+        searching: false,
+        results: outcome.results,
+        errorMessage: null,
+      });
+    } else if (outcome.outcome === "empty") {
+      setState({
+        searched: true,
+        searching: false,
+        results: [],
+        errorMessage: null,
+      });
+    } else if (outcome.outcome === "http_error") {
+      setState({
+        searched: true,
+        searching: false,
+        results: [],
+        errorMessage: httpErrorMessage(outcome.status),
+      });
+    } else {
+      setState({
+        searched: true,
+        searching: false,
+        results: [],
+        errorMessage: "The search couldn't be completed. Check your connection and try again.",
+      });
     }
   }
 
@@ -71,18 +102,49 @@ export default function NotFound() {
             onChange={(e) => setQuery(e.target.value)}
             className={styles.searchInput}
             autoComplete="off"
+            aria-describedby="not-found-search-help"
           />
-          <button type="submit" className={styles.searchButton} disabled={searching}>
-            {searching ? "Searching…" : "Search"}
+          <button type="submit" className={styles.searchButton} disabled={state.searching}>
+            {state.searching ? "Searching…" : "Search"}
           </button>
         </form>
+        <span id="not-found-search-help" className={styles.srOnly}>
+          Press Enter to search. Use All encounters or Dashboard for a full list.
+        </span>
 
-        {searched && results.length === 0 && (
-          <p className={styles.noResults}>No matches in this clinic.</p>
-        )}
-        {results.length > 0 && (
+        {state.errorMessage !== null ? (
+          <div
+            className={styles.errorBox}
+            role="alert"
+            aria-live="polite"
+            data-testid="not-found-search-error"
+          >
+            <p className={styles.errorMessage}>{state.errorMessage}</p>
+            <button
+              type="button"
+              className={styles.retryButton}
+              onClick={(e) => {
+                // re-submit the same query without the user re-typing it
+                const form = (e.currentTarget.closest("main") ?? document).querySelector(
+                  "form[role='search']",
+                ) as HTMLFormElement | null;
+                form?.requestSubmit();
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
+
+        {state.searched && !state.errorMessage && state.results.length === 0 ? (
+          <p className={styles.noResults} data-testid="not-found-search-empty">
+            No matches in this clinic.
+          </p>
+        ) : null}
+
+        {state.results.length > 0 && !state.errorMessage ? (
           <ul className={styles.results}>
-            {results.slice(0, 10).map((r) => (
+            {state.results.slice(0, 10).map((r) => (
               <li key={r.id}>
                 <Link href={`/encounters/${r.id}`}>
                   {r.id}
@@ -94,7 +156,7 @@ export default function NotFound() {
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
 
         <nav className={styles.quickLinks} aria-label="Quick navigation">
           <Link href="/encounters" className={styles.quickLink}>
@@ -107,4 +169,20 @@ export default function NotFound() {
       </div>
     </main>
   );
+}
+
+function httpErrorMessage(status: number): string {
+  if (status === 401 || status === 403) {
+    return "Your session has expired. Sign in again to search encounters.";
+  }
+  if (status === 404) {
+    return "The search endpoint is not available right now. Try again in a moment.";
+  }
+  if (status === 429) {
+    return "Too many searches in a short time. Wait a few seconds and try again.";
+  }
+  if (status >= 500) {
+    return "The search service is temporarily unavailable. Please try again in a moment.";
+  }
+  return `The search couldn't be completed (status ${status}). Please try again.`;
 }
