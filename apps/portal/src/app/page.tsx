@@ -66,10 +66,18 @@ export default function Home() {
               clinic. The final decision stays with your people.
             </p>
             <div className={styles.actions}>
-              <Link className={styles.primaryAction} href="/contact">
+              <Link
+                className={styles.primaryAction}
+                href="/contact"
+                data-analytics="home_hero_contact"
+              >
                 Start a conversation <Arrow />
               </Link>
-              <Link className={styles.secondaryAction} href="/how-it-works">
+              <Link
+                className={styles.secondaryAction}
+                href="/how-it-works"
+                data-analytics="home_hero_how_it_works"
+              >
                 See how the workflow works <Arrow />
               </Link>
             </div>
@@ -167,7 +175,11 @@ export default function Home() {
             Start with a practical conversation about your billing process,
             current tools, and the questions your team needs answered.
           </p>
-          <Link className={styles.inverseAction} href="/contact">
+          <Link
+            className={styles.inverseAction}
+            href="/contact"
+            data-analytics="home_bottom_contact"
+          >
             Contact Zorva <Arrow />
           </Link>
         </section>
