@@ -37,7 +37,6 @@ const HEX_RE = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 const RGB_RE = /\brgba?\(\s*[^)]+\)/g;
 const FONT_SIZE_PX_RE = /font-size\s*:\s*(\d+)\s*px/g;
 const RADIUS_PX_RE = /border-radius\s*:\s*(\d+)\s*px/g;
-const PX_LINE_RE = /(\d+)\s*px/g;
 
 const results = [];
 
