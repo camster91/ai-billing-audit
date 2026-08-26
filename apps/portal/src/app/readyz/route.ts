@@ -56,7 +56,7 @@ async function databaseReachable(): Promise<CheckResult> {
     // behind a Promise.race timeout during an outage.
     const result = await prisma.$transaction(
       async (tx) => {
-        await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`;
+        await tx.$queryRaw`SELECT set_config('statement_timeout', '5000', true)`;
         return tx.$queryRaw<Array<{ one: number }>>`SELECT 1 AS one`;
       },
       { maxWait: 1_000, timeout: 6_000 },
