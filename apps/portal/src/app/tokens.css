@@ -1,0 +1,173 @@
+/* Zorva design-token foundation (issue #44).
+ *
+ * Single source of truth for the portal's design vocabulary. Every
+ * module.css file should consume these tokens; raw color, font,
+ * radius, shadow, and breakpoint values are forbidden by review and
+ * flagged by the token-lint script (scripts/check-design-tokens.mjs).
+ *
+ * Scope:
+ *   - Surfaces, text, brand, status, accent, focus
+ *   - Spacing scale (4px base)
+ *   - Radii (compact, per the brand spec)
+ *   - Typography (display, body, mono; IBM Plex Mono for micro-labels)
+ *   - Z-index scale
+ *   - Focus ring (visible-only, WCAG 2.2 AA)
+ *   - Motion (respect prefers-reduced-motion)
+ *   - Breakpoints (320px → 1920px+)
+ *   - Forced-colors (Windows High Contrast) fallbacks
+ *
+ * Light / dark only — the brand contract for #44. The portal is
+ * dark-by-default (see layout.tsx color-scheme: dark) and the
+ * :root scope defaults to dark values. A future pass can add
+ * :root[data-theme="light"] if a clinic requests it; the token
+ * structure already supports it.
+ *
+ * The :root scope sets the canonical values. Modules can override
+ * locally (e.g. a card on a panel-2 surface) but should never
+ * re-define the token itself.
+ */
+
+:root {
+  /* ── surfaces ─────────────────────────────────────────────── */
+  --zorva-bg: #0b1020;            /* page background */
+  --zorva-bg-grad-end: #0d1428;   /* page background gradient stop */
+  --zorva-panel: #131a2e;         /* card / form surface */
+  --zorva-panel-2: #1a2340;       /* nested card / hovered surface */
+  --zorva-line: #28324f;          /* hairline / divider */
+  --zorva-line-soft: rgba(40, 50, 79, 0.5);
+
+  /* ── text ─────────────────────────────────────────────────── */
+  --zorva-ink: #e7ecf6;            /* primary text */
+  --zorva-ink-2: #9aa3bd;          /* secondary text */
+  --zorva-ink-3: #6b7390;          /* tertiary / muted text */
+  --zorva-ink-inverse: #0b1020;    /* on a light / accent surface */
+
+  /* ── brand ────────────────────────────────────────────────── */
+  --zorva-green: #34d399;          /* clinical green accent (on dark) */
+  --zorva-green-deep: #12563f;     /* deep pine (CTA band background) */
+  --zorva-green-soft: rgba(52, 211, 153, 0.12);
+  --zorva-amber: #fbbf24;          /* shadow-bill finding accent (on dark) */
+  --zorva-amber-deep: #b4562a;     /* legacy deep amber (kept for heritage use) */
+  --zorva-amber-soft: rgba(251, 191, 36, 0.12);
+
+  /* ── accent (links, focus, primary CTAs) ───────────────────── */
+  --zorva-accent: #60a5fa;         /* link / secondary text on dark */
+  --zorva-accent-bg: #2563eb;      /* primary button background (white text) */
+  --zorva-accent-bg-hover: #1d4ed8;
+  --zorva-accent-soft: rgba(96, 165, 250, 0.08);
+
+  /* ── status ───────────────────────────────────────────────── */
+  --zorva-success: #6ee7b7;
+  --zorva-success-bg: rgba(110, 231, 183, 0.10);
+  --zorva-warning: #fbbf24;
+  --zorva-warning-bg: rgba(251, 191, 36, 0.10);
+  --zorva-error: #fca5a5;
+  --zorva-error-bg: rgba(252, 165, 165, 0.10);
+  --zorva-error-border: rgba(252, 165, 165, 0.35);
+  --zorva-error-strong: #991b1b;   /* reserved for light surfaces */
+  --zorva-info: #93c5fd;
+  --zorva-info-bg: rgba(147, 197, 253, 0.10);
+
+  /* ── spacing (4px base) ────────────────────────────────────── */
+  --zorva-space-0: 0;
+  --zorva-space-1: 4px;
+  --zorva-space-2: 8px;
+  --zorva-space-3: 12px;
+  --zorva-space-4: 16px;
+  --zorva-space-5: 20px;
+  --zorva-space-6: 24px;
+  --zorva-space-8: 32px;
+  --zorva-space-10: 40px;
+  --zorva-space-12: 48px;
+  --zorva-space-16: 64px;
+  --zorva-space-20: 80px;
+  --zorva-space-24: 96px;
+
+  /* ── radii (compact) ──────────────────────────────────────── */
+  --zorva-radius-sm: 4px;          /* inline tags, micro-chips */
+  --zorva-radius-md: 8px;          /* buttons, inputs */
+  --zorva-radius-lg: 12px;         /* cards, alert boxes */
+  --zorva-radius-xl: 18px;         /* featured surfaces (audit mockup) */
+  --zorva-radius-pill: 999px;
+
+  /* ── typography ───────────────────────────────────────────── */
+  --zorva-font-sans: var(--font-inter, -apple-system), BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --zorva-font-serif: var(--font-fraunces, Georgia), serif;
+  --zorva-font-mono: var(--font-plex-mono, ui-monospace), "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --zorva-text-2xs: 11px;
+  --zorva-text-xs: 12px;
+  --zorva-text-sm: 13.5px;
+  --zorva-text-base: 16px;
+  --zorva-text-lg: 18px;
+  --zorva-text-xl: 20px;
+  --zorva-text-2xl: 26px;
+  --zorva-text-3xl: clamp(32px, 3.6vw, 48px);
+  --zorva-text-4xl: clamp(44px, 5.6vw, 74px);
+
+  --zorva-leading-tight: 1.06;
+  --zorva-leading-snug: 1.3;
+  --zorva-leading-base: 1.55;
+  --zorva-leading-relaxed: 1.6;
+
+  /* ── focus ring (WCAG 2.2 AA — visible, non-color-only) ─── */
+  --zorva-focus-ring: 2px solid var(--zorva-accent);
+  --zorva-focus-ring-offset: 2px;
+  --zorva-focus-ring-strong: 3px solid var(--zorva-accent);
+
+  /* ── z-index scale ────────────────────────────────────────── */
+  --zorva-z-base: 0;
+  --zorva-z-elevated: 1;
+  --zorva-z-sticky: 50;
+  --zorva-z-overlay: 40;
+  --zorva-z-modal: 60;
+  --zorva-z-toast: 80;
+  --zorva-z-skip: 100;
+
+  /* ── motion ───────────────────────────────────────────────── */
+  --zorva-duration-instant: 80ms;
+  --zorva-duration-fast: 160ms;
+  --zorva-duration-base: 240ms;
+  --zorva-duration-slow: 400ms;
+  --zorva-duration-none: 0ms;            /* reduced-motion fallback */
+  --zorva-easing-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --zorva-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── elevation ────────────────────────────────────────────── */
+  --zorva-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --zorva-shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
+  --zorva-shadow-lg: 0 30px 70px -30px rgba(0, 0, 0, 0.6);
+  --zorva-shadow-focus: 0 0 0 3px rgba(96, 165, 250, 0.45);
+
+  /* ── breakpoints (consumer use) ───────────────────────────── */
+  /* These are reference values for design tokens. The actual
+   * @media breakpoints live in each module. Keep these in sync
+   * with the @media rules in CSS modules. */
+  --zorva-bp-sm: 600px;
+  --zorva-bp-md: 960px;
+  --zorva-bp-lg: 1200px;
+  --zorva-bp-xl: 1600px;
+  --zorva-bp-2xl: 1920px;
+}
+
+/* ── forced-colors (Windows High Contrast) ──────────────────── */
+@media (forced-colors: active) {
+  :root {
+    --zorva-line: CanvasText;
+    --zorva-ink-2: CanvasText;
+    --zorva-ink-3: CanvasText;
+    --zorva-accent: LinkText;
+    --zorva-green: Highlight;
+    --zorva-amber: Highlight;
+  }
+}
+
+/* ── reduced motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --zorva-duration-instant: var(--zorva-duration-none);
+    --zorva-duration-fast: var(--zorva-duration-none);
+    --zorva-duration-base: var(--zorva-duration-none);
+    --zorva-duration-slow: var(--zorva-duration-none);
+  }
+}

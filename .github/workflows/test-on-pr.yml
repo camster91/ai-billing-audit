@@ -35,6 +35,8 @@ jobs:
       pytest_failed: ${{ steps.pytest_counts.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -124,6 +126,8 @@ jobs:
         working-directory: apps/portal
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -143,6 +147,9 @@ jobs:
 
       - name: Database runtime tests
         run: pnpm test:database-runtime
+
+      - name: Design-token policy
+        run: pnpm tokens:check
 
       - name: ESLint
         run: pnpm lint

@@ -16,6 +16,7 @@
     "a11y:shots": "node a11y-shots.mjs",
     "perf:budgets": "node perf-budgets.mjs",
     "gate:all": "pnpm a11y:audit && pnpm perf:budgets",
+    "tokens:check": "CHECK_TOKENS_STRICT=1 CHECK_TOKENS_CHANGED_ONLY=1 node scripts/check-design-tokens.mjs",
     "test:onboarding": "node --import tsx --test tests/onboarding.test.ts",
     "test:patient-hash": "node --import tsx --test tests/patient-hash.test.ts",
     "test:email": "node --import tsx --test tests/email.test.ts",
