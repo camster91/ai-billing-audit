@@ -8,8 +8,8 @@
 //   LCP <= 2.5s     (Largest Contentful Paint, "good" threshold)
 //   CLS <= 0.1      (Cumulative Layout Shift, "good" threshold)
 //   TBT <= 200ms    (Total Blocking Time proxy: sum of long-task
-//                    durations between FCP and TTI, capped at 50ms
-//                    per task per the standard Lighthouse proxy)
+//                    durations between FCP and the TTI proxy, subtracting
+//                    the standard 50ms allowance from each task)
 //
 // Why the Performance API and not Lighthouse?
 //   - No Chromium-only / no CDN dependency. The script runs in
