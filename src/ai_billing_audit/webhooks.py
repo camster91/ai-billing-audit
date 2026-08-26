@@ -118,6 +118,7 @@ def verify_webhook_signature(
     max_age_seconds: int = _SIGNATURE_MAX_AGE_SECONDS,
     previous_secret: str | None = None,
     previous_signature: str | None = None,
+    previous_secret_expires_at: str | None = None,
 ) -> bool:
     """Verify a Zorva v1 callback and optionally reject replay.
 
@@ -157,7 +158,20 @@ def verify_webhook_signature(
     # Try the previous (rotation-overlap) signature if supplied.
     # A well-formed value is exactly "v1=<hex>"; anything else
     # is a client bug and we reject without further work.
-    if previous_secret and previous_signature and previous_signature.startswith("v1="):
+    if (
+        previous_secret
+        and previous_signature
+        and previous_signature.startswith("v1=")
+        and previous_secret_expires_at
+    ):
+        try:
+            expires = datetime.fromisoformat(
+                previous_secret_expires_at.replace("Z", "+00:00")
+            )
+            if expires.tzinfo is None or expires.timestamp() <= current:
+                return False
+        except (TypeError, ValueError, OverflowError):
+            return False
         prev_expected = hmac.new(
             previous_secret.encode("utf-8"), signed, hashlib.sha256
         ).hexdigest()
@@ -437,18 +451,16 @@ def rotate_webhook_signing_secret(
     path = _log_path()
     path = Path(path) if not isinstance(path, Path) else path
     rows = read_encrypted_json_records(path)
-    target_idx = None
-    for i, rec in enumerate(rows):
+    target: dict[str, Any] | None = None
+    for rec in rows:
         if rec.get("_kind") == "delivery":
             continue
         if rec.get("webhook_id") != webhook_id:
             continue
         if tenant_id is not None and rec.get("tenant_id") != tenant_id:
             continue
-        target_idx = i
         target = rec
-        break
-    if target_idx is None:
+    if target is None:
         raise KeyError(f"webhook {webhook_id} not found")
 
     # The new secret is the only field the caller needs back. The
@@ -463,15 +475,8 @@ def rotate_webhook_signing_secret(
         "previous_secret_expires_at": expires_at,
         "rotated_at": _now_iso(),
     }
-    rows[target_idx] = updated
-    # Re-append the entire file (append-only rotated, idempotent).
-    # The plaintext migration helper is for legacy rows; we
-    # just rewrite the current JSONL with the new row replacing
-    # the old. encrypt_then_append is fine because the helper
-    # dedups by webhook_id (see ``append_encrypted_json_record``).
-    from ai_billing_audit.clinical_note_storage import (
-        append_encrypted_json_record,
-    )
+    # Append the new state. list_webhooks uses last-row-wins semantics,
+    # preserving the audit trail while exposing only the current record.
     append_encrypted_json_record(path, updated)
     # Return only the new secret and the audit fields. The
     # previous_secret is NOT returned — the caller (the API
@@ -668,5 +673,6 @@ __all__ = [
     "dispatch_event",
     "list_webhooks",
     "register_webhook",
+    "rotate_webhook_signing_secret",
     "verify_webhook_signature",
 ]
