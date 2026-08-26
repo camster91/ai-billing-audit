@@ -78,8 +78,16 @@ test("searchEncounters URL-encodes the query string", async () => {
   assert.equal(captured, "/api/encounters/search?q=hello%20world%20%26%20friends");
 });
 
-test("searchEncounters treats missing 'results' field as empty", async () => {
+test("searchEncounters rejects a successful response with missing results", async () => {
   const fetchMock: typeof fetch = async () => jsonResponse({});
   const outcome = await searchEncounters("q", fetchMock);
-  assert.deepEqual(outcome, { outcome: "empty" });
+  assert.equal(outcome.outcome, "network_error");
+});
+
+test("searchEncounters rejects non-array result payloads", async () => {
+  for (const body of [null, { results: {} }, { results: "not-an-array" }]) {
+    const fetchMock: typeof fetch = async () => jsonResponse(body);
+    const outcome = await searchEncounters("q", fetchMock);
+    assert.equal(outcome.outcome, "network_error");
+  }
 });
