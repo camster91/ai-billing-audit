@@ -10,7 +10,7 @@ const COOKIE = process.env.SESSION_TOKEN;
 const OUT = process.env.A11Y_OUT || fileURLToPath(new URL("../../docs/a11y", import.meta.url));
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
 
-const ROUTES = [
+const ALL_ROUTES = [
   // public marketing
   { name: "marketing-home",         path: "/",                       auth: false },
   { name: "marketing-pricing",      path: "/pricing",                auth: false },
@@ -34,6 +34,10 @@ const ROUTES = [
   { name: "portal-billing",         path: "/portal/billing",         auth: true },
   { name: "not-found",              path: "/this-route-does-not-exist-9e3a", auth: false },
 ];
+
+const ROUTES = COOKIE
+  ? ALL_ROUTES
+  : ALL_ROUTES.filter((route) => !route.auth);
 
 const AXE_CDN = "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.0/axe.min.js";
 
@@ -115,6 +119,10 @@ async function main() {
     }]);
   }
   const page = await context.newPage();
+
+  if (!COOKIE) {
+    console.log("[axe-gate] SESSION_TOKEN not set; scanning public routes only.");
+  }
 
   const allResults = [];
   for (const route of ROUTES) {
