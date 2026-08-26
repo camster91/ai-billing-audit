@@ -20,19 +20,19 @@ import {
   ALLOWED_EVENTS,
   UTM_KEYS,
   assertSafePayload,
+  ensurePlausibleQueue,
+  readSessionUTM,
   readStoredUTM,
   readUTMFromURL,
   truncateText,
   type AnalyticsEventName,
+  type PlausibleFunction,
   type UTM,
 } from "@/lib/analytics-events";
 
 declare global {
   interface Window {
-    plausible?: (
-      event: string,
-      options?: { props?: Record<string, unknown> },
-    ) => void;
+    plausible?: PlausibleFunction;
     __zorvaAnalyticsBooted?: boolean;
   }
 }
@@ -43,10 +43,7 @@ function getWindow(): Window | null {
 }
 
 function getStoredUTM(): UTM {
-  // readUTMFromURL persists to sessionStorage when it finds params;
-  // otherwise readStoredUTM returns the previously-stored copy.
-  readUTMFromURL();
-  return readStoredUTM();
+  return readSessionUTM();
 }
 
 /** Build a payload that always carries the session's UTM source. */
@@ -132,6 +129,9 @@ export function bootAnalytics(): () => void {
   if (w.__zorvaAnalyticsBooted) return () => {};
   w.__zorvaAnalyticsBooted = true;
 
+  // Plausible loads asynchronously. Install its canonical queue first so
+  // interactions during script startup are replayed instead of discarded.
+  ensurePlausibleQueue(w);
   readUTMFromURL();
 
   // Wire a delegated click handler for elements with data-analytics="<cta_id>".
