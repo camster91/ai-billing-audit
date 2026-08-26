@@ -38,7 +38,7 @@ test("returns 503 with per-check reasons when env is empty", async () => {
   assert.equal(body.checks.database_url_configured.ok, false);
   assert.equal(body.checks.database_url_configured.reason, "missing");
   assert.equal(body.checks.auth_secret_configured.ok, false);
-  assert.equal(body.checks.resend_key_configured.ok, false);
+  assert.equal(body.checks.auth_resend_key_configured.ok, false);
 });
 
 test("treats a too-short AUTH_SECRET as not configured", async () => {
@@ -79,8 +79,24 @@ test("treats a too-short RESEND key as not configured", async () => {
   const body = (await res.json()) as {
     checks: Record<string, { ok: boolean; reason?: string }>;
   };
-  assert.equal(body.checks.resend_key_configured.ok, false);
-  assert.equal(body.checks.resend_key_configured.reason, "too_short");
+  assert.equal(body.checks.auth_resend_key_configured.ok, false);
+  assert.equal(body.checks.auth_resend_key_configured.reason, "too_short");
+});
+
+test("does not treat the leads Resend key as authentication-ready", async () => {
+  restoreEnv();
+  process.env.DATABASE_URL = "postgresql://placeholder:placeholder@127.0.0.1:5432/db";
+  process.env.AUTH_SECRET = "a".repeat(40);
+  process.env.RESEND_API_KEY = "l".repeat(40);
+  delete process.env.AUTH_RESEND_KEY;
+
+  const res = await GET();
+  const body = (await res.json()) as {
+    checks: Record<string, { ok: boolean; reason?: string }>;
+  };
+  assert.equal(body.checks.leads_resend_key_configured.ok, true);
+  assert.equal(body.checks.auth_resend_key_configured.ok, false);
+  assert.equal(body.checks.auth_resend_key_configured.reason, "missing");
 });
 
 test("does not echo any secret value in the JSON body", async () => {
