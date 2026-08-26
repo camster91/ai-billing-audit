@@ -3,8 +3,8 @@
 //
 // Flow:
 //   1. User submits the form on /login with their email.
-//   2. /login calls signIn() with redirect:false, then redirects
-//      here with ?from=<callbackUrl>&email=<email>.
+//   2. /login stores encrypted pending state in an HttpOnly cookie
+//      and redirects here without putting the email in the URL.
 //   3. We show a masked email + a resend button (60s cooldown) +
 //      a safe support path. The magic link itself is sent by
 //      NextAuth's Resend provider — we never display or log the
@@ -17,14 +17,20 @@
 //   - Resend is rate-limited (60s) and idempotent (a second
 //     sign-in for the same address just overwrites the prior
 //     VerificationToken row).
-//   - The masked email is for display only; the real address is
-//     not echoed in the rendered HTML.
+//   - The real address remains in encrypted server-readable cookie
+//     state and is never serialized into client-component props.
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { maskEmail } from "@/lib/email-mask";
+import {
+  PENDING_MAGIC_LINK_COOKIE,
+  openPendingMagicLink,
+  secondsUntilMagicLinkResend,
+} from "@/lib/pending-magic-link";
 import ResendButton from "./ResendButton";
 import styles from "./verify-request.module.css";
 import "../shell.module.css";
@@ -41,35 +47,22 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-interface PageProps {
-  searchParams: Promise<{ from?: string; email?: string }>;
-}
+export default async function VerifyRequestPage() {
+  const cookieStore = await cookies();
+  const pending = openPendingMagicLink(
+    cookieStore.get(PENDING_MAGIC_LINK_COOKIE)?.value,
+  );
 
-/**
- * Validate the `from` parameter against an allow-list of same-origin
- * portal routes. Any external URL is rejected and we fall back to
- * /dashboard. This prevents open-redirect via the magic-link flow.
- */
-function safeReturnUrl(raw: string | undefined): string {
-  const fallback = "/dashboard";
-  if (!raw) return fallback;
-  if (!raw.startsWith("/")) return fallback;
-  if (raw.startsWith("//")) return fallback; // protocol-relative
-  // Reject anything that looks like a protocol or a host.
-  if (/^\/[^/]*$/.test(raw) && raw.includes(":")) return fallback;
-  return raw;
-}
-
-export default async function VerifyRequestPage({ searchParams }: PageProps) {
   // If the user is already signed in, skip the waiting state.
   const session = await auth();
   if (session?.user?.id) {
-    redirect(safeReturnUrl((await searchParams).from) || "/dashboard");
+    redirect(pending?.from ?? "/dashboard");
   }
 
-  const { from, email } = await searchParams;
-  const masked = email ? maskEmail(email) : null;
-  const returnTo = safeReturnUrl(from);
+  const masked = pending ? maskEmail(pending.email) : null;
+  const cooldownSeconds = pending
+    ? secondsUntilMagicLinkResend(pending)
+    : 0;
 
   return (
     <main id="main" className={styles.page}>
@@ -97,9 +90,8 @@ export default async function VerifyRequestPage({ searchParams }: PageProps) {
         </p>
 
         <ResendButton
-          email={email ?? ""}
-          from={returnTo}
-          cooldownSeconds={60}
+          enabled={Boolean(pending)}
+          initialCooldownSeconds={cooldownSeconds}
         />
 
         <nav className={styles.quickLinks} aria-label="Auth help">
