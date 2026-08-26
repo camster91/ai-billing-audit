@@ -6,24 +6,33 @@
 // email (or, in dev mode without AUTH_RESEND_KEY, logs the link to
 // the terminal — see src/auth.ts).
 //
-// NextAuth's `signIn` is documented to throw a NEXT_REDIRECT on
-// success (it's the framework's way of navigating to the post-login
-// page). Server actions must let that throw — wrapping it in a
-// try/catch breaks the redirect. We do server-side validation
-// (empty email) by redirecting to /login?error=... BEFORE calling
-// signIn, so the catch never has to see the redirect error.
-//
-// After a successful sign-in, NextAuth redirects to the URL we pass
-// in `redirectTo`, defaulting to /dashboard.
+// Flow (issue #47 — magic-link lifecycle):
+//   1. User submits the form with their email.
+//   2. We call signIn(..., { redirect: false }) so NextAuth does
+//      NOT navigate us away — we want to land on /verify-request
+//      ourselves so the biller sees a durable waiting state.
+//   3. We store the pending address and callback path in an encrypted,
+//      HttpOnly, short-lived cookie, then redirect to /verify-request.
+//      The address never enters a URL or client-component props.
+//   4. The user clicks the link in their email. NextAuth verifies
+//      the token and redirects to the `from` URL.
 //
 // Auth gate: src/proxy.ts lists "/login" in PUBLIC_PREFIXES, so the
 // middleware lets unauthenticated users reach this page. Anyone
-// already signed in is bounced to /dashboard.
+// already signed in is bounced to the callbackUrl (or /dashboard).
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import Link from "next/link";
 import { signIn, auth } from "@/auth";
+import { safeReturnUrl } from "@/lib/email-mask";
+import {
+  PENDING_MAGIC_LINK_COOKIE,
+  PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+  sealPendingMagicLink,
+} from "@/lib/pending-magic-link";
 import styles from "../shell.module.css";
 
 interface PageProps {
@@ -42,26 +51,59 @@ export const runtime = "nodejs";
 async function sendMagicLink(formData: FormData): Promise<void> {
   "use server";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const callbackUrl = String(formData.get("callbackUrl") ?? "/dashboard");
+  const safeFrom = safeReturnUrl(
+    String(formData.get("callbackUrl") ?? "/dashboard"),
+  );
 
   if (!email) {
     redirect("/login?error=missing_email");
   }
 
-  // signIn() throws NEXT_REDIRECT on success — do not wrap in try/catch.
-  await signIn("resend", {
-    email,
-    redirectTo: callbackUrl,
-  });
+  const cookieStore = await cookies();
+  cookieStore.set(
+    PENDING_MAGIC_LINK_COOKIE,
+    sealPendingMagicLink({ email, from: safeFrom, sentAt: Date.now() }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+    },
+  );
+
+  let result: unknown;
+  try {
+    result = await signIn("resend", {
+      email,
+      redirectTo: safeFrom,
+      redirect: false,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    cookieStore.delete(PENDING_MAGIC_LINK_COOKIE);
+    redirect("/auth/error?error=Configuration");
+  }
+
+  if (typeof result === "string") {
+    const resultUrl = new URL(result, "https://zorva.invalid");
+    const authError = resultUrl.searchParams.get("error");
+    if (authError) {
+      cookieStore.delete(PENDING_MAGIC_LINK_COOKIE);
+      redirect(`/auth/error?error=${encodeURIComponent(authError)}`);
+    }
+  }
+  redirect("/verify-request");
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
   const { callbackUrl, error } = await searchParams;
   const session = await auth();
+  const safeFrom = safeReturnUrl(callbackUrl);
 
   // If the user is already signed in, skip the form.
   if (session?.user?.id) {
-    redirect(callbackUrl || "/dashboard");
+    redirect(safeFrom);
   }
 
   return (
@@ -86,7 +128,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
         ) : null}
 
         <form action={sendMagicLink}>
-          <input type="hidden" name="callbackUrl" value={callbackUrl || "/dashboard"} />
+          <input type="hidden" name="callbackUrl" value={safeFrom} />
           <label className={styles.label} htmlFor="email">Work email</label>
           <input
             id="email"
