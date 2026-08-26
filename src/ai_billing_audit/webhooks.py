@@ -129,9 +129,11 @@ def verify_webhook_signature(
     database or idempotency store.
 
     During a rotation overlap (issue #21), the consumer also passes
-    the ``previous_secret`` it stored before the rotation and the
+    the ``previous_secret`` it stored before the rotation, its
+    ``previous_secret_expires_at`` value, and the
     ``X-Zorva-Signature-Previous`` header value. Either signature
-    verifies; the replay check applies to the delivery id either way.
+    verifies before expiry; the replay check applies to the delivery
+    id either way.
     """
     if not secret or not delivery_id or not isinstance(body, bytes):
         return False
@@ -495,9 +497,8 @@ def _now_iso_plus_seconds(seconds: int) -> str:
     """Return ``now + seconds`` in ISO-8601 with ``+00:00`` offset.
 
     The verify path compares ``X-Zorva-Timestamp`` (a Unix integer
-    of the same instant) against ``max_age_seconds``. The
-    ``previous_secret_expires_at`` field is recorded in ISO for
-    operator audit; the verify path does not consult it.
+    of the same instant) against ``max_age_seconds`` and enforces
+    ``previous_secret_expires_at`` before accepting the old key.
     """
     from datetime import timedelta
 
