@@ -155,6 +155,28 @@ export const EMPTY_UTM: UTM = { utm_source: "", utm_medium: "", utm_campaign: ""
 
 const UTM_STORAGE_KEY = "zorva:utm:v1";
 
+export interface PlausibleFunction {
+  (event: string, options?: { props?: Record<string, unknown> }): void;
+  q?: IArguments[];
+}
+
+/**
+ * Install Plausible's standard pre-load queue without replacing an already
+ * loaded client. Events emitted during async script loading are replayed by
+ * Plausible when the client becomes available.
+ */
+export function ensurePlausibleQueue(target: {
+  plausible?: PlausibleFunction;
+}): PlausibleFunction {
+  if (target.plausible) return target.plausible;
+  const queued: PlausibleFunction = function () {
+    (queued.q ??= []).push(arguments);
+  };
+  queued.q = [];
+  target.plausible = queued;
+  return queued;
+}
+
 export function readUTMFromURL(href: string = (typeof window !== "undefined" ? window.location.href : "")): UTM {
   if (typeof window === "undefined") return EMPTY_UTM;
   try {
@@ -176,6 +198,16 @@ export function readUTMFromURL(href: string = (typeof window !== "undefined" ? w
   } catch {
     return EMPTY_UTM;
   }
+}
+
+/**
+ * Prefer campaign values present on the current URL. This deliberately keeps
+ * those values in memory even when privacy settings disable sessionStorage.
+ */
+export function readSessionUTM(href?: string): UTM {
+  const fromURL = readUTMFromURL(href);
+  if (UTM_KEYS.some((key) => Boolean(fromURL[key]))) return fromURL;
+  return readStoredUTM();
 }
 
 export function readStoredUTM(): UTM {
