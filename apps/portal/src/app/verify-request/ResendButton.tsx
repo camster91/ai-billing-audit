@@ -13,7 +13,7 @@
 //   - Status messages do not disclose whether the address is
 //     registered.
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import styles from "./verify-request.module.css";
 import { resendMagicLink } from "./actions";
 
@@ -23,9 +23,8 @@ type Status =
   | { kind: "error"; message: string };
 
 interface Props {
-  email: string;
-  from: string;
-  cooldownSeconds: number;
+  enabled: boolean;
+  initialCooldownSeconds: number;
 }
 
 function formatSeconds(n: number): string {
@@ -36,13 +35,13 @@ function formatSeconds(n: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-export default function ResendButton({ email, from, cooldownSeconds }: Props) {
-  const [cooldown, setCooldown] = useState(0);
+export default function ResendButton({
+  enabled,
+  initialCooldownSeconds,
+}: Props) {
+  const [cooldown, setCooldown] = useState(initialCooldownSeconds);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [pending, startTransition] = useTransition();
-  // Avoid resetting the cooldown when the page hot-reloads in dev.
-  const lastSentRef = useRef<number | null>(null);
-
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -50,13 +49,14 @@ export default function ResendButton({ email, from, cooldownSeconds }: Props) {
   }, [cooldown]);
 
   function onClick() {
-    if (pending || cooldown > 0 || !email) return;
+    if (pending || cooldown > 0 || !enabled) return;
     startTransition(async () => {
       try {
-        await resendMagicLink({ email, from });
-        setStatus({ kind: "sent" });
-        setCooldown(cooldownSeconds);
-        lastSentRef.current = Date.now();
+        const result = await resendMagicLink();
+        setCooldown(result.retryAfterSeconds);
+        if (result.ok) {
+          setStatus({ kind: "sent" });
+        }
       } catch (e) {
         setStatus({
           kind: "error",
@@ -69,7 +69,7 @@ export default function ResendButton({ email, from, cooldownSeconds }: Props) {
     });
   }
 
-  const disabled = pending || cooldown > 0 || !email;
+  const disabled = pending || cooldown > 0 || !enabled;
   const label = pending
     ? "Sending…"
     : cooldown > 0
