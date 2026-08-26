@@ -13,6 +13,7 @@ import { maskEmail, safeReturnUrl } from "../src/lib/email-mask";
 import {
   openPendingMagicLink,
   sealPendingMagicLink,
+  secondsUntilMagicLinkResend,
 } from "../src/lib/pending-magic-link";
 
 test("maskEmail hides the local part beyond the first char", () => {
@@ -120,6 +121,8 @@ test("pending magic-link state is encrypted and rejects tampering", () => {
     const sealed = sealPendingMagicLink(state);
     assert.ok(!sealed.includes(state.email));
     assert.deepEqual(openPendingMagicLink(sealed), state);
+    assert.equal(secondsUntilMagicLinkResend(state, state.sentAt + 30_000), 30);
+    assert.equal(secondsUntilMagicLinkResend(state, state.sentAt + 60_000), 0);
 
     const tampered = sealed.slice(0, -1) + (sealed.endsWith("a") ? "b" : "a");
     assert.equal(openPendingMagicLink(tampered), null);
