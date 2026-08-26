@@ -154,6 +154,7 @@ export const UTM_KEYS: ReadonlyArray<keyof UTM> = ["utm_source", "utm_medium", "
 export const EMPTY_UTM: UTM = { utm_source: "", utm_medium: "", utm_campaign: "" };
 
 const UTM_STORAGE_KEY = "zorva:utm:v1";
+let inMemoryUTM: UTM | null = null;
 
 export interface PlausibleFunction {
   (event: string, options?: { props?: Record<string, unknown> }): void;
@@ -187,6 +188,7 @@ export function readUTMFromURL(href: string = (typeof window !== "undefined" ? w
       if (v) out[k] = v.slice(0, 100); // hard cap
     }
     if (Object.keys(out).length > 0) {
+      inMemoryUTM = { ...EMPTY_UTM, ...out };
       // Persist for the session so events fired later still carry the source.
       try {
         window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(out));
@@ -205,9 +207,16 @@ export function readUTMFromURL(href: string = (typeof window !== "undefined" ? w
  * those values in memory even when privacy settings disable sessionStorage.
  */
 export function readSessionUTM(href?: string): UTM {
+  if (typeof window === "undefined") return EMPTY_UTM;
   const fromURL = readUTMFromURL(href);
   if (UTM_KEYS.some((key) => Boolean(fromURL[key]))) return fromURL;
-  return readStoredUTM();
+
+  const stored = readStoredUTM();
+  if (UTM_KEYS.some((key) => Boolean(stored[key]))) {
+    inMemoryUTM = stored;
+    return stored;
+  }
+  return inMemoryUTM ?? EMPTY_UTM;
 }
 
 export function readStoredUTM(): UTM {
