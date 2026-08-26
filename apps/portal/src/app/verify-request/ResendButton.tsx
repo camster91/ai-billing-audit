@@ -1,15 +1,13 @@
 "use client";
 
 // Client component for the "Send another link" button on /verify-request
-// (issue #47). Holds a 60-second cooldown locally; calls a server
-// action to re-issue the magic link. Displays a status message on
-// success / failure.
+// (issue #47). Mirrors the server-authoritative cooldown while a
+// server action re-issues the magic link. Displays a status message
+// on success / failure.
 //
 // Privacy contract:
-//   - The cooldown is per-tab. A user opening two tabs can fire two
-//     resends inside the cooldown; the server-side rate limit
-//     (already in place via the auth handlers) is the authoritative
-//     gate.
+//   - The encrypted HttpOnly pending-state cookie is the authoritative
+//     cooldown gate. This client timer only keeps the button label in sync.
 //   - Status messages do not disclose whether the address is
 //     registered.
 
