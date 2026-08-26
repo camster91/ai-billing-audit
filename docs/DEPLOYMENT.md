@@ -1,5 +1,12 @@
 # Deployment architecture
 
+> **Historical context.** This document captures the checked-in
+> deployment topology and the decisions behind it. The canonical
+> repository-backed runbook for current preflight, deploy, rollback,
+> backup, secret, and retention commands is
+> [`docs/OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md). Read this
+> file for context, the runbook for action. Tracked in issue #15.
+
 This document describes the checked-in deployment topology. It does not prove
 that a public host is running the same revision. A release operator must verify
 the deployed revision, trusted HTTPS, health endpoints, database migration,

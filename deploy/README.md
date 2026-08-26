@@ -1,5 +1,15 @@
 # ai-billing-audit — Backup & Restore Verification
 
+> **Historical context.** This runbook documents the checked-in
+> backup and restore scripts (`audit-backup.sh`,
+> `audit-restore-verify.sh`, `test-backup-scripts.sh`,
+> `backup.env.template`, `ai-billing-audit-backup.cron`). The
+> canonical repository-wide preflight, deploy, rollback, and
+> retention guidance lives in
+> [`docs/OPERATIONS_RUNBOOK.md`](../docs/OPERATIONS_RUNBOOK.md);
+> use this file for the script-specific install and verification
+> steps. Tracked in issue #15.
+
 Encrypted, retention-tiered Postgres backup for `ai_billing_audit`, with a
 monthly restore-verification job. Designed to be installed once and run
 forever on the production VPS.

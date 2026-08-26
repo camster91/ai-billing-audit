@@ -1,5 +1,16 @@
 # Operations Runbook
 
+> **Historical, audit-trail-only runbook.** This file is the
+> read-only runbook for verifying the `audit_trail` hash chain,
+> extracting evidence, and supporting breach notification under
+> PHIPA / HIA. It is **not** the canonical operator runbook.
+>
+> For preflight, deploy, rollback, backup, secret, and retention
+> commands, see [`docs/OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md).
+> The two files together cover the full surface; do not infer
+> live retention or compliance posture from either file alone.
+> Tracked in issue #15.
+
 > **Audience:** on-call engineer, OIPC / OAG auditor, support responder.
 > **Scope:** every command here runs against the production database
 > with the auditor's read-only role. None of them mutate state.
