@@ -4,13 +4,13 @@
   "prompt_path": "prompts/v13/auditor_prompt.txt",
   "source_path": "src/ai_billing_audit/auditor_prompt.txt",
   "source_module": "ai_billing_audit.auditor",
-  "content_sha256": "sha256:PENDING_LIVE_REHASH",
-  "byte_size": 50703,
+  "content_sha256": "sha256:5f6c597a68b04ceb7fa598ceadeb41859f5d66fce8f2b6992397668ed0ebf692",
+  "byte_size": 50095,
   "created_at": "2026-08-20T00:00:00Z",
   "description": "The v13 AHCIP prompt is an additive draft of v12 with one appended section, `## V13 EXAMPLES AND TIGHTENINGS`, that adds (D1) a negative example for dx_linkage, (D2) a positive few-shot for missing_procedure, (D3) a negative example for preventive_opportunity, and (D4) one boundary-tightening for the telehealth premium rule. The v12 text is unchanged; the additions are purely additive. NOT yet measured against the live LLM. See docs/AHCIP_V13_DESIGN.md for the analysis and measurement plan. Re-run `python scripts/smartness_test_v12.py --live-llm --prompt prompts/v13/auditor_prompt.txt --out v13_first.json` to obtain a real v13 number; compare against `v12_current.json` produced by the same script run with the default v12 prompt.",
   "parent_prompt": "prompts/v12/auditor_prompt.txt",
   "v12_byte_size": 46057,
-  "diff_byte_size": 4646,
+  "diff_byte_size": 4038,
   "loaders": {
     "default": "ai_billing_audit.auditor.load_prompt() with no path argument resolves to the Dockerfile-installed copy under src/ at import time via importlib.resources. To exercise the v13 draft without overwriting the deployed v12 prompt, pass --prompt prompts/v13/auditor_prompt.txt to scripts/smartness_test_v12.py.",
     "explicit": "ai_billing_audit.auditor.load_prompt(path='prompts/v13/auditor_prompt.txt') returns the draft verbatim text."
@@ -19,7 +19,7 @@
     "command_v12_unchanged": "diff -q prompts/v12/auditor_prompt.txt <(head -n 907 prompts/v13/auditor_prompt.txt)",
     "expected_exit_code_v12_unchanged": 0,
     "command_v13_size": "wc -c prompts/v13/auditor_prompt.txt",
-    "expected_v13_byte_size": 50703
+    "expected_v13_byte_size": 50095
   },
   "test_split_paired_with": {
     "val_json": "data/synth/val_ca.json",
