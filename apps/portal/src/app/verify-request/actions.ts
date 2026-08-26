@@ -1,52 +1,71 @@
 "use server";
 
-// Server action for the resend button on /verify-request (issue #47).
-// Re-issues the magic link for the same email and `from` URL. The
-// actual sign-in is delegated to NextAuth's signIn() so the same
-// rate-limit / dev-mock / Resend-key paths apply.
-//
-// Throws on hard failure (e.g. misconfigured AUTH_RESEND_KEY in
-// production) so the client button can show the error. Soft
-// outcomes (already-sent, throttled) are returned as a normal
-// resolution — the client doesn't need to distinguish them from
-// a successful resend for privacy reasons.
-
+import { cookies } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { signIn } from "@/auth";
+import {
+  MAGIC_LINK_RESEND_COOLDOWN_SECONDS,
+  PENDING_MAGIC_LINK_COOKIE,
+  PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+  openPendingMagicLink,
+  sealPendingMagicLink,
+  secondsUntilMagicLinkResend,
+} from "@/lib/pending-magic-link";
 
-export interface ResendInput {
-  email: string;
-  from: string;
+export interface ResendResult {
+  ok: boolean;
+  retryAfterSeconds: number;
 }
 
-export async function resendMagicLink(input: ResendInput): Promise<{ ok: true }> {
-  const email = String(input.email ?? "").trim().toLowerCase();
-  if (!email) {
-    throw new Error("Email is required to resend a sign-in link.");
+export async function resendMagicLink(): Promise<ResendResult> {
+  const cookieStore = await cookies();
+  const pending = openPendingMagicLink(
+    cookieStore.get(PENDING_MAGIC_LINK_COOKIE)?.value,
+  );
+  if (!pending) {
+    throw new Error("Start a new sign-in request before resending.");
   }
-  // Same allow-list as /login. Anything else is rejected.
-  const safeFrom =
-    input.from && input.from.startsWith("/") && !input.from.startsWith("//")
-      ? input.from
-      : "/dashboard";
 
-  // signIn() throws NEXT_REDIRECT to /verify-request on success —
-  // we don't want to follow that redirect because the user is
-  // already on /verify-request. We use redirect: false to suppress
-  // it and swallow the throw. signIn() is the framework's "issue a
-  // magic link" primitive; whether it navigates is orthogonal.
+  const retryAfterSeconds = secondsUntilMagicLinkResend(pending);
+  if (retryAfterSeconds > 0) {
+    return { ok: false, retryAfterSeconds };
+  }
+
+  let result: unknown;
   try {
-    await signIn("resend", { email, redirectTo: safeFrom, redirect: false });
-  } catch (e) {
-    // NextAuth may still throw a NEXT_REDIRECT-style error even
-    // with redirect: false; treat anything that doesn't carry a
-    // real error message as success.
-    if (e instanceof Error && /NEXT_REDIRECT/.test(e.message ?? "")) {
-      return { ok: true };
-    }
-    // Re-throw real errors so the client can show them.
-    if (e instanceof Error && e.message && e.message !== "NEXT_REDIRECT") {
-      throw e;
+    result = await signIn("resend", {
+      email: pending.email,
+      redirectTo: pending.from,
+      redirect: false,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    throw new Error("We couldn't send another link. Try again in a moment.");
+  }
+
+  if (typeof result === "string") {
+    const resultUrl = new URL(result, "https://zorva.invalid");
+    if (resultUrl.searchParams.has("error")) {
+      throw new Error("We couldn't send another link. Try again in a moment.");
     }
   }
-  return { ok: true };
+
+  cookieStore.set(
+    PENDING_MAGIC_LINK_COOKIE,
+    sealPendingMagicLink({
+      ...pending,
+      sentAt: Date.now(),
+    }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+    },
+  );
+  return {
+    ok: true,
+    retryAfterSeconds: MAGIC_LINK_RESEND_COOLDOWN_SECONDS,
+  };
 }
