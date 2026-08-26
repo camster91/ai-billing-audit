@@ -94,12 +94,14 @@ inline.
 ```
 V13 NEGATIVE EXAMPLE — preventive_opportunity MUST NOT fire
   Encounter: 71yo M, established, here for HTN follow-up.
-  Note: "Pneumococcal vaccine — PPSV23 given 2018, no booster due."
+  Note: "Pneumococcal vaccine — PCV20 given 2025; chart reviewed,
+    immunizations current."
   Billed: 03.04A
   → DO NOT fire rule_ahcip_preventive_opportunity for pneumococcal.
-    The note documents a current vaccination status (2018 PPSV23) that
-    satisfies the eligibility rule. Use rule_ahcip_em_level for the
-    visit-level finding only.
+    The note documents a recent PCV20 dose and explicitly confirms
+    current status. A remote PPSV23 dose (for example, 2018) does not
+    categorically satisfy current eligibility; account for dose age
+    and the applicable revaccination schedule.
 ```
 
 ### D4. Section O (telehealth) — explicit "premium is conditional"
@@ -110,10 +112,13 @@ mentions a phone or asynchronous touchpoint but the encounter is not
 in fact a billable visit. Tighten with one line.
 
 ```
-V13 ADDITION — telehealth fires ONLY when the encounter is a billable
-  E/M (03.03A / 03.04A / 03.05A / 03.07A / 03.01A) AND the modality is
-  not in-person. A short phone call to discuss a lab result is NOT
-  a billable AHCIP telehealth visit and does NOT fire this rule.
+V13 ADDITION — the general telehealth E/M premium fires ONLY when the
+  encounter is a billable E/M (03.03A / 03.04A / 03.05A / 03.07A /
+  03.01A) AND the modality is not in-person. A brief physician phone
+  call to discuss diagnostic results or management is instead billable
+  under HSC 03.05JR. If that call is omitted or incorrectly billed as
+  an in-person E/M, emit the applicable billing finding with
+  suggested_code 03.05JR; do not suppress the finding.
 ```
 
 ## What v13 deliberately does NOT change
