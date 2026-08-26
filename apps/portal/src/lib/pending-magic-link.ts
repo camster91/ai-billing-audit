@@ -57,6 +57,7 @@ export function openPendingMagicLink(value: string | undefined): PendingMagicLin
     if (
       typeof parsed.email !== "string" ||
       !parsed.email ||
+      parsed.email.length > 320 ||
       typeof parsed.from !== "string" ||
       safeReturnUrl(parsed.from) !== parsed.from ||
       typeof parsed.sentAt !== "number" ||
