@@ -250,6 +250,26 @@ def test_register_webhook_returns_id_and_persists(
     assert any(r.get("webhook_id") == body["webhook_id"] for r in rows)
 
 
+def test_register_webhook_forwards_migration_secret(
+    client: TestClient,
+    tmp_log_dir: Path,
+    fast_queue: JobQueue,
+    webhook_server: dict[str, Any],
+) -> None:
+    migration_secret = "migration-secret-at-least-32-characters"
+    r = client.post(
+        "/v1/webhooks",
+        json={
+            "url": webhook_server["url"] + "/migration",
+            "events": ["audit_complete"],
+            "signing_secret": migration_secret,
+        },
+        headers=_bearer(),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["signing_secret"] == migration_secret
+
+
 def test_audit_completion_fires_webhook(
     client: TestClient,
     tmp_log_dir: Path,
@@ -574,6 +594,19 @@ def test_rotate_signing_secret_accepts_previous_during_overlap(tmp_path) -> None
         now=1700000000,
         previous_secret=old_secret,
         previous_signature=f"v1={digest_old}",
+        previous_secret_expires_at=rec["previous_secret_expires_at"],
+    )
+
+    assert not webhooks.verify_webhook_signature(
+        body=body,
+        timestamp=timestamp,
+        delivery_id="dlv_overlap_expired",
+        signature=f"v1={digest_old}",
+        secret=new_secret,
+        now=1700000000,
+        previous_secret=old_secret,
+        previous_signature=f"v1={digest_old}",
+        previous_secret_expires_at="2023-11-14T22:00:00+00:00",
     )
 
     # And with the NEW secret (current primary) it also verifies.
@@ -589,6 +622,7 @@ def test_rotate_signing_secret_accepts_previous_during_overlap(tmp_path) -> None
         now=1700000000,
         previous_secret=old_secret,
         previous_signature=f"v1={digest_old}",
+        previous_secret_expires_at=rec["previous_secret_expires_at"],
     )
 
     # A signature signed with a completely different secret
@@ -607,7 +641,38 @@ def test_rotate_signing_secret_accepts_previous_during_overlap(tmp_path) -> None
         now=1700000000,
         previous_secret=old_secret,
         previous_signature=f"v1={bogus}",
+        previous_secret_expires_at=rec["previous_secret_expires_at"],
     )
+
+
+def test_second_rotation_uses_latest_secret(tmp_path) -> None:
+    from ai_billing_audit import webhooks
+
+    log = tmp_path / "webhooks.jsonl"
+    webhooks._log_path = lambda: log  # type: ignore[assignment]
+    first_secret = "first-secret-at-least-32-characters"
+    second_secret = "second-secret-at-least-32-characters"
+    third_secret = "third-secret-at-least-32-characters"
+    registered = webhooks.register_webhook(
+        url="http://127.0.0.1:1/hook",
+        events=["audit_complete"],
+        signing_secret=first_secret,
+    )
+    webhooks.rotate_webhook_signing_secret(
+        registered["webhook_id"],
+        new_secret=second_secret,
+    )
+    webhooks.rotate_webhook_signing_secret(
+        registered["webhook_id"],
+        new_secret=third_secret,
+    )
+
+    current = next(
+        row for row in webhooks.list_webhooks()
+        if row["webhook_id"] == registered["webhook_id"]
+    )
+    assert current["_signing_secret"] == third_secret
+    assert current["previous_secret"] == second_secret
 
 
 def test_rotate_caps_overlap_to_maximum(tmp_path) -> None:
