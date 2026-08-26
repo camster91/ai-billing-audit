@@ -65,11 +65,9 @@ async function databaseReachable(): Promise<CheckResult> {
       return { ok: false, reason: "unexpected_response" };
     }
     return { ok: true };
-  } catch (e) {
-    return {
-      ok: false,
-      reason: e instanceof Error ? e.message : "unknown",
-    };
+  } catch {
+    // Keep driver, host, and credential details out of this public endpoint.
+    return { ok: false, reason: "unreachable" };
   }
 }
 
