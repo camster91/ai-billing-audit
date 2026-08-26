@@ -33,8 +33,10 @@
 // marketing-pixel firing on submit, no IP/UA capture. The server route
 // is the single place where data crosses the trust boundary.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import styles from "./contact.module.css";
+import { track } from "@/components/AnalyticsBoot";
+import { claimVolumeBucket } from "@/lib/analytics-events";
 
 type Status = "idle" | "busy" | "success";
 
@@ -82,6 +84,15 @@ export default function ContactForm({ defaults }: Props) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [topError, setTopError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string>("");
+  // contact_start fires once per page load on the first field focus.
+  // contact_submit_success / _failure fire from handleSubmit.
+  const contactStartFiredRef = useRef(false);
+
+  function onFieldFocus(): void {
+    if (contactStartFiredRef.current) return;
+    contactStartFiredRef.current = true;
+    track("contact_start", { page_path: "/contact" });
+  }
 
   function clearErrors(): void {
     setFieldErrors({});
@@ -142,6 +153,11 @@ export default function ContactForm({ defaults }: Props) {
       if (res.ok) {
         setSubmittedEmail(email.trim());
         setStatus("success");
+        track("contact_submit_success", {
+          claim_volume_bucket: claimVolumeBucket(claimVolume),
+          billing_setup: billingSetup,
+          page_path: "/contact",
+        });
         return;
       }
 
@@ -151,6 +167,10 @@ export default function ContactForm({ defaults }: Props) {
       };
 
       if (body.error === "disposable_email") {
+        track("contact_submit_failure", {
+          error_code: "disposable_email",
+          page_path: "/contact",
+        });
         setFieldErrors({
           email: [
             "That email is on a disposable-email blocklist. Use your work address so we can reply.",
@@ -162,6 +182,10 @@ export default function ContactForm({ defaults }: Props) {
       }
 
       if (body.error === "invalid_input" && body.details) {
+        track("contact_submit_failure", {
+          error_code: "invalid_input",
+          page_path: "/contact",
+        });
         setFieldErrors(body.details.fieldErrors ?? {});
         const formErrs = body.details.formErrors ?? [];
         setTopError(
@@ -173,11 +197,26 @@ export default function ContactForm({ defaults }: Props) {
         return;
       }
 
+      if (res.status === 429) {
+        track("contact_submit_failure", {
+          error_code: "rate_limited",
+          page_path: "/contact",
+        });
+      } else {
+        track("contact_submit_failure", {
+          error_code: body.error ?? `http_${res.status}`,
+          page_path: "/contact",
+        });
+      }
       setTopError(
         "Something went wrong submitting the form. Please try again later.",
       );
       setStatus("idle");
     } catch {
+      track("contact_submit_failure", {
+        error_code: "network_error",
+        page_path: "/contact",
+      });
       setTopError("Network error. Please try again.");
       setStatus("idle");
     }
@@ -225,6 +264,7 @@ export default function ContactForm({ defaults }: Props) {
     <form
       className={styles.card}
       onSubmit={handleSubmit}
+      onFocus={onFieldFocus}
       noValidate
       aria-describedby={topError ? "contact-top-error" : undefined}
     >

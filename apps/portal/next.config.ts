@@ -64,20 +64,24 @@ const nextConfig: NextConfig = {
             // bootstrap. The policy below is intentionally permissive
             // on `self` for styles + images (Next.js injects styles
             // via <style> tags during SSR) but locks down script-src
-            // + frame-ancestors. We do NOT include Plausible in the
-            // CSP here because Plausible is loaded via a separate
-            // script tag from layout.tsx — when NEXT_PUBLIC_PLAUSIBLE_DOMAIN
-            // is set, the script.js URL is appended to script-src via
-            // a meta tag below. Update this policy when adding any
-            // new third-party script (analytics, tag manager, etc.).
+            // + frame-ancestors. Plausible is always allowed because
+            // the script tag in layout.tsx is only emitted when
+            // NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set at build time; the
+            // empty-when-disabled event channel stays in 'self'
+            // (the /api/analytics/event beacon). When Plausible is
+            // configured, plausible.io is added to script-src +
+            // connect-src + img-src so its script.js and event POST
+            // requests are not blocked. Update this policy when
+            // adding any new third-party script (analytics, tag
+            // manager, etc.).
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-inline' https://plausible.io",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: https://plausible.io",
               "font-src 'self' data:",
-              "connect-src 'self'",
+              "connect-src 'self' https://plausible.io",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

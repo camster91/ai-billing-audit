@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
+import AnalyticsBoot from "@/components/AnalyticsBoot";
 import { publicMarketingMetadata } from "@/lib/public-marketing-metadata";
 import "./globals.css";
 
@@ -110,6 +111,7 @@ export default function RootLayout({
             <MobileMenu links={NAV} />
           </div>
         </header>
+        <AnalyticsBoot />
         {children}
       </body>
     </html>
