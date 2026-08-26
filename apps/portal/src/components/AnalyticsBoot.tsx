@@ -29,6 +29,7 @@ import {
   type PlausibleFunction,
   type UTM,
 } from "@/lib/analytics-events";
+import { useEffect } from "react";
 
 declare global {
   interface Window {
@@ -160,10 +161,6 @@ export function bootAnalytics(): () => void {
 }
 
 export default function AnalyticsBoot() {
-  if (typeof window !== "undefined") {
-    // Schedule on the next microtask so the component can render
-    // synchronously without blocking paint.
-    queueMicrotask(() => bootAnalytics());
-  }
+  useEffect(() => bootAnalytics(), []);
   return null;
 }
