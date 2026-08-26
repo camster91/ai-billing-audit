@@ -274,6 +274,12 @@ test("readSessionUTM preserves URL attribution when sessionStorage is unavailabl
       utm_medium: "",
       utm_campaign: "summer",
     });
+    w.location.href = "https://zorva.ashbi.ca/contact";
+    assert.deepEqual(readSessionUTM(), {
+      utm_source: "partner",
+      utm_medium: "",
+      utm_campaign: "summer",
+    });
   } finally {
     g.window = prev;
   }
