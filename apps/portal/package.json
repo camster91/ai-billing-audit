@@ -14,6 +14,8 @@
     "a11y:keyboard": "node a11y-keyboard.mjs",
     "a11y:probe": "node a11y-probe-v2.mjs",
     "a11y:shots": "node a11y-shots.mjs",
+    "perf:budgets": "node perf-budgets.mjs",
+    "gate:all": "pnpm a11y:audit && pnpm perf:budgets",
     "test:onboarding": "node --import tsx --test tests/onboarding.test.ts",
     "test:patient-hash": "node --import tsx --test tests/patient-hash.test.ts",
     "test:email": "node --import tsx --test tests/email.test.ts",
