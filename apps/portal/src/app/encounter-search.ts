@@ -50,16 +50,27 @@ export async function searchEncounters(
   if (!r.ok) {
     return { outcome: "http_error", status: r.status };
   }
-  let body: { results?: SearchResult[] };
+  let body: unknown;
   try {
-    body = (await r.json()) as { results?: SearchResult[] };
+    body = await r.json();
   } catch (e) {
     return {
       outcome: "network_error",
       message: e instanceof Error ? e.message : "invalid JSON",
     };
   }
-  const results = body.results ?? [];
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("results" in body) ||
+    !Array.isArray(body.results)
+  ) {
+    return {
+      outcome: "network_error",
+      message: "invalid search response",
+    };
+  }
+  const results = body.results as SearchResult[];
   if (results.length === 0) {
     return { outcome: "empty" };
   }
