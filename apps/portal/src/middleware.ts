@@ -74,6 +74,7 @@ const PUBLIC_PREFIXES = [
   "/api/maintenance",       // public maintenance flag probe
   "/api/cron",              // cron endpoints authenticate via CRON_SECRET, not cookies
   "/login",
+  "/readyz",
   "/",              // marketing landing page, public (t_fa2149e1)
   "/pricing",       // marketing page, public
   "/how-it-works",  // marketing page, public (3-step explainer + Loom + CTA)
