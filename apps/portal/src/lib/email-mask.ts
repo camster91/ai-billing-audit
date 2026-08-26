@@ -70,6 +70,9 @@ export function safeReturnUrl(raw: string | undefined, fallback = "/dashboard"):
   if (!raw) return fallback;
   if (!raw.startsWith("/")) return fallback;
   if (raw.startsWith("//")) return fallback;
+  // WHATWG URL parsing treats backslashes as authority separators for
+  // special URLs, including after percent-decoding in browser navigation.
+  if (/\\|%5c/i.test(raw)) return fallback;
   if (/^\/[^/]*$/.test(raw) && raw.includes(":")) return fallback;
   return raw;
 }
