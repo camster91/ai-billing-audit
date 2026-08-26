@@ -804,6 +804,7 @@ def register_public_api(
 
         url = raw.get("url")
         events = raw.get("events")
+        signing_secret = raw.get("signing_secret")
         if not isinstance(url, str) or not url.strip():
             raise HTTPException(status_code=400, detail={"errors": ["url is required"]})
         if not isinstance(events, list) or not all(isinstance(e, str) for e in events):
@@ -817,6 +818,7 @@ def register_public_api(
                 url=url,
                 events=events,
                 tenant_id=tenant_id,
+                signing_secret=signing_secret,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail={"errors": [str(exc)]})
