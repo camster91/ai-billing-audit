@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import {
+  Inter,
+  JetBrains_Mono,
+  Fraunces,
+  IBM_Plex_Mono,
+} from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
 import AnalyticsBoot from "@/components/AnalyticsBoot";
 import { publicMarketingMetadata } from "@/lib/public-marketing-metadata";
@@ -14,6 +19,13 @@ import "./globals.css";
 // returns 0 hits). Dropped to save ~88KB of web-font payload on every
 // page. If a future component needs Geist, add it back with an
 // explicit consumer reference.
+//
+// Fraunces (serif display) and IBM Plex Mono are loaded here for the
+// / landing page editorial system. They are declared as CSS variables
+// and consumed in page.module.css; the actual font files are
+// self-hosted by `next/font/google` at build time so the production
+// CSP `font-src 'self' data:` is satisfied without an external
+// stylesheet fetch.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -24,6 +36,32 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
+});
+
+// Fraunces: editorial serif for the marketing landing page display
+// headings. next/font/google only accepts the standard 100-900 weight
+// increments for Fraunces, so we pull 400 (body-weight display) +
+// 500 (slightly emphasized headings) + 600 (strong display) with the
+// italic axis for the editorial `<em>` accents. This keeps the
+// self-hosted font payload well under 50KB gzipped — same approach
+// Inter + JetBrains_Mono already use below.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+});
+
+// IBM Plex Mono: monospace for the landing page micro-labels
+// (eyebrow tags, "PRE-SUBMIT REVIEW" mockup header, claim-line
+// codes, FAQ plus-mark, etc.). 400 + 500 covers both body and
+// slightly-emphasized micro-copy without bloating the request.
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = publicMarketingMetadata;
@@ -60,7 +98,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${fraunces.variable} ${ibmPlexMono.variable}`}
     >
       <head>
         {/* Force the dark UA form so form controls + scrollbars render
