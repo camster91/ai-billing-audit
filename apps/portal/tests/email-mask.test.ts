@@ -10,6 +10,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { maskEmail, safeReturnUrl } from "../src/lib/email-mask";
+import {
+  openPendingMagicLink,
+  sealPendingMagicLink,
+} from "../src/lib/pending-magic-link";
 
 test("maskEmail hides the local part beyond the first char", () => {
   const out = maskEmail("jane.smith@clinic.com");
@@ -93,6 +97,8 @@ test("safeReturnUrl rejects external / protocol-relative / scheme URLs", () => {
   assert.equal(safeReturnUrl("//evil.example.com"), "/dashboard");
   assert.equal(safeReturnUrl("javascript:alert(1)"), "/dashboard");
   assert.equal(safeReturnUrl("data:text/html,x"), "/dashboard");
+  assert.equal(safeReturnUrl("/\\evil.example"), "/dashboard");
+  assert.equal(safeReturnUrl("/%5Cevil.example"), "/dashboard");
   assert.equal(safeReturnUrl(""), "/dashboard");
   assert.equal(safeReturnUrl(undefined), "/dashboard");
 });
@@ -100,4 +106,25 @@ test("safeReturnUrl rejects external / protocol-relative / scheme URLs", () => {
 test("safeReturnUrl uses the supplied fallback", () => {
   assert.equal(safeReturnUrl(undefined, "/encounters"), "/encounters");
   assert.equal(safeReturnUrl("https://evil.example.com", "/encounters"), "/encounters");
+});
+
+test("pending magic-link state is encrypted and rejects tampering", () => {
+  const previous = process.env.AUTH_SECRET;
+  process.env.AUTH_SECRET = "test-auth-secret-with-enough-entropy";
+  try {
+    const state = {
+      email: "person@clinic.example",
+      from: "/dashboard",
+      sentAt: 1_700_000_000_000,
+    };
+    const sealed = sealPendingMagicLink(state);
+    assert.ok(!sealed.includes(state.email));
+    assert.deepEqual(openPendingMagicLink(sealed), state);
+
+    const tampered = sealed.slice(0, -1) + (sealed.endsWith("a") ? "b" : "a");
+    assert.equal(openPendingMagicLink(tampered), null);
+  } finally {
+    if (previous === undefined) delete process.env.AUTH_SECRET;
+    else process.env.AUTH_SECRET = previous;
+  }
 });
