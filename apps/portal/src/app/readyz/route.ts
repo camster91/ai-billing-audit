@@ -49,16 +49,18 @@ async function databaseReachable(): Promise<CheckResult> {
     // proxy is used here when the generated client is absent).
     const prismaModule = await import("@/lib/prisma");
     const prisma = prismaModule.prisma;
-    // $queryRaw is the cheapest Prisma round-trip: it does not
-    // touch any user table and does not require a session. The
-    // query is wrapped with a short timeout so a stuck
-    // connection cannot hold the readiness probe open.
-    const result = await Promise.race([
-      prisma.$queryRaw<Array<{ one: number }>>`SELECT 1 AS one`,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("database_timeout")), 5_000),
-      ),
-    ]);
+    // Run the probe in a bounded transaction. PostgreSQL's
+    // statement_timeout cancels a stuck query on the server, while
+    // Prisma's maxWait/timeout bounds pool acquisition and the
+    // transaction itself. This avoids abandoned queries accumulating
+    // behind a Promise.race timeout during an outage.
+    const result = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`;
+        return tx.$queryRaw<Array<{ one: number }>>`SELECT 1 AS one`;
+      },
+      { maxWait: 1_000, timeout: 6_000 },
+    );
     if (!Array.isArray(result) || result.length === 0 || (result[0] as { one?: number } | undefined)?.one !== 1) {
       return { ok: false, reason: "unexpected_response" };
     }
@@ -77,7 +79,8 @@ export async function GET(): Promise<NextResponse> {
       ? { ok: true }
       : { ok: false, reason: "missing" },
     auth_secret_configured: isReadableSecret(process.env.AUTH_SECRET),
-    resend_key_configured: isReadableSecret(resolveLeadsResendKey()),
+    auth_resend_key_configured: isReadableSecret(process.env.AUTH_RESEND_KEY),
+    leads_resend_key_configured: isReadableSecret(resolveLeadsResendKey()),
     slack_webhook_configured: isLeadsSlackMockMode()
       ? { ok: true }
       : { ok: true, reason: "configured" },
