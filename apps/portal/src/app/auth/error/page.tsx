@@ -5,10 +5,8 @@
 // in src/auth.ts).
 //
 // The `error` query parameter is one of the NextAuth error codes:
-//   Verification          — link used or already redeemed
-//   AccessDenied         — the signIn callback returned false
-//   VerificationExpired   — the link's expiry has passed (Resend
-//                            provider emits this when expires < now)
+//   Verification          — link invalid, expired, or already redeemed
+//   AccessDenied          — the signIn callback returned false
 //   Configuration         — server-side misconfiguration
 //   Default               — anything else
 //
@@ -34,7 +32,6 @@ export const runtime = "nodejs";
 type ErrorCode =
   | "Verification"
   | "AccessDenied"
-  | "VerificationExpired"
   | "Configuration"
   | "Default"
   | string;
@@ -54,14 +51,8 @@ interface ErrorCopy {
 
 const ERROR_COPY: Record<string, ErrorCopy> = {
   Verification: {
-    title: "That sign-in link has already been used.",
-    body: "Each link is one-time. If you opened the email in a different tab, signed in, and then came back, the link is no longer valid.",
-    cta: "Send a new link",
-    enumerationSafe: true,
-  },
-  VerificationExpired: {
-    title: "That sign-in link has expired.",
-    body: "Links are good for 10 minutes. If you started the sign-in a while ago, request a fresh one.",
+    title: "That sign-in link is no longer valid.",
+    body: "It may be expired, already used, or malformed. Request a fresh one.",
     cta: "Send a new link",
     enumerationSafe: true,
   },
