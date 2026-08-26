@@ -20,6 +20,8 @@ import {
   UTM_KEYS,
   assertSafePayload,
   claimVolumeBucket,
+  ensurePlausibleQueue,
+  readSessionUTM,
   readUTMFromURL,
   readStoredUTM,
   truncateText,
@@ -249,6 +251,42 @@ test("readUTMFromURL hard-caps each UTM value at 100 chars", () => {
   } finally {
     g.window = prev;
   }
+});
+
+test("readSessionUTM preserves URL attribution when sessionStorage is unavailable", () => {
+  const w = {
+    location: { href: "https://zorva.ashbi.ca/?utm_source=partner&utm_campaign=summer" },
+    sessionStorage: {
+      getItem: () => {
+        throw new Error("storage disabled");
+      },
+      setItem: () => {
+        throw new Error("storage disabled");
+      },
+    },
+  };
+  const g = globalThis as { window?: unknown };
+  const prev = g.window;
+  g.window = w;
+  try {
+    assert.deepEqual(readSessionUTM(), {
+      utm_source: "partner",
+      utm_medium: "",
+      utm_campaign: "summer",
+    });
+  } finally {
+    g.window = prev;
+  }
+});
+
+test("ensurePlausibleQueue retains events fired before the client loads", () => {
+  const target: { plausible?: ReturnType<typeof ensurePlausibleQueue> } = {};
+  const plausible = ensurePlausibleQueue(target);
+  plausible("cta_click", { props: { cta_id: "hero" } });
+
+  assert.equal(target.plausible, plausible);
+  assert.equal(plausible.q?.length, 1);
+  assert.equal(plausible.q?.[0]?.[0], "cta_click");
 });
 
 test("UTM_KEYS are the three documented campaign parameters", () => {
