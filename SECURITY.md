@@ -1,12 +1,12 @@
 # Security Policy
 
 > **Historical context.** This file is the project's external-facing
-> security policy. For the canonical operator and deployment runbook
-> (versions, secrets, deploy, rollback, backup, topology, retention)
-> see [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
-> Do not infer live retention, compliance posture, or supported
-> release line from this file alone; the repository version is not
-> proof of a deployed image. Tracked in issue #15.
+> security policy and remains authoritative for vulnerability reporting,
+> response times, and supported release lines. For the canonical operator
+> and deployment runbook (secrets, deploy, rollback, backup, topology,
+> retention), see [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
+> Do not infer live retention or compliance posture from this file; the
+> repository version is not proof of a deployed image. Tracked in issue #15.
 
 The Zorva (ai-billing-audit) team takes the security of the
 operator dashboard, the public v1 API, and the in-flight claim data
@@ -27,8 +27,8 @@ response-time commitments are.
 >   `docker-compose.yml` API image tag are still at `0.4.0`.
 >
 > Until the package source of truth, the image tag, and the changelog
-> agree, the supported-version table below is informational only and
-> must not be cited as a backport or security-fix commitment.
+> agree, the table below is the authoritative repository support policy:
+> `0.4.x` is eligible for fixes and `0.5.x` is not yet supported.
 
 The project is in pre-1.0 (`0.x.y`). A deployed image still
 requires commit and environment verification; a repository version is not
@@ -207,4 +207,4 @@ they just don't get a public credit.
 
 ---
 
-_Last updated: 2026-08-20 - supported-version table updated to flag the 0.4.0 / 0.5.0 mismatch as a release-blocker; canonical operator guidance moved to `docs/OPERATIONS_RUNBOOK.md` (issue #15)._
+_Last updated: 2026-08-26 - supported-version policy kept authoritative here while flagging the 0.4.0 / 0.5.0 mismatch; canonical operator guidance remains in `docs/OPERATIONS_RUNBOOK.md` (issue #15)._
