@@ -1,3 +1,5 @@
+@import "./tokens.css";
+
 :root {
   /* legacy aliases kept for any component that still references them */
   --background: var(--surface-light);
