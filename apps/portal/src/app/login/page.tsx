@@ -11,10 +11,9 @@
 //   2. We call signIn(..., { redirect: false }) so NextAuth does
 //      NOT navigate us away — we want to land on /verify-request
 //      ourselves so the biller sees a durable waiting state.
-//   3. We redirect to /verify-request?from=<callbackUrl>&email=<email>
-//      with the email passed as a query param. /verify-request
-//      masks the address in the rendered HTML so a screenshot or
-//      shoulder-surf does not leak it.
+//   3. We store the pending address and callback path in an encrypted,
+//      HttpOnly, short-lived cookie, then redirect to /verify-request.
+//      The address never enters a URL or client-component props.
 //   4. The user clicks the link in their email. NextAuth verifies
 //      the token and redirects to the `from` URL.
 //
@@ -24,8 +23,16 @@
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import Link from "next/link";
 import { signIn, auth } from "@/auth";
+import { safeReturnUrl } from "@/lib/email-mask";
+import {
+  PENDING_MAGIC_LINK_COOKIE,
+  PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+  sealPendingMagicLink,
+} from "@/lib/pending-magic-link";
 import styles from "../shell.module.css";
 
 interface PageProps {
@@ -41,41 +48,52 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/**
- * Allow-list the callbackUrl to a same-origin portal path. Any
- * external URL is dropped back to /dashboard. This prevents
- * open-redirect via the magic-link flow.
- */
-function safeReturnUrl(raw: string | undefined, fallback = "/dashboard"): string {
-  if (!raw) return fallback;
-  if (!raw.startsWith("/")) return fallback;
-  if (raw.startsWith("//")) return fallback;
-  if (/^\/[^/]*$/.test(raw) && raw.includes(":")) return fallback;
-  return raw;
-}
-
 async function sendMagicLink(formData: FormData): Promise<void> {
   "use server";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const callbackUrl = String(formData.get("callbackUrl") ?? "/dashboard");
-  const safeFrom = safeReturnUrl(callbackUrl);
+  const safeFrom = safeReturnUrl(
+    String(formData.get("callbackUrl") ?? "/dashboard"),
+  );
 
   if (!email) {
     redirect("/login?error=missing_email");
   }
 
-  // Issue the magic link. redirect: false prevents NextAuth from
-  // navigating to its default verify-request page; we redirect
-  // ourselves to /verify-request so the biller sees the masked
-  // email + resend UI.
+  const cookieStore = await cookies();
+  cookieStore.set(
+    PENDING_MAGIC_LINK_COOKIE,
+    sealPendingMagicLink({ email, from: safeFrom, sentAt: Date.now() }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: PENDING_MAGIC_LINK_MAX_AGE_SECONDS,
+    },
+  );
+
+  let result: unknown;
   try {
-    await signIn("resend", { email, redirectTo: safeFrom, redirect: false });
-  } catch {
-    // signIn() may still throw NEXT_REDIRECT in some NextAuth
-    // versions; ignore and let our own redirect win.
+    result = await signIn("resend", {
+      email,
+      redirectTo: safeFrom,
+      redirect: false,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    cookieStore.delete(PENDING_MAGIC_LINK_COOKIE);
+    redirect("/auth/error?error=Configuration");
   }
-  const params = new URLSearchParams({ from: safeFrom, email });
-  redirect(`/verify-request?${params.toString()}`);
+
+  if (typeof result === "string") {
+    const resultUrl = new URL(result, "https://zorva.invalid");
+    const authError = resultUrl.searchParams.get("error");
+    if (authError) {
+      cookieStore.delete(PENDING_MAGIC_LINK_COOKIE);
+      redirect(`/auth/error?error=${encodeURIComponent(authError)}`);
+    }
+  }
+  redirect("/verify-request");
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
