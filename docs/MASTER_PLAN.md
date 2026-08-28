@@ -35,8 +35,10 @@ system, or a multi-jurisdiction payer engine.
   credential-gated MiniMax integration test skipped; portal unit suites, ESLint,
   TypeScript, and the Next.js production build passed locally.
 - GitHub Actions workflows exist, but repository Actions were disabled during
-  the 2026-08-28 reconciliation. They were re-enabled for PR #88; green local
-  checks are not CI proof until those runs complete.
+  the 2026-08-28 reconciliation. They were re-enabled for PR #88. Both PR
+  workflows then triggered, but GitHub refused to start every job because of
+  failed account payments or an insufficient Actions spending limit. CI proof
+  is blocked on an owner billing decision, not a reported code/test failure.
 - Read-only production probes on 2026-08-28 confirmed the API root, `/healthz`,
   and `/readyz` return HTTP 200. The API reports version 0.4.0 and configured
   readiness dependencies. The portal root and `/contact` return HTTP 200, while
@@ -65,7 +67,7 @@ Acceptance criteria:
 
 | Priority | Outcome | Status | Evidence / dependency | Release consequence |
 | --- | --- | --- | --- | --- |
-| P0 | Restore reproducible green release gates | Implemented and locally verified; CI proof pending | Issues #8, #25, #27, #31; 2026-08-28 local baseline | Blocks release until CI is green |
+| P0 | Restore reproducible green release gates | Implemented and locally verified; CI blocked by GitHub billing | Issues #8, #25, #27, #31; PR #88 and 2026-08-28 local baseline | Blocks release until CI jobs can run and pass |
 | P0 | Verify production identity, tenant isolation, PHI storage/retention, database migrations, backup/restore, and credential rotation | Blocked on operator/live access and accountable approval | Issues #5, #6, #10, #11, #12, #14 | Blocks any real-clinic data |
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
@@ -91,7 +93,7 @@ Older sequences in `research/00-ROADMAP.md` and
 
 | Area | State | Risk / required action | Owner |
 | --- | --- | --- | --- |
-| Repository | Available with admin/push access | Actions restored for PR #88; current green checks and branch-protection evidence still pending | Cameron |
+| Repository | Available with admin/push access | Actions restored for PR #88, but account billing prevents runners from starting; `main` has no branch protection | Cameron |
 | Local development | Available | Default host runtimes differ from CI; use pinned versions | Engineering |
 | Production hosts and secrets | Not inspected | Cannot verify release, residency, credentials, backups, or monitoring | Operator / Cameron |
 | Billing | Code present, live state unverified | Requires test-mode journey, approved pricing, then production approval | Cameron |
@@ -141,14 +143,19 @@ Baselines are unknown unless explicitly backed by current evidence.
 - Opened PR #88 from `codex/release-truth-reproducibility`; GitGuardian passed.
   Repository GitHub Actions were disabled, so they were re-enabled to restore
   independent PR verification.
+- Reopened PR #88 to trigger the configured `e2e` and `test-on-pr` workflows.
+  Every job was rejected before its first step because of failed GitHub account
+  payments or an insufficient Actions spending limit. No CI test executed.
+- Confirmed through the GitHub API that `main` has no branch-protection rule.
 - Read-only live probes returned HTTP 200 for the API root, API `/healthz`, API
   `/readyz`, portal root, and portal `/contact`. Portal `/readyz` returned HTTP
   404, so portal readiness monitoring is not proven on the deployed release.
 
 ## Next action
 
-Obtain green CI evidence on PR #88 and repair any in-scope failures. Then verify
-the remaining production readiness gates with the smallest required operator
-access, beginning with portal readiness routing and release identity. Do not
-deploy, change customer-visible pricing, contact clinics, or access real clinic
-data without explicit approval.
+Owner: resolve or explicitly decline the GitHub Actions billing requirement,
+then rerun PR #88 and repair any in-scope failures. After CI is green, verify the
+remaining production readiness gates with the smallest required operator access,
+beginning with portal readiness routing and release identity. Do not deploy,
+change customer-visible pricing, contact clinics, or access real clinic data
+without explicit approval.
