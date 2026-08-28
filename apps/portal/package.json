@@ -19,6 +19,7 @@
     "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium",
     "a11y:audit": "node a11y-audit.mjs",
+    "hq:manage-role": "tsx scripts/manage-platform-role.ts",
     "a11y:keyboard": "node a11y-keyboard.mjs",
     "a11y:probe": "node a11y-probe-v2.mjs",
     "a11y:shots": "node a11y-shots.mjs",

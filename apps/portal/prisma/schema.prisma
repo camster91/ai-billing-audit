@@ -38,9 +38,50 @@ model User {
   memberships    Membership[]
   redeemedSessions RedeemedCheckoutSession[]
   actionedFindings Finding[]
+  platformRole PlatformUserRole?
+  platformAuditEvents PlatformAuditEvent[] @relation("PlatformAuditActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Company-wide authorization is deliberately separate from Membership.role.
+// A clinic owner/admin never receives platform access by implication.
+model PlatformUserRole {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  role      String
+  active    Boolean  @default(true)
+  grantedBy String
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([role, active])
+}
+
+// Application-append-only company-operator access and action record. This is
+// separate from the tenant-scoped clinical AuditTrailEntry hash chain and
+// carries no PHI. Database immutability/retention controls remain a release gate.
+model PlatformAuditEvent {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorRole   String
+  action      String
+  targetType  String
+  targetId    String?
+  requestId   String   @unique
+  metadataJson String?
+  occurredAt  DateTime @default(now())
+
+  actor User? @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, occurredAt])
+  @@index([targetType, targetId, occurredAt])
+  @@index([action, occurredAt])
 }
 
 model Account {

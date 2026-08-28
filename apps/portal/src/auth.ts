@@ -33,7 +33,18 @@ async function loadUserTenants(userId: string, activeTenantId: string | null) {
   const memberships = await prisma.membership.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
-    include: { tenant: true },
+    select: {
+      role: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          tier: true,
+          subscriptionStatus: true,
+        },
+      },
+    },
   });
 
   if (memberships.length === 0) {

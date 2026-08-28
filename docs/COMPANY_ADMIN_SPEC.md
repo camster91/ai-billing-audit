@@ -124,6 +124,21 @@ Each increment requires responsive and keyboard-accessible behavior, tenant and
 platform authorization tests, audit evidence, migration and rollback steps,
 failure/recovery states, and no high-severity privacy or security finding.
 
+### Platform-role bootstrap
+
+The initial role is provisioned only after the user has completed normal Auth.js
+sign-in. From `apps/portal`, the operator can run `pnpm hq:manage-role` with
+`--action`, `--email`, `--role`, `--granted-by`, and
+`--confirm-role-change`. Production additionally requires
+`--confirm-production`. The command never creates users, masks the email in its
+output, and records grants/revocations in `PlatformAuditEvent`. Running it
+against production remains an approval-gated privileged action.
+
+`PlatformAuditEvent` is application-append-only in this increment. Database-level
+update/delete denial, retention, export, and approved purge behavior remain
+required before production operation; the tenant clinical hash chain is not
+reused or represented as proof for company-operator events.
+
 ## Explicitly deferred
 
 - Autonomous outreach, support replies, or campaign publishing.

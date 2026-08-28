@@ -135,7 +135,7 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify production identity, tenant isolation, PHI storage/retention, database migrations, backup/restore, and credential rotation | Blocked on operator/live access and accountable approval | Issues #5, #6, #10, #11, #12, #14 | Blocks any real-clinic data |
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
-| P0 | Specify and build Zorva HQ platform-admin foundation | Specified; implementation proposed | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; existing Lead and tenant/billing models | Blocks operating a pilot safely at company level |
+| P0 | Specify and build Zorva HQ platform-admin foundation | First read-only increment implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq` and `/hq/leads` | Blocks operating a pilot safely at company level |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Partially implemented; not live-verified | Contact form, Lead model, notifications; issue #74 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
@@ -238,12 +238,32 @@ Baselines are unknown unless explicitly backed by current evidence.
 - Added `docs/MARKETING_PLAN.md` with the initial Alberta audience, pilot-led
   offer hypothesis, channel sequence, website promotion order, funnel ownership,
   measurement, brand reconciliation, and approval gates.
+- Implemented the first Zorva HQ slice: database-backed platform roles separate
+  from tenant membership; server-side deny-by-default authorization; distinct
+  operator audit events; read-only `/hq` Today and `/hq/leads` surfaces; and an
+  explicit grant/revoke CLI that refuses unconfirmed production changes.
+- HQ queries select only lead/account operating fields and do not query clinical
+  encounters, findings, notes, claim content, or patient hashes. Focused tests
+  confirm the returned lead shape and role capability boundary.
+- Verification: both Prisma schemas validate; all 13 SQLite migrations replayed
+  cleanly into an empty disposable database; full sequential portal unit suites,
+  ESLint, TypeScript, and the Next.js production build passed. Unauthenticated
+  HQ requests redirected to login; forged/invalid sessions exposed no operator
+  data; a valid tenant-only session hit the not-found boundary; and a separate
+  local platform-owner role rendered HQ and wrote one operator audit event.
+- Narrowed Auth.js tenant-session hydration to the five tenant fields returned
+  in the session instead of fetching full tenant rows containing encrypted
+  operational configuration and then discarding those fields.
+- Prisma 7 `migrate deploy` against an empty SQLite database returned an unnamed
+  schema-engine error under the unsupported host Node 26 runtime; direct SQLite
+  replay proved the SQL ordering. Re-run Prisma migration tooling under pinned
+  Node 20 and PostgreSQL CI before production use.
 
 ## Next action
 
-Implement the Zorva HQ platform-admin authorization and read-only Today/lead
-foundation locally while the owner resolves or explicitly declines the GitHub
-Actions billing requirement. Then rerun PR #88, repair in-scope failures, and
-verify contact routing and production release identity. Do not deploy, change
-customer-visible pricing, contact clinics, or access real clinic data without
-explicit approval.
+Harden the Zorva HQ operator audit database controls and add the first mutable,
+audited lead assignment/next-action journey locally while the owner resolves or
+explicitly declines the GitHub Actions billing requirement. Then rerun PR #88,
+repair in-scope failures, and verify contact routing and production release
+identity. Do not deploy, grant production platform roles, change customer-visible
+pricing, contact clinics, or access real clinic data without explicit approval.
