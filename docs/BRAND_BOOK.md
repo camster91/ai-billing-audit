@@ -1,13 +1,21 @@
 # Zorva — Brand Book
 
-Status: consolidated reference. Last updated 2026-06-24.
-Owner: branding kit (`zorva-branding-kit` board).
+Status: consolidated brand reference; strategy and claims reconciliation in progress.
+Last reviewed against the product plan: 2026-08-28.
+Owner: Cameron Ashley.
 
 This document is the **single consolidated reference** for the Zorva brand.
 It links the per-discipline specs (logo, color, typography, voice, imagery,
 icons, pitch deck) and presents the at-a-glance rules that anyone producing
 a new asset — a slide, a one-pager, an email, a press quote, a partner
 deck — must follow.
+
+`docs/MASTER_PLAN.md` controls current audience, market, offer, roadmap, and
+release status. This book controls brand expression. When they conflict, follow
+the master plan and record the brand migration here. Exact metrics, security or
+compliance statements, customer outcomes, prices, service levels, and the anchor
+phrases in this book are not automatically approved for public use; they must
+also pass the claim process in `docs/MARKETING_PUBLIC_LAUNCH_GATES.md`.
 
 For full per-discipline detail, see the linked source-of-truth docs. This
 brand book summarizes; it does not duplicate.
