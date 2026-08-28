@@ -13,6 +13,10 @@ export interface HqLeadSummary {
   source: string | null;
   ownerUserId: string | null;
   lastContactedAt: Date | null;
+  nextAction: string | null;
+  nextActionAt: Date | null;
+  lostReason: string | null;
+  version: number;
   createdAt: Date;
 }
 
@@ -36,6 +40,10 @@ const LEAD_SELECT = {
   source: true,
   ownerUserId: true,
   lastContactedAt: true,
+  nextAction: true,
+  nextActionAt: true,
+  lostReason: true,
+  version: true,
   createdAt: true,
 } as const;
 
@@ -69,6 +77,40 @@ export async function loadHqOverview(now = new Date()): Promise<HqOverview> {
     activeClientCount,
     recentLeads,
   };
+}
+
+export async function loadHqLeadDetail(leadId: string) {
+  const [lead, operators] = await Promise.all([
+    prisma.lead.findUnique({
+      where: { id: leadId },
+      select: {
+        ...LEAD_SELECT,
+        activities: {
+          select: {
+            id: true,
+            kind: true,
+            fromValue: true,
+            toValue: true,
+            actorRole: true,
+            occurredAt: true,
+            actor: { select: { email: true } },
+          },
+          orderBy: { occurredAt: "desc" },
+          take: 50,
+        },
+      },
+    }),
+    prisma.platformUserRole.findMany({
+      where: { active: true, role: { in: ["owner", "sales"] } },
+      select: {
+        userId: true,
+        role: true,
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { grantedAt: "asc" },
+    }),
+  ]);
+  return { lead, operators };
 }
 
 export async function loadHqLeads(): Promise<HqLeadSummary[]> {

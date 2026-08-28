@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -15,6 +16,36 @@ export interface PlatformRequest {
   role: PlatformRole;
 }
 
+async function resolvePlatformRequest(
+  capability: PlatformCapability,
+): Promise<
+  | { ok: true; request: PlatformRequest }
+  | { ok: false; reason: "unauthenticated" | "forbidden" }
+> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "unauthenticated" };
+
+  const platformRole = await prisma.platformUserRole.findUnique({
+    where: { userId: session.user.id },
+    select: { role: true, active: true },
+  });
+  if (
+    !platformRole ||
+    !hasPlatformCapability(platformRole.role, platformRole.active, capability) ||
+    !isPlatformRole(platformRole.role)
+  ) {
+    return { ok: false, reason: "forbidden" };
+  }
+  return {
+    ok: true,
+    request: {
+      userId: session.user.id,
+      userEmail: session.user.email ?? null,
+      role: platformRole.role,
+    },
+  };
+}
+
 /**
  * Authorize a server-rendered HQ entry point and write an operator-access event.
  * Tenant membership is deliberately not consulted: clinic roles never imply
@@ -22,31 +53,20 @@ export interface PlatformRequest {
  */
 export async function requirePlatformPage(
   capability: PlatformCapability,
-  targetType: "hq_dashboard" | "hq_leads",
+  targetType: "hq_dashboard" | "hq_leads" | "hq_lead_detail",
 ): Promise<PlatformRequest> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect(`/login?callbackUrl=${targetType === "hq_dashboard" ? "/hq" : "/hq/leads"}`);
+  const result = await resolvePlatformRequest(capability);
+  if (!result.ok && result.reason === "unauthenticated") {
+    const callbackUrl = targetType === "hq_dashboard" ? "/hq" : "/hq/leads";
+    redirect(`/login?callbackUrl=${callbackUrl}`);
   }
-
-  const platformRole = await prisma.platformUserRole.findUnique({
-    where: { userId: session.user.id },
-    select: { role: true, active: true },
-  });
-
-  if (
-    !platformRole ||
-    !hasPlatformCapability(platformRole.role, platformRole.active, capability) ||
-    !isPlatformRole(platformRole.role)
-  ) {
-    notFound();
-  }
+  if (!result.ok) notFound();
 
   const requestId = randomUUID();
   await prisma.platformAuditEvent.create({
     data: {
-      actorUserId: session.user.id,
-      actorRole: platformRole.role,
+      actorUserId: result.request.userId,
+      actorRole: result.request.role,
       action: "read",
       targetType,
       requestId,
@@ -54,9 +74,22 @@ export async function requirePlatformPage(
     },
   });
 
+  return result.request;
+}
+
+export async function requirePlatformApi(
+  capability: PlatformCapability,
+): Promise<
+  | { ok: true; request: PlatformRequest }
+  | { ok: false; response: NextResponse }
+> {
+  const result = await resolvePlatformRequest(capability);
+  if (result.ok) return result;
   return {
-    userId: session.user.id,
-    userEmail: session.user.email ?? null,
-    role: platformRole.role,
+    ok: false,
+    response: NextResponse.json(
+      { error: result.reason },
+      { status: result.reason === "unauthenticated" ? 401 : 403 },
+    ),
   };
 }

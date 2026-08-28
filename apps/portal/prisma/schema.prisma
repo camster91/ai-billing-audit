@@ -40,6 +40,7 @@ model User {
   actionedFindings Finding[]
   platformRole PlatformUserRole?
   platformAuditEvents PlatformAuditEvent[] @relation("PlatformAuditActor")
+  leadActivities LeadActivity[] @relation("LeadActivityActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -861,6 +862,16 @@ model Lead {
   // The most recent outreach action against this lead — used by the
   // pipeline dashboard's "X days since last contact" column.
   lastContactedAt   DateTime?
+  // Optimistic-concurrency token for HQ mutations. Every successful update
+  // increments this value; stale forms receive 409 instead of overwriting.
+  version           Int      @default(0)
+  // Explicit next work item. This is internal commercial context only; route
+  // validation rejects clinical/claim content and caps the text length.
+  nextAction        String?
+  nextActionAt      DateTime?
+  lostReason        String?
+
+  activities LeadActivity[]
 
   @@index([email, createdAt])
   @@index([createdAt])
@@ -869,6 +880,28 @@ model Lead {
   // §6 decision log Q4 retrospective item).
   @@index([status, lastContactedAt])
   @@index([source])
+  @@index([ownerUserId, nextActionAt])
+}
+
+// Immutable-by-application timeline of company actions on a lead. Mutation ids
+// are supplied by the HQ client and make retried requests idempotent.
+model LeadActivity {
+  id          String   @id @default(cuid())
+  leadId      String
+  actorUserId String?
+  actorRole   String
+  kind        String
+  fromValue   String?
+  toValue     String?
+  mutationId  String
+  occurredAt  DateTime @default(now())
+
+  lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User? @relation("LeadActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([mutationId, kind])
+  @@index([leadId, occurredAt])
+  @@index([actorUserId, occurredAt])
 }
 
 // ---------------------------------------------------------------------------

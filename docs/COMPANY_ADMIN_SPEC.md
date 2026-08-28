@@ -1,6 +1,6 @@
 # Zorva HQ company admin specification
 
-**Status:** proposed and roadmap-approved; not implemented  
+**Status:** roadmap-approved; platform foundation and lead workflow implemented locally
 **Owner:** Cameron Ashley  
 **Last reconciled:** 2026-08-28  
 **Authority:** detailed specification supporting `docs/MASTER_PLAN.md`
@@ -65,6 +65,16 @@ autonomous sales agent, or unrestricted production-data console.
 - Funnel and stage-age reporting uses stored event timestamps rather than the
   current stage alone.
 
+**Implemented local increment (2026-08-28):** authorized platform owners and
+sales operators can open a lead detail view, assign an active owner/sales user,
+move through validated stages, set or clear a dated next action, record a loss
+reason, and log contact. Mutations use optimistic version checks and UUID
+idempotency keys, append field-level `LeadActivity` records, and write one
+correlated `PlatformAuditEvent`. The form and API reject common clinical-content
+terms in commercial next actions and never send an external message. Lead
+deduplication, qualification notes, conversion linkage, stage-age reporting,
+and production-like accessibility remain outstanding.
+
 ### Clients and delivery
 
 - Links a converted lead to tenant, contacts, approved offer, pilot dates,
@@ -114,6 +124,8 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 1. Platform-admin authorization, audit trail, safe navigation, and denial tests.
 2. Read-only Today dashboard backed by current lead/account/billing records.
 3. Lead pipeline with activity history, assignment, next action, and conversion.
+   Assignment, next action, stage history, and loss reason are implemented
+   locally; deduplication, qualification, and conversion remain.
 4. Client/pilot onboarding and company task management.
 5. Support case workflow and product-feedback linkage.
 6. Marketing claims/content/campaign operations and attribution.
@@ -134,10 +146,10 @@ sign-in. From `apps/portal`, the operator can run `pnpm hq:manage-role` with
 output, and records grants/revocations in `PlatformAuditEvent`. Running it
 against production remains an approval-gated privileged action.
 
-`PlatformAuditEvent` is application-append-only in this increment. Database-level
-update/delete denial, retention, export, and approved purge behavior remain
-required before production operation; the tenant clinical hash chain is not
-reused or represented as proof for company-operator events.
+`PlatformAuditEvent` and `LeadActivity` are application-append-only in this
+increment. Database-level update/delete denial, retention, export, and approved
+purge behavior remain required before production operation; the tenant clinical
+hash chain is not reused or represented as proof for company-operator events.
 
 ## Explicitly deferred
 

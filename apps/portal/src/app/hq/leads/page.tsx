@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requirePlatformPage } from "@/lib/platform-auth";
 import { loadHqLeads } from "@/lib/hq-data";
 import { HqNav } from "../hq-nav";
@@ -27,7 +28,7 @@ export default async function HqLeadsPage() {
             <tbody>
               {leads.map((lead) => (
                 <tr key={lead.id}>
-                  <td>{lead.clinicName}</td><td>{lead.name}</td><td>{lead.email}</td><td>{lead.status}</td>
+                  <td><Link href={`/hq/leads/${lead.id}`} className={styles.navLink}>{lead.clinicName}</Link></td><td>{lead.name}</td><td>{lead.email}</td><td>{lead.status}</td>
                   <td>{lead.source ?? "Unknown"}</td><td>{lead.lastContactedAt?.toLocaleDateString("en-CA") ?? "Never"}</td>
                 </tr>
               ))}

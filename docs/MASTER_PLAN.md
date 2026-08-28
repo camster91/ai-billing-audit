@@ -46,11 +46,11 @@ Zorva is managed as four connected surfaces with separate release evidence:
 - Brand foundations and production rules exist in `docs/BRAND_BOOK.md` and its
   linked discipline files. They have not yet been fully reconciled with this
   plan's current Alberta-first position and proof standard.
-- Company-operation foundations exist in the `Lead` pipeline fields, lead
-  notifications, tenant/account data, billing records, and a narrow
-  `PLATFORM_ADMIN_EMAILS` control. No complete operator-facing Zorva HQ route,
-  platform-admin authorization model, support case system, or unified company
-  workflow is implemented.
+- Zorva HQ now has database-backed platform roles separate from tenant roles,
+  deny-by-default server authorization, operator audit events, read-only Today
+  and lead-list views, and an audited lead assignment/stage/next-action detail
+  workflow. Client/pilot work, support cases, marketing operations, reporting,
+  and the complete lead-to-renewal journey remain unimplemented.
 - Code versions: Python package `0.4.0`; Next.js `15.5.21`; React `19.2.4`.
 - Canonical development runtimes: Python 3.11, Node 20.19.x, pnpm 9.15.9.
 - Current evaluated engine claim in the README: v12 AHCIP, micro F1 0.690 on
@@ -135,12 +135,12 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify production identity, tenant isolation, PHI storage/retention, database migrations, backup/restore, and credential rotation | Blocked on operator/live access and accountable approval | Issues #5, #6, #10, #11, #12, #14 | Blocks any real-clinic data |
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
-| P0 | Specify and build Zorva HQ platform-admin foundation | First read-only increment implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq` and `/hq/leads` | Blocks operating a pilot safely at company level |
+| P0 | Specify and build Zorva HQ platform-admin foundation | Foundation and first mutable lead workflow implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq`, `/hq/leads`, and audited lead mutation API | Blocks operating a pilot safely at company level |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
-| P0 | Verify qualified-lead journey from source attribution through owner response | Partially implemented; not live-verified | Contact form, Lead model, notifications; issue #74 | Blocks measurable acquisition |
+| P0 | Verify qualified-lead journey from source attribution through owner response | Local capture, assignment, stage, next-action, and contact logging implemented; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
-| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Proposed | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
+| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Lead workflow in progress; client/work/support modules proposed | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
 | P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | Proposed | Brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
 | P1 | Run a controlled Alberta clinic pilot with approved offer and privacy terms | Decision-dependent | Issues #76, #78; requires owner, legal/privacy, and customer approval | Required for customer validation |
 | P1 | Establish readiness monitoring, accessibility, performance, rollback, and release qualification | Proposed | Issues #23, #24, #25, #30 | Blocks launch-ready claim |
@@ -172,7 +172,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
 | Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
-| Company administration | Data foundations only | No complete operator UI; platform-admin authorization and PHI separation require implementation and security tests | Cameron / Engineering |
+| Company administration | Platform foundation and lead workflow locally verified | Client onboarding/work, support, reporting, database-level audit immutability, retention, and production-like security/accessibility remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
 ## Metrics required before launch claims
@@ -258,12 +258,32 @@ Baselines are unknown unless explicitly backed by current evidence.
   schema-engine error under the unsupported host Node 26 runtime; direct SQLite
   replay proved the SQL ordering. Re-run Prisma migration tooling under pinned
   Node 20 and PostgreSQL CI before production use.
+- Implemented the first mutable Zorva HQ journey: authorized platform owner and
+  sales roles can open lead detail, assign an eligible operator, follow guarded
+  stage transitions, set a dated next action, record loss reason, and log
+  contact. Tenant roles and other platform roles cannot mutate leads.
+- Added optimistic version checks, UUID idempotency, atomic field-level
+  `LeadActivity` history, and one correlated `PlatformAuditEvent` per mutation.
+  Commercial next actions reject common clinical-content terms and no mutation
+  sends outreach or another external notification.
+- Verification: all 14 SQLite migrations replayed into an empty database;
+  focused workflow tests passed; full sequential portal unit suites, ESLint,
+  TypeScript, and the Next.js production build passed. A real local HTTP/session
+  smoke returned 403 for a tenant-only user, 200 for sales, 200 for idempotent
+  replay, and 409 for a stale edit; the successful mutation stored exactly four
+  lead activities and one platform audit event.
+- The production build twice exhausted the host's nearly full disk during
+  disposable cache/standalone output. Package-manager caches and only generated
+  `.next` output were pruned; the clean retry completed. The host Node runtime
+  remains unsupported, so pinned Node 20/PostgreSQL CI is still required.
 
 ## Next action
 
-Harden the Zorva HQ operator audit database controls and add the first mutable,
-audited lead assignment/next-action journey locally while the owner resolves or
-explicitly declines the GitHub Actions billing requirement. Then rerun PR #88,
-repair in-scope failures, and verify contact routing and production release
-identity. Do not deploy, grant production platform roles, change customer-visible
-pricing, contact clinics, or access real clinic data without explicit approval.
+Harden the Zorva HQ operator audit and lead-activity database controls, then add
+the smallest client/pilot onboarding and company-task journey without PHI. Next,
+add the support-case workflow and marketing claim/content registry described in
+the approved sequence. In parallel, the owner must resolve or explicitly decline
+the GitHub Actions billing requirement before PR #88 can receive independent CI;
+then rerun it and verify contact routing and production release identity. Do not
+deploy, grant production platform roles, change customer-visible pricing, contact
+clinics, or access real clinic data without explicit approval.

@@ -65,10 +65,14 @@ test("HQ overview returns only commercial lead fields and sourced counts", async
     "email",
     "id",
     "lastContactedAt",
+    "lostReason",
     "name",
+    "nextAction",
+    "nextActionAt",
     "ownerUserId",
     "source",
     "status",
+    "version",
   ]);
   for (const lead of leads) {
     assert.equal("encounter" in lead, false);

@@ -32,9 +32,12 @@ test("only declared platform roles are recognized", () => {
 test("role capabilities grant the smallest current read surface", () => {
   assert.equal(hasPlatformCapability("owner", true, "hq:read"), true);
   assert.equal(hasPlatformCapability("owner", true, "leads:read"), true);
+  assert.equal(hasPlatformCapability("owner", true, "leads:write"), true);
   assert.equal(hasPlatformCapability("sales", true, "leads:read"), true);
+  assert.equal(hasPlatformCapability("sales", true, "leads:write"), true);
   for (const role of ["client_success", "support", "analyst"] as const) {
     assert.equal(hasPlatformCapability(role, true, "hq:read"), true);
     assert.equal(hasPlatformCapability(role, true, "leads:read"), false);
+    assert.equal(hasPlatformCapability(role, true, "leads:write"), false);
   }
 });
