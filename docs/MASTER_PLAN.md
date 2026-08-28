@@ -42,8 +42,11 @@ system, or a multi-jurisdiction payer engine.
 - Read-only production probes on 2026-08-28 confirmed the API root, `/healthz`,
   and `/readyz` return HTTP 200. The API reports version 0.4.0 and configured
   readiness dependencies. The portal root and `/contact` return HTTP 200, while
-  the portal `/readyz` route returns HTTP 404. Deployment identity, backups,
-  monitoring, data residency, and real transaction paths remain unverified.
+  the portal `/readyz` route returns HTTP 404. That route reached `main` in
+  commit `f2dea7f` on 2026-08-26, so production is likely serving an older build
+  or an untracked source. GitHub reports no deployments or environments for the
+  repository, so exact release identity is unproven. Backups, monitoring, data
+  residency, and real transaction paths remain unverified.
 - Customer usage, retention, conversion, willingness to pay, and paid-pilot
   evidence were not found. Product-market fit and market leadership are
   unvalidated hypotheses.
@@ -150,6 +153,10 @@ Baselines are unknown unless explicitly backed by current evidence.
 - Read-only live probes returned HTTP 200 for the API root, API `/healthz`, API
   `/readyz`, portal root, and portal `/contact`. Portal `/readyz` returned HTTP
   404, so portal readiness monitoring is not proven on the deployed release.
+- Traced portal `/readyz` to main-branch commit `f2dea7f` from 2026-08-26 and
+  confirmed GitHub has no deployment or environment records for this repository.
+  The production 404 therefore indicates probable release drift, but the exact
+  deployed commit cannot be established from available read-only evidence.
 
 ## Next action
 
