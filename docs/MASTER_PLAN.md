@@ -34,11 +34,14 @@ system, or a multi-jurisdiction payer engine.
 - Automated verification on 2026-08-28: 1,868 Python tests passed and one
   credential-gated MiniMax integration test skipped; portal unit suites, ESLint,
   TypeScript, and the Next.js production build passed locally.
-- GitHub Actions workflows exist, but no runs were returned for current `main`
-  during the 2026-08-28 reconciliation. Green local checks are not CI proof.
-- Production targets are documented, but deployment, provider configuration,
-  backups, monitoring, and data residency were not live-verified in this work
-  cycle. Treat all production claims as unknown pending operator verification.
+- GitHub Actions workflows exist, but repository Actions were disabled during
+  the 2026-08-28 reconciliation. They were re-enabled for PR #88; green local
+  checks are not CI proof until those runs complete.
+- Read-only production probes on 2026-08-28 confirmed the API root, `/healthz`,
+  and `/readyz` return HTTP 200. The API reports version 0.4.0 and configured
+  readiness dependencies. The portal root and `/contact` return HTTP 200, while
+  the portal `/readyz` route returns HTTP 404. Deployment identity, backups,
+  monitoring, data residency, and real transaction paths remain unverified.
 - Customer usage, retention, conversion, willingness to pay, and paid-pilot
   evidence were not found. Product-market fit and market leadership are
   unvalidated hypotheses.
@@ -82,12 +85,13 @@ Older sequences in `research/00-ROADMAP.md` and
 | 2026-08-28 | Position Zorva as Alberta-first AHCIP pre-submit review, not generic LLM billing audit or multi-market automation | Current README, code, evaluation artifacts, and issue backlog | Verified customer and product evidence supports expansion |
 | 2026-08-28 | Treat production status as unknown until live verification | Repository deployment documentation is not runtime evidence | Operator-backed live checks and release report are recorded |
 | 2026-08-28 | Use Python 3.11, Node 20.19.x, and pnpm 9.15.9 as the development baseline | Existing CI workflow and dependency support ranges | CI/toolchain migration is implemented and verified |
+| 2026-08-28 | Re-enable repository GitHub Actions for PR verification | Actions were disabled and PR #88 received no repository CI runs | Owner intentionally disables CI with a documented replacement gate |
 
 ## Risk and access register
 
 | Area | State | Risk / required action | Owner |
 | --- | --- | --- | --- |
-| Repository | Available with admin/push access | Main lacks confirmed current green checks and branch-protection evidence | Cameron |
+| Repository | Available with admin/push access | Actions restored for PR #88; current green checks and branch-protection evidence still pending | Cameron |
 | Local development | Available | Default host runtimes differ from CI; use pinned versions | Engineering |
 | Production hosts and secrets | Not inspected | Cannot verify release, residency, credentials, backups, or monitoring | Operator / Cameron |
 | Billing | Code present, live state unverified | Requires test-mode journey, approved pricing, then production approval | Cameron |
@@ -134,10 +138,17 @@ Baselines are unknown unless explicitly backed by current evidence.
   Ruff passed; formatting passed; mypy passed across 71 source files.
 - The production build initially hit a full local disk after compiling. Only
   this checkout's disposable `.next` output was removed; the retry completed.
+- Opened PR #88 from `codex/release-truth-reproducibility`; GitGuardian passed.
+  Repository GitHub Actions were disabled, so they were re-enabled to restore
+  independent PR verification.
+- Read-only live probes returned HTTP 200 for the API root, API `/healthz`, API
+  `/readyz`, portal root, and portal `/contact`. Portal `/readyz` returned HTTP
+  404, so portal readiness monitoring is not proven on the deployed release.
 
 ## Next action
 
-Finish the current API and portal verification, repair any blocking failures,
-then live-verify the production readiness gates with the smallest required
-operator access. Do not deploy, change customer-visible pricing, contact clinics,
-or access real clinic data without explicit approval.
+Obtain green CI evidence on PR #88 and repair any in-scope failures. Then verify
+the remaining production readiness gates with the smallest required operator
+access, beginning with portal readiness routing and release identity. Do not
+deploy, change customer-visible pricing, contact clinics, or access real clinic
+data without explicit approval.
