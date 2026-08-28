@@ -135,7 +135,7 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify production identity, tenant isolation, PHI storage/retention, database migrations, backup/restore, and credential rotation | Blocked on operator/live access and accountable approval | Issues #5, #6, #10, #11, #12, #14 | Blocks any real-clinic data |
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
-| P0 | Specify and build Zorva HQ platform-admin foundation | Specified; implementation proposed | `docs/COMPANY_ADMIN_SPEC.md`; existing Lead and tenant/billing models | Blocks operating a pilot safely at company level |
+| P0 | Specify and build Zorva HQ platform-admin foundation | Specified; implementation proposed | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; existing Lead and tenant/billing models | Blocks operating a pilot safely at company level |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Partially implemented; not live-verified | Contact form, Lead model, notifications; issue #74 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
