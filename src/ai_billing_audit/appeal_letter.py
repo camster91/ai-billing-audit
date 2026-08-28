@@ -651,7 +651,7 @@ def log_appeal_outcome(outcome: AppealOutcome) -> None:
     failure must not crash the API or the training pipeline.
     """
     try:
-        _LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        _APPEAL_OUTCOMES_LOG.parent.mkdir(parents=True, exist_ok=True)
         append_encrypted_json_record(_APPEAL_OUTCOMES_LOG, asdict(outcome))
     except OSError:
         pass

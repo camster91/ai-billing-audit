@@ -77,20 +77,6 @@ const leadInputSchema = z.object({
 type LeadInput = z.infer<typeof leadInputSchema>;
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const rateLimit = takeLeadSubmission(request);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      {
-        status: 429,
-        headers: {
-          "Cache-Control": "no-store",
-          "Retry-After": String(rateLimit.retryAfterSeconds),
-        },
-      },
-    );
-  }
-
   // 1. Parse + validate
   let body: unknown;
   try {
@@ -118,6 +104,23 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(
       { error: "disposable_email" },
       { status: 400 },
+    );
+  }
+
+  // Count only structurally valid, non-disposable submissions. Invalid form
+  // corrections must not consume the visitor's lead quota; the limiter still
+  // protects the database and notification side effects below.
+  const rateLimit = takeLeadSubmission(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": "no-store",
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      },
     );
   }
 
