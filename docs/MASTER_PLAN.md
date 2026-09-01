@@ -307,11 +307,16 @@ Baselines are unknown unless explicitly backed by current evidence.
   mutation paths are capability-gated, UUID-idempotent, versioned where
   applicable, operator-audited, and do not provision tenants, send messages, or
   accept common clinical-content terms.
+- Added the core internal support-case workflow: scoped support capabilities,
+  client-engagement linkage, safe summary, category, severity, assignment,
+  status-derived acknowledgement/resolution timestamps, internal targets,
+  no-PHI product issue linkage, version conflicts, idempotent retries, case
+  activity, and platform audit events. It sends no reply and promises no SLA.
 
 ## Next action
 
-Validate the engagement-milestone/custom-task increment in full CI, then add the
-support-case workflow followed by the marketing claim/content registry described
+Obtain explicit merge/deploy direction for fully green PR #90, validate the
+support-case increment in full CI, then add the marketing claim/content registry described
 in the approved sequence. Separately verify authenticated customer journeys,
 contact routing, monitoring, and data-residency evidence. Do not deploy a new
 artifact, grant production platform roles, change customer-visible pricing,

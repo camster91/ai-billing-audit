@@ -43,6 +43,8 @@ model User {
   leadActivities LeadActivity[] @relation("LeadActivityActor")
   clientEngagements ClientEngagement[] @relation("ClientEngagementOwner")
   companyTasks CompanyTask[] @relation("CompanyTaskOwner")
+  supportCases SupportCase[] @relation("SupportCaseOwner")
+  supportActivities SupportActivity[] @relation("SupportActivityActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -931,6 +933,7 @@ model ClientEngagement {
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   owner  User?   @relation("ClientEngagementOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   tasks  CompanyTask[]
+  supportCases SupportCase[]
 
   @@index([status, pilotStartAt])
   @@index([ownerUserId, status])
@@ -958,6 +961,50 @@ model CompanyTask {
 
   @@index([engagementId, status, dueAt])
   @@index([ownerUserId, status, dueAt])
+}
+
+// Internal no-PHI support workflow. Customer-visible SLA commitments and
+// automated replies are deliberately outside this model and require approval.
+model SupportCase {
+  id                 String   @id @default(cuid())
+  engagementId       String
+  category           String
+  severity           String
+  status             String   @default("new")
+  safeSummary        String
+  ownerUserId        String?
+  dueAt              DateTime?
+  acknowledgedAt     DateTime?
+  resolvedAt         DateTime?
+  linkedIssueReference String?
+  version            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  engagement ClientEngagement @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  owner      User?            @relation("SupportCaseOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  activities SupportActivity[]
+
+  @@index([status, severity, dueAt])
+  @@index([engagementId, status, createdAt])
+  @@index([ownerUserId, status, dueAt])
+}
+
+model SupportActivity {
+  id          String   @id @default(cuid())
+  caseId      String
+  actorUserId String?
+  actorRole   String
+  kind        String
+  mutationId  String   @unique
+  changesJson String
+  occurredAt  DateTime @default(now())
+
+  supportCase SupportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("SupportActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, occurredAt])
+  @@index([actorUserId, occurredAt])
 }
 
 // ---------------------------------------------------------------------------

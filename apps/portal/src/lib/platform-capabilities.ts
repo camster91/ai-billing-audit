@@ -12,13 +12,15 @@ export type PlatformCapability =
   | "leads:read"
   | "leads:write"
   | "clients:read"
-  | "clients:write";
+  | "clients:write"
+  | "support:read"
+  | "support:write";
 
 const CAPABILITIES: Record<PlatformRole, ReadonlySet<PlatformCapability>> = {
-  owner: new Set(["hq:read", "leads:read", "leads:write", "clients:read", "clients:write"]),
+  owner: new Set(["hq:read", "leads:read", "leads:write", "clients:read", "clients:write", "support:read", "support:write"]),
   sales: new Set(["hq:read", "leads:read", "leads:write", "clients:read"]),
-  client_success: new Set(["hq:read", "leads:read", "clients:read", "clients:write"]),
-  support: new Set(["hq:read"]),
+  client_success: new Set(["hq:read", "leads:read", "clients:read", "clients:write", "support:read", "support:write"]),
+  support: new Set(["hq:read", "support:read", "support:write"]),
   analyst: new Set(["hq:read"]),
 };
 

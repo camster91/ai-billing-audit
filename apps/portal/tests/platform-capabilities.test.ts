@@ -43,6 +43,11 @@ test("role capabilities grant the smallest current read surface", () => {
   assert.equal(hasPlatformCapability("client_success", true, "leads:write"), false);
   assert.equal(hasPlatformCapability("client_success", true, "clients:read"), true);
   assert.equal(hasPlatformCapability("client_success", true, "clients:write"), true);
+  assert.equal(hasPlatformCapability("owner", true, "support:read"), true);
+  assert.equal(hasPlatformCapability("owner", true, "support:write"), true);
+  assert.equal(hasPlatformCapability("client_success", true, "support:write"), true);
+  assert.equal(hasPlatformCapability("support", true, "support:read"), true);
+  assert.equal(hasPlatformCapability("support", true, "support:write"), true);
   for (const role of ["support", "analyst"] as const) {
     assert.equal(hasPlatformCapability(role, true, "hq:read"), true);
     assert.equal(hasPlatformCapability(role, true, "leads:read"), false);
@@ -50,4 +55,6 @@ test("role capabilities grant the smallest current read surface", () => {
     assert.equal(hasPlatformCapability(role, true, "clients:read"), false);
     assert.equal(hasPlatformCapability(role, true, "clients:write"), false);
   }
+  assert.equal(hasPlatformCapability("analyst", true, "support:read"), false);
+  assert.equal(hasPlatformCapability("sales", true, "support:read"), false);
 });

@@ -102,6 +102,16 @@ separate approved customer action.
   until a customer-visible SLA is explicitly approved.
 - Supports escalation, duplicate linking, reopen, and post-incident follow-up.
 
+**Implemented local increment (2026-09-01):** owner, client-success, and support
+operators have separate support read/write capabilities. They can open and
+version internal no-PHI cases linked to an existing client engagement, assign
+an eligible operator, classify category and severity, move status, set an
+internal target, and link a no-PHI product issue. Creation and updates are
+UUID-idempotent and write both a case activity and platform audit event.
+Acknowledgement/resolution timestamps are derived from status. No action sends
+a reply or publishes a customer-visible SLA. Duplicate linking, reopen policy,
+post-incident follow-up, and inbound customer intake remain follow-on work.
+
 ### Marketing operations
 
 - Campaign/source registry, approved content/asset status, target segment,
@@ -141,7 +151,9 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 4. Client/pilot onboarding and company task management. Conversion, default and
    custom tasks, and engagement-level milestones are implemented locally;
    tenant linkage remains approval-gated.
-5. Support case workflow and product-feedback linkage.
+5. Support case workflow and product-feedback linkage. Core internal case
+   creation, assignment, status, targets, activity, and issue linkage are
+   implemented locally; inbound intake and advanced escalation remain.
 6. Marketing claims/content/campaign operations and attribution.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,
    monitoring, and operator runbook verification.
