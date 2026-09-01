@@ -254,24 +254,16 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     });
   });
 
-  test("step 02: /pricing renders 3 tiers and the $1,499 mid CTA", async ({
+  test("step 02: deferred /pricing claims redirect to reviewed contact", async ({
     page,
   }) => {
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
-    await expect(
-      page.getByRole("heading", { name: /Small practice/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Mid clinic/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Large practice/i }),
-    ).toBeVisible();
-    const body = await page.locator("body").textContent();
-    expect(body, "mid-tier CAD price $1,499 appears").toMatch(/1,499/);
-    expect(body, "mid-tier USD price $1,109 appears").toMatch(/1,109/);
+    expect(page.url(), "pricing stays gated until claims are approved").toMatch(
+      /\/contact$/,
+    );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.screenshot({
-      path: path.join(SHOT_DIR, "02-pricing-tiers.png"),
+      path: path.join(SHOT_DIR, "02-pricing-approval-gate.png"),
       fullPage: true,
     });
   });

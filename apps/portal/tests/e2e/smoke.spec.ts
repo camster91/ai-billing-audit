@@ -74,21 +74,18 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // across the run; the serial block is an additional guard.
 
   // -------------------------------------------------------------------------
-  // Step 1: visit /pricing and assert 3 pricing tiers render
+  // Step 1: verify unapproved pricing claims remain behind the public gate
   // -------------------------------------------------------------------------
   // The task body lists "hero text on /" as step 1. The marketing
   // landing page in this project is the default Next.js scaffold
   // (h1: "To get started, edit the page.tsx file."), not the
   // /pricing page, so we test /pricing directly. /pricing is the
   // marketing CTA target — visit it and assert 3 tiers.
-  test("step 01: /pricing renders 3 tiers and tier names", async ({ page }) => {
+  test("step 01: deferred /pricing redirects to reviewed contact", async ({ page }) => {
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
-    // The 3 tier names (per src/lib/pricing.ts -> TIER_NAMES).
-    await expect(page.getByRole("heading", { name: /Small practice/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Mid clinic/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Large practice/i })).toBeVisible();
-    // Capture the marketing page for the CI artifact.
-    await page.screenshot({ path: "tests/e2e/screenshots/01-pricing.png", fullPage: true });
+    expect(page.url(), "pricing stays gated until claims are approved").toMatch(/\/contact$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.screenshot({ path: "tests/e2e/screenshots/01-pricing-gate.png", fullPage: true });
   });
 
   // -------------------------------------------------------------------------
