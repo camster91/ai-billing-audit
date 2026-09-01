@@ -43,6 +43,7 @@ export const DEFAULT_TENANT_SLUG = process.env["E2E_TENANT_SLUG"] ?? "e2e-clinic
 // the helper falls back to a 5s grace and assumes the user is
 // already signed in.
 const DEV_LOG = process.env["E2E_DEV_LOG"] ?? "/tmp/portal-dev.log";
+const AUTH_CAPTURE_FILE = process.env["E2E_AUTH_CAPTURE_FILE"];
 
 /** Dev inbox: transactional emails are (dev mock)'d to the dev log. */
 export interface DevEmail {
@@ -65,13 +66,9 @@ export async function captureDevEmail(
   timeoutMs = 30_000,
 ): Promise<DevEmail> {
   const deadline = Date.now() + timeoutMs;
-  // Snapshot the current file size so we only scan new content.
-  let lastSize = 0;
-  try {
-    lastSize = readFileSync(logFile, "utf8").length;
-  } catch {
-    lastSize = 0;
-  }
+  // Scan the current log as well as new content. Callers trigger the send
+  // before entering this helper, so snapshotting the current size would skip
+  // the message that was just emitted.
   while (Date.now() < deadline) {
     let content = "";
     try {
@@ -79,16 +76,26 @@ export async function captureDevEmail(
     } catch {
       content = "";
     }
-    if (content.length > lastSize) {
-      const fresh = content.slice(lastSize);
-      lastSize = content.length;
-      const match = parseDevEmail(fresh, to, templateId);
-      if (match) return match;
-    }
+    // Reparse the complete log on each poll. Console output can become visible
+    // after the header but before the subject/body lines; advancing a byte
+    // cursor at that point would discard the only header for this email.
+    const match = parseDevEmail(content, to, templateId);
+    if (match) return match;
     await new Promise((r) => setTimeout(r, 250));
   }
+  let observedHeaders = "none";
+  try {
+    observedHeaders =
+      readFileSync(logFile, "utf8")
+        .split("\n")
+        .filter((line) => line.includes("[email]"))
+        .slice(-8)
+        .join(" | ") || "none";
+  } catch {
+    observedHeaders = "log unreadable";
+  }
   throw new Error(
-    `no (dev mock) email for to=${to} templateId=${templateId} in ${logFile} within ${timeoutMs}ms`,
+    `no (dev mock) email for to=${to} templateId=${templateId} in ${logFile} within ${timeoutMs}ms; observed email headers: ${observedHeaders}`,
   );
 }
 
@@ -97,27 +104,31 @@ function parseDevEmail(
   to: string,
   templateId: string,
 ): DevEmail | null {
-  // Resend dispatcher logs either with template=... or with a
-  // subject line directly. Match a single email block: the
-  // (dev mock) prefix is emitted by sendTemplate() in dev mode.
+  // sendTemplate() puts the template id in the header rather than on a
+  // separate `template:` line. Capture that id and terminate at the next
+  // application log block (or real end-of-input). JavaScript has no `\Z`
+  // anchor, so using it here would silently make an end-of-file email
+  // impossible to match.
   const re =
-    /\[email\][^\n]*\(dev mock\)[^\n]*\n([\s\S]*?)(?=\n\[email\]|\n\[auth\]|\Z)/g;
+    /\[email\]\s+\(dev mock\) would send\s+([a-zA-Z0-9_-]+)[^\n]*:\s*\n([\s\S]*?)(?=\n(?:\[email\]|\[auth\])|$)/g;
   let m: RegExpExecArray | null;
   let lastMatch: DevEmail | null = null;
   while ((m = re.exec(fresh)) !== null) {
-    const block = m[1];
+    const loggedTemplateId = m[1];
+    const block = m[2];
     const toMatch = /to:\s*([^\n]+)/.exec(block);
     const fromMatch = /from:\s*([^\n]+)/.exec(block);
     const subjMatch = /subject:\s*([^\n]+)/.exec(block);
     const tmplMatch = /template:\s*([a-zA-Z0-9_-]+)/.exec(block);
     if (!toMatch || !subjMatch) continue;
     if (!toMatch[1].includes(to)) continue;
+    if (loggedTemplateId !== templateId) continue;
     if (tmplMatch && tmplMatch[1] !== templateId) continue;
     lastMatch = {
       to: toMatch[1].trim(),
       from: fromMatch ? fromMatch[1].trim() : "",
       subject: subjMatch[1].trim(),
-      templateId: tmplMatch ? tmplMatch[1] : templateId,
+      templateId: loggedTemplateId,
       raw: block,
     };
   }
@@ -135,6 +146,26 @@ export async function captureMagicLinkFromLog(
   logFile: string = DEV_LOG,
   timeoutMs = 20_000,
 ): Promise<string> {
+  if (AUTH_CAPTURE_FILE) {
+    const { createHash } = await import("node:crypto");
+    const identifier =
+      "sha256:" +
+      createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 8);
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const capture = JSON.parse(readFileSync(AUTH_CAPTURE_FILE, "utf8")) as {
+          identifier?: string;
+          url?: string;
+        };
+        if (capture.identifier === identifier && capture.url) return capture.url;
+      } catch {
+        // The file may not exist yet or may be between atomic runner writes.
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    throw new Error(`no captured magic link appeared within ${timeoutMs}ms`);
+  }
   if (!existsSync(logFile)) {
     throw new Error(
       `dev log not found at ${logFile}. The dev server is not writing to a log file — ` +
@@ -205,8 +236,10 @@ export async function loginViaMagicLink(
   // string, we instead test page.url() contains the path
   // portion of the callback, ignoring querystring.
   const path = callbackUrl.split("?")[0] ?? callbackUrl;
-  const re = new RegExp(path.replace(/[/]/g, "\\/"));
-  await page.waitForURL(re, { timeout: 30_000 });
+  await page.waitForURL(
+    (url) => url.pathname === path || url.pathname.startsWith(`${path}/`),
+    { timeout: 30_000 },
+  );
 }
 
 export interface CheckoutResult {
@@ -239,10 +272,49 @@ export interface PostSeedResult {
   findingIds: string[];
 }
 
+export interface AuditChainResult {
+  actions: string[];
+  rowCount: number;
+  brokenAt: string | null;
+}
+
+/** Read one encounter's actions and verify its tenant-wide audit chain. */
+export function readAuditChain(encounterId: string): AuditChainResult {
+  const cwd = resolvePortalCwd();
+  const script = [
+    "import { prisma } from './src/lib/prisma';",
+    "import { verifyChain } from './src/lib/audit-chain';",
+    "(async () => {",
+    `  const encounter = await prisma.encounter.findUnique({ where: { id: '${encounterId}' }, select: { tenantId: true } });`,
+    "  if (!encounter) throw new Error('encounter not found');",
+    "  const tenantRows = await prisma.auditTrailEntry.findMany({ where: { tenantId: encounter.tenantId }, orderBy: [{ timestamp: 'asc' }, { eventId: 'asc' }] });",
+    `  const encounterRows = tenantRows.filter((row) => row.encounterId === '${encounterId}');`,
+    "  const chainRows = tenantRows.map((row) => ({ ...row, timestamp: row.timestamp.toISOString() }));",
+    "  console.log(JSON.stringify({ actions: encounterRows.map((row) => row.action), rowCount: encounterRows.length, brokenAt: verifyChain(chainRows) }));",
+    "  await prisma.$disconnect();",
+    "})()",
+  ].join(" ");
+  const r = spawnSync("pnpm", ["exec", "tsx", "-e", script], {
+    cwd,
+    env: process.env,
+    encoding: "utf8",
+  });
+  if (r.status !== 0) {
+    throw new Error(`audit-chain read failed: ${r.stderr || r.stdout}`);
+  }
+  const line = r.stdout
+    .split("\n")
+    .reverse()
+    .find((candidate) => candidate.trim().startsWith("{"));
+  if (!line) throw new Error(`audit-chain read produced no JSON: ${r.stdout}`);
+  return JSON.parse(line) as AuditChainResult;
+}
+
 /** Spawn the post-seed script and parse the JSON it prints on the last line. */
 export function postSeedEncounter(
   tenantSlug: string = DEFAULT_TENANT_SLUG,
   userEmail: string = DEFAULT_USER_EMAIL,
+  tenantId?: string,
 ): PostSeedResult {
   const cwd = resolvePortalCwd();
   const r: SpawnSyncReturns<string> = spawnSync(
@@ -254,6 +326,7 @@ export function postSeedEncounter(
         ...process.env,
         E2E_TENANT_SLUG: tenantSlug,
         E2E_USER_EMAIL: userEmail,
+        ...(tenantId ? { E2E_TENANT_ID: tenantId } : {}),
       },
       encoding: "utf8",
     },
@@ -271,10 +344,18 @@ export function postSeedEncounter(
 }
 
 /** Spawn the seed script (wipes + re-creates the e2e tenant + user). */
+export interface SeedAcceptanceResult {
+  tenantId: string;
+  tenantSlug: string;
+  userId: string;
+  userEmail: string;
+}
+
 export function seedAcceptance(
   tenantSlug: string = DEFAULT_TENANT_SLUG,
   userEmail: string = DEFAULT_USER_EMAIL,
-): void {
+  attachMembership = false,
+): SeedAcceptanceResult {
   const cwd = resolvePortalCwd();
   const r = spawnSync(
     "pnpm",
@@ -285,6 +366,7 @@ export function seedAcceptance(
         ...process.env,
         E2E_TENANT_SLUG: tenantSlug,
         E2E_USER_EMAIL: userEmail,
+        E2E_ATTACH_MEMBERSHIP: attachMembership ? "1" : "0",
       },
       encoding: "utf8",
     },
@@ -292,4 +374,10 @@ export function seedAcceptance(
   if (r.status !== 0) {
     throw new Error(`seed failed: ${r.stderr || r.stdout}`);
   }
+  const jsonStart = r.stdout.lastIndexOf("{");
+  const jsonEnd = r.stdout.lastIndexOf("}");
+  if (jsonStart === -1 || jsonEnd === -1) {
+    throw new Error(`seed produced no JSON: ${r.stdout}`);
+  }
+  return JSON.parse(r.stdout.slice(jsonStart, jsonEnd + 1)) as SeedAcceptanceResult;
 }

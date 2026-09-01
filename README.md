@@ -144,13 +144,17 @@ ai-billing-audit/
 
 | Doc | Purpose |
 | --- | --- |
-| [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md) | Master plan and current OKRs (post-pivot revision) |
+| [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md) | Authoritative product status, roadmap, risks, decisions, metrics, and work log |
 | [`docs/PROJECT_AUDIT_2026-06-22.md`](docs/PROJECT_AUDIT_2026-06-22.md) | The 2026-06-22 six-agent audit — what works, what doesn't |
 | [`docs/PILOT_OFFER.md`](docs/PILOT_OFFER.md) | The 30-day paid pilot contract (Alberta-edition in progress) |
 | [`docs/ALBERTA_STRATEGY_BRIEF.md`](docs/ALBERTA_STRATEGY_BRIEF.md) | The 2026-06-22 Alberta-first pivot brief |
 | [`docs/ALBERTA_PROSPECT_LIST.md`](docs/ALBERTA_PROSPECT_LIST.md) | 12-clinic outreach list, current as of the pivot |
 | [`docs/AHCIP_RULE_REFERENCE.md`](docs/AHCIP_RULE_REFERENCE.md) | AHCIP SOMB rule reference the v12 prompt encodes |
 | [`README.design-history.md`](README.design-history.md) | Pre-v12 design history (MIPROv2 loop, Phase 0–7, gpt-4o-mini era) |
+
+Dated files under `research/`, `audits/`, and `docs/daily_report_*` are
+historical evidence. Where they conflict with `docs/MASTER_PLAN.md`, the master
+plan controls current priority and status.
 
 ## Current capabilities
 

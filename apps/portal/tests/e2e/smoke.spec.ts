@@ -32,6 +32,7 @@ import {
   loginViaMagicLink,
   postCheckout,
   postSeedEncounter,
+  readAuditChain,
   seedAcceptance,
   resolvePortalCwd,
 } from "./helpers";
@@ -41,11 +42,13 @@ const SAMPLE_837P = path.join(resolvePortalCwd(), "tests/e2e/fixtures/sample-837
 // Cross-test state. Module-scoped vars survive across the ordered
 // tests because workers: 1 runs them in sequence in the same process.
 const state: {
+  tenantId: string;
   encounterId: string;
   findingIds: string[];
   accepted: boolean;
   dismissed: boolean;
 } = {
+  tenantId: "",
   encounterId: "",
   findingIds: [],
   accepted: false,
@@ -54,7 +57,8 @@ const state: {
 
 test.beforeAll(async () => {
   // 1. Wipe + provision the e2e tenant + user.
-  seedAcceptance(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+  const seed = seedAcceptance(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL, true);
+  state.tenantId = seed.tenantId;
   // 2. Confirm the sample 837P file is present.
   if (!existsSync(SAMPLE_837P)) {
     throw new Error(`sample 837P fixture missing at ${SAMPLE_837P}`);
@@ -74,21 +78,18 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // across the run; the serial block is an additional guard.
 
   // -------------------------------------------------------------------------
-  // Step 1: visit /pricing and assert 3 pricing tiers render
+  // Step 1: verify unapproved pricing claims remain behind the public gate
   // -------------------------------------------------------------------------
   // The task body lists "hero text on /" as step 1. The marketing
   // landing page in this project is the default Next.js scaffold
   // (h1: "To get started, edit the page.tsx file."), not the
   // /pricing page, so we test /pricing directly. /pricing is the
   // marketing CTA target — visit it and assert 3 tiers.
-  test("step 01: /pricing renders 3 tiers and tier names", async ({ page }) => {
+  test("step 01: deferred /pricing redirects to reviewed contact", async ({ page }) => {
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
-    // The 3 tier names (per src/lib/pricing.ts -> TIER_NAMES).
-    await expect(page.getByRole("heading", { name: /Small practice/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Mid clinic/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Large practice/i })).toBeVisible();
-    // Capture the marketing page for the CI artifact.
-    await page.screenshot({ path: "tests/e2e/screenshots/01-pricing.png", fullPage: true });
+    expect(page.url(), "pricing stays gated until claims are approved").toMatch(/\/contact$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.screenshot({ path: "tests/e2e/screenshots/01-pricing-gate.png", fullPage: true });
   });
 
   // -------------------------------------------------------------------------
@@ -134,9 +135,19 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // The file path is also stored in the tenant row (for the audit
   // pipeline to pick up after the wizard completes).
   test("step 04: upload an 837P file via /api/onboarding/upload", async ({ page }) => {
+    // Playwright creates a fresh browser context for each test, even inside a
+    // serial describe block. Establish this step's own authenticated session
+    // before using page.request so the upload exercises the real auth gate.
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/dashboard");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
+    expect(cookieHeader, "magic-link callback established session cookies").toBeTruthy();
     const buf = await readFile(SAMPLE_837P);
     const res = await page.request.post("/api/onboarding/upload", {
+      headers: { cookie: cookieHeader },
       multipart: {
+        tenantId: state.tenantId,
         file: {
           name: "sample-837P.edi",
           mimeType: "text/plain",
@@ -148,8 +159,12 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
       res.ok(),
       `upload returned HTTP ${res.status()}: ${await res.text().catch(() => "<no body>")}`,
     ).toBe(true);
-    const body = (await res.json()) as { ok?: boolean; fileName?: string; path?: string };
-    expect(body.ok, "upload response ok=true").toBe(true);
+    const body = (await res.json()) as {
+      encryptedAtRest?: boolean;
+      fileName?: string;
+      filePath?: string;
+    };
+    expect(body.encryptedAtRest, "upload response confirms encryption").toBe(true);
     expect(body.fileName, "upload response includes fileName").toBeTruthy();
   });
 
@@ -160,7 +175,11 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // post-seed script plants a real encounter + 2 findings + invoice
   // so steps 6-8 can exercise the review surface end-to-end.
   test("step 05: post-seed plants an encounter with 2 findings", async () => {
-    const post = postSeedEncounter(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+    const post = postSeedEncounter(
+      DEFAULT_TENANT_SLUG,
+      DEFAULT_USER_EMAIL,
+      state.tenantId,
+    );
     state.encounterId = post.encounterId;
     state.findingIds = post.findingIds;
     expect(post.encounterId, "post-seed wrote an encounterId").toBeTruthy();
@@ -171,17 +190,27 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // Step 6: the uploaded claim's finding appears on /findings
   // -------------------------------------------------------------------------
   test("step 06: /findings inbox lists the post-seed finding", async ({ page }) => {
-    // /findings is auth-gated. Reuse the magic-link session from step 3.
-    // (Same page object in serial block; cookies persist.)
-    await page.goto("/findings", { waitUntil: "domcontentloaded" });
+    // Playwright isolates each test context, so establish this page's own
+    // session before exercising the auth-gated findings inbox.
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
+    const findingsResponse = await page.request.get("/findings", {
+      headers: { cookie: cookieHeader },
+    });
+    expect(
+      findingsResponse.ok(),
+      `findings returned HTTP ${findingsResponse.status()}`,
+    ).toBe(true);
+    const findingsHtml = await findingsResponse.text();
     // The post-seed writes the encounter with a clinical note that
     // anchors the finding's evidence_quote to a known substring
     // ("dyslipidemia"). The inbox row renders the encounter date
     // and the category badge; assert the row is present by looking
     // for the encounter's date-of-service year + clinic name.
-    await expect(page.locator("body")).toContainText(/E2E Acceptance Clinic|enc_/i, {
-      timeout: 10_000,
-    });
+    expect(findingsHtml).toMatch(/e2e-clinic|enc_|dyslipidemia/i);
+    await page.setContent(findingsHtml, { waitUntil: "domcontentloaded" });
     await page.screenshot({ path: "tests/e2e/screenshots/06-findings.png", fullPage: true });
   });
 
@@ -194,10 +223,16 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // chain, which is what step 8 asserts.
   test("step 07: accept one finding, dismiss another with a reason", async ({ page }) => {
     expect(state.findingIds.length, "step 5 planted findings").toBeGreaterThanOrEqual(2);
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
 
     // Accept the first finding.
     const acceptUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[0]}/accept`;
-    const acceptRes = await page.request.post(acceptUrl);
+    const acceptRes = await page.request.post(acceptUrl, {
+      headers: { cookie: cookieHeader, "x-tenant-id": state.tenantId },
+    });
     const acceptBody = (await acceptRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(
       acceptRes.ok() && acceptBody.ok,
@@ -209,7 +244,11 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     const dismissUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[1]}/dismiss`;
     const dismissRes = await page.request.post(dismissUrl, {
       data: { reason: "hallucinated_fact" },
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        cookie: cookieHeader,
+        "x-tenant-id": state.tenantId,
+      },
     });
     const dismissBody = (await dismissRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(
@@ -230,28 +269,10 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     expect(state.accepted && state.dismissed, "steps 6-7 ran").toBe(true);
     expect(state.encounterId, "encounterId set").toBeTruthy();
 
-    const { PrismaClient } = await import(
-      "../src/generated/prisma/client.js" as string
-    );
-    const prisma = new PrismaClient();
-    try {
-      const rows = await prisma.auditTrailEntry.findMany({
-        where: { encounterId: state.encounterId },
-        orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-      });
-      expect(rows.length, "2 audit rows").toBeGreaterThanOrEqual(2);
-      const actions: string[] = rows.map((r: { action: string }) => r.action);
-      expect(actions, "one accept + one dismiss").toContain("accept");
-      expect(actions, "one accept + one dismiss").toContain("dismiss");
-
-      // Walk the chain.
-      const { verifyChain } = await import(
-        "../src/lib/audit-chain.js" as string
-      );
-      const brokenAt = verifyChain(rows);
-      expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();
-    } finally {
-      await prisma.$disconnect();
-    }
+    const chain = readAuditChain(state.encounterId);
+    expect(chain.rowCount, "2 audit rows").toBeGreaterThanOrEqual(2);
+    expect(chain.actions, "one accept + one dismiss").toContain("accept");
+    expect(chain.actions, "one accept + one dismiss").toContain("dismiss");
+    expect(chain.brokenAt, `chain valid (brokenAt=${chain.brokenAt})`).toBeNull();
   });
 });

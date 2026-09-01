@@ -119,8 +119,8 @@ def _load_optouts() -> dict[str, dict[str, Any]]:
 
 def _save_optouts(data: dict[str, dict[str, Any]]) -> None:
     """Persist opt-outs to disk. Creates parent dirs."""
-    _LOGS_DIR.mkdir(parents=True, exist_ok=True)
     path = _optout_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     replacement = path.with_name(path.name + ".encrypted.tmp")
     try:
         replacement.write_bytes(

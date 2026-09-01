@@ -24,7 +24,7 @@
 // not expose TTI directly. We sum blocking time after FCP through
 // the last long task followed by a five-second quiet window.
 
-import { chromium, devices } from "playwright";
+import { chromium, devices } from "@playwright/test";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

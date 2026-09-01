@@ -24,7 +24,6 @@
 
 import { NextResponse } from "next/server";
 import { resolveLeadsResendKey } from "@/lib/leads-email";
-import { isLeadsSlackMockMode } from "@/lib/leads-slack";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,9 +78,7 @@ export async function GET(): Promise<NextResponse> {
     auth_secret_configured: isReadableSecret(process.env.AUTH_SECRET),
     auth_resend_key_configured: isReadableSecret(process.env.AUTH_RESEND_KEY),
     leads_resend_key_configured: isReadableSecret(resolveLeadsResendKey()),
-    slack_webhook_configured: isLeadsSlackMockMode()
-      ? { ok: true }
-      : { ok: true, reason: "configured" },
+    slack_webhook_configured: { ok: true },
     database_reachable: await databaseReachable(),
   };
 

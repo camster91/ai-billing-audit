@@ -147,7 +147,7 @@ export default function Home() {
 
             {/* code-drawn audit mockup */}
             <div className={styles.audit} aria-label="Example pre-submit review">
-              <div className={styles.auditBar}>
+              <div className={styles.auditBar} data-a11y-tone="secondary">
                 <span className={styles.dots} aria-hidden="true">
                   <span /><span /><span />
                 </span>
@@ -192,7 +192,7 @@ export default function Home() {
                 </div>
               </div>
               <div className={styles.auditFoot}>
-                <span>Illustrative data · 2 findings</span>
+                <span data-a11y-tone="secondary">Illustrative data · 2 findings</span>
                 <span className={styles.signoff}>Human sign-off required</span>
               </div>
             </div>

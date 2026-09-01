@@ -24,6 +24,7 @@ const DISALLOWED_ROUTES = [
   "/settings/",
   "/team/",
   "/onboarding/",
+  "/hq/",
   "/login",
   "/api/",
 ] as const;

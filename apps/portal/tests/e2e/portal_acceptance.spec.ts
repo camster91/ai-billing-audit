@@ -48,6 +48,7 @@ import {
   loginViaMagicLink,
   postCheckout,
   postSeedEncounter,
+  readAuditChain,
   seedAcceptance,
   resolvePortalCwd,
 } from "./helpers";
@@ -254,24 +255,16 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     });
   });
 
-  test("step 02: /pricing renders 3 tiers and the $1,499 mid CTA", async ({
+  test("step 02: deferred /pricing claims redirect to reviewed contact", async ({
     page,
   }) => {
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
-    await expect(
-      page.getByRole("heading", { name: /Small practice/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Mid clinic/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Large practice/i }),
-    ).toBeVisible();
-    const body = await page.locator("body").textContent();
-    expect(body, "mid-tier CAD price $1,499 appears").toMatch(/1,499/);
-    expect(body, "mid-tier USD price $1,109 appears").toMatch(/1,109/);
+    expect(page.url(), "pricing stays gated until claims are approved").toMatch(
+      /\/contact$/,
+    );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.screenshot({
-      path: path.join(SHOT_DIR, "02-pricing-tiers.png"),
+      path: path.join(SHOT_DIR, "02-pricing-approval-gate.png"),
       fullPage: true,
     });
   });
@@ -430,7 +423,12 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
   });
 
   test("step 07: audit surfaces between 1 and 2 findings", async () => {
-    const post = postSeedEncounter(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+    const tenant = readTenantRow();
+    const post = postSeedEncounter(
+      DEFAULT_TENANT_SLUG,
+      DEFAULT_USER_EMAIL,
+      tenant.id,
+    );
     state.encounterId = post.encounterId;
     state.findingIds = post.findingIds;
     expect(state.encounterId, "post-seed wrote encounterId").toBeTruthy();
@@ -544,9 +542,18 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     const cronJson = (await cronRes.json().catch(() => ({}))) as {
       ok?: boolean;
       sent?: number;
+      results?: Array<Record<string, unknown>>;
     };
     if (!cronJson.ok) {
       throw new Error(`digest cron returned ok=false: ${JSON.stringify(cronJson)}`);
+    }
+    const tenantResult = cronJson.results?.find(
+      (result) => result["tenantId"] === tenant.id,
+    );
+    if (!tenantResult || tenantResult["skipped"] || tenantResult["error"]) {
+      throw new Error(
+        `digest did not reach the sender for the acceptance tenant: ${JSON.stringify(tenantResult ?? cronJson)}`,
+      );
     }
 
     const email = await captureDevEmail(tenant.userEmail, "weekly_digest");
@@ -563,8 +570,13 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     const tenant = readTenantRow();
     expect(tenant.id, "tenantId resolved").toBeTruthy();
 
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/billing");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
     const res = await page.request.get(
       `/api/billing/invoices?tenantId=${tenant.id}`,
+      { headers: { cookie: cookieHeader } },
     );
     expect(
       res.ok(),
@@ -598,29 +610,13 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
   test("step 11 (chain): audit log has accept + dismiss rows + chain is valid", async () => {
     expect(state.accepted, "step 8 ran").toBe(true);
     expect(state.encounterId, "encounterId set").toBeTruthy();
-    const { PrismaClient } = await import(
-      "../src/generated/prisma/client.js" as string
-    );
-    const prisma = new PrismaClient();
-    try {
-      const rows = await prisma.auditTrailEntry.findMany({
-        where: { encounterId: state.encounterId },
-        orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-      });
-      expect(rows.length, "1+ audit rows").toBeGreaterThanOrEqual(1);
-      const actions = rows.map((r: { action: string }) => r.action);
-      expect(actions, "one accept row").toContain("accept");
-      if (state.dismissed) {
-        expect(actions, "one dismiss row").toContain("dismiss");
-      }
-      const { verifyChain } = await import(
-        "../src/lib/audit-chain.js" as string
-      );
-      const brokenAt = verifyChain(rows);
-      expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();
-    } finally {
-      await prisma.$disconnect();
+    const chain = readAuditChain(state.encounterId);
+    expect(chain.rowCount, "1+ audit rows").toBeGreaterThanOrEqual(1);
+    expect(chain.actions, "one accept row").toContain("accept");
+    if (state.dismissed) {
+      expect(chain.actions, "one dismiss row").toContain("dismiss");
     }
+    expect(chain.brokenAt, `chain valid (brokenAt=${chain.brokenAt})`).toBeNull();
   });
 });
 

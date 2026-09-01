@@ -40,8 +40,8 @@ configured `DATABASE_URL`.
 
 ## Stack
 
-- **Next.js 15.5.19** (App Router) on **React 19.2.4** — `next dev`, `next build`.
-- **Prisma 7.8** with the better-sqlite3 adapter (dev) and Postgres (prod),
+- **Next.js 15.5.21** (App Router) on **React 19.2.4** — `next dev`, `next build`.
+- **Prisma 7.9.1** with the better-sqlite3 adapter (dev) and Postgres (prod),
   schema in `apps/portal/prisma/schema.prisma`.
 - **Stripe 22.2** for Checkout Sessions, the Customer Portal redirect, and
   webhook-driven subscription lifecycle (`/api/billing/*`).
@@ -56,15 +56,15 @@ configured `DATABASE_URL`.
 # 1. install
 pnpm install
 
-# 2. point Prisma at the dev SQLite DB (copy .env.example to .env)
-cp apps/portal/.env.example apps/portal/.env
+# 2. point Prisma at the dev SQLite DB (from apps/portal)
+cp .env.example .env
 
 # 3. apply SQLite migrations + generate both database clients
-pnpm --filter portal exec prisma migrate deploy
-pnpm --filter portal prisma:generate
+pnpm exec prisma db push
+pnpm prisma:generate
 
 # 4. run the app (http://localhost:3000)
-pnpm --filter portal dev
+pnpm dev
 ```
 
 With no `STRIPE_SECRET_KEY` set, `POST /api/billing/checkout` returns a stub
@@ -75,8 +75,8 @@ NextAuth falls back to logging the magic link to the terminal.
 ## Build
 
 ```bash
-pnpm --filter portal build      # next build (Prisma generate is pre-build)
-pnpm --filter portal start      # next start, defaults to :3000
+pnpm build      # next build (Prisma generation is automatic)
+pnpm start      # next start, defaults to :3000
 ```
 
 The build step generates both SQLite and PostgreSQL clients automatically.
@@ -137,14 +137,10 @@ Defined in `apps/portal/.env.example`. The portal reads:
 ## Tests
 
 ```bash
-pnpm --filter portal test:onboarding
-pnpm --filter portal test:patient-hash
-pnpm --filter portal test:email
-pnpm --filter portal test:billing-page
-pnpm --filter portal test:team-management
-pnpm --filter portal test:audit-quota
-pnpm --filter portal test:leads-direct
-pnpm --filter portal test:contact-form
+pnpm test:unit
+
+# Server/seed-dependent tests (start the app and seed as described by each test)
+pnpm test:integration
 ```
 
 Smoke scripts under `apps/portal/scripts/` cover the end-to-end flows that

@@ -149,9 +149,7 @@ def verify_webhook_signature(
     if seen_delivery_ids is not None and delivery_id in seen_delivery_ids:
         return False
     signed = timestamp.encode("ascii") + b"." + body
-    expected = hmac.new(
-        secret.encode("utf-8"), signed, hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(secret.encode("utf-8"), signed, hashlib.sha256).hexdigest()
     supplied = signature[3:]
     if hmac.compare_digest(supplied, expected):
         if seen_delivery_ids is not None:

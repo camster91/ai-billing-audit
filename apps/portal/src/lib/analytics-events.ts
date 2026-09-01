@@ -158,7 +158,7 @@ let inMemoryUTM: UTM | null = null;
 
 export interface PlausibleFunction {
   (event: string, options?: { props?: Record<string, unknown> }): void;
-  q?: IArguments[];
+  q?: Parameters<PlausibleFunction>[];
 }
 
 /**
@@ -170,8 +170,8 @@ export function ensurePlausibleQueue(target: {
   plausible?: PlausibleFunction;
 }): PlausibleFunction {
   if (target.plausible) return target.plausible;
-  const queued: PlausibleFunction = function () {
-    (queued.q ??= []).push(arguments);
+  const queued: PlausibleFunction = function (...args) {
+    (queued.q ??= []).push(args);
   };
   queued.q = [];
   target.plausible = queued;

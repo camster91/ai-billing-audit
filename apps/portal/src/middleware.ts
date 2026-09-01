@@ -176,6 +176,7 @@ export default function proxy(request: NextRequest) {
     "/settings",
     "/team",
     "/onboarding",
+    "/hq",
     "/api",
   ];
   const looksAuthed = AUTHED_PREFIXES.some(

@@ -39,6 +39,7 @@ test("robots disallows protected routes but leaves deferred routes crawlable", (
   }
   assert.ok(disallow.includes("/team/"));
   assert.ok(disallow.includes("/onboarding/"));
+  assert.ok(disallow.includes("/hq/"));
 });
 
 test("all deferred marketing responses redirect with noindex", () => {

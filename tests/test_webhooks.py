@@ -534,20 +534,17 @@ def test_verify_webhook_signature_rejects_tamper_stale_and_replay() -> None:
 # Issue #21: rotation with bounded overlap.
 # ---------------------------------------------------------------------------
 
+
 def test_rotate_signing_secret_accepts_previous_during_overlap(tmp_path) -> None:
     """During a rotation overlap, deliveries signed with EITHER
     secret verify. Outside the overlap, only the new secret
     verifies."""
     from ai_billing_audit import webhooks
-    from ai_billing_audit.clinical_note_storage import (
-        read_encrypted_json_records,
-    )
 
     old_secret = "old-secret-very-long-string-32-bytes"
     new_secret = "new-secret-very-long-string-32-bytes"
 
     log = tmp_path / "webhooks.jsonl"
-    log_path_str = str(log)
     webhooks._log_path = lambda: log  # type: ignore[assignment]
 
     # Seed a registration with the old secret.
@@ -668,7 +665,8 @@ def test_second_rotation_uses_latest_secret(tmp_path) -> None:
     )
 
     current = next(
-        row for row in webhooks.list_webhooks()
+        row
+        for row in webhooks.list_webhooks()
         if row["webhook_id"] == registered["webhook_id"]
     )
     assert current["_signing_secret"] == third_secret
@@ -680,8 +678,8 @@ def test_rotate_caps_overlap_to_maximum(tmp_path) -> None:
     _MAX_ROTATION_OVERLAP_SECONDS (24h) so a misconfigured
     operator cannot keep a stolen former secret alive."""
     from ai_billing_audit import webhooks
+
     log = tmp_path / "webhooks.jsonl"
-    log_path_str = str(log)
     webhooks._log_path = lambda: log  # type: ignore[assignment]
     webhooks.register_webhook(
         url="http://127.0.0.1:1/hook",
@@ -697,14 +695,15 @@ def test_rotate_caps_overlap_to_maximum(tmp_path) -> None:
 
 def test_rotate_rejects_invalid_overlap(tmp_path) -> None:
     from ai_billing_audit import webhooks
+
     log = tmp_path / "webhooks.jsonl"
-    log_path_str = str(log)
     webhooks._log_path = lambda: log  # type: ignore[assignment]
     webhooks.register_webhook(
         url="http://127.0.0.1:1/hook",
         events=["audit_complete"],
     )
     import pytest as _pytest
+
     with _pytest.raises(ValueError):
         webhooks.rotate_webhook_signing_secret(
             _last_webhook_id(webhooks),
@@ -720,8 +719,8 @@ def test_rotate_rejects_invalid_overlap(tmp_path) -> None:
 def test_rotate_rejects_too_short_secret(tmp_path) -> None:
     from ai_billing_audit import webhooks
     import pytest as _pytest
+
     log = tmp_path / "webhooks.jsonl"
-    log_path_str = str(log)
     webhooks._log_path = lambda: log  # type: ignore[assignment]
     webhooks.register_webhook(
         url="http://127.0.0.1:1/hook",
@@ -737,8 +736,8 @@ def test_rotate_rejects_too_short_secret(tmp_path) -> None:
 def test_rotate_unknown_webhook_raises(tmp_path) -> None:
     from ai_billing_audit import webhooks
     import pytest as _pytest
+
     log = tmp_path / "webhooks.jsonl"
-    log_path_str = str(log)
     webhooks._log_path = lambda: log  # type: ignore[assignment]
     with _pytest.raises(KeyError):
         webhooks.rotate_webhook_signing_secret("wh_does_not_exist")

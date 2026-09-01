@@ -2,15 +2,24 @@
   "name": "portal",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.19 <21",
+    "pnpm": ">=9 <10"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "pnpm prisma:generate",
-    "build": "next build",
+    "build": "ZORVA_BUILD_SKIP_DATABASE=1 next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
+    "pretest:unit": "pnpm prisma:generate && DATABASE_URL=${DATABASE_URL:-file:./prisma/dev.db} prisma db push",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:integration": "node --import tsx --test tests/contact-form.test.ts tests/encounter-list-smoke.test.ts",
     "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium",
     "a11y:audit": "node a11y-audit.mjs",
+    "hq:manage-role": "tsx scripts/manage-platform-role.ts",
     "a11y:keyboard": "node a11y-keyboard.mjs",
     "a11y:probe": "node a11y-probe-v2.mjs",
     "a11y:shots": "node a11y-shots.mjs",
@@ -38,7 +47,7 @@
     "test:audit-results": "node --import tsx --test tests/audit-results.test.ts",
     "prisma:prepare-postgresql": "node scripts/prepare-postgresql-schema.mjs",
     "prisma:generate": "pnpm prisma:prepare-postgresql && prisma generate && prisma generate --config prisma.postgresql.config.ts",
-    "prisma:migrate:deploy:postgresql": "pnpm prisma:prepare-postgresql && prisma migrate deploy --config prisma.postgresql.config.ts",
+    "prisma:migrate:deploy:postgresql": "pnpm prisma:generate && prisma migrate deploy --config prisma.postgresql.config.ts",
     "migrate:portal-phi": "node --import tsx scripts/migrate-portal-phi.ts"
   },
   "dependencies": {

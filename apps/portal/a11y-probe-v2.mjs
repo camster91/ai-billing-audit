@@ -1,6 +1,6 @@
 // Better a11y diagnostic — uses Playwright's accessibility snapshot for ARIA
 // + a real color probe that walks up to find the actual painted background.
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

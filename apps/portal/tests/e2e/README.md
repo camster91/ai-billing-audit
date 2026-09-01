@@ -64,7 +64,7 @@ pnpm test:e2e:report
 
 | # | Step | What it asserts |
 |---|------|------------------|
-| 01 | `/pricing` | 3 tier headings render: "Small clinic", "Mid clinic", "Large practice" |
+| 01 | `/pricing` | Deferred pricing claims redirect to the reviewed `/contact` page |
 | 02 | mid-tier CTA | `/api/billing/checkout` returns a sessionId; demo mode URL is null |
 | 03 | magic-link login | POSTs to NextAuth, follows the dev-log link, lands on `/dashboard` |
 | 04 | upload 837P | POST to `/api/onboarding/upload` with the fixture file, `ok: true` |
