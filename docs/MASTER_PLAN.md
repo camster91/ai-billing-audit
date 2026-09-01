@@ -172,7 +172,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
 | Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
-| Company administration | Platform foundation and lead workflow locally verified | Client onboarding/work, support, reporting, database-level audit immutability, retention, and production-like security/accessibility remain | Cameron / Engineering |
+| Company administration | Platform foundation, lead workflow, and database append-only guards locally verified | Client onboarding/work, support, reporting, retention-policy approval/export, and production-like security/accessibility remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
 ## Metrics required before launch claims
@@ -276,13 +276,23 @@ Baselines are unknown unless explicitly backed by current evidence.
   disposable cache/standalone output. Package-manager caches and only generated
   `.next` output were pruned; the clean retry completed. The host Node runtime
   remains unsupported, so pinned Node 20/PostgreSQL CI is still required.
+- Added database-level append-only triggers for `PlatformAuditEvent` and
+  `LeadActivity` in both SQLite and PostgreSQL migrations. Inserts remain
+  allowed; updates and deletes fail with no application/session bypass.
+- Added `docs/HQ_HISTORY_OPERATIONS.md`: retention duration is deliberately not
+  invented from clinical or billing rules, and any future destructive purge
+  requires named approval, exact record scope, export/count evidence, a reviewed
+  maintenance migration, guard restoration, and post-change verification.
+- Verification: all 15 SQLite migrations replayed cleanly; the four mutation
+  triggers were present; live in-memory SQLite attempts proved both tables
+  reject update/delete and retain rows; PostgreSQL SQL structure tests confirmed
+  both tables are guarded with no bypass setting; both Prisma schemas validate.
 
 ## Next action
 
-Harden the Zorva HQ operator audit and lead-activity database controls, then add
-the smallest client/pilot onboarding and company-task journey without PHI. Next,
-add the support-case workflow and marketing claim/content registry described in
-the approved sequence. In parallel, the owner must resolve or explicitly decline
+Add the smallest client/pilot onboarding and company-task journey without PHI.
+Next, add the support-case workflow and marketing claim/content registry
+described in the approved sequence. In parallel, the owner must resolve or explicitly decline
 the GitHub Actions billing requirement before PR #88 can receive independent CI;
 then rerun it and verify contact routing and production release identity. Do not
 deploy, grant production platform roles, change customer-visible pricing, contact

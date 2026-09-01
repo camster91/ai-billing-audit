@@ -64,9 +64,9 @@ model PlatformUserRole {
   @@index([role, active])
 }
 
-// Application-append-only company-operator access and action record. This is
+// Database-append-only company-operator access and action record. This is
 // separate from the tenant-scoped clinical AuditTrailEntry hash chain and
-// carries no PHI. Database immutability/retention controls remain a release gate.
+// carries no PHI. Retention approval and production verification remain gates.
 model PlatformAuditEvent {
   id          String   @id @default(cuid())
   actorUserId String?

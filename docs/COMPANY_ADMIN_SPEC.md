@@ -146,10 +146,13 @@ sign-in. From `apps/portal`, the operator can run `pnpm hq:manage-role` with
 output, and records grants/revocations in `PlatformAuditEvent`. Running it
 against production remains an approval-gated privileged action.
 
-`PlatformAuditEvent` and `LeadActivity` are application-append-only in this
-increment. Database-level update/delete denial, retention, export, and approved
-purge behavior remain required before production operation; the tenant clinical
-hash chain is not reused or represented as proof for company-operator events.
+`PlatformAuditEvent` and `LeadActivity` are database-append-only: SQLite and
+PostgreSQL migration triggers reject every update and delete while allowing new
+events. There is no application bypass. `docs/HQ_HISTORY_OPERATIONS.md` defines
+the approval-gated policy decision and future purge procedure. Retention-period
+approval, export implementation, and production verification remain required;
+the tenant clinical hash chain is not reused or represented as proof for
+company-operator events.
 
 ## Explicitly deferred
 
