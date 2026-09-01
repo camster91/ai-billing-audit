@@ -156,10 +156,11 @@ function tsxEval(script: string): string {
   // so test failures show the prisma stack; the helper that
   // parses the last line is robust to interleaved stderr because
   // it only takes the last non-empty line.
+  const cwd = resolvePortalCwd();
   return execFileSync(
-    "pnpm",
-    ["exec", "tsx", "-e", script],
-    { cwd: resolvePortalCwd(), encoding: "utf8" },
+    process.execPath,
+    [path.resolve(cwd, "node_modules/tsx/dist/cli.mjs"), "--eval", script],
+    { cwd, encoding: "utf8" },
   );
 }
 

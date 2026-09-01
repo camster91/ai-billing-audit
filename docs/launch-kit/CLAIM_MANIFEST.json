@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "status": "draft_not_approved_for_external_use",
+  "owner": "Cameron Ashley",
+  "campaign": "controlled_alberta_launch_v1",
+  "approvedPublicRoutes": [
+    "https://zorva.ashbi.ca/",
+    "https://zorva.ashbi.ca/how-it-works",
+    "https://zorva.ashbi.ca/contact"
+  ],
+  "claims": [
+    {
+      "id": "ZC-001",
+      "text": "Zorva is designed for human-reviewed, pre-submit AHCIP claim review by Alberta clinic billing teams.",
+      "source": "docs/MASTER_PLAN.md#product-charter",
+      "evidenceType": "authoritative_positioning",
+      "approvalState": "review_required",
+      "publicUse": false
+    },
+    {
+      "id": "ZC-002",
+      "text": "The clinic billing team keeps the final decision about what, if anything, is submitted.",
+      "source": "apps/portal/src/app/how-it-works/page.tsx",
+      "evidenceType": "implemented_public_workflow_copy",
+      "approvalState": "review_required",
+      "publicUse": false
+    },
+    {
+      "id": "ZC-003",
+      "text": "The product workflow can place review context and supporting references beside an encounter for a biller to assess.",
+      "source": "apps/portal/src/app/how-it-works/page.tsx",
+      "evidenceType": "implemented_public_workflow_copy",
+      "approvalState": "review_required",
+      "publicUse": false
+    },
+    {
+      "id": "ZC-004",
+      "text": "The current public conversion is a reviewed request for a conversation, not self-serve production purchase.",
+      "source": "docs/MASTER_PLAN.md#commercial-and-marketing-plan",
+      "evidenceType": "authoritative_offer_boundary",
+      "approvalState": "review_required",
+      "publicUse": false
+    },
+    {
+      "id": "ZC-005",
+      "text": "Initial fit is limited to Alberta primary-care teams using AHCIP with a named human workflow owner and willingness to complete privacy and onboarding review.",
+      "source": "docs/MARKETING_PLAN.md#audience-and-buying-group",
+      "evidenceType": "qualification_hypothesis",
+      "approvalState": "review_required",
+      "publicUse": false
+    }
+  ],
+  "assets": [
+    { "path": "ONE_PAGE_OVERVIEW.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004", "ZC-005"] },
+    { "path": "FOUNDER_ANNOUNCEMENT.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004"] },
+    { "path": "LINKEDIN_DRAFTS.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004"] },
+    { "path": "OUTREACH_SEQUENCE.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004", "ZC-005"] },
+    { "path": "WARM_INTRO_REQUEST.md", "claimIds": ["ZC-001", "ZC-002", "ZC-004"] },
+    { "path": "DISCOVERY_CALL.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004", "ZC-005"] },
+    { "path": "OBJECTIONS_FAQ.md", "claimIds": ["ZC-001", "ZC-002", "ZC-003", "ZC-004", "ZC-005"] }
+  ]
+}

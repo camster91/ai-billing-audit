@@ -11,7 +11,7 @@ noindex redirect, but they are excluded from the sitemap.
 
 | Route | Discovery posture | Reason |
 | --- | --- | --- |
-| `/` | Indexable | Capability-focused homepage; no testimonial, performance metric, pricing, or operational promise. |
+| `/` | Indexable | Human-reviewed Alberta workflow and conversation CTA registered in `docs/PUBLIC_CLAIM_REGISTER.md`; no testimonial, performance metric, pricing, compliance, infrastructure, or operational promise. |
 | `/how-it-works` | Indexable | Human-reviewed workflow explanation; no promise of integrations, outcomes, or automated submission. |
 | `/contact` | Indexable | Request form without a response-time, calendar, or service-level promise. |
 | About, blog, calculator, careers, case studies, changelog, comparison, demo request, FAQ, specialty, glossary, legal, pilot, press, pricing, security (including the one-pager), status, technical, trust, and try pages | Temporary noindex redirect | Content requires product-owner, legal, security, operational, or publication evidence before it is served or eligible for search discovery. |
@@ -78,6 +78,22 @@ incident-notification service until an approved alert destination and owner
 are configured and tested.
 
 ## Local verification recorded for this change
+
+### Core homepage claim reconciliation - 2026-09-01
+
+- Removed historical revenue-loss, blanket coverage, fee-code, synthetic-dollar,
+  pricing, infrastructure, residency, compliance, and contractual statements
+  from the indexable homepage.
+- Replaced them with the bounded claims in `docs/PUBLIC_CLAIM_REGISTER.md` and
+  one conversion journey through `/how-it-works` and `/contact`.
+- Added source-level regression tests across all three reviewed routes. Three
+  claim/route/illustration tests pass; focused ESLint and the full TypeScript
+  project pass under Node 20 after both Prisma clients are generated.
+- Local Chromium checks at 1440px and 375px returned one H1, no horizontal
+  overflow, no console errors, and no homepage links to deferred routes.
+- Axe scanned every public route with zero WCAG 2 A/AA violations; homepage
+  and route-level incomplete checks still require manual review. This is local
+  candidate evidence, not production release evidence.
 
 - `git diff --check` passes.
 - `pnpm --dir apps/portal lint` passes.

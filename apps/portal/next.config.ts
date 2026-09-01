@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const scriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
+  "https://plausible.io",
+].join(" ");
+
 const nextConfig: NextConfig = {
   // Standalone build mode produces `.next/standalone/` with the minimal
   // server bundle + a sliced node_modules tree. The runtime Dockerfile
@@ -71,13 +78,16 @@ const nextConfig: NextConfig = {
             // (the /api/analytics/event beacon). When Plausible is
             // configured, plausible.io is added to script-src +
             // connect-src + img-src so its script.js and event POST
-            // requests are not blocked. Update this policy when
-            // adding any new third-party script (analytics, tag
+            // requests are not blocked. Next.js development builds
+            // require eval for their source-map/runtime machinery, so
+            // unsafe-eval is added only in development; production
+            // builds retain the stricter policy. Update this policy
+            // when adding any new third-party script (analytics, tag
             // manager, etc.).
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://plausible.io",
+              `script-src ${scriptSources}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://plausible.io",
               "font-src 'self' data:",

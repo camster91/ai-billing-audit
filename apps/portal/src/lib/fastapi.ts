@@ -99,6 +99,23 @@ export interface PortalAuditSubmission {
   clinicalNote: string;
 }
 
+export interface Portal837PreviewRow {
+  encounter_id: string | null;
+  patient_id: string | null;
+  NPI: string | null;
+  date_of_service: string | null;
+  CPT_codes: string[];
+  diagnosis_codes: string[];
+  source_filename: string;
+  errors: string[];
+}
+
+export interface Portal837Preview {
+  filename: string;
+  rows: Portal837PreviewRow[];
+  error?: string;
+}
+
 export interface EngineFinding {
   finding_id: string;
   category: string;
@@ -132,6 +149,57 @@ export type PortalAuditJobResult =
   | { kind: "ok"; job: PortalAuditJob }
   | { kind: "not_found" }
   | { kind: "error"; status: number; message: string };
+
+export async function previewPortal837P(
+  fileName: string,
+  bytes: Buffer,
+  principal: FastApiPrincipal,
+  options: EngineRequestOptions = {},
+): Promise<FastApiResult<Portal837Preview>> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const authHeaders = buildFastApiAuthHeaders(principal, {
+    bearerToken: options.bearerToken,
+    signingSecret: options.signingSecret,
+  });
+  const form = new FormData();
+  form.set(
+    "file",
+    new Blob([new Uint8Array(bytes)], { type: "application/octet-stream" }),
+    fileName,
+  );
+  let response: Response;
+  try {
+    response = await fetchImpl(`${FASTAPI_BASE_URL}/encounters/upload/preview`, {
+      method: "POST",
+      credentials: "omit",
+      headers: { Accept: "application/json", ...authHeaders },
+      body: form,
+      cache: "no-store",
+    });
+  } catch (error) {
+    return {
+      kind: "error",
+      status: 0,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+  if (!response.ok) {
+    return {
+      kind: "error",
+      status: response.status,
+      message: (await response.text()).slice(0, 500),
+    };
+  }
+  try {
+    return { kind: "ok", data: (await response.json()) as Portal837Preview };
+  } catch (error) {
+    return {
+      kind: "error",
+      status: response.status,
+      message: `JSON parse failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Fetch helpers

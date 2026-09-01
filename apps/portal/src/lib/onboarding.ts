@@ -839,6 +839,7 @@ export interface WizardState {
   ehrConnectionMode: string | null;
   firstEncounterUploadMode: string | null;
   firstEncounterFileName: string | null;
+  firstEncounterEncounterId: string | null;
   sessionId: string;
   alreadyClaimed: boolean;
 }
@@ -869,6 +870,7 @@ export async function loadWizardState(params: {
     ehrConnectionMode: tenant.ehrConnectionMode,
     firstEncounterUploadMode: tenant.firstEncounterUploadMode,
     firstEncounterFileName: tenant.firstEncounterFileName,
+    firstEncounterEncounterId: tenant.firstEncounterEncounterId,
     sessionId: params.sessionId,
     alreadyClaimed: alreadyClaimed ? alreadyClaimed.userId !== params.userId : false,
   };

@@ -38,6 +38,9 @@ function check(name: string, cond: boolean, detail?: string): void {
 
 async function main(): Promise<void> {
   console.log("=== /api/leads direct handler test ===\n");
+  await prisma.lead.deleteMany({
+    where: { email: { in: ["jane@clinic.test", "alex@clinic.test", "null@clinic.test"] } },
+  });
 
   console.log("Mock modes:");
   console.log("  email:", isLeadsEmailMockMode());
@@ -76,6 +79,27 @@ async function main(): Promise<void> {
       check("billingSetup persisted", row.billingSetup === "hybrid");
       check("no IP / UA column", !("ip" in row) && !("userAgent" in row));
     }
+  }
+
+  console.log("\nrepeat POST links to the canonical lead:");
+  const repeatResp = await POST(buildReq({
+    ...validBody,
+    name: "Changed Contact",
+    clinicName: "Changed Display Name",
+    email: " JANE@CLINIC.TEST ",
+  }));
+  const repeatData = (await getJson(repeatResp)) as {
+    leadId?: string;
+    deduplicated?: boolean;
+  };
+  check("repeat status 200", repeatResp.status === 200, `got ${repeatResp.status}`);
+  check("repeat returns the canonical leadId", repeatData.leadId === data1.leadId);
+  check("repeat is identified as deduplicated", repeatData.deduplicated === true);
+  if (data1.leadId) {
+    const canonical = await prisma.lead.findUnique({ where: { id: data1.leadId } });
+    check("repeat increments submission count", canonical?.submissionCount === 2);
+    check("repeat preserves canonical display fields", canonical?.name === "Jane Smith" && canonical.clinicName === "Downtown Family Health");
+    check("repeat creates no second email lead", await prisma.lead.count({ where: { email: "jane@clinic.test" } }) === 1);
   }
 
   console.log("\nemail casing preserved for name, lowercased for email:");

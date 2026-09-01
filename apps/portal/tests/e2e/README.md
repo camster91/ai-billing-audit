@@ -66,9 +66,9 @@ pnpm test:e2e:report
 |---|------|------------------|
 | 01 | `/pricing` | Deferred pricing claims redirect to the reviewed `/contact` page |
 | 02 | mid-tier CTA | `/api/billing/checkout` returns a sessionId; demo mode URL is null |
-| 03 | magic-link login | POSTs to NextAuth, follows the dev-log link, lands on `/dashboard` |
-| 04 | upload 837P | POST to `/api/onboarding/upload` with the fixture file, `ok: true` |
-| 05 | post-seed | spawns `scripts/e2e_acceptance_post_seed.ts` to plant encounter + 2 findings |
+| 03 | checkout redemption | Magic-link login lands on onboarding and the authenticated redeem API returns the journey tenant |
+| 04 | onboarding + first audit | Drives clinic, Canadian residency, EHR, encrypted 837P + note ingestion, completion, dispatch, and result import against a contract-faithful mock engine |
+| 05 | persistence proof | Verifies the uploaded encounter, retained diagnosis data, source digest, and imported findings in Prisma |
 | 06 | `/findings` inbox | the post-seed finding's row renders (clinic name or `enc_` prefix) |
 | 07 | accept + dismiss | POST `/api/encounters/[id]/findings/[fid]/(accept|dismiss)`; accept 1, dismiss 1 with reason |
 | 08 | audit log | the `AuditTrailEntry` chain has 2 rows and `verifyChain` returns null (chain valid) |
@@ -89,14 +89,9 @@ handoffs without spawning 8 separate pages.
 
 ## Why the marketing landing page is skipped
 
-The task body lists "hero text on /" as step 1. The marketing
-landing page in this project is the default Next.js scaffold
-(`<h1>To get started, edit the page.tsx file.</h1>`), not the
-Zorva /pricing page. Step 1 targets `/pricing` instead — that's
-the page real prospects land on after the marketing CTA. The
-default-scaffold `/` page is not the production surface.
-
-If a real `/` marketing page is added later, the test should be
-split into two: step 1 = visit `/` and assert hero text, step 2 =
-visit `/pricing` and assert 3 tiers. The current config keeps the
-suite at 8 tests.
+The reviewed public homepage now has its own browser coverage in this suite's
+companion acceptance spec and in the accessibility/performance gate. This smoke
+starts at the still-gated pricing route to preserve the checkout approval
+boundary. The browser job uses a contract-faithful local audit-engine mock; the
+Python suite separately validates the production 837P parser. Production engine
+credentials and live clinical data remain a separate release qualification.

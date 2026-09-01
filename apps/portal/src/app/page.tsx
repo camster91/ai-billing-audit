@@ -1,14 +1,10 @@
 // / — marketing landing page.
 //
-// Redesign: warm editorial system repainted onto the portal's
-// dark-only design contract. Fraunces serif display + IBM Plex Mono
-// micro-labels (both loaded via `next/font/google` in layout.tsx, so
-// the production CSP `font-src 'self' data:` is satisfied without an
-// external stylesheet fetch). Single clinical-green accent + amber
-// reserved for shadow-bill findings. Sections: hero + code-drawn audit
-// mockup, rules strip, stats band, walkthrough band, four-step audit
-// flow, pillars, security checklist, quote, FAQ (<details> accordions
-// — no client JS), CTA band.
+// The editorial layout is intentionally claim-light. Public wording is limited
+// to the Alberta-first, human-reviewed workflow and conversation CTA approved
+// by docs/MASTER_PLAN.md. Pricing, performance, savings, infrastructure,
+// compliance, and customer-result claims remain off this indexable route until
+// their evidence and accountable approvals exist.
 //
 // Server component — no hooks, no fetch. The FAQ uses native
 // <details>/<summary> so the whole page ships zero client JavaScript
@@ -34,54 +30,53 @@ export const metadata: Metadata = {
 };
 
 const RULES = [
-  "E/M level",
-  "NCCI edits",
-  "MUE limits",
-  "Modifier pairs",
-  "Payer policy",
-  "AHCIP",
-  "SOMB",
+  "Encounter narrative",
+  "Billed services",
+  "AHCIP context",
+  "SOMB context",
+  "Supporting references",
+  "Biller decision",
 ];
 
 const STEPS = [
   {
     n: "01",
-    title: "Read",
-    body: "The auditor ingests the clinical narrative and billed codes for every encounter — no sampling, no queue triage.",
+    title: "Bring",
+    body: "Bring the encounter narrative and billed services your team wants to assess into one review path.",
   },
   {
     n: "02",
-    title: "Retrieve",
-    body: "It pulls the governing rules for each service: AHCIP policy, SOMB schedule items, general rules, and payer edits.",
+    title: "Review",
+    body: "Place the available billing context and supporting references beside the encounter for assessment.",
   },
   {
     n: "03",
-    title: "Find",
-    body: "Missed codes, underbilled modifiers, and shadow-billed services surface as findings — each citing the exact rule and passage.",
+    title: "Decide",
+    body: "Your billing team decides whether to act, investigate further, or leave the claim unchanged.",
   },
   {
     n: "04",
-    title: "Review",
-    body: "Your billing team accepts, edits, or dismisses each finding. Nothing is submitted until a human signs off.",
+    title: "Record",
+    body: "Keep the review decision connected to the workflow without handing submission control to Zorva.",
   },
 ];
 
 const FAQS = [
   {
     q: "Does Zorva submit claims on our behalf?",
-    a: "No. Zorva is a pre-submit audit layer. It reads encounters and surfaces findings with rule and passage citations; your billing team reviews and approves each one. Nothing ships until a human signs off.",
+    a: "No. Zorva is designed as a pre-submit review step. Your clinic's authorized billing team keeps the final decision about what, if anything, is submitted.",
   },
   {
-    q: "How is pricing structured?",
-    a: "A flat monthly fee in three tiers bracketed by audit volume. No percentage of revenue, no per-claim charge, no recovery-linked fee. AKS safe-harbor-aligned for US pilots; published in the executed IMA for Canadian clinics.",
+    q: "Who is the current conversation for?",
+    a: "We are initially exploring fit with Alberta primary-care teams using AHCIP, with a named billing-workflow owner and a human reviewer who remains responsible for submission decisions.",
   },
   {
-    q: "Where is our data stored?",
-    a: "In a single, region-pinned facility documented in your executed IMA / BAA. There is no cross-region replication, no sale of customer data, and no clinical-data analytics egress. Full HIA / PHIPA / HIPAA posture is on the security page.",
+    q: "What should we share in a first conversation?",
+    a: "Non-clinical workflow context: who owns review, where context is assembled, and what creates rework. Do not send patient, claim, credential, or other sensitive production information through the contact form.",
   },
   {
-    q: "Which rules does the auditor check?",
-    a: "Every encounter is checked against AHCIP and the SOMB — E/M level, NCCI edits, MUE limits, modifier pairs, and payer policy. Each finding cites the exact rule and the exact passage in the clinical note it was drawn from.",
+    q: "Can we start using it immediately?",
+    a: "The current public step is a reviewed request for a conversation, not self-serve production access. Product fit, privacy, onboarding, and any pilot terms must be reviewed first.",
   },
 ];
 
@@ -119,29 +114,26 @@ export default function Home() {
           <div className={styles.heroGrid}>
             <div>
               <h1 className={styles.headline}>
-                Find the revenue your billers are{" "}
-                <em>leaving on the table.</em>
+                Review Alberta claims with your billing team{" "}
+                <em>in control.</em>
               </h1>
               <p className={styles.subhead}>
-                Zorva reads every Alberta claim against AHCIP and the
-                SOMB before it leaves your desk — catching the missed
-                codes, underbilled modifiers, and shadow-billed services
-                that quietly drain your monthly revenue. Your billing
-                team reviews what it finds. Nothing ships until a human
-                signs off.
+                Zorva is designed as a human-reviewed, pre-submit AHCIP
+                workflow for Alberta primary-care billing teams. Bring the
+                available context into review, assess the next action, and keep
+                the final submission decision with your clinic.
               </p>
               <div className={styles.ctaRow}>
                 <Link href="/contact" className={styles.primary} data-analytics="home_hero_contact">
-                  Talk to sales <span className={styles.arr}>→</span>
+                  Start a conversation <span className={styles.arr}>→</span>
                 </Link>
                 <Link href="/how-it-works" className={styles.secondary} data-analytics="home_hero_how_it_works">
-                  Calculate your revenue opportunity{" "}
+                  See how review works{" "}
                   <span className={styles.arr}>→</span>
                 </Link>
               </div>
               <p className={styles.heroNote}>
-                Every finding cites the exact rule and the exact passage
-                in the note.
+                Start with workflow questions, not patient or claim data.
               </p>
             </div>
 
@@ -156,44 +148,43 @@ export default function Home() {
               </div>
               <div className={styles.auditBody}>
                 <div className={styles.claimLine}>
-                  <span className={styles.code}>03.03A — office visit, age 45–64</span>
-                  <span className={styles.val}>$38.03</span>
+                  <span className={styles.code}>Encounter narrative</span>
+                  <span className={styles.val}>Available</span>
                 </div>
                 <div className={styles.claimLine}>
-                  <span className={styles.code}>13.59A — diagnostic interview</span>
-                  <span className={styles.val}>$72.90</span>
+                  <span className={styles.code}>Billed services</span>
+                  <span className={styles.val}>Available</span>
                 </div>
                 <div className={styles.claimLine}>
-                  <span className={styles.code}>08.19A — minor procedure tray</span>
-                  <span className={styles.val}>—</span>
+                  <span className={styles.code}>Supporting context</span>
+                  <span className={styles.val}>Review</span>
                 </div>
                 <div className={`${styles.finding} ${styles.findingGreen}`}>
                   <div className={styles.findingHead}>
-                    <span>Underbilled</span>
-                    <span>+ $41.19</span>
+                    <span>Review item</span>
+                    <span>Biller decision</span>
                   </div>
                   <p>
-                    Narrative supports complex assessment —{" "}
-                    <span className={styles.cite}>03.03C</span> — not
-                    03.03A. SOMB Schedule, GP section, p. 14; note
-                    passage: “45 min, multi-system review…”
+                    The available context raises a billing question worth
+                    reviewing. Confirm the applicable guidance and decide
+                    whether any change is appropriate.
                   </p>
                 </div>
                 <div className={`${styles.finding} ${styles.findingAmber}`}>
                   <div className={styles.findingHead}>
-                    <span>Shadow bill missed</span>
-                    <span>+ $28.40</span>
+                    <span>Supporting reference</span>
+                    <span>Check source</span>
                   </div>
                   <p>
-                    Tray fee <span className={styles.cite}>08.19A</span>{" "}
-                    billable alongside procedure per SOMB GR 4.7. Not
-                    claimed on this encounter.
+                    Keep the source and review context beside the item so the
+                    authorized biller can assess it without an automatic
+                    submission decision.
                   </p>
                 </div>
               </div>
               <div className={styles.auditFoot}>
-                <span data-a11y-tone="secondary">Illustrative data · 2 findings</span>
-                <span className={styles.signoff}>Human sign-off required</span>
+                <span data-a11y-tone="secondary">Illustrative workflow · no patient data</span>
+                <span className={styles.signoff}>Human decision required</span>
               </div>
             </div>
           </div>
@@ -201,7 +192,7 @@ export default function Home() {
 
         {/* ── rules strip ──────────────────────────────────── */}
         <div className={styles.rulesStrip}>
-          <span className={styles.rulesLabel}>Checked against</span>
+          <span className={styles.rulesLabel}>Review context</span>
           {RULES.map((r) => (
             <span key={r} className={styles.ruleTag}>{r}</span>
           ))}
@@ -210,27 +201,27 @@ export default function Home() {
         {/* ── stats band ───────────────────────────────────── */}
         <section className={styles.stats} aria-label="At a glance">
           <div className={styles.stat}>
-            <span className={styles.monoTag}>Coverage</span>
-            <div className={styles.big}>Every <em>claim</em></div>
+            <span className={styles.monoTag}>Focus</span>
+            <div className={styles.big}>Before <em>submission</em></div>
             <p className={styles.cap}>
-              Audited before submission — not a sample, not just the
-              flagged ones.
+              Add a deliberate review step before the clinic makes its final
+              claim decision.
             </p>
           </div>
           <div className={styles.stat}>
             <span className={styles.monoTag}>Review model</span>
-            <div className={styles.big}>Human <em>sign-off</em></div>
+            <div className={styles.big}>Human <em>decision</em></div>
             <p className={styles.cap}>
-              Nothing leaves your desk until your billing team approves
-              it.
+              The authorized billing team decides whether to act on a review
+              item.
             </p>
           </div>
           <div className={styles.stat}>
-            <span className={styles.monoTag}>Pricing</span>
-            <div className={styles.big}>Flat <em>monthly</em></div>
+            <span className={styles.monoTag}>Current entry</span>
+            <div className={styles.big}>Conversation <em>first</em></div>
             <p className={styles.cap}>
-              No recovery share, no per-claim charge, no percentage of
-              revenue.
+              Fit, privacy, onboarding, and pilot terms are reviewed before
+              production use.
             </p>
           </div>
         </section>
@@ -240,17 +231,15 @@ export default function Home() {
           <div>
             <span className={styles.eyebrow}>Product walkthrough</span>
             <h2 className={styles.h2}>
-              See the audit <em>before</em> the claim ships.
+              See the review path <em>before</em> sharing data.
             </h2>
             <p className={styles.bodyText}>
               We&apos;re recording a fresh demo. In the meantime, the{" "}
               <Link href="/how-it-works" className={styles.link}>
                 how-it-works page
               </Link>{" "}
-              walks through the same flow in text — what the auditor
-              reads, what rules it pulls, and how the findings surface
-              to your billing team for review before anything is
-              submitted.
+              explains how encounter context, supporting references, and a
+              human decision fit together before submission.
             </p>
           </div>
           <div className={styles.videoShell}>
@@ -269,14 +258,14 @@ export default function Home() {
         </section>
 
         {/* ── four-step flow ───────────────────────────────── */}
-        <section className={styles.flow} aria-label="How the audit runs">
-          <span className={styles.eyebrow}>How the audit runs</span>
+        <section className={styles.flow} aria-label="How the review works">
+          <span className={styles.eyebrow}>How the review works</span>
           <h2 className={styles.h2}>
-            From encounter note to <em>reviewed</em> claim.
+            From available context to a <em>human</em> decision.
           </h2>
           <p className={styles.flowLede}>
-            Four steps, all before submission. Your team stays in
-            control of the final word on every claim.
+            Four steps before submission, with your clinic retaining control
+            of the final decision.
           </p>
           <div className={styles.steps}>
             {STEPS.map((s) => (
@@ -290,74 +279,65 @@ export default function Home() {
         </section>
 
         {/* ── pillars ──────────────────────────────────────── */}
-        <section className={styles.pillars} aria-label="Why teams switch">
-          <span className={styles.eyebrow}>Why teams switch</span>
+        <section className={styles.pillars} aria-label="Workflow principles">
+          <span className={styles.eyebrow}>Workflow principles</span>
           <h2 className={styles.h2}>
-            Built for billing teams, <em>not</em> around them.
+            Designed around accountable <em>review.</em>
           </h2>
 
           <div className={styles.pillar}>
             <span className={styles.pillarNum}>/ 01</span>
             <h3 className={styles.pillarTitle}>
-              Audit every claim, not just the flagged ones
+              Bring review context together
             </h3>
             <p className={styles.pillarBody}>
-              The auditor reads the clinical narrative, the billed
-              codes, and the retrieved rules for every encounter — E/M
-              level, NCCI edits, MUE limits, modifier pairs, payer
-              policy. Findings cite the exact rule and the exact
-              passage in the note.
+              Place the encounter narrative, billed services, and available
+              supporting references in one path so the biller can assess the
+              next action deliberately.
             </p>
           </div>
           <div className={styles.pillar}>
             <span className={styles.pillarNum}>/ 02</span>
-            <h3 className={styles.pillarTitle}>Region-pinned data</h3>
+            <h3 className={styles.pillarTitle}>Keep the decision with the clinic</h3>
             <p className={styles.pillarBody}>
-              Your data is stored in a single, region-pinned facility
-              documented in the executed IMA / BAA. No cross-region
-              replication, no sale of customer data, no clinical-data analytics
-              egress. The current HIA / PHIPA / HIPAA posture is
-              detailed on the{" "}
-              <Link href="/security" className={styles.link}>
-                security page
-              </Link>
-              .
+              Zorva does not submit claims on the clinic&apos;s behalf. The
+              authorized billing team decides whether a review item warrants a
+              change, more investigation, or no action.
             </p>
           </div>
           <div className={styles.pillar}>
             <span className={styles.pillarNum}>/ 03</span>
             <h3 className={styles.pillarTitle}>
-              Flat monthly fee, no recovery share
+              Start with a bounded fit conversation
             </h3>
             <p className={styles.pillarBody}>
-              No percentage of revenue, no per-claim charge, no
-              recovery-linked fee. Three tiers bracketed by audit
-              volume. Pricing and data-handling terms are documented
-              in the executed agreement for legal and operational review.
+              The public next step is a reviewed conversation about the current
+              workflow. Pricing, production access, and pilot terms are not
+              offered through this page.
             </p>
           </div>
         </section>
 
         {/* ── security checklist ───────────────────────────── */}
-        <section className={styles.security} aria-label="Security and compliance">
-          <span className={styles.eyebrow}>Security and compliance</span>
+        <section className={styles.security} aria-label="Operating boundaries">
+          <span className={styles.eyebrow}>Operating boundaries</span>
           <h2 className={styles.h2}>
-            Your data stays where <em>you</em> put it.
+            Clear limits before a <em>pilot</em> begins.
           </h2>
           <p className={styles.bodyText}>
-            Clinic data never moves across regions, never trains shared
-            models, and never leaves the facility documented in your
-            executed agreement.
+            A first conversation should establish fit and required review. It
+            should not collect clinic production data or imply terms that have
+            not been approved.
           </p>
           <div className={styles.checkList}>
             <div className={styles.checkItem}>
               <CheckIcon />
               <div>
                 <span className={styles.checkKey}>
-                  Single region-pinned facility
+                  No autonomous submission
                 </span>{" "}
                 <span className={styles.checkDesc}>
-                  — named in the executed IMA / BAA.
+                  — the clinic&apos;s authorized biller keeps the final decision.
                 </span>
               </div>
             </div>
@@ -365,10 +345,10 @@ export default function Home() {
               <CheckIcon />
               <div>
                 <span className={styles.checkKey}>
-                  No cross-region replication
+                  No outcome promise
                 </span>{" "}
                 <span className={styles.checkDesc}>
-                  — no sale of customer data or clinical-data analytics egress.
+                  — no savings, recovery, accuracy, or ROI guarantee is made.
                 </span>
               </div>
             </div>
@@ -376,14 +356,10 @@ export default function Home() {
               <CheckIcon />
               <div>
                 <span className={styles.checkKey}>
-                  HIA / PHIPA / HIPAA posture
+                  No sensitive data in first contact
                 </span>{" "}
                 <span className={styles.checkDesc}>
-                  — documented in full on the{" "}
-                  <Link href="/security" className={styles.link}>
-                    security page
-                  </Link>
-                  .
+                  — discuss workflow only until privacy and onboarding review is complete.
                 </span>
               </div>
             </div>
@@ -393,8 +369,8 @@ export default function Home() {
         {/* ── quote ────────────────────────────────────────── */}
         <section className={styles.quote} aria-label="Review principle">
           <p className={styles.blockquote}>
-            Findings are designed to show the <strong>rule, passage,
-            and estimated impact</strong> so a biller can make the final call.
+            A useful review supports the <strong>person accountable for the
+            decision</strong>; it does not remove them from the workflow.
           </p>
           <div className={styles.quoteAttr}>Human review remains required</div>
         </section>
@@ -403,7 +379,7 @@ export default function Home() {
         <section className={styles.faq} aria-label="Common questions">
           <span className={styles.eyebrow}>Common questions</span>
           <h2 className={styles.h2}>
-            What counsel and billing <em>leads</em> ask.
+            What clinic teams ask <em>first.</em>
           </h2>
           {FAQS.map((f) => (
             <details key={f.q} className={styles.faqItem}>
@@ -419,42 +395,34 @@ export default function Home() {
         {/* ── cta band ─────────────────────────────────────── */}
         <section className={styles.ctaBand} aria-label="Next steps">
           <h2 className={styles.ctaTitle}>
-            Want the full picture <em>first?</em>
+            Start with your current <em>workflow.</em>
           </h2>
           <p className={styles.ctaText}>
-            Pricing, the audit flow, and our compliance posture —
-            everything counsel and your billing lead will ask about, in
-            plain language.
+            Tell us who owns review today, where context is assembled, and what
+            your team needs before deciding whether a controlled evaluation is
+            appropriate.
           </p>
           <div className={styles.ctaRowCenter}>
-            <Link href="/pricing" className={styles.primaryInverse} data-analytics="home_bottom_pricing">
-              See pricing <span className={styles.arr}>→</span>
+            <Link href="/contact" className={styles.primaryInverse} data-analytics="home_bottom_contact">
+              Start a conversation <span className={styles.arr}>→</span>
             </Link>
             <Link href="/how-it-works" className={styles.secondaryInverse}>
               How it works <span className={styles.arr}>→</span>
             </Link>
           </div>
           <div className={styles.ctaLinks}>
-            <Link href="/pricing">Pricing</Link>
+            <Link href="/contact">Contact</Link>
             <span aria-hidden="true">·</span>
             <Link href="/how-it-works">How it works</Link>
-            <span aria-hidden="true">·</span>
-            <Link href="/security">Security and compliance</Link>
           </div>
         </section>
       </main>
 
       <footer className={styles.footer}>
         <div className={styles.footerLinks}>
-          <Link href="/pricing">Pricing</Link>
-          <span aria-hidden="true">·</span>
           <Link href="/how-it-works">How it works</Link>
           <span aria-hidden="true">·</span>
-          <Link href="/security">Security</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/legal/privacy">Privacy</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/legal/terms">Terms</Link>
+          <Link href="/contact">Contact</Link>
         </div>
         <p>Questions? Email us at hello@ashbi.ca</p>
       </footer>
