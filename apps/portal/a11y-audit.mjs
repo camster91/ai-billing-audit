@@ -1,6 +1,6 @@
 // Accessibility audit script. Runs axe-core against every public + authed route
 // in apps/portal. Outputs per-page violation/incomplete reports as JSON.
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

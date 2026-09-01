@@ -11,7 +11,7 @@
 // The script will also fall back to reading /tmp/qa_empty_session.json
 // (produced by the previous step) if the env var is not set.
 
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { readFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 

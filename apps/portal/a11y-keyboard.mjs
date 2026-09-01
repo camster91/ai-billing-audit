@@ -1,7 +1,7 @@
 // Keyboard navigation audit. For each route: tab through every focusable
 // element, record (1) is the focus indicator visible (2) does the order
 // make visual sense (3) are there focus traps.
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
