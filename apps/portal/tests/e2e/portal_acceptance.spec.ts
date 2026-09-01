@@ -48,6 +48,7 @@ import {
   loginViaMagicLink,
   postCheckout,
   postSeedEncounter,
+  readAuditChain,
   seedAcceptance,
   resolvePortalCwd,
 } from "./helpers";
@@ -609,29 +610,13 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
   test("step 11 (chain): audit log has accept + dismiss rows + chain is valid", async () => {
     expect(state.accepted, "step 8 ran").toBe(true);
     expect(state.encounterId, "encounterId set").toBeTruthy();
-    const { PrismaClient } = await import(
-      "../../src/generated/prisma/client.js" as string
-    );
-    const prisma = new PrismaClient();
-    try {
-      const rows = await prisma.auditTrailEntry.findMany({
-        where: { encounterId: state.encounterId },
-        orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-      });
-      expect(rows.length, "1+ audit rows").toBeGreaterThanOrEqual(1);
-      const actions = rows.map((r: { action: string }) => r.action);
-      expect(actions, "one accept row").toContain("accept");
-      if (state.dismissed) {
-        expect(actions, "one dismiss row").toContain("dismiss");
-      }
-      const { verifyChain } = await import(
-        "../../src/lib/audit-chain.js" as string
-      );
-      const brokenAt = verifyChain(rows);
-      expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();
-    } finally {
-      await prisma.$disconnect();
+    const chain = readAuditChain(state.encounterId);
+    expect(chain.rowCount, "1+ audit rows").toBeGreaterThanOrEqual(1);
+    expect(chain.actions, "one accept row").toContain("accept");
+    if (state.dismissed) {
+      expect(chain.actions, "one dismiss row").toContain("dismiss");
     }
+    expect(chain.brokenAt, `chain valid (brokenAt=${chain.brokenAt})`).toBeNull();
   });
 });
 

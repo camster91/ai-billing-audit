@@ -272,6 +272,40 @@ export interface PostSeedResult {
   findingIds: string[];
 }
 
+export interface AuditChainResult {
+  actions: string[];
+  rowCount: number;
+  brokenAt: string | null;
+}
+
+/** Read and verify one encounter's audit chain in the portal runtime. */
+export function readAuditChain(encounterId: string): AuditChainResult {
+  const cwd = resolvePortalCwd();
+  const script = [
+    "import { prisma } from './src/lib/prisma';",
+    "import { verifyChain } from './src/lib/audit-chain';",
+    "(async () => {",
+    `  const rows = await prisma.auditTrailEntry.findMany({ where: { encounterId: '${encounterId}' }, orderBy: [{ timestamp: 'asc' }, { eventId: 'asc' }] });`,
+    "  console.log(JSON.stringify({ actions: rows.map((row) => row.action), rowCount: rows.length, brokenAt: verifyChain(rows) }));",
+    "  await prisma.$disconnect();",
+    "})()",
+  ].join(" ");
+  const r = spawnSync("pnpm", ["exec", "tsx", "-e", script], {
+    cwd,
+    env: process.env,
+    encoding: "utf8",
+  });
+  if (r.status !== 0) {
+    throw new Error(`audit-chain read failed: ${r.stderr || r.stdout}`);
+  }
+  const line = r.stdout
+    .split("\n")
+    .reverse()
+    .find((candidate) => candidate.trim().startsWith("{"));
+  if (!line) throw new Error(`audit-chain read produced no JSON: ${r.stdout}`);
+  return JSON.parse(line) as AuditChainResult;
+}
+
 /** Spawn the post-seed script and parse the JSON it prints on the last line. */
 export function postSeedEncounter(
   tenantSlug: string = DEFAULT_TENANT_SLUG,

@@ -32,6 +32,7 @@ import {
   loginViaMagicLink,
   postCheckout,
   postSeedEncounter,
+  readAuditChain,
   seedAcceptance,
   resolvePortalCwd,
 } from "./helpers";
@@ -222,10 +223,16 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // chain, which is what step 8 asserts.
   test("step 07: accept one finding, dismiss another with a reason", async ({ page }) => {
     expect(state.findingIds.length, "step 5 planted findings").toBeGreaterThanOrEqual(2);
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
 
     // Accept the first finding.
     const acceptUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[0]}/accept`;
-    const acceptRes = await page.request.post(acceptUrl);
+    const acceptRes = await page.request.post(acceptUrl, {
+      headers: { cookie: cookieHeader },
+    });
     const acceptBody = (await acceptRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(
       acceptRes.ok() && acceptBody.ok,
@@ -237,7 +244,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     const dismissUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[1]}/dismiss`;
     const dismissRes = await page.request.post(dismissUrl, {
       data: { reason: "hallucinated_fact" },
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", cookie: cookieHeader },
     });
     const dismissBody = (await dismissRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(
@@ -258,28 +265,10 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     expect(state.accepted && state.dismissed, "steps 6-7 ran").toBe(true);
     expect(state.encounterId, "encounterId set").toBeTruthy();
 
-    const { PrismaClient } = await import(
-      "../../src/generated/prisma/client.js" as string
-    );
-    const prisma = new PrismaClient();
-    try {
-      const rows = await prisma.auditTrailEntry.findMany({
-        where: { encounterId: state.encounterId },
-        orderBy: [{ timestamp: "asc" }, { eventId: "asc" }],
-      });
-      expect(rows.length, "2 audit rows").toBeGreaterThanOrEqual(2);
-      const actions: string[] = rows.map((r: { action: string }) => r.action);
-      expect(actions, "one accept + one dismiss").toContain("accept");
-      expect(actions, "one accept + one dismiss").toContain("dismiss");
-
-      // Walk the chain.
-      const { verifyChain } = await import(
-        "../../src/lib/audit-chain.js" as string
-      );
-      const brokenAt = verifyChain(rows);
-      expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();
-    } finally {
-      await prisma.$disconnect();
-    }
+    const chain = readAuditChain(state.encounterId);
+    expect(chain.rowCount, "2 audit rows").toBeGreaterThanOrEqual(2);
+    expect(chain.actions, "one accept + one dismiss").toContain("accept");
+    expect(chain.actions, "one accept + one dismiss").toContain("dismiss");
+    expect(chain.brokenAt, `chain valid (brokenAt=${chain.brokenAt})`).toBeNull();
   });
 });
