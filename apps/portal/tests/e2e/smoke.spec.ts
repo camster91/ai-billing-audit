@@ -231,7 +231,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     // Accept the first finding.
     const acceptUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[0]}/accept`;
     const acceptRes = await page.request.post(acceptUrl, {
-      headers: { cookie: cookieHeader },
+      headers: { cookie: cookieHeader, "x-tenant-id": state.tenantId },
     });
     const acceptBody = (await acceptRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(
@@ -244,7 +244,11 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     const dismissUrl = `/api/encounters/${state.encounterId}/findings/${state.findingIds[1]}/dismiss`;
     const dismissRes = await page.request.post(dismissUrl, {
       data: { reason: "hallucinated_fact" },
-      headers: { "content-type": "application/json", cookie: cookieHeader },
+      headers: {
+        "content-type": "application/json",
+        cookie: cookieHeader,
+        "x-tenant-id": state.tenantId,
+      },
     });
     const dismissBody = (await dismissRes.json().catch(() => ({}))) as { ok?: boolean };
     expect(

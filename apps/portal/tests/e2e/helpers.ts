@@ -278,15 +278,18 @@ export interface AuditChainResult {
   brokenAt: string | null;
 }
 
-/** Read and verify one encounter's audit chain in the portal runtime. */
+/** Read one encounter's actions and verify its tenant-wide audit chain. */
 export function readAuditChain(encounterId: string): AuditChainResult {
   const cwd = resolvePortalCwd();
   const script = [
     "import { prisma } from './src/lib/prisma';",
     "import { verifyChain } from './src/lib/audit-chain';",
     "(async () => {",
-    `  const rows = await prisma.auditTrailEntry.findMany({ where: { encounterId: '${encounterId}' }, orderBy: [{ timestamp: 'asc' }, { eventId: 'asc' }] });`,
-    "  console.log(JSON.stringify({ actions: rows.map((row) => row.action), rowCount: rows.length, brokenAt: verifyChain(rows) }));",
+    `  const encounter = await prisma.encounter.findUnique({ where: { id: '${encounterId}' }, select: { tenantId: true } });`,
+    "  if (!encounter) throw new Error('encounter not found');",
+    "  const tenantRows = await prisma.auditTrailEntry.findMany({ where: { tenantId: encounter.tenantId }, orderBy: [{ timestamp: 'asc' }, { eventId: 'asc' }] });",
+    `  const encounterRows = tenantRows.filter((row) => row.encounterId === '${encounterId}');`,
+    "  console.log(JSON.stringify({ actions: encounterRows.map((row) => row.action), rowCount: encounterRows.length, brokenAt: verifyChain(tenantRows) }));",
     "  await prisma.$disconnect();",
     "})()",
   ].join(" ");
