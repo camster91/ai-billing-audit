@@ -43,9 +43,10 @@ Zorva is managed as four connected surfaces with separate release evidence:
   indexable production surface is intentionally limited to `/`,
   `/how-it-works`, and `/contact`; deferred routes remain claim-gated under
   `docs/MARKETING_PUBLIC_LAUNCH_GATES.md`.
-- Brand foundations and production rules exist in `docs/BRAND_BOOK.md` and its
-  linked discipline files. They have not yet been fully reconciled with this
-  plan's current Alberta-first position and proof standard.
+- Brand foundations and production rules are reconciled in
+  `docs/BRAND_BOOK.md`, `docs/BRAND_SYSTEM_CONTRACT.json`, and their linked
+  discipline files. External assets, logo/illustration production, claim
+  approval, and customer validation remain incomplete.
 - Zorva HQ now has database-backed platform roles separate from tenant roles,
   deny-by-default server authorization, operator audit events, Today and lead
   workflows, pilot conversion, engagement milestones, and no-PHI company task
@@ -133,7 +134,7 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
 | P0 | Specify and build Zorva HQ platform-admin foundation | Foundation and first mutable lead workflow implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq`, `/hq/leads`, and audited lead mutation API | Blocks operating a pilot safely at company level |
-| P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
+| P0 | Reconcile brand promise, public claims, and approved offer | Brand promise and production rules reconciled locally; public claim and offer approvals remain | `docs/BRAND_BOOK.md`, `docs/BRAND_SYSTEM_CONTRACT.json`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Local capture, assignment, stage, next-action, and contact logging implemented; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
@@ -168,7 +169,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Billing | Code present, live state unverified | Requires test-mode journey, approved pricing, then production approval | Cameron |
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
-| Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
+| Brand and claims | Alberta-first strategy and cross-surface production contract reconciled locally | Produce missing assets, complete claim/offer approvals, and validate recognition with real buyers before broader use | Product / brand owner |
 | Company administration | Platform foundation, leads, client work, support, marketing governance, campaign attribution, and evidence-conscious reporting locally verified | Retention-policy approval/export, inbound routing, advanced workflows, and production-like security/accessibility/recovery remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
@@ -186,6 +187,24 @@ Older sequences in `research/00-ROADMAP.md` and
 Baselines are unknown unless explicitly backed by current evidence.
 
 ## Work log
+
+### 2026-09-01
+
+- Reconciled the brand book, narrative, verbal identity, typography rules, and
+  pitch-deck specification with the Alberta-first, human-reviewed product plan.
+  Removed historical revenue, blanket coverage, self-improvement, fixed offer,
+  infrastructure, compliance, and fabricated customer-result anchors.
+- Preserved Zorva, teal/charcoal recognition, restrained amber, and the quiet
+  editorial character. Documented actual channel typography: Inter for product
+  and HQ, Fraunces for marketing display, IBM Plex Mono for marketing labels,
+  and JetBrains Mono for technical traces.
+- Added a machine-readable cross-surface brand contract and regression tests for
+  the strategy, eight approval gates, historical unsafe phrases, implemented
+  font families, and proposed-versus-existing visual asset truth.
+- Stress-tested rules across the public website, customer product, Zorva HQ,
+  launch assets, discovery, onboarding, support, and company reporting. Brand
+  approval remains separate from publication, sending, spending, pricing,
+  regulated claims, production release, and sensitive-data access.
 
 ### 2026-08-28
 
