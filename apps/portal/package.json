@@ -47,7 +47,7 @@
     "test:audit-results": "node --import tsx --test tests/audit-results.test.ts",
     "prisma:prepare-postgresql": "node scripts/prepare-postgresql-schema.mjs",
     "prisma:generate": "pnpm prisma:prepare-postgresql && prisma generate && prisma generate --config prisma.postgresql.config.ts",
-    "prisma:migrate:deploy:postgresql": "pnpm prisma:prepare-postgresql && prisma migrate deploy --config prisma.postgresql.config.ts",
+    "prisma:migrate:deploy:postgresql": "pnpm prisma:generate && prisma migrate deploy --config prisma.postgresql.config.ts",
     "migrate:portal-phi": "node --import tsx scripts/migrate-portal-phi.ts"
   },
   "dependencies": {

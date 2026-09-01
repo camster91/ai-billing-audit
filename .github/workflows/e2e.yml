@@ -59,7 +59,9 @@ jobs:
 
       - name: Apply Prisma migrations (SQLite)
         working-directory: apps/portal
-        run: pnpm exec prisma migrate deploy
+        run: |
+          pnpm prisma:generate
+          pnpm exec prisma migrate deploy
 
       - name: Type-check the suite
         working-directory: apps/portal
