@@ -133,9 +133,9 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Implemented and verified in CI with test checkout and a contract-faithful mock audit engine; production-like provider qualification pending | PR #97; encrypted upload, idempotent encounter ingestion, real audit dispatch/import, rendered findings, and decision trail | Blocks paid pilot until exact artifact is approved/released and real-provider qualification passes |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
 | P0 | Specify and build Zorva HQ platform-admin foundation | Foundation released; unauthenticated production boundary verified; authenticated production operation still approval-gated | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; HQ workflows and operator runbook | Blocks operating a pilot safely at company level until an approved operator journey is verified |
-| P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
+| P0 | Reconcile brand promise, public claims, and approved offer | Core homepage reconciled locally; broader brand and offer approval remain | `docs/PUBLIC_CLAIM_REGISTER.md`, `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Canonical repeat capture, structured qualification, assignment, stage, next-action, and contact logging implemented locally; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
-| P1 | Make all public product and compliance claims evidence-backed | Approval-gated launch kit drafted; public-site reconciliation remains | Issues #14, #22, #77; `docs/launch-kit/CLAIM_MANIFEST.json` | Blocks broad public launch |
+| P1 | Make all public product and compliance claims evidence-backed | Indexable core claim register, homepage regression guard, and approval-gated launch kit implemented locally; deferred routes remain | Issues #14, #22, #77; `docs/PUBLIC_CLAIM_REGISTER.md`; `docs/launch-kit/CLAIM_MANIFEST.json` | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
 | P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Repeat lead capture and qualification, lead conversion, client tasks, milestones, account health, support, marketing governance, and reporting implemented locally; production-like operation remains | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
 | P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | First controlled-launch asset set drafted and regression-tested; execution remains gated | `docs/launch-kit/`; brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
@@ -188,6 +188,17 @@ Baselines are unknown unless explicitly backed by current evidence.
 ## Work log
 
 ### 2026-09-01
+
+- Reconciled the indexable homepage with the current Alberta-first,
+  human-reviewed positioning. Removed unsupported revenue, blanket coverage,
+  fee-code, synthetic-dollar, pricing, infrastructure, compliance, and
+  contractual claims while preserving the existing editorial hierarchy.
+- Registered six bounded core statements with source, evidence type, owner, and
+  review state. The static review panel is now visibly illustrative and contains
+  no code, dollar, customer, or outcome assertion.
+- Restricted the homepage journey to `/how-it-works` and `/contact`. Added
+  claim, route, and illustration regression tests; focused lint, TypeScript,
+  responsive Chromium, and public-route Axe checks pass locally.
 
 - Added the complete issue #77 controlled-launch draft set: a one-page overview,
   founder announcement, three educational LinkedIn drafts, a three-message
