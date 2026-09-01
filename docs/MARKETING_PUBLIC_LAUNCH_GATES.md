@@ -88,7 +88,7 @@ are configured and tested.
   one conversion journey through `/how-it-works` and `/contact`.
 - Added source-level regression tests across all three reviewed routes. Three
   claim/route/illustration tests pass; focused ESLint and the full TypeScript
-  project pass under Node 20 after both Prisma clients are generated.
+  project pass under Node 22.23 after both Prisma clients are generated.
 - Local Chromium checks at 1440px and 375px returned one H1, no horizontal
   overflow, no console errors, and no homepage links to deferred routes.
 - Axe scanned every public route with zero WCAG 2 A/AA violations; homepage

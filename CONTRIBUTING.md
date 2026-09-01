@@ -66,7 +66,7 @@ ai-billing-audit/
 ├── CHANGELOG.md               # release-grouped history (Keep a Changelog format)
 ├── SECURITY.md                # vulnerability disclosure policy
 ├── CONTRIBUTING.md            # this file
-└── AGENTS.md                  # project-level rules for AI coding agents
+└── apps/portal/AGENTS.md      # portal-specific rules for AI coding agents
 ```
 
 The two apps — the FastAPI `api` and the Next.js `apps/portal` —
@@ -76,13 +76,13 @@ domain `ai-billing-audit.ashbi.ca`. See
 [`README.md`](./README.md) for the deploy-gaps note that
 explains why.
 
-**If you are an AI coding agent working in this repo, read
-[`AGENTS.md`](./AGENTS.md) at the project root AND
-[`apps/portal/AGENTS.md`](./apps/portal/AGENTS.md) AND
+**If you are an AI coding agent working in the portal, read
+[`apps/portal/AGENTS.md`](./apps/portal/AGENTS.md) and
 [`apps/portal/CLAUDE.md`](./apps/portal/CLAUDE.md) before
 writing any code.** The Next.js version pinned in `apps/portal`
 has breaking changes vs older Next.js training data; the
-project rules in those files are not optional.
+portal rules in those files are not optional. No root `AGENTS.md`
+is currently tracked.
 
 ---
 
@@ -91,7 +91,7 @@ project rules in those files are not optional.
 ### Prerequisites
 
 - **Python 3.10+** (the project tests against 3.10, 3.11, 3.12)
-- **Node 20.x or 22.x** (for `apps/portal`)
+- **Node 22.23.x** (for `apps/portal`; Node 20 is end-of-life)
 - **pnpm 9.x** (the portal uses pnpm — npm may work for a
   one-off install but the lockfile is pnpm-only)
 - **Docker** (optional, but recommended for the

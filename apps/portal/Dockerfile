@@ -17,14 +17,19 @@
 # is exposed to the Traefik reverse proxy via the `ai-billing-audit_net`
 # docker network and the `portal.ashbi.ca` Host() router.
 
+# Keep every build and runtime stage on the same supported Node release. The
+# digest pins the multi-architecture official image used by the verified
+# 2026-09-01 production build instead of allowing node:22-slim to drift.
+ARG NODE_IMAGE=node:22.23.2-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
+
 # ---- Stage 1: deps -----------------------------------------------------
-FROM node:22-slim AS deps
+FROM ${NODE_IMAGE} AS deps
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# pnpm via corepack (Node 22 ships corepack). Faster + reproducible.
+# pnpm via corepack. Faster + reproducible.
 # Pin to the same version the lockfile was generated with (9.15.9 as
 # of 2026-06-26; the lockfile rejects frozen-lockfile installs when
 # the active pnpm's overrides-handling differs).
@@ -58,7 +63,7 @@ RUN pnpm prisma:generate
 CMD ["pnpm", "prisma:migrate:deploy:postgresql"]
 
 # ---- Stage 3: build -----------------------------------------------------
-FROM node:22-slim AS build
+FROM ${NODE_IMAGE} AS build
 
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
@@ -103,12 +108,12 @@ RUN test -d .next/static || (echo "ERROR: .next/static missing" && exit 1)
 
 
 # ---- Stage 4: runtime ---------------------------------------------------
-FROM node:22-slim AS runtime
+FROM ${NODE_IMAGE} AS runtime
 
 # pnpm not needed at runtime — the standalone server is plain Node.
 WORKDIR /app
 
-# Non-root user. Node 22-slim ships with a `node` user (uid 1000).
+# Non-root user. The official Node slim image ships with a `node` user (uid 1000).
 # Prisma needs the runtime binary (libssl, libgcc) for some Postgres
 # TLS configurations — install just the openssl package.
 RUN apt-get update \

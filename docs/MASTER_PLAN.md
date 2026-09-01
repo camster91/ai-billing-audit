@@ -53,7 +53,7 @@ Zorva is managed as four connected surfaces with separate release evidence:
   management. Tenant linkage, support cases, marketing operations, reporting,
   and the complete lead-to-renewal journey remain incomplete.
 - Code versions: Python package `0.4.0`; Next.js `15.5.21`; React `19.2.4`.
-- Canonical development runtimes: Python 3.11, Node 20.19.x, pnpm 9.15.9.
+- Canonical development runtimes: Python 3.11, Node 22.23.x, pnpm 9.15.9.
 - Current evaluated engine claim in the README: v12 AHCIP, micro F1 0.690 on
   10 cleaned encounters / 13 gold findings. This is repository evidence, not
   customer validation or production performance.
@@ -64,12 +64,13 @@ Zorva is managed as four connected surfaces with separate release evidence:
   `76e0ef46c4371a023aa2f07b2a8a607c10a57646` passed Python ruff/mypy/pytest,
   portal PostgreSQL migrations/unit tests/lint/types/build, GitGuardian, and the
   19-test browser, accessibility, and performance workflow on 2026-09-01.
-- Production was reconciled and deployed from the immutable release directory
-  for SHA `692ba3cfe960bf2e62fc27f886b645bc335ca52e` on 2026-09-01 after an encrypted,
-  verified pre-deploy backup. API health/readiness, worker and portal health,
-  database migrations, public root/login/contact, pricing redirect, and HQ auth
-  redirect passed. Authenticated customer journeys, monitoring, data residency,
-  and real transaction paths remain unverified.
+- The portal was deployed from clean `main` SHA
+  `ffcfbf63ba82a5842ee63f193f85c971f60b7af7` on 2026-09-01 after an encrypted
+  pre-deploy PostgreSQL backup and rollback-image capture. Both new migrations,
+  container health, `/readyz`, public root/how-it-works/contact/login, security
+  headers, pricing redirect, and the unauthenticated HQ-to-login boundary passed.
+  The API code was unchanged by that release. Authenticated customer journeys,
+  monitoring, data residency, and real transaction paths remain unverified.
 - Customer usage, retention, conversion, willingness to pay, and paid-pilot
   evidence were not found. Product-market fit and market leadership are
   unvalidated hypotheses.
@@ -154,7 +155,8 @@ Older sequences in `research/00-ROADMAP.md` and
 | --- | --- | --- | --- |
 | 2026-08-28 | Position Zorva as Alberta-first AHCIP pre-submit review, not generic LLM billing audit or multi-market automation | Current README, code, evaluation artifacts, and issue backlog | Verified customer and product evidence supports expansion |
 | 2026-08-28 | Treat production status as unknown until live verification | Repository deployment documentation is not runtime evidence | Operator-backed live checks and release report are recorded |
-| 2026-08-28 | Use Python 3.11, Node 20.19.x, and pnpm 9.15.9 as the development baseline | Existing CI workflow and dependency support ranges | CI/toolchain migration is implemented and verified |
+| 2026-09-01 | Replace end-of-life Node 20 with Node 22.23.x across CI, package metadata, build, migration, and runtime; pin the production base-image digest | The [official Node release schedule](https://github.com/nodejs/Release#release-schedule) records Node 20 end of life on 2026-04-30 and Node 22 maintenance through 2027-04-30; the released portal already ran Node 22.23.2 while CI and package metadata rejected it | A supported successor LTS is qualified across the full release gate |
+| 2026-08-28 | Use Python 3.11 and pnpm 9.15.9 as the baseline; Node is governed by the supported-runtime decision above | Existing CI workflow and dependency support ranges | CI/toolchain migration is implemented and verified |
 | 2026-08-28 | Re-enable repository GitHub Actions for PR verification | Actions were disabled and PR #88 received no repository CI runs | Owner intentionally disables CI with a documented replacement gate |
 | 2026-08-28 | Treat product, marketing website, Zorva HQ, and brand/growth as one commercial system with separate gates | A customer journey cannot be operated safely from acquisition through support using the current tenant portal alone | Evidence supports a different operating model |
 | 2026-08-28 | Build the internal operator system inside the existing portal codebase under a distinct platform-admin boundary | Reuses account, lead, billing, and design foundations while avoiding a second deployment initially | Security review or operating scale requires physical separation |
@@ -314,7 +316,7 @@ Baselines are unknown unless explicitly backed by current evidence.
 - Prisma 7 `migrate deploy` against an empty SQLite database returned an unnamed
   schema-engine error under the unsupported host Node 26 runtime; direct SQLite
   replay proved the SQL ordering. Re-run Prisma migration tooling under pinned
-  Node 20 and PostgreSQL CI before production use.
+  the supported Node 22.23 runtime and PostgreSQL CI before production use.
 - Implemented the first mutable Zorva HQ journey: authorized platform owner and
   sales roles can open lead detail, assign an eligible operator, follow guarded
   stage transitions, set a dated next action, record loss reason, and log
@@ -332,7 +334,7 @@ Baselines are unknown unless explicitly backed by current evidence.
 - The production build twice exhausted the host's nearly full disk during
   disposable cache/standalone output. Package-manager caches and only generated
   `.next` output were pruned; the clean retry completed. The host Node runtime
-  remains unsupported, so pinned Node 20/PostgreSQL CI is still required.
+  remains unsupported, so pinned Node 22.23/PostgreSQL CI is still required.
 - Added database-level append-only triggers for `PlatformAuditEvent` and
   `LeadActivity` in both SQLite and PostgreSQL migrations. Inserts remain
   allowed; updates and deletes fail with no application/session bypass.
@@ -392,6 +394,17 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ### 2026-09-01
 
+- Reconciled the release runtime after production evidence showed Node 22.23.2
+  running successfully while package metadata and CI still required end-of-life
+  Node 20. Aligned both workflows, package engines and types, build/migration/
+  runtime stages, and operator documentation to Node 22.23.2; pinned the official
+  multi-architecture base-image digest.
+- Added a cross-surface runtime contract test. Ten focused Python/contract tests,
+  Ruff, frozen pnpm 9.15.9 install, Prisma generation, Next.js production build,
+  and both isolated Docker images passed. The runtime candidate runs as UID 1000,
+  reports Node 22.23.2, serves the Alberta-first homepage, and redirects `/hq`
+  to login without production data or traffic.
+
 - Implemented the first evidence-backed customer activation path in PR #97:
   encrypted staged 837P upload -> authenticated parser preview -> tenant-scoped,
   retry-idempotent claim and encounter persistence -> audit dispatch -> imported
@@ -411,11 +424,11 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ## Next action
 
-Complete the explicitly approved merge and deploy using an immutable final-main
-artifact, then run migration, backup, rollback, public-route, and authenticated
-synthetic customer-journey checks. GitHub Actions execution remains account-blocked,
-so preserve the local and earlier hosted evidence plus the exact override record.
-Production-like qualification against the configured real audit provider remains
-a separate gate. Do not publish or send launch-kit assets, grant production
-platform roles, change customer-visible pricing, contact clinics, or access real
-clinic data without explicit approval.
+Review the Node 22.23 runtime-alignment candidate and obtain exact-artifact merge
+and production approval after available PR checks. Then capture a fresh encrypted
+backup and rollback image, deploy the immutable main SHA, and repeat migration,
+health, readiness, public-route, and access-boundary checks. Separately complete
+authenticated synthetic customer/HQ journeys and production-like qualification
+against the configured real audit provider. Do not publish or send launch-kit
+assets, grant production platform roles, change customer-visible pricing, contact
+clinics, or access real clinic data without explicit approval.

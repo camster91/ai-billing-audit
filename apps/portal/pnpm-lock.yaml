@@ -48,7 +48,7 @@ importers:
         version: 6.12.4
       stripe:
         specifier: 22.2.1
-        version: 22.2.1(@types/node@20.19.43)
+        version: 22.2.1(@types/node@22.20.1)
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -60,8 +60,8 @@ importers:
         specifier: 1.61.0
         version: 1.61.0
       '@types/node':
-        specifier: 20.19.43
-        version: 20.19.43
+        specifier: 22.20.1
+        version: 22.20.1
       '@types/pg':
         specifier: 8.15.5
         version: 8.15.5
@@ -808,8 +808,8 @@ packages:
   '@types/lodash@4.17.25':
     resolution: {integrity: sha512-+K1NIO8I+F9/wNulfVvu23QYd0Pe9/OCqRrim4NoYIf1VoEDL90Ve4ClzpyqBLc7NpGGWRvYNCKZ1BE/Jpf8dQ==}
 
-  '@types/node@20.19.43':
-    resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
+  '@types/node@22.20.1':
+    resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
 
   '@types/pg@8.15.5':
     resolution: {integrity: sha512-LF7lF6zWEKxuT3/OR8wAZGzkg4ENGXFNyiV/JeOt9z5B+0ZVwbql9McqX5c/WStFq1GaGso7H1AzP/qSzmlCKQ==}
@@ -3248,19 +3248,19 @@ snapshots:
 
   '@types/lodash@4.17.25': {}
 
-  '@types/node@20.19.43':
+  '@types/node@22.20.1':
     dependencies:
       undici-types: 6.21.0
 
   '@types/pg@8.15.5':
     dependencies:
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       pg-protocol: 1.16.0
       pg-types: 2.2.0
 
   '@types/pg@8.21.0':
     dependencies:
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       pg-protocol: 1.16.0
       pg-types: 2.2.0
 
@@ -5233,9 +5233,9 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  stripe@22.2.1(@types/node@20.19.43):
+  stripe@22.2.1(@types/node@22.20.1):
     optionalDependencies:
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
 
   styled-jsx@5.1.6(react@19.2.4):
     dependencies:
