@@ -159,7 +159,13 @@ export default function proxy(request: NextRequest) {
   const canonicalAuthUrl = process.env.AUTH_URL;
   if (process.env.NODE_ENV === "production" && canonicalAuthUrl) {
     const canonicalHost = new URL(canonicalAuthUrl).host;
-    if (request.nextUrl.host !== canonicalHost) {
+    const forwardedHost = request.headers
+      .get("x-forwarded-host")
+      ?.split(",")[0]
+      ?.trim();
+    const effectiveHost =
+      forwardedHost || request.headers.get("host") || request.nextUrl.host;
+    if (effectiveHost !== canonicalHost) {
       return NextResponse.json({ error: "untrusted_host" }, { status: 400 });
     }
   }
