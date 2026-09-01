@@ -289,7 +289,8 @@ export function readAuditChain(encounterId: string): AuditChainResult {
     "  if (!encounter) throw new Error('encounter not found');",
     "  const tenantRows = await prisma.auditTrailEntry.findMany({ where: { tenantId: encounter.tenantId }, orderBy: [{ timestamp: 'asc' }, { eventId: 'asc' }] });",
     `  const encounterRows = tenantRows.filter((row) => row.encounterId === '${encounterId}');`,
-    "  console.log(JSON.stringify({ actions: encounterRows.map((row) => row.action), rowCount: encounterRows.length, brokenAt: verifyChain(tenantRows) }));",
+    "  const chainRows = tenantRows.map((row) => ({ ...row, timestamp: row.timestamp.toISOString() }));",
+    "  console.log(JSON.stringify({ actions: encounterRows.map((row) => row.action), rowCount: encounterRows.length, brokenAt: verifyChain(chainRows) }));",
     "  await prisma.$disconnect();",
     "})()",
   ].join(" ");
