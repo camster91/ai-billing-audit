@@ -30,11 +30,14 @@ function priorDigestWindowDate(now = new Date()): Date {
 
 async function main() {
   const tenantSlug = process.env["E2E_TENANT_SLUG"] || "e2e-clinic";
+  const tenantId = process.env["E2E_TENANT_ID"];
   const userEmail = process.env["E2E_USER_EMAIL"] || "[email protected]";
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+  const tenant = tenantId
+    ? await prisma.tenant.findUnique({ where: { id: tenantId } })
+    : await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
   if (!tenant) {
-    throw new Error(`tenant ${tenantSlug} not found — run the e2e_acceptance_seed.ts first`);
+    throw new Error(`tenant ${tenantId ?? tenantSlug} not found — run the e2e_acceptance_seed.ts first`);
   }
   const user = await prisma.user.findUnique({ where: { email: userEmail } });
   if (!user) {
@@ -42,7 +45,7 @@ async function main() {
   }
   if (!tenant.onboardingCompletedAt) {
     throw new Error(
-      `tenant ${tenantSlug} has not completed onboarding yet — wizard must finish first`,
+      `tenant ${tenant.id} has not completed onboarding yet — wizard must finish first`,
     );
   }
 
@@ -126,11 +129,11 @@ async function main() {
   // ---- Synthetic invoice (in lieu of a real Stripe webhook event) ----
   if (tenant.stripeCustomerId) {
     await prisma.invoice.upsert({
-      where: { stripeInvoiceId: `in_e2e_${tenantSlug.slice(-8).padStart(8, "0")}` },
+      where: { stripeInvoiceId: `in_e2e_${tenant.slug.slice(-8).padStart(8, "0")}` },
       update: {},
       create: {
         id: cuidLike(),
-        stripeInvoiceId: `in_e2e_${tenantSlug.slice(-8).padStart(8, "0")}`,
+        stripeInvoiceId: `in_e2e_${tenant.slug.slice(-8).padStart(8, "0")}`,
         stripeCustomerId: tenant.stripeCustomerId,
         tenantId: tenant.id,
         stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
@@ -138,7 +141,7 @@ async function main() {
         amountCents: 149900, // $1,499.00 CAD
         currency: "cad",
         payloadJson: JSON.stringify({
-          id: `in_e2e_${tenantSlug.slice(-8).padStart(8, "0")}`,
+          id: `in_e2e_${tenant.slug.slice(-8).padStart(8, "0")}`,
           status: "paid",
           amount_paid: 149900,
           currency: "cad",

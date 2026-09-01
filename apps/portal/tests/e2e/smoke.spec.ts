@@ -174,7 +174,11 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // post-seed script plants a real encounter + 2 findings + invoice
   // so steps 6-8 can exercise the review surface end-to-end.
   test("step 05: post-seed plants an encounter with 2 findings", async () => {
-    const post = postSeedEncounter(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+    const post = postSeedEncounter(
+      DEFAULT_TENANT_SLUG,
+      DEFAULT_USER_EMAIL,
+      state.tenantId,
+    );
     state.encounterId = post.encounterId;
     state.findingIds = post.findingIds;
     expect(post.encounterId, "post-seed wrote an encounterId").toBeTruthy();
@@ -185,8 +189,9 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
   // Step 6: the uploaded claim's finding appears on /findings
   // -------------------------------------------------------------------------
   test("step 06: /findings inbox lists the post-seed finding", async ({ page }) => {
-    // /findings is auth-gated. Reuse the magic-link session from step 3.
-    // (Same page object in serial block; cookies persist.)
+    // Playwright isolates each test context, so establish this page's own
+    // session before exercising the auth-gated findings inbox.
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
     await page.goto("/findings", { waitUntil: "domcontentloaded" });
     // The post-seed writes the encounter with a clinical note that
     // anchors the finding's evidence_quote to a known substring

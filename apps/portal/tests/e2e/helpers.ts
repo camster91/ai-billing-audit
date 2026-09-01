@@ -274,6 +274,7 @@ export interface PostSeedResult {
 export function postSeedEncounter(
   tenantSlug: string = DEFAULT_TENANT_SLUG,
   userEmail: string = DEFAULT_USER_EMAIL,
+  tenantId?: string,
 ): PostSeedResult {
   const cwd = resolvePortalCwd();
   const r: SpawnSyncReturns<string> = spawnSync(
@@ -285,6 +286,7 @@ export function postSeedEncounter(
         ...process.env,
         E2E_TENANT_SLUG: tenantSlug,
         E2E_USER_EMAIL: userEmail,
+        ...(tenantId ? { E2E_TENANT_ID: tenantId } : {}),
       },
       encoding: "utf8",
     },

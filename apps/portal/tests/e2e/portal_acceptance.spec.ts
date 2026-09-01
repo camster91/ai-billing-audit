@@ -422,7 +422,12 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
   });
 
   test("step 07: audit surfaces between 1 and 2 findings", async () => {
-    const post = postSeedEncounter(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+    const tenant = readTenantRow();
+    const post = postSeedEncounter(
+      DEFAULT_TENANT_SLUG,
+      DEFAULT_USER_EMAIL,
+      tenant.id,
+    );
     state.encounterId = post.encounterId;
     state.findingIds = post.findingIds;
     expect(state.encounterId, "post-seed wrote encounterId").toBeTruthy();
