@@ -83,11 +83,13 @@ export async function updateClaim(id: string, input: ClaimMutation, operator: Pl
 async function validateAsset(input: AssetCreate | AssetMutation, status: string) {
   await assertMarketingOwner(input.ownerUserId);
   if (!input.containsMarketingClaim) return;
-  if (!input.claimApprovalId) throw new MarketingRegistryError("claim_not_approved", "Claim-bearing assets require an approved claim.");
+  if (!input.claimApprovalId) throw new MarketingRegistryError("claim_not_approved", "Claim-bearing assets require a linked claim record.");
   const claim = await prisma.claimApproval.findUnique({ where: { id: input.claimApprovalId }, select: { status: true, allowedSurfacesJson: true, expiresAt: true } });
-  if (!claim || claim.status !== "approved" || (claim.expiresAt && claim.expiresAt <= new Date())) throw new MarketingRegistryError("claim_not_approved", "The linked claim is not currently approved.");
+  if (!claim) throw new MarketingRegistryError("claim_not_approved", "The linked claim record does not exist.");
+  if (status !== "approved") return;
+  if (claim.status !== "approved" || (claim.expiresAt && claim.expiresAt <= new Date())) throw new MarketingRegistryError("claim_not_approved", "The linked claim is not currently approved.");
   const surfaces = JSON.parse(claim.allowedSurfacesJson) as unknown;
-  if (status === "approved" && (!Array.isArray(surfaces) || !surfaces.includes(input.channel))) throw new MarketingRegistryError("surface_not_approved", "The claim is not approved for this channel.");
+  if (!Array.isArray(surfaces) || !surfaces.includes(input.channel)) throw new MarketingRegistryError("surface_not_approved", "The claim is not approved for this channel.");
 }
 
 export async function createContentAsset(input: AssetCreate, operator: PlatformRequest) {
