@@ -1,8 +1,8 @@
 # Zorva — Imagery & Illustration Style
 
-Status: spec, ready for asset production.
-Owner: branding kit, P5 illustration-style task (`t_ce5224bb`).
-Last updated: 2026-06-24.
+Status: proposed direction; listed illustration assets are not implemented.
+Owner: Cameron Ashley.
+Last updated: 2026-09-01.
 
 This document defines the visual language for every illustration, diagram,
 and photograph used in the Zorva marketing site, the portal, the pitch
@@ -21,19 +21,21 @@ Real photos are **not** used in the marketing site or portal. Rationale:
 |-----------------------|-----------------------------------|----------------------------------------|-----------|
 | Real photos           | Fast if stock; human warmth       | Licensing risk, model release, generic look, expensive for custom | **Reject** |
 | 3D render             | Trendy, modern                    | Drift away from "clinical" feel; expensive; hard to keep on-brand | **Reject** |
-| Custom line illustrations | On-brand, scalable, accessible, cheap to extend | Need a designer / Figma source | **Pick**  |
+| Custom line illustrations | Can share the icon geometry and adapt across sizes | Need a designer/source file; accessibility still requires alt text, contrast, and content context | **Pick**  |
 | Abstract gradients    | Cheap, modern                     | No narrative, no story                 | Secondary |
 
 Line illustrations win for v1 because they:
 - **Read as clinical and trustworthy** (line drawing = chart, blueprint, schematic)
 - **Match the icon system** (same line weight, same viewBox conventions)
 - **Are easy to localize** (no faces to redraw per market)
-- **Are accessible** by default (high contrast on a neutral background)
-- **Are cheap to extend** — one designer can ship a new illustration in a day
+- **Can be made accessible** with tested contrast, appropriate alt treatment,
+  and equivalent surrounding content
+- **Can be extended coherently** when the construction source and production
+  rules are retained
 
-Real photography is allowed only in **case studies** (with explicit consent)
-and in the **pilot demo recording** (already exists, see
-`docs/PILOT_DEMO_RECORDING.md`).
+Real photography is allowed only in an approved case study or demonstration
+with source/licence evidence, releases, and a no-PHI background review. No
+existing recording is approved merely because an older document references it.
 
 ---
 
@@ -94,22 +96,25 @@ illustrations.
 
 ---
 
-## 3. Asset inventory (v1 = 9 illustrations)
+## 3. Proposed asset inventory (not implemented)
 
 | #  | File name                                | Used in                         | Size      |
 |----|------------------------------------------|---------------------------------|-----------|
-| 1  | `hero-find-missed-revenue.svg`           | Marketing home hero             | 720×480   |
-| 2  | `how-it-works-1-upload.svg`              | How-it-works step 1             | 240×240   |
-| 3  | `how-it-works-2-audit.svg`               | How-it-works step 2             | 240×240   |
-| 4  | `how-it-works-3-review.svg`              | How-it-works step 3             | 240×240   |
-| 5  | `finding-missing-modifier.svg`           | Findings gallery card           | 320×200   |
-| 6  | `finding-undercode.svg`                  | Findings gallery card           | 320×200   |
-| 7  | `finding-documentation-gap.svg`          | Findings gallery card           | 320×200   |
-| 8  | `empty-state-no-claims.svg`              | Portal empty state              | 240×200   |
-| 9  | `security-shield-audit.svg`              | Security page hero              | 480×320   |
+| 1  | `hero-review-context.svg`                | Marketing home hero             | 720×480   |
+| 2  | `how-it-works-1-bring.svg`               | How-it-works step 1             | 240×240   |
+| 3  | `how-it-works-2-review.svg`              | How-it-works step 2             | 240×240   |
+| 4  | `how-it-works-3-decide.svg`              | How-it-works step 3             | 240×240   |
+| 5  | `review-item-source.svg`                 | Review-context explanation      | 320×200   |
+| 6  | `review-item-context.svg`                | Review-context explanation      | 320×200   |
+| 7  | `review-decision.svg`                    | Human-decision explanation      | 320×200   |
+| 8  | `empty-state-no-reviews.svg`             | Portal empty state              | 240×200   |
+| 9  | `privacy-review-boundary.svg`            | Trust/onboarding explanation    | 480×320   |
 
-All files live in `apps/portal/public/illustrations/`. The Figma source
-lives in the Zorva brand library (link in the brand book, `t_270224ab`).
+The repository currently has no `apps/portal/public/illustrations/` directory,
+so these filenames are a proposed backlog, not an asset inventory. A future
+implementation must record the source file, creator, licence/ownership basis,
+alt text, export hash, and actual consumer before changing this section to
+implemented.
 
 ---
 
@@ -170,5 +175,5 @@ When this task is "done":
 - [ ] All illustrations follow **§2** (line weight, color, composition).
 - [ ] Each illustration has an `alt` text in the Figma export notes.
 - [ ] No photo placeholders remain in the marketing site v1 build.
-- [ ] This doc is referenced from `docs/BRAND_BOOK.pdf` (when compiled,
-      `t_270224ab`).
+- [ ] Source, creator, licence/ownership basis, alt text, export hash, and
+      actual consumer are recorded for every produced asset.

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "status": "reconciled_external_use_gated",
+  "owner": "Cameron Ashley",
+  "lastReviewed": "2026-09-01",
+  "market": "Alberta primary-care clinics using AHCIP",
+  "category": "human-reviewed pre-submit AHCIP claim review",
+  "positioningLine": "Review Alberta claims with your billing team in control.",
+  "promise": "Bring the available context into review and keep the final submission decision with the clinic.",
+  "primaryCta": "Start a conversation.",
+  "recognition": {
+    "name": "Zorva",
+    "primaryColour": "teal",
+    "supportingField": "charcoal",
+    "attentionColour": "amber",
+    "character": ["calm", "specific", "accountable", "editorial"]
+  },
+  "typography": {
+    "functional": "Inter",
+    "marketingDisplay": "Fraunces",
+    "marketingLabels": "IBM Plex Mono",
+    "technical": "JetBrains Mono"
+  },
+  "touchpoints": [
+    "public_website",
+    "customer_product",
+    "zorva_hq",
+    "launch_material",
+    "discovery",
+    "onboarding",
+    "support",
+    "company_reporting"
+  ],
+  "separateApprovalGates": [
+    "production_release",
+    "publication",
+    "external_communication",
+    "pricing_or_offer_change",
+    "spending",
+    "customer_material",
+    "regulated_claim",
+    "sensitive_data_access"
+  ],
+  "knownGaps": [
+    "production logo and icon files are not present",
+    "proposed illustration files are not present",
+    "no approved pitch deck source or export exists",
+    "current main homepage claim drift is corrected only in unmerged PR 101",
+    "font source in code is verified but exported-asset licence inventory is incomplete"
+  ]
+}

@@ -1,208 +1,107 @@
-# Zorva — Pitch Deck Template
+# Zorva workflow discussion deck specification
 
-Status: template spec, ready for slide production.
-Owner: branding kit, P5 pitch-deck task (`t_5dae704e`).
-Last updated: 2026-06-24.
+**Status:** approval-gated specification; no deck file or external-use approval exists
+**Owner:** Cameron Ashley
+**Last reviewed:** 2026-09-01
+**Authority:** `docs/MASTER_PLAN.md`, `docs/BRAND_BOOK.md`, and the current claim
+register
 
-This document is the **template** for the Zorva pitch deck. It defines
-the slide order, the per-slide content guide, the visual rules (which
-icons, illustrations, color tokens to use), and the export conventions.
-Build it once, then clone and edit for each audience (clinics,
-investors, partners).
+This replaces the historical results-and-pricing deck template. That template
+contained unsupported market economics, fabricated pilot outcomes, fixed pilot
+terms, response promises, and infrastructure/compliance statements. None may be
+recovered from Git history for a live presentation without new evidence and
+approval.
 
----
+## Purpose
 
-## 1. Slide order (10 slides, 18 minutes)
+Support a private, owner-approved discovery conversation with a qualified
+Alberta clinic. The deck should help both sides understand the current workflow,
+Zorva's human-review boundary, fit questions, and the evidence still required.
+It is not an investor deck, public webinar, price sheet, security review, legal
+opinion, or proof of customer outcomes.
 
-| #  | Title                          | Time   | Purpose                           |
-|----|--------------------------------|--------|-----------------------------------|
-| 1  | Cover                          | 0:30   | Brand impression, who we are      |
-| 2  | The problem                    | 2:00   | Lost revenue, why it matters      |
-| 3  | Why it's hard today            | 1:30   | Current workflow pain             |
-| 4  | The Zorva solution             | 2:00   | What we do, in one sentence       |
-| 5  | How it works                   | 2:30   | 3-step demo of the product        |
-| 6  | Findings gallery               | 2:30   | Social proof: real finding types  |
-| 7  | Results                        | 1:30   | Numbers: revenue recovered, time saved |
-| 8  | Why now                        | 1:00   | Market timing, regulatory tailwind |
-| 9  | Ask / next steps               | 2:00   | Pilot offer, contact              |
-| 10 | Thank you / Q&A                | 1:30   | Backup, FAQ                       |
+## Eight-slide structure
 
-Total: ~17:30 + 30s buffer = 18 minutes.
+| # | Slide | Job | Claim boundary |
+| --- | --- | --- | --- |
+| 1 | Zorva | Name the Alberta-first pre-submit review category and intended audience | No performance or availability claim |
+| 2 | Your current workflow | Map encounter completion, review, decision, and submission ownership | Use discovery evidence from the participant; do not assume pain |
+| 3 | Where context is assembled | Show the kinds of information a reviewer may need | Say “available context,” not complete retrieval or rule coverage |
+| 4 | The proposed review path | Bring -> review -> decide -> record | Human decision and no autonomous submission must be explicit |
+| 5 | Illustrative product view | Clearly labelled static or live candidate demonstration | No fabricated code, dollar, accuracy, or customer result |
+| 6 | Fit and prerequisites | Alberta/AHCIP, workflow owner, privacy review, onboarding readiness | These are hypotheses until the owner approves the offer |
+| 7 | Questions and evidence needed | Invite trust, product, integration, and operating questions | Unknowns remain visible; do not improvise compliance answers |
+| 8 | Next action or close | Record one owner-approved next step or close as not now | No price, term, data request, or follow-up promise without approval |
 
----
+## Required slide footer
 
-## 2. Visual rules (apply to every slide)
+Every slide includes:
 
-- **16:9** aspect ratio, 1920×1080 native.
-- **Brand color background** (slides 1, 4, 9, 10): `primary-700`
-  `#0F766E` with white text.
-- **Light background** (slides 2, 3, 5, 6, 7, 8): `surface-light`
-  `#F8FAFC` with `slate-900` text.
-- **Primary accent line** under section titles: 4px, `primary-700`.
-- **Type:** primary typeface (Inter / Satoshi per `docs/BRANDING_TYPOGRAPHY.md`).
-  - Slide titles: 48–56pt, weight 700.
-  - Body: 24–28pt, weight 400.
-  - Captions / footnotes: 16pt, weight 400, `slate-500`.
-- **Logo** in the bottom-right corner of every content slide (24px tall).
-  Top-right of the cover only (40px tall).
-- **No more than 6 words on a title slide.** Bullets: max 5 per slide,
-  max 8 words per bullet.
-- **One illustration or chart per slide max.** Don't mix.
+- asset version and review date;
+- owner;
+- `DRAFT - NOT APPROVED FOR EXTERNAL USE` until the exact deck is approved;
+- source IDs for any claim-bearing statement;
+- `Illustrative` or `Live candidate` label on every product image.
 
----
+## Visual rules
 
-## 3. Per-slide content guide
+- 16:9 aspect ratio.
+- Preserve teal, charcoal, calm negative space, and the current Zorva wordmark.
+- Use Inter for body and functional labels. Fraunces may be used for a single
+  editorial headline per slide; IBM Plex Mono may be used for compact evidence
+  labels. Do not add another family.
+- Use the approved semantic colour tokens. Amber means review/attention, not
+  financial gain or urgency.
+- Minimum 18 pt text in presentation mode; minimum 4.5:1 contrast for ordinary
+  text and 3:1 for large text and meaningful graphics.
+- One idea and one visual hierarchy per slide. Avoid dense feature grids.
+- Charts require real data, definition, period, sample size, source, and an
+  honest unknown/zero distinction. If those do not exist, use a workflow
+  diagram instead.
 
-### Slide 1 — Cover
+## Prohibited content
 
-- **Big logo** centered.
-- **Tagline:** "Find the revenue your billers are leaving on the table."
-- **Sub-line:** "AI pre-submit claim audit for Alberta primary care."
-- **Speaker name + date** in the bottom-left.
-- Background: `primary-700`.
+- customer names, logos, quotes, screenshots, or results without written
+  permission and claim approval;
+- market-size, revenue-loss, savings, ROI, acceptance, time-saved, denial, or
+  accuracy figures without an approved, scoped source;
+- prices, free periods, included volumes, discounts, refunds, conversion terms,
+  support promises, or response times before offer approval;
+- compliance, certification, residency, encryption, processor, retention, or
+  deletion statements not approved for the exact audience and date;
+- real patient, encounter, claim, credential, or production-access data;
+- countdowns, scarcity, competitive superiority, or implied endorsement.
 
-### Slide 2 — The problem
+## Speaker notes
 
-- **Title:** "Alberta primary care is leaving $40K–$120K per clinician per year unbilled."
-- **Three stat callouts** (large numbers, 56pt):
-  - 11% — average undercoding rate in primary care (per CMA 2024 data)
-  - $58 — average revenue lost per undercoded visit
-  - 73% — of AHCIP claim denials are recoverable with a corrected re-submit
-- **Source line** at the bottom: "Source: CMA 2024 billing audit, AHCIP SOMB 2025."
+Notes are short and auditable:
 
-### Slide 3 — Why it's hard today
+1. the one point the slide supports;
+2. the source or explicit limitation;
+3. the question or transition.
 
-- **Title:** "Today's billers are overworked, under-supported, and reactive."
-- **Three pain-point rows** (icon + 1-line):
-  - `IconClaims` — "Manual review of every claim is impossible at scale."
-  - `IconHigh` — "Denials come back weeks later, when the context is gone."
-  - `IconError` — "Payer rules change often enough that training lags."
-- **Quote** at the bottom (real, attributed): a 1-sentence quote from a
-  pilot-clinic biller (collected during pilot, see
-  `docs/PILOT_DEMO_RECORDING.md`).
+If a participant asks for an unapproved claim, record the question and follow up
+through the governed evidence process. Do not answer from a historical deck.
 
-### Slide 4 — The Zorva solution
+## Variant policy
 
-- **Big statement:** "Zorva audits every claim, before you submit it."
-- **Three pillars** (icon + 1-line + 1-line):
-  - `IconShieldCheck` — "Catches denials" — rules engine + LLM explanation
-  - `IconBolt` — "Finds missed revenue" — undercode / missing-procedure / -25
-  - `IconLock` — "PHI-safe by design" — encrypted, audit-chained, on-shore
-- Background: `primary-700`.
+Do not clone an approved clinic deck into an investor, partner, conference, or
+public version. Each audience changes the inference and therefore requires a
+separate claim/surface review. Recognition is retained through the name,
+teal/charcoal palette, typography hierarchy, and human-control message, not by
+reusing unsupported content.
 
-### Slide 5 — How it works
+## Acceptance checklist
 
-- **Title:** "Three steps. Ten seconds per claim."
-- **3-column layout**, each column one step with the matching illustration
-  from `docs/BRANDING_IMAGERY.md` (asset IDs 2, 3, 4):
-  1. **Upload** — claims + clinical notes
-  2. **Audit** — Zorva runs the rules + LLM
-  3. **Review** — biller accepts or dismisses, submits
-- **Live demo CTA** (small): "See it in 90 seconds → [QR code to demo video]"
-
-### Slide 6 — Findings gallery
-
-- **Title:** "What Zorva finds."
-- **2×3 grid of finding cards**, each with the matching illustration
-  (asset IDs 5, 6, 7 plus 3 placeholders for v1.1):
-  - "Missing modifier-25" — `-$50` per encounter
-  - "Undercoded E/M visit" — `+$30` per encounter
-  - "Unbilled procedure" — `+$45` per encounter
-  - "Documentation gap" — `-$80` per encounter
-  - "Duplicate service" — `-$120` per encounter
-  - "Telehealth premium missed" — `+$15` per encounter
-- This is the **most important social-proof slide** of the deck.
-
-### Slide 7 — Results
-
-- **Title:** "What the pilot showed."
-- **Big number callout** (96pt): "**$4,200 per clinician per month** in
-  recovered + newly captured revenue."
-- **Secondary stats** (3 columns):
-  - 92% — biller acceptance rate
-  - 4 min — average time saved per audited claim
-  - 0 — PHI incidents across the pilot
-- **Caveat line** (small, slate-500): "Pilot of 3 clinics over 60 days.
-  Full case study available on request."
-
-### Slide 8 — Why now
-
-- **Three columns**, icon + 1-line:
-  - `IconBolt` — "AHCIP SOMB 2025 update added 14 new billable codes."
-  - `IconShieldCheck` — "HIA + PIPEDA review is on the clinic's roadmap,
-    not a blocker."
-  - `IconStethoscope` — "Primary-care physician shortage is at a 20-year
-    high; billers are overworked."
-- One-line takeaway at the bottom: "The clinics that adopt pre-submit
-audit in 2026 will compound the gains."
-
-### Slide 9 — Ask / next steps
-
-- **Title:** "Pilot with us."
-- **Two columns:**
-  - **Left:** the pilot offer
-    - 60 days, 1 clinic, up to 1,000 claims/mo
-    - Free during pilot; standard pricing kicks in at month 3
-    - You own the data; we delete it within 30 days of pilot end
-  - **Right:** the contact
-    - `hello@ashbi.ca` / `ashbi.ca/book`
-    - Calendar QR code (links to Cal.com 10-min slot)
-- Background: `primary-700`.
-
-### Slide 10 — Thank you / Q&A
-
-- **Big:** "Thank you."
-- **Three small lines:**
-  - "We follow up within 24 hours."
-  - "Email hello@ashbi.ca with any question, any time."
-  - "Backup slides on the next pages."
-- Background: `primary-700`.
-- Append **3 backup slides** (FAQ, security deep-dive, pricing detail)
-  after this, same visual rules.
-
----
-
-## 4. Export conventions
-
-- **Master file:** `templates/pitch-deck.key` (Keynote) +
-  `templates/pitch-deck.pptx` (PowerPoint, exported from Keynote).
-- **PDF export:** `templates/pitch-deck.pdf` with speaker notes
-  included.
-- **Per-audience variants:** `templates/pitch-deck-clinics.key`,
-  `templates/pitch-deck-investors.key`. Start from the master, swap
-  the cover and the results slide, leave the rest.
-- **Aspect ratio:** 16:9, never 4:3.
-- **File size:** keep the .key under 25 MB. Use linked movies, not
-  embedded, for the demo video.
-
----
-
-## 5. Speaker notes
-
-Every slide has speaker notes. They live in the same .key file under
-the notes view. Each note is **1–3 sentences max** — the bullet points
-on the slide do the heavy lifting; notes are the verbal transitions and
-the timing cues.
-
-A note template:
-
-```
-<opening line, the one thing you want them to remember from this slide>
-<one supporting fact or anecdote>
-<transition to the next slide>
-```
-
----
-
-## 6. Acceptance checklist
-
-When this task is "done":
-
-- [ ] `templates/pitch-deck.key` exists with 10 slides + 3 backups.
-- [ ] `.pptx` and `.pdf` exports exist and are byte-stable.
-- [ ] All visual rules in **§2** are applied.
-- [ ] Every slide has speaker notes per **§5**.
-- [ ] Per-audience variants exist for clinics and investors.
-- [ ] The deck is rehearsed end-to-end once at 18:00 flat, recorded,
-      and the recording lives at `templates/pitch-deck-rehearsal.mp4`
-      for the next presenter to study.
+- [ ] The actual source deck and accessible PDF export exist and match this
+  specification.
+- [ ] Every factual claim has a source ID, owner, approval, surface, and review
+  date.
+- [ ] Static and live product evidence are visibly distinct.
+- [ ] The deck contains no sensitive or unapproved customer material.
+- [ ] Keyboard reading order, contrast, alt text, export text extraction, and
+  representative screen-reader checks pass.
+- [ ] The exact audience, presenter, meeting, and external-use action are
+  approved.
+- [ ] The deck is not represented as approved merely because this specification
+  exists.

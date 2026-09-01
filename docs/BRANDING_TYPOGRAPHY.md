@@ -1,12 +1,12 @@
 # Zorva — Typography System
 
-Status: spec, ready for token export.
-Owner: branding kit, P0 typography task (`t_dafe0424`).
-Last updated: 2026-06-24.
+Status: reconciled with the implemented portal; exported-asset licensing review remains.
+Owner: Cameron Ashley.
+Last updated: 2026-09-01.
 
 This document is the **single source of truth** for the Zorva type system:
-one display face, one text face, one monospace face, a geometric size scale,
-and the rules for pairing them. All sizes, weights, and line-heights are
+an editorial display role, a functional text role, two bounded monospace roles,
+and the rules for pairing them. Most sizes, weights, and line-heights are
 consumed as CSS variables defined in `apps/portal/src/app/globals.css` so
 components never hard-code type values.
 
@@ -14,31 +14,38 @@ The goals of the type system:
 
 1. **Read clean at body size on screen** — Inter was designed for that.
 2. **Hit WCAG-AA at every size we ship** — minimum 4.5:1 body, 3:1 large.
-3. **Be free, self-hostable, and predictable** — no surprises from a CDN.
+3. **Be self-hosted in the portal build** — exported assets still require a
+   recorded font-source and licence check.
 4. **Degrade gracefully** — system fonts if Inter fails to load.
 
 ---
 
 ## 1. Typefaces
 
-| Role       | Family        | Weights shipped              | Source                          |
-|------------|---------------|------------------------------|---------------------------------|
-| Display    | Inter         | 600, 700, 800                | `next/font/google` (self-hosted)|
-| Text       | Inter         | 400, 500, 600, 700           | `next/font/google` (self-hosted)|
-| Monospace  | JetBrains Mono| 400, 500, 700                | `next/font/google` (self-hosted)|
+| Role | Family | Implemented weights | Source and boundary |
+| --- | --- | --- | --- |
+| Marketing editorial display | Fraunces | 400, 500, 600; normal and italic | `next/font/google`; homepage headlines only |
+| Product, HQ, forms, body | Inter | variable/default loading | `next/font/google`; functional default |
+| Marketing evidence labels | IBM Plex Mono | 400, 500 | `next/font/google`; compact labels only |
+| Code and technical traces | JetBrains Mono | default loading | `next/font/google`; real code/identifiers only |
 
-**Why Inter for both display and text:**
+**Why Inter remains the functional default:**
 
-- Free, open-source (SIL OFL), ships with full Latin / Latin-Ext / Cyrillic /
-  Greek subsets.
+- Loaded through `next/font/google` in the repository. Upstream fonts are
+  commonly distributed under SIL Open Font License terms, but the repository
+  does not currently archive the licence files required for exported-asset
+  provenance; verify and record them before external packaging.
 - Designed for screen rendering at body sizes — no stroke contrast tricks
   that disappear at 14 px.
-- Inter is one of the few faces that ships its own **optical sizes** via the
-  `Inter Display` variant. We don't need it for v1 (regular Inter at 700 +
-  tight tracking reads as display), but it's available if a future hero
-  needs the extra polish.
-- WCAG-AA friendly: Inter Regular at 16 px on `#FFFFFF` is well above 4.5:1
-  contrast for every color in our palette (see BRANDING_COLORS.md).
+- Legible in the current functional UI at ordinary body sizes. WCAG contrast is
+  determined by foreground/background colour and rendered size, not the font
+  family; verify it in context (see `BRANDING_COLORS.md`).
+
+**Why Fraunces and IBM Plex Mono are bounded to marketing:** Fraunces gives the
+indexable homepage a distinctive editorial voice, while IBM Plex Mono labels
+evidence and workflow details. Neither belongs in dense product/HQ controls or
+long body copy. This channel contrast preserves recognition without reducing
+functional legibility.
 
 **Why JetBrains Mono (not Fira Code):**
 
@@ -96,7 +103,7 @@ Never use weight 800+ outside of pitch-deck display sizes. We don't ship the
 
 | Surface                  | Family    | Token                | Notes                                   |
 |--------------------------|-----------|----------------------|------------------------------------------|
-| Marketing hero (`h1`)    | Inter     | `--type-display-xl`  | 48 px / 700                              |
+| Marketing hero (`h1`)    | Fraunces  | responsive page token | One editorial hierarchy                  |
 | Page title (`h1`)        | Inter     | `--type-h1`          | 30 px / 700                              |
 | Section title (`h2`)     | Inter     | `--type-h2`          | 24 px / 600                              |
 | Card title (`h3`/`h4`)   | Inter     | `--type-h3`/`h4`     |                                          |
@@ -105,17 +112,18 @@ Never use weight 800+ outside of pitch-deck display sizes. We don't ship the
 | Button labels            | Inter     | `--type-body-sm`     | 14 px / 600, letter-spacing 0            |
 | Captions / table headers | Inter     | `--type-caption`     | 12 px / 500, letter-spacing +0.01em      |
 | Code                     | JetBrains Mono | `--type-code`    | 14 px / 400                              |
+| Marketing eyebrow/evidence label | IBM Plex Mono | page token | 12 px minimum; short labels only |
 
 **Forbidden:**
 
 - Don't set font-size in components. Always go through a `--type-*` token.
-- Don't mix Inter with any other sans (no Helvetica, no system-ui) —
-  pick one and stick with it.
+- Don't introduce another family. Use Inter for functional UI, Fraunces for
+  bounded marketing display, IBM Plex Mono for marketing labels, and JetBrains
+  Mono for real code/technical traces.
 - Don't use ALL CAPS for body. ALL CAPS is only allowed for the wordmark
   logo lockup or eyebrow labels (`--type-caption`).
-- Don't italicize Inter for emphasis. Use **weight 600** instead — Inter's
-  italic is a true italic, not a slanted roman, and reads as a different
-  voice.
+- Don't italicize Inter for functional emphasis. Use weight 600. Fraunces
+  italic is permitted only as a short editorial headline accent.
 - Don't go below 12 px. Lighthouse flags anything smaller as a11y-fragile.
 
 ---
