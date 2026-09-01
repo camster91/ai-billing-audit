@@ -10,6 +10,7 @@
 #   ./deploy-portal.sh                    # full deploy
 #   ./deploy-portal.sh --skip-rsync       # only re-run compose + Traefik
 #   ./deploy-portal.sh --portal-only      # only restart the portal container
+#   ./deploy-portal.sh --skip-router      # preserve an already-verified router
 #
 # What this does:
 #   1. rsync apps/portal/ to vps:/opt/projects/ai-billing-audit/portal/
@@ -47,10 +48,12 @@ set -euo pipefail
 # ---- Args ---------------------------------------------------------------
 SKIP_RSYNC=0
 PORTAL_ONLY=0
+SKIP_ROUTER=0
 for arg in "$@"; do
     case "$arg" in
         --skip-rsync)   SKIP_RSYNC=1 ;;
         --portal-only)  PORTAL_ONLY=1; SKIP_RSYNC=1 ;;
+        --skip-router)  SKIP_ROUTER=1 ;;
         -h|--help)
             sed -n '2,/^set -euo pipefail/p' "$0" | sed 's/^# \?//'
             exit 0
@@ -129,6 +132,7 @@ read_secret() {
 }
 
 POSTGRES_PASSWORD_VAL="$(read_secret portal_postgres_password)"
+POSTGRES_PASSWORD_URLENCODED="$(printf '%s' "$POSTGRES_PASSWORD_VAL" | python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=""))')"
 AUTH_SECRET_VAL="$(read_secret auth_secret)"
 AUTH_RESEND_KEY_VAL="$(read_secret auth_resend_key)"
 STRIPE_SECRET_VAL="$(read_secret stripe_secret_key)"
@@ -149,7 +153,7 @@ PHI_ENCRYPTION_KEY_VAL="$(read_secret phi_encryption_key)"
 TMP_ENV="$(mktemp)"
 trap 'rm -f "$TMP_ENV"' EXIT
 sed \
-    -e "s|^DATABASE_URL=.*|DATABASE_URL=\"postgresql://portal:${POSTGRES_PASSWORD_VAL}@portal-postgres:5432/zorva_portal?schema=public\"|" \
+    -e "s|^DATABASE_URL=.*|DATABASE_URL=\"postgresql://portal:${POSTGRES_PASSWORD_URLENCODED}@portal-postgres:5432/zorva_portal?schema=public\"|" \
     -e "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET_VAL}\"|" \
     -e "s|^AUTH_RESEND_KEY=.*|AUTH_RESEND_KEY=\"${AUTH_RESEND_KEY_VAL}\"|" \
     -e "s|^STRIPE_SECRET_KEY=.*|STRIPE_SECRET_KEY=\"${STRIPE_SECRET_VAL}\"|" \
@@ -190,6 +194,9 @@ echo "  ok (chmod 600)"
 
 # ---- Step 3: Traefik router block --------------------------------------
 echo "[deploy-portal] step 3: Traefik router for ${PORTAL_HOST}"
+if [[ "$SKIP_ROUTER" -eq 1 ]]; then
+    echo "  skipped (--skip-router; use only after verifying the live router)"
+else
 # Read the live routers.yml, merge in the new portal block, write back.
 # Mirrors the same python-merge pattern that deploy-to-vps.sh uses for
 # the api's ratelimit middleware — preserves every existing field
@@ -250,6 +257,7 @@ PY
 ROUTERS_B64="$(base64 < "$TMP_ROUTERS" | tr -d '\n')"
 ssh "${HOST}" "echo '${ROUTERS_B64}' | base64 -d > ${TRAEFIK_ROUTERS}.tmp && mv ${TRAEFIK_ROUTERS}.tmp ${TRAEFIK_ROUTERS} && echo 'routers.yml updated: zorva-portal router + service added'"
 echo "  ok"
+fi
 
 # ---- Step 4: docker compose up ----------------------------------------
 echo "[deploy-portal] step 4: docker compose up -d --build portal portal-postgres"
@@ -264,9 +272,9 @@ rsync -az "${REPO_ROOT}/docker-compose.yml" "${HOST}:${REMOTE_DIR}/docker-compos
 # docker-compose.yml trips immediately (interpolation happens BEFORE
 # env_file is loaded into the container).
 if [[ "$PORTAL_ONLY" -eq 1 ]]; then
-    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file portal.env up -d --no-deps --build portal"
+    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file .env --env-file portal.env up -d --no-deps --build portal"
 else
-    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file portal.env up -d --build portal portal-postgres"
+    ssh "${HOST}" "cd ${REMOTE_DIR} && docker compose --env-file .env --env-file portal.env up -d --build portal portal-postgres"
 fi
 echo "  ok"
 

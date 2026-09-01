@@ -69,3 +69,20 @@ test("reviewed core routes remain indexable", () => {
     assert.equal(response.headers.get("X-Robots-Tag"), null);
   }
 });
+
+test("production middleware rejects a non-canonical forwarded host", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousAuthUrl = process.env.AUTH_URL;
+  process.env.NODE_ENV = "production";
+  process.env.AUTH_URL = "https://zorva.ashbi.ca";
+
+  try {
+    const response = middleware(new NextRequest("https://attacker.example/api/auth/session"));
+    assert.equal(response.status, 400);
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousAuthUrl === undefined) delete process.env.AUTH_URL;
+    else process.env.AUTH_URL = previousAuthUrl;
+  }
+});
