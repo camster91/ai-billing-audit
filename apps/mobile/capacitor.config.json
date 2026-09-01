@@ -3,7 +3,7 @@
   "appName": "Zorva Audit",
   "webDir": "www",
   "server": {
-    "url": "https://ai-billing-audit.ashbi.ca/",
+    "url": "https://zorva.ashbi.ca/",
     "cleartext": false,
     "androidScheme": "https"
   },

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 40" role="img" aria-labelledby="title">
+  <title id="title">Zorva</title>
+  <g transform="translate(2 8) scale(.96)"><path fill="#14B8A6" d="M7 1.5h10a3 3 0 0 1 2.68 1.66l2.5 5a3 3 0 0 1 0 2.68l-2.5 5A3 3 0 0 1 17 17.5H7a3 3 0 0 1-2.68-1.66l-2.5-5a3 3 0 0 1 0-2.68l2.5-5A3 3 0 0 1 7 1.5Z" transform="translate(0 2.5)"/><path d="M7 7h10L7 17h10" fill="none" stroke="#FFF" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="round"/></g>
+  <text x="36" y="30" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" letter-spacing="-1"><tspan fill="#14B8A6">Z</tspan><tspan fill="#F8FAFC">orva</tspan></text>
+</svg>

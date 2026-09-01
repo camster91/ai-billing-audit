@@ -11,7 +11,7 @@
   <style>
     /* Minimal splash so the user sees a branded background while
        Capacitor hydrates the WebView. The real dashboard
-       (https://ai-billing-audit.ashbi.ca/) replaces this as soon
+       (https://zorva.ashbi.ca/) replaces this as soon
        as the WKWebView / WebView loads. */
     html, body {
       margin: 0;
@@ -31,9 +31,8 @@
       gap: 12px;
     }
     .splash .mark {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+      width: 56px;
+      height: 56px;
     }
     .splash .tag {
       font-size: 13px;
@@ -43,11 +42,11 @@
 </head>
 <body>
   <div class="splash">
-    <div class="mark">Zorva Audit</div>
+    <img class="mark" src="zorva-mark.svg" alt="Zorva" />
     <div class="tag">Loading dashboard&hellip;</div>
   </div>
   <!-- The Capacitor WebView is configured (capacitor.config.json
-       -> server.url) to load https://ai-billing-audit.ashbi.ca/
+       -> server.url) to load https://zorva.ashbi.ca/
        directly. This file ships with the bundle so the WebView
        has a local fallback (e.g. when the device is offline and
        the cached dashboard is being served). On first launch
@@ -61,7 +60,7 @@
     // honoured, this never runs because the WebView loads the
     // remote URL directly.
     (function () {
-      var target = "https://ai-billing-audit.ashbi.ca/";
+    var target = "https://zorva.ashbi.ca/";
       setTimeout(function () { window.location.replace(target); }, 1500);
     })();
   </script>

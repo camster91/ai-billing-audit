@@ -73,10 +73,11 @@ def test_documented_typography_matches_the_implemented_portal_families() -> None
         assert label in typography
 
 
-def test_proposed_visual_assets_are_not_misreported_as_existing() -> None:
+def test_candidate_logo_assets_and_missing_illustrations_are_reported_honestly() -> None:
     assert not (ROOT / "apps" / "portal" / "public" / "illustrations").exists()
-    assert not (ROOT / "apps" / "portal" / "public" / "icon.svg").exists()
+    assert (ROOT / "apps" / "portal" / "public" / "icon.svg").exists()
     book = (DOCS / "BRAND_BOOK.md").read_text()
     imagery = (DOCS / "BRANDING_IMAGERY.md").read_text()
-    assert "promised files not found" in book
+    assert "Candidate source and delivery pack implemented" in book
+    assert "human approval" in book
     assert "proposed backlog, not an asset inventory" in imagery

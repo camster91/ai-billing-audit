@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Inter,
@@ -137,7 +138,15 @@ export default function RootLayout({
         <header className="site-header">
           <div className="site-header-inner">
             <Link href="/" className="site-brand" aria-label="Zorva — home">
-              Zorva
+              <Image
+                src="/brand/zorva-mark-dark.svg"
+                width={24}
+                height={24}
+                alt=""
+                aria-hidden="true"
+                priority
+              />
+              <span>Zorva</span>
             </Link>
             <nav aria-label="Primary" className="site-nav site-nav-desktop">
               {NAV.map((n) => (

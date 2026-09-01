@@ -42,10 +42,10 @@
     "sensitive_data_access"
   ],
   "knownGaps": [
-    "production logo and icon files are not present",
+    "candidate logo and icon files require human approval, trademark review, and publication approval",
     "proposed illustration files are not present",
     "no approved pitch deck source or export exists",
-    "current main homepage claim drift is corrected only in unmerged PR 101",
-    "font source in code is verified but exported-asset licence inventory is incomplete"
+    "authenticated cross-surface candidate asset rendering is not verified",
+    "wordmark text requires approved outline conversion before external master delivery"
   ]
 }
