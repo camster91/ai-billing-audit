@@ -118,7 +118,7 @@ export async function requireTenantRole(
   const userEmail = session.user.email ?? null;
 
   const hdr = await headers();
-  const tenantId = hdr.get("x-tenant-id");
+  const tenantId = hdr.get("x-tenant-id") ?? session.user.activeTenantId;
   if (!tenantId) {
     return {
       ok: false,

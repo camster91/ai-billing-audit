@@ -72,8 +72,11 @@ reason, and log contact. Mutations use optimistic version checks and UUID
 idempotency keys, append field-level `LeadActivity` records, and write one
 correlated `PlatformAuditEvent`. The form and API reject common clinical-content
 terms in commercial next actions and never send an external message. Lead
-deduplication, qualification notes, conversion linkage, stage-age reporting,
-and production-like accessibility remain outstanding.
+deduplication, qualification notes, conversion linkage, and stage-age reporting
+remain outstanding. The Chromium gate now covers anonymous redirect, tenant-only
+denial, owner access, same-session revocation, semantic landmarks, keyboard skip
+navigation, freshness evidence, and 390 px overflow; cross-browser and manual
+assistive-technology qualification remain separate launch evidence.
 
 ### Clients and delivery
 
