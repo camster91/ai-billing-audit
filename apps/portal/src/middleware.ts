@@ -153,6 +153,17 @@ function hasSessionCookie(request: NextRequest): boolean {
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Auth.js requires trusted forwarded-host handling behind Traefik. Keep
+  // that trust narrow by rejecting any production request whose effective
+  // host does not match the canonical AUTH_URL configured for the portal.
+  const canonicalAuthUrl = process.env.AUTH_URL;
+  if (process.env.NODE_ENV === "production" && canonicalAuthUrl) {
+    const canonicalHost = new URL(canonicalAuthUrl).host;
+    if (request.nextUrl.host !== canonicalHost) {
+      return NextResponse.json({ error: "untrusted_host" }, { status: 400 });
+    }
+  }
+
   // P11 round-2 fix 2026-07-01: friendlier 404 handling. Without this
   // any unknown URL gets the auth-redirect → /login treatment, which
   // is hostile to (a) users who mistype a URL, (b) SEO crawlers, and
