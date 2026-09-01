@@ -66,13 +66,10 @@ export async function captureDevEmail(
   timeoutMs = 30_000,
 ): Promise<DevEmail> {
   const deadline = Date.now() + timeoutMs;
-  // Snapshot the current file size so we only scan new content.
+  // Scan the current log as well as new content. Callers trigger the send
+  // before entering this helper, so snapshotting the current size would skip
+  // the message that was just emitted.
   let lastSize = 0;
-  try {
-    lastSize = readFileSync(logFile, "utf8").length;
-  } catch {
-    lastSize = 0;
-  }
   while (Date.now() < deadline) {
     let content = "";
     try {
@@ -292,10 +289,18 @@ export function postSeedEncounter(
 }
 
 /** Spawn the seed script (wipes + re-creates the e2e tenant + user). */
+export interface SeedAcceptanceResult {
+  tenantId: string;
+  tenantSlug: string;
+  userId: string;
+  userEmail: string;
+}
+
 export function seedAcceptance(
   tenantSlug: string = DEFAULT_TENANT_SLUG,
   userEmail: string = DEFAULT_USER_EMAIL,
-): void {
+  attachMembership = false,
+): SeedAcceptanceResult {
   const cwd = resolvePortalCwd();
   const r = spawnSync(
     "pnpm",
@@ -306,6 +311,7 @@ export function seedAcceptance(
         ...process.env,
         E2E_TENANT_SLUG: tenantSlug,
         E2E_USER_EMAIL: userEmail,
+        E2E_ATTACH_MEMBERSHIP: attachMembership ? "1" : "0",
       },
       encoding: "utf8",
     },
@@ -313,4 +319,10 @@ export function seedAcceptance(
   if (r.status !== 0) {
     throw new Error(`seed failed: ${r.stderr || r.stdout}`);
   }
+  const jsonStart = r.stdout.lastIndexOf("{");
+  const jsonEnd = r.stdout.lastIndexOf("}");
+  if (jsonStart === -1 || jsonEnd === -1) {
+    throw new Error(`seed produced no JSON: ${r.stdout}`);
+  }
+  return JSON.parse(r.stdout.slice(jsonStart, jsonEnd + 1)) as SeedAcceptanceResult;
 }

@@ -56,6 +56,12 @@ jobs:
         working-directory: apps/portal
         run: pnpm install --frozen-lockfile
 
+      - name: Generate ephemeral fixture-encryption key
+        run: |
+          key=$(openssl rand -base64 32)
+          echo "::add-mask::$key"
+          echo "ZORVA_PHI_ENCRYPTION_KEY=$key" >> "$GITHUB_ENV"
+
       - name: Install Playwright Chromium
         working-directory: apps/portal
         run: pnpm test:e2e:install

@@ -29,6 +29,7 @@ async function main() {
   const tenantSlug = process.env["E2E_TENANT_SLUG"] || "e2e-clinic";
   const userEmail = process.env["E2E_USER_EMAIL"] || "[email protected]";
   const tier = (process.env["E2E_TIER"] || "mid") as "small" | "mid" | "large";
+  const attachMembership = process.env["E2E_ATTACH_MEMBERSHIP"] === "1";
 
   // ---- Clean slate ----------------------------------------------------
   await prisma.auditTrailEntry.deleteMany({
@@ -79,8 +80,20 @@ async function main() {
       emailVerified: new Date(),
     },
   });
-  // Note: NO membership yet. The redeem route will attach the user as
-  // owner when the wizard is driven.
+  // The full acceptance journey leaves membership creation to checkout
+  // redemption. The shorter smoke journey opts into a seeded membership so
+  // it can exercise authenticated upload without duplicating onboarding.
+  if (attachMembership) {
+    await prisma.membership.create({
+      data: {
+        tenantId: tenant.id,
+        userId: user.id,
+        role: "owner",
+        email: userEmail,
+        activatedAt: new Date(),
+      },
+    });
+  }
 
   console.log(JSON.stringify({
     tenantId: tenant.id,

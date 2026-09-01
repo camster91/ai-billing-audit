@@ -41,11 +41,13 @@ const SAMPLE_837P = path.join(resolvePortalCwd(), "tests/e2e/fixtures/sample-837
 // Cross-test state. Module-scoped vars survive across the ordered
 // tests because workers: 1 runs them in sequence in the same process.
 const state: {
+  tenantId: string;
   encounterId: string;
   findingIds: string[];
   accepted: boolean;
   dismissed: boolean;
 } = {
+  tenantId: "",
   encounterId: "",
   findingIds: [],
   accepted: false,
@@ -54,7 +56,8 @@ const state: {
 
 test.beforeAll(async () => {
   // 1. Wipe + provision the e2e tenant + user.
-  seedAcceptance(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL);
+  const seed = seedAcceptance(DEFAULT_TENANT_SLUG, DEFAULT_USER_EMAIL, true);
+  state.tenantId = seed.tenantId;
   // 2. Confirm the sample 837P file is present.
   if (!existsSync(SAMPLE_837P)) {
     throw new Error(`sample 837P fixture missing at ${SAMPLE_837P}`);
@@ -134,6 +137,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     const buf = await readFile(SAMPLE_837P);
     const res = await page.request.post("/api/onboarding/upload", {
       multipart: {
+        tenantId: state.tenantId,
         file: {
           name: "sample-837P.edi",
           mimeType: "text/plain",
@@ -145,8 +149,12 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
       res.ok(),
       `upload returned HTTP ${res.status()}: ${await res.text().catch(() => "<no body>")}`,
     ).toBe(true);
-    const body = (await res.json()) as { ok?: boolean; fileName?: string; path?: string };
-    expect(body.ok, "upload response ok=true").toBe(true);
+    const body = (await res.json()) as {
+      encryptedAtRest?: boolean;
+      fileName?: string;
+      filePath?: string;
+    };
+    expect(body.encryptedAtRest, "upload response confirms encryption").toBe(true);
     expect(body.fileName, "upload response includes fileName").toBeTruthy();
   });
 
