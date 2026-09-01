@@ -18,6 +18,16 @@ function cuidLike(prefix = ""): string {
   return `${prefix}${randomBytes(12).toString("hex")}`;
 }
 
+function priorDigestWindowDate(now = new Date()): Date {
+  const currentDay = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const day = currentDay.getUTCDay();
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  currentDay.setUTCDate(currentDay.getUTCDate() - daysSinceMonday - 1);
+  return currentDay;
+}
+
 async function main() {
   const tenantSlug = process.env["E2E_TENANT_SLUG"] || "e2e-clinic";
   const userEmail = process.env["E2E_USER_EMAIL"] || "[email protected]";
@@ -44,6 +54,10 @@ async function main() {
     "regimen, recheck lipids in 3 months.";
 
   const patientHash = sha256Hex("patient-e2e-001");
+  // The weekly digest intentionally reports the prior Monday-to-Monday
+  // window. Keep this synthetic encounter inside that window regardless of
+  // when CI runs, instead of pinning it to an obsolete calendar date.
+  const digestFixtureDate = priorDigestWindowDate();
 
   const claim = await prisma.encounterClaim.create({
     data: {
@@ -59,7 +73,7 @@ async function main() {
         payer: "OHIP",
         providerNpi: "1234567890",
         providerName: "Dr. E2E Demo",
-        dateOfService: "2026-06-15",
+        dateOfService: digestFixtureDate.toISOString().slice(0, 10),
       }),
       billedCents: 13800,
     },
@@ -70,7 +84,8 @@ async function main() {
       id: cuidLike(),
       tenantId: tenant.id,
       patientHash,
-      dateOfService: new Date("2026-06-15"),
+      dateOfService: digestFixtureDate,
+      createdAt: digestFixtureDate,
       specialty: "Family Medicine",
       clinicalNote: encryptPortalString(clinicalNote),
       claimId: claim.id,
