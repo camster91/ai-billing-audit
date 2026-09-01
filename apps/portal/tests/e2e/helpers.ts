@@ -95,27 +95,31 @@ function parseDevEmail(
   to: string,
   templateId: string,
 ): DevEmail | null {
-  // Resend dispatcher logs either with template=... or with a
-  // subject line directly. Match a single email block: the
-  // (dev mock) prefix is emitted by sendTemplate() in dev mode.
+  // sendTemplate() puts the template id in the header rather than on a
+  // separate `template:` line. Capture that id and terminate at the next
+  // application log block (or real end-of-input). JavaScript has no `\Z`
+  // anchor, so using it here would silently make an end-of-file email
+  // impossible to match.
   const re =
-    /\[email\][^\n]*\(dev mock\)[^\n]*\n([\s\S]*?)(?=\n\[email\]|\n\[auth\]|\Z)/g;
+    /\[email\]\s+\(dev mock\) would send\s+([a-zA-Z0-9_-]+)[^\n]*:\s*\n([\s\S]*?)(?=\n(?:\[email\]|\[auth\])|$)/g;
   let m: RegExpExecArray | null;
   let lastMatch: DevEmail | null = null;
   while ((m = re.exec(fresh)) !== null) {
-    const block = m[1];
+    const loggedTemplateId = m[1];
+    const block = m[2];
     const toMatch = /to:\s*([^\n]+)/.exec(block);
     const fromMatch = /from:\s*([^\n]+)/.exec(block);
     const subjMatch = /subject:\s*([^\n]+)/.exec(block);
     const tmplMatch = /template:\s*([a-zA-Z0-9_-]+)/.exec(block);
     if (!toMatch || !subjMatch) continue;
     if (!toMatch[1].includes(to)) continue;
+    if (loggedTemplateId !== templateId) continue;
     if (tmplMatch && tmplMatch[1] !== templateId) continue;
     lastMatch = {
       to: toMatch[1].trim(),
       from: fromMatch ? fromMatch[1].trim() : "",
       subject: subjMatch[1].trim(),
-      templateId: tmplMatch ? tmplMatch[1] : templateId,
+      templateId: loggedTemplateId,
       raw: block,
     };
   }
