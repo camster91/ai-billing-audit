@@ -41,6 +41,9 @@ export default async function HqLeadDetailPage({ params }: PageProps) {
             nextAction={lead.nextAction}
             nextActionAt={lead.nextActionAt?.toISOString() ?? null}
             lostReason={lead.lostReason}
+            qualificationStatus={lead.qualificationStatus}
+            qualificationReason={lead.qualificationReason}
+            qualificationEvidenceRef={lead.qualificationEvidenceRef}
             operators={operators.map((operator) => ({
               userId: operator.userId,
               role: operator.role,
@@ -56,6 +59,10 @@ export default async function HqLeadDetailPage({ params }: PageProps) {
             <dt>Volume</dt><dd>{lead.claimVolume?.toLocaleString("en-CA") ?? "Unknown"}</dd>
             <dt>Setup</dt><dd>{lead.billingSetup}</dd>
             <dt>Source</dt><dd>{lead.source ?? "Unknown"}</dd>
+            <dt>Qualification</dt><dd>{lead.qualificationStatus}</dd>
+            <dt>Qualification reviewed</dt><dd>{lead.qualificationReviewedAt?.toLocaleString("en-CA") ?? "Not reviewed"}</dd>
+            <dt>Public submissions</dt><dd>{lead.submissionCount.toLocaleString("en-CA")}</dd>
+            <dt>Last submitted</dt><dd>{lead.lastSubmittedAt?.toLocaleString("en-CA") ?? lead.createdAt.toLocaleString("en-CA")}</dd>
             <dt>Last contact</dt><dd>{lead.lastContactedAt?.toLocaleString("en-CA") ?? "Never"}</dd>
           </dl>
         </aside>

@@ -833,6 +833,12 @@ model Lead {
   clinicName   String
   // Required, lowercased on insert (API contract).
   email        String
+  // Normalized public-contact identity used for concurrency-safe capture.
+  // Nullable so historical duplicate rows remain intact; one canonical row per
+  // normalized email receives the key during migration.
+  dedupeKey    String?  @unique
+  submissionCount Int   @default(1)
+  lastSubmittedAt DateTime?
   // Slider 0..100000. Null means "not provided".
   claimVolume  Int?
   // "in_house" | "outsourced" | "hybrid"
@@ -883,6 +889,10 @@ model Lead {
   nextAction        String?
   nextActionAt      DateTime?
   lostReason        String?
+  qualificationStatus      String   @default("unreviewed")
+  qualificationReason      String?
+  qualificationEvidenceRef String?
+  qualificationReviewedAt  DateTime?
 
   activities LeadActivity[]
   engagement ClientEngagement?

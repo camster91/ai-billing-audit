@@ -57,6 +57,8 @@ export interface LeadSlackInput {
   billingSetup: string;
   /** The lead id (cuid). */
   leadId: string;
+  /** True when this request was linked to an existing canonical lead. */
+  repeatSubmission?: boolean;
 }
 
 const BILLING_SETUP_LABEL: Record<string, string> = {
@@ -68,7 +70,7 @@ const BILLING_SETUP_LABEL: Record<string, string> = {
 function buildText(input: LeadSlackInput): string {
   const claim = input.claimVolume === null ? "n/a" : `${input.claimVolume}/mo`;
   const setup = BILLING_SETUP_LABEL[input.billingSetup] ?? input.billingSetup;
-  return `:incoming_envelope: New lead — ${input.clinicName} (${input.name}) — ${claim}, ${setup} — ${input.email}`;
+  return `:incoming_envelope: ${input.repeatSubmission ? "Repeat lead" : "New lead"} — ${input.clinicName} (${input.name}) — ${claim}, ${setup} — ${input.email}`;
 }
 
 function buildPayload(input: LeadSlackInput): unknown {
@@ -81,7 +83,7 @@ function buildPayload(input: LeadSlackInput): unknown {
         type: "header",
         text: {
           type: "plain_text",
-          text: `New lead — ${input.clinicName}`,
+          text: `${input.repeatSubmission ? "Repeat lead" : "New lead"} — ${input.clinicName}`,
           emoji: false,
         },
       },
