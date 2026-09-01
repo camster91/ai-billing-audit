@@ -351,10 +351,10 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ## Next action
 
-Obtain explicit approval to merge and deploy PR #97 exact SHA `76e0ef46`, then
-run the immutable release, migration, backup, rollback, public-route, and
-authenticated synthetic customer-journey checks. Production-like qualification
-against the configured real audit provider remains a separate accountable gate.
+After exact-head CI passes, obtain explicit approval to merge and deploy the
+current PR #97 head, then run the immutable release, migration, backup, rollback,
+public-route, and authenticated synthetic customer-journey checks. Production-like
+qualification against the configured real audit provider remains a separate gate.
 Separately verify contact routing, monitoring, data residency, and an approved HQ
 operator journey. Do not deploy a new artifact, grant production platform roles,
 change customer-visible pricing, contact clinics, or access real clinic data
