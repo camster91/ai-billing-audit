@@ -236,8 +236,10 @@ export async function loginViaMagicLink(
   // string, we instead test page.url() contains the path
   // portion of the callback, ignoring querystring.
   const path = callbackUrl.split("?")[0] ?? callbackUrl;
-  const re = new RegExp(path.replace(/[/]/g, "\\/"));
-  await page.waitForURL(re, { timeout: 30_000 });
+  await page.waitForURL(
+    (url) => url.pathname === path || url.pathname.startsWith(`${path}/`),
+    { timeout: 30_000 },
+  );
 }
 
 export interface CheckoutResult {

@@ -569,8 +569,13 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     const tenant = readTenantRow();
     expect(tenant.id, "tenantId resolved").toBeTruthy();
 
+    await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/billing");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
     const res = await page.request.get(
       `/api/billing/invoices?tenantId=${tenant.id}`,
+      { headers: { cookie: cookieHeader } },
     );
     expect(
       res.ok(),
