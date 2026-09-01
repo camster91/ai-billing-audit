@@ -536,9 +536,18 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     const cronJson = (await cronRes.json().catch(() => ({}))) as {
       ok?: boolean;
       sent?: number;
+      results?: Array<Record<string, unknown>>;
     };
     if (!cronJson.ok) {
       throw new Error(`digest cron returned ok=false: ${JSON.stringify(cronJson)}`);
+    }
+    const tenantResult = cronJson.results?.find(
+      (result) => result["tenantId"] === tenant.id,
+    );
+    if (!tenantResult || tenantResult["skipped"] || tenantResult["error"]) {
+      throw new Error(
+        `digest did not reach the sender for the acceptance tenant: ${JSON.stringify(tenantResult ?? cronJson)}`,
+      );
     }
 
     const email = await captureDevEmail(tenant.userEmail, "weekly_digest");

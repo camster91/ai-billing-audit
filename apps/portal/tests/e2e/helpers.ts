@@ -83,8 +83,19 @@ export async function captureDevEmail(
     if (match) return match;
     await new Promise((r) => setTimeout(r, 250));
   }
+  let observedHeaders = "none";
+  try {
+    observedHeaders =
+      readFileSync(logFile, "utf8")
+        .split("\n")
+        .filter((line) => line.includes("[email]"))
+        .slice(-8)
+        .join(" | ") || "none";
+  } catch {
+    observedHeaders = "log unreadable";
+  }
   throw new Error(
-    `no (dev mock) email for to=${to} templateId=${templateId} in ${logFile} within ${timeoutMs}ms`,
+    `no (dev mock) email for to=${to} templateId=${templateId} in ${logFile} within ${timeoutMs}ms; observed email headers: ${observedHeaders}`,
   );
 }
 

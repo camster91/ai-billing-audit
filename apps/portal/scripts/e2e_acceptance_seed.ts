@@ -67,7 +67,8 @@ async function main() {
       stripeSubscriptionId: `sub_e2e_${tenantSlug.slice(-8).padStart(8, "0")}`,
       auditQuotaLimit,
       // onboardingStep starts at 0; the redeem route will bump to 1.
-      onboardingStep: 0,
+      onboardingStep: attachMembership ? 5 : 0,
+      onboardingCompletedAt: attachMembership ? new Date() : null,
     },
   });
 
