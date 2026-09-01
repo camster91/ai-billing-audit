@@ -83,6 +83,15 @@ and production-like accessibility remain outstanding.
 - Client work uses tasks with owner, due date, status, priority, and evidence.
   It does not duplicate clinical encounters or store clinical free text.
 
+**Implemented local increment (2026-08-31):** an authorized platform owner or
+client-success operator can convert one `pilot_signed` lead into one idempotent,
+audited `ClientEngagement`. Conversion creates four no-PHI onboarding tasks but
+does not create a tenant, charge, or message anyone. Authorized operators can
+version and audit task status, priority, owner, due date, and business-evidence
+reference. Stale writes fail; clinical-content terms are rejected. Client
+engagement status, privacy approval, tenant linkage, custom task creation, and
+first-value/health mutations remain controlled follow-on work.
+
 ### Support
 
 - Case intake, category, severity, status, owner, due/response timestamps,
@@ -125,8 +134,11 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 2. Read-only Today dashboard backed by current lead/account/billing records.
 3. Lead pipeline with activity history, assignment, next action, and conversion.
    Assignment, next action, stage history, and loss reason are implemented
-   locally; deduplication, qualification, and conversion remain.
-4. Client/pilot onboarding and company task management.
+   locally; pilot conversion is implemented through the client handoff;
+   deduplication and qualification remain.
+4. Client/pilot onboarding and company task management. Conversion and the
+   default task checklist are implemented locally; engagement-level milestones,
+   custom tasks, and tenant linkage remain.
 5. Support case workflow and product-feedback linkage.
 6. Marketing claims/content/campaign operations and attribution.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,

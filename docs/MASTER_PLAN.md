@@ -140,7 +140,7 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify qualified-lead journey from source attribution through owner response | Local capture, assignment, stage, next-action, and contact logging implemented; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
-| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Lead workflow in progress; client/work/support modules proposed | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
+| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Lead conversion and default client-task workflow implemented locally; engagement milestones, account health, and support remain | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
 | P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | Proposed | Brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
 | P1 | Run a controlled Alberta clinic pilot with approved offer and privacy terms | Decision-dependent | Issues #76, #78; requires owner, legal/privacy, and customer approval | Required for customer validation |
 | P1 | Establish readiness monitoring, accessibility, performance, rollback, and release qualification | Proposed | Issues #23, #24, #25, #30 | Blocks launch-ready claim |
@@ -172,7 +172,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
 | Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
-| Company administration | Platform foundation, lead workflow, and database append-only guards locally verified | Client onboarding/work, support, reporting, retention-policy approval/export, and production-like security/accessibility remain | Cameron / Engineering |
+| Company administration | Platform foundation, lead workflow, append-only guards, and first client/task journey locally verified | Engagement milestones, custom work, support, reporting, retention-policy approval/export, and production-like security/accessibility remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
 ## Metrics required before launch claims
@@ -287,12 +287,25 @@ Baselines are unknown unless explicitly backed by current evidence.
   triggers were present; live in-memory SQLite attempts proved both tables
   reject update/delete and retain rows; PostgreSQL SQL structure tests confirmed
   both tables are guarded with no bypass setting; both Prisma schemas validate.
+- Added a no-PHI `ClientEngagement` and `CompanyTask` operating layer. Only a
+  `pilot_signed` lead can convert; conversion is unique, idempotent, audited,
+  creates four default onboarding tasks, and does not create a tenant, charge,
+  or external message. Owner/client-success roles can version and audit task
+  status, priority, assignment, due date, and business-evidence references.
+- Corrected the Today authorization boundary: roles without `leads:read` or
+  `clients:read` no longer execute or receive those module queries. Authorized
+  users now see open engagement, open task, and overdue task counts.
+- Local HTTP/session verification: tenant-only conversion and task mutation
+  returned 403; owner conversion returned 201 and idempotent replay returned the
+  same engagement; owner task mutation and replay returned 200/version 1; a
+  stale task edit returned 409. Persistence showed one engagement, four tasks,
+  and exactly one audit event for each successful logical operation.
 
 ## Next action
 
-Add the smallest client/pilot onboarding and company-task journey without PHI.
-Next, add the support-case workflow and marketing claim/content registry
-described in the approved sequence. In parallel, the owner must resolve or explicitly decline
+Complete engagement-level milestones and safe custom company work, then add the
+support-case workflow and marketing claim/content registry described in the
+approved sequence. In parallel, the owner must resolve or explicitly decline
 the GitHub Actions billing requirement before PR #88 can receive independent CI;
 then rerun it and verify contact routing and production release identity. Do not
 deploy, grant production platform roles, change customer-visible pricing, contact

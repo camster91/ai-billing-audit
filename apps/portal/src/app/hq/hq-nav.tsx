@@ -7,6 +7,7 @@ export function HqNav() {
       <Link href="/hq" className={styles.brand}>Zorva HQ</Link>
       <Link href="/hq" className={styles.navLink}>Today</Link>
       <Link href="/hq/leads" className={styles.navLink}>Leads</Link>
+      <Link href="/hq/clients" className={styles.navLink}>Clients</Link>
       <Link href="/dashboard" className={styles.navLink}>Clinic portal</Link>
     </nav>
   );

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { prisma } from "../src/lib/prisma";
-import { loadHqLeads, loadHqOverview } from "../src/lib/hq-data";
+import { loadHqClientDetail, loadHqLeads, loadHqOverview } from "../src/lib/hq-data";
 
 const PREFIX = "hq-test-";
 
 async function cleanup() {
   await prisma.platformAuditEvent.deleteMany({ where: { requestId: { startsWith: PREFIX } } });
+  await prisma.companyTask.deleteMany({ where: { engagement: { lead: { email: { startsWith: PREFIX } } } } });
+  await prisma.clientEngagement.deleteMany({ where: { lead: { email: { startsWith: PREFIX } } } });
   await prisma.platformUserRole.deleteMany({ where: { grantedBy: PREFIX } });
   await prisma.lead.deleteMany({ where: { email: { startsWith: PREFIX } } });
   await prisma.membership.deleteMany({ where: { email: { startsWith: PREFIX } } });
@@ -49,14 +51,40 @@ test("HQ overview returns only commercial lead fields and sourced counts", async
       },
     ],
   });
+  const pilotLead = await prisma.lead.create({
+    data: {
+      name: "Pilot Lead",
+      clinicName: "Pilot Clinic",
+      email: `${PREFIX}pilot@example.test`,
+      billingSetup: "in_house",
+      status: "pilot_signed",
+      createdAt: now,
+    },
+  });
+  const engagement = await prisma.clientEngagement.create({
+    data: {
+      leadId: pilotLead.id,
+      clinicName: pilotLead.clinicName,
+      tasks: { create: [{ title: "Open client task", dueAt: new Date("2026-08-27T20:00:00.000Z") }] },
+    },
+  });
 
   const overview = await loadHqOverview(now);
   assert.equal(overview.newLeadCount >= 1, true);
   assert.equal(overview.unownedLeadCount >= 1, true);
   assert.equal(overview.activeClientCount >= 1, true);
+  assert.equal(overview.openCompanyTaskCount, 1);
+  assert.equal(overview.overdueCompanyTaskCount, 1);
+
+  const detail = await loadHqClientDetail(engagement.id);
+  assert.ok(detail.client);
+  const serializedDetail = JSON.stringify(detail.client);
+  for (const forbidden of ["encounter", "finding", "patientHash", "clinicalNote", "claimData"]) {
+    assert.equal(serializedDetail.includes(forbidden), false, forbidden);
+  }
 
   const leads = (await loadHqLeads()).filter((lead) => lead.email.startsWith(PREFIX));
-  assert.equal(leads.length, 2);
+  assert.equal(leads.length, 3);
   assert.deepEqual(Object.keys(leads[0] ?? {}).sort(), [
     "billingSetup",
     "claimVolume",
@@ -82,6 +110,18 @@ test("HQ overview returns only commercial lead fields and sourced counts", async
   }
 
   await cleanup();
+});
+
+test("HQ overview does not load or expose modules outside the caller capability scope", async () => {
+  await cleanup();
+  const overview = await loadHqOverview(new Date("2026-08-28T20:00:00.000Z"), {
+    leads: false,
+    clients: false,
+  });
+  assert.equal(overview.newLeadCount, null);
+  assert.equal(overview.activeClientCount, null);
+  assert.equal(overview.openCompanyTaskCount, null);
+  assert.deepEqual(overview.recentLeads, []);
 });
 
 test("platform operator audit request ids reject duplicate events", async () => {

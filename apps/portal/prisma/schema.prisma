@@ -41,6 +41,8 @@ model User {
   platformRole PlatformUserRole?
   platformAuditEvents PlatformAuditEvent[] @relation("PlatformAuditActor")
   leadActivities LeadActivity[] @relation("LeadActivityActor")
+  clientEngagements ClientEngagement[] @relation("ClientEngagementOwner")
+  companyTasks CompanyTask[] @relation("CompanyTaskOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -328,6 +330,7 @@ model Tenant {
   redeemedSessions RedeemedCheckoutSession[]
   invoices    Invoice[]
   processedStripeEvents ProcessedStripeEvent[]
+  clientEngagement ClientEngagement?
 }
 
 // Stripe checkout session redemption ledger.
@@ -803,9 +806,8 @@ model SuppressionEvent {
 // for back-compat with a future "Prefer not to say" UX — current form
 // makes it required, but a v2 may add a "Skip" button.
 //
-// No FK to User/Tenant — leads are pre-account. Once a lead converts,
-// a future task can attach the lead id to the resulting Tenant/User
-// via a linking table; out of scope here.
+// Leads are pre-account. A pilot-signed lead can be linked to one no-PHI
+// ClientEngagement; an optional Tenant link remains a separate approved action.
 // ---------------------------------------------------------------------------
 
 model Lead {
@@ -872,6 +874,7 @@ model Lead {
   lostReason        String?
 
   activities LeadActivity[]
+  engagement ClientEngagement?
 
   @@index([email, createdAt])
   @@index([createdAt])
@@ -902,6 +905,59 @@ model LeadActivity {
   @@unique([mutationId, kind])
   @@index([leadId, occurredAt])
   @@index([actorUserId, occurredAt])
+}
+
+// Commercial client/pilot record. It links an approved lead to optional tenant
+// operations without copying claims, encounters, findings, clinical notes, or
+// other PHI into Zorva HQ.
+model ClientEngagement {
+  id                    String   @id @default(cuid())
+  leadId                String   @unique
+  tenantId              String?  @unique
+  clinicName            String
+  status                String   @default("pilot_planning")
+  ownerUserId           String?
+  offerReference        String?
+  privacyApprovalStatus String   @default("pending")
+  pilotStartAt          DateTime?
+  pilotEndAt            DateTime?
+  firstValueAt          DateTime?
+  healthStatus          String   @default("unknown")
+  version               Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  lead   Lead    @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  owner  User?   @relation("ClientEngagementOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  tasks  CompanyTask[]
+
+  @@index([status, pilotStartAt])
+  @@index([ownerUserId, status])
+  @@index([healthStatus, status])
+}
+
+// No-PHI company work item for onboarding and client delivery. Evidence is a
+// reference to an approved business artifact, never copied clinical content.
+model CompanyTask {
+  id                String   @id @default(cuid())
+  engagementId      String
+  title             String
+  status            String   @default("todo")
+  priority          String   @default("normal")
+  ownerUserId       String?
+  dueAt             DateTime?
+  evidenceReference String?
+  completedAt       DateTime?
+  version           Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  engagement ClientEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  owner      User?            @relation("CompanyTaskOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([engagementId, status, dueAt])
+  @@index([ownerUserId, status, dueAt])
 }
 
 // ---------------------------------------------------------------------------

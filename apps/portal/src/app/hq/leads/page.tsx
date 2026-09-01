@@ -18,7 +18,7 @@ export default async function HqLeadsPage() {
       <HqNav />
       <span className={styles.eyebrow}>Private company workspace</span>
       <h1 className={styles.heading}>Leads</h1>
-      <p className={styles.subheading}>Read-only commercial records. No clinic claims, notes, encounters, or findings are queried.</p>
+      <p className={styles.subheading}>Commercial pipeline records. No clinic claims, notes, encounters, or findings are queried.</p>
       {leads.length === 0 ? (
         <div className={styles.empty}>No leads yet.</div>
       ) : (

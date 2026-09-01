@@ -7,12 +7,17 @@ export const PLATFORM_ROLES = [
 ] as const;
 
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
-export type PlatformCapability = "hq:read" | "leads:read" | "leads:write";
+export type PlatformCapability =
+  | "hq:read"
+  | "leads:read"
+  | "leads:write"
+  | "clients:read"
+  | "clients:write";
 
 const CAPABILITIES: Record<PlatformRole, ReadonlySet<PlatformCapability>> = {
-  owner: new Set(["hq:read", "leads:read", "leads:write"]),
-  sales: new Set(["hq:read", "leads:read", "leads:write"]),
-  client_success: new Set(["hq:read"]),
+  owner: new Set(["hq:read", "leads:read", "leads:write", "clients:read", "clients:write"]),
+  sales: new Set(["hq:read", "leads:read", "leads:write", "clients:read"]),
+  client_success: new Set(["hq:read", "leads:read", "clients:read", "clients:write"]),
   support: new Set(["hq:read"]),
   analyst: new Set(["hq:read"]),
 };

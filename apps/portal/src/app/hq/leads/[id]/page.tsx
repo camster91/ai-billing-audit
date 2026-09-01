@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePlatformPage } from "@/lib/platform-auth";
 import { loadHqLeadDetail } from "@/lib/hq-data";
+import { hasPlatformCapability } from "@/lib/platform-capabilities";
 import { HqNav } from "../../hq-nav";
 import { LeadEditor } from "./lead-editor";
+import { ClientConversion } from "./client-conversion";
 import styles from "../../hq.module.css";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -13,10 +16,12 @@ export const runtime = "nodejs";
 interface PageProps { params: Promise<{ id: string }> }
 
 export default async function HqLeadDetailPage({ params }: PageProps) {
-  await requirePlatformPage("leads:read", "hq_lead_detail");
+  const operator = await requirePlatformPage("leads:read", "hq_lead_detail");
   const { id } = await params;
-  const { lead, operators } = await loadHqLeadDetail(id);
+  const { lead, operators, clientOwners } = await loadHqLeadDetail(id);
   if (!lead) notFound();
+  const canEditLead = hasPlatformCapability(operator.role, true, "leads:write");
+  const canCreateClient = hasPlatformCapability(operator.role, true, "clients:write");
 
   return (
     <main id="main" className={styles.shell}>
@@ -27,7 +32,7 @@ export default async function HqLeadDetailPage({ params }: PageProps) {
       <div className={styles.detailGrid}>
         <section className={styles.card}>
           <h2>Pipeline</h2>
-          <LeadEditor
+          {canEditLead ? <LeadEditor
             key={lead.version}
             leadId={lead.id}
             version={lead.version}
@@ -41,7 +46,7 @@ export default async function HqLeadDetailPage({ params }: PageProps) {
               role: operator.role,
               label: operator.user.name ?? operator.user.email,
             }))}
-          />
+          /> : <p className={styles.muted}>Your platform role can review this lead but cannot change its pipeline fields.</p>}
         </section>
         <aside className={styles.card}>
           <h2>Lead details</h2>
@@ -55,6 +60,25 @@ export default async function HqLeadDetailPage({ params }: PageProps) {
           </dl>
         </aside>
       </div>
+      <section className={styles.section}>
+        <h2>Client handoff</h2>
+        {lead.engagement ? (
+          <p><Link className={styles.navLink} href={`/hq/clients/${lead.engagement.id}`}>Open {lead.engagement.status.replaceAll("_", " ")} client engagement</Link></p>
+        ) : lead.status !== "pilot_signed" ? (
+          <div className={styles.empty}>A client engagement can be created only after the lead reaches pilot signed.</div>
+        ) : canCreateClient ? (
+          <ClientConversion
+            leadId={lead.id}
+            owners={clientOwners.map((owner) => ({
+              userId: owner.userId,
+              role: owner.role,
+              label: owner.user.name ?? owner.user.email,
+            }))}
+          />
+        ) : (
+          <div className={styles.empty}>A platform owner or client-success operator must create the client engagement.</div>
+        )}
+      </section>
       <section className={styles.section}>
         <h2>Activity</h2>
         {lead.activities.length === 0 ? <div className={styles.empty}>No operator activity yet.</div> : (
