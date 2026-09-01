@@ -122,6 +122,16 @@ post-incident follow-up, and inbound customer intake remain follow-on work.
 - Content calendar and campaign execution do not send or publish externally from
   HQ until separately authorized.
 
+**Implemented local increment (2026-09-01):** a distinct marketing role can
+draft and manage exact claims and content assets; owner, sales, client-success,
+and analyst roles receive bounded claim-registry visibility. Only the accountable
+owner can approve a claim. Approval requires an evidence reference and allowed
+surfaces, with written-permission references required for customer-derived
+claims. Claim-bearing assets cannot be approved unless their linked claim is
+currently approved for the asset channel. Records are versioned, retry-safe,
+operator-audited, and have append-only marketing activity. The registry cannot
+publish, send, spend, or alter pricing. Campaign execution and attribution remain.
+
 ### Company reporting
 
 - Acquisition, sales, activation, client success, support, revenue attribution,
@@ -154,7 +164,8 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 5. Support case workflow and product-feedback linkage. Core internal case
    creation, assignment, status, targets, activity, and issue linkage are
    implemented locally; inbound intake and advanced escalation remain.
-6. Marketing claims/content/campaign operations and attribution.
+6. Marketing claims/content/campaign operations and attribution. Claim and
+   content governance are implemented locally; campaigns and attribution remain.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,
    monitoring, and operator runbook verification.
 

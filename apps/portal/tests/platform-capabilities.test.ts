@@ -25,6 +25,7 @@ test("only declared platform roles are recognized", () => {
   assert.equal(isPlatformRole("client_success"), true);
   assert.equal(isPlatformRole("support"), true);
   assert.equal(isPlatformRole("analyst"), true);
+  assert.equal(isPlatformRole("marketing"), true);
   assert.equal(isPlatformRole("admin"), false);
   assert.equal(isPlatformRole("viewer"), false);
 });
@@ -57,4 +58,9 @@ test("role capabilities grant the smallest current read surface", () => {
   }
   assert.equal(hasPlatformCapability("analyst", true, "support:read"), false);
   assert.equal(hasPlatformCapability("sales", true, "support:read"), false);
+  assert.equal(hasPlatformCapability("marketing", true, "marketing:read"), true);
+  assert.equal(hasPlatformCapability("marketing", true, "marketing:write"), true);
+  assert.equal(hasPlatformCapability("analyst", true, "marketing:read"), true);
+  assert.equal(hasPlatformCapability("analyst", true, "marketing:write"), false);
+  assert.equal(hasPlatformCapability("sales", true, "marketing:read"), true);
 });

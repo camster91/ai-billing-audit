@@ -53,7 +53,7 @@ async function resolvePlatformRequest(
  */
 export async function requirePlatformPage(
   capability: PlatformCapability,
-  targetType: "hq_dashboard" | "hq_leads" | "hq_lead_detail" | "hq_clients" | "hq_client_detail" | "hq_support" | "hq_support_detail",
+  targetType: "hq_dashboard" | "hq_leads" | "hq_lead_detail" | "hq_clients" | "hq_client_detail" | "hq_support" | "hq_support_detail" | "hq_marketing" | "hq_marketing_detail",
 ): Promise<PlatformRequest> {
   const result = await resolvePlatformRequest(capability);
   if (!result.ok && result.reason === "unauthenticated") {
@@ -63,6 +63,8 @@ export async function requirePlatformPage(
         ? "/hq/clients"
         : targetType === "hq_support" || targetType === "hq_support_detail"
           ? "/hq/support"
+        : targetType === "hq_marketing" || targetType === "hq_marketing_detail"
+          ? "/hq/marketing"
         : "/hq/leads";
     redirect(`/login?callbackUrl=${callbackUrl}`);
   }

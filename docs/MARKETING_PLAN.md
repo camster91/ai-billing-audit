@@ -172,11 +172,11 @@ customer-visible offer or pricing changes, external messages, paid campaigns,
 purchases or higher spending, customer/logo/testimonial use, legal or regulated
 claims, sensitive production-data access, or acceptance of critical/high risk.
 
-## Current blockers
+## Current blockers and gates
 
-- GitHub Actions runners cannot start because of the account billing/spending
-  state.
-- Portal production release identity is unproven and `/readyz` returns 404.
+- GitHub Actions and exact production release identity were restored and
+  verified on 2026-09-01; every new artifact still requires exact-SHA CI and
+  explicit deployment approval.
 - Contact delivery and named ownership are not live-verified.
 - Pilot offer, pricing, legal/privacy wording, and customer evidence are not
   approved.

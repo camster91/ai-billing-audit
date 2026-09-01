@@ -207,6 +207,22 @@ export async function loadHqSupportCaseDetail(id: string) {
   return { supportCase, owners };
 }
 
+export async function loadHqMarketingRegistry() {
+  const [claims, assets, owners] = await Promise.all([
+    prisma.claimApproval.findMany({ select: { id: true, exactClaim: true, evidenceType: true, status: true, allowedSurfacesJson: true, reviewAt: true, expiresAt: true, version: true, approver: { select: { name: true, email: true } } }, orderBy: { createdAt: "desc" } }),
+    prisma.contentAsset.findMany({ select: { id: true, title: true, assetType: true, targetSegment: true, channel: true, status: true, containsMarketingClaim: true, plannedAt: true, version: true, owner: { select: { name: true, email: true } }, claimApproval: { select: { id: true, exactClaim: true, status: true } } }, orderBy: { createdAt: "desc" } }),
+    prisma.platformUserRole.findMany({ where: { active: true, role: { in: ["owner", "marketing"] } }, select: { userId: true, role: true, user: { select: { name: true, email: true } } }, orderBy: { grantedAt: "asc" } }),
+  ]);
+  return { claims, assets, owners };
+}
+
+export async function loadHqMarketingRecord(type: "claim" | "asset", id: string) {
+  const activities = prisma.marketingActivity.findMany({ where: { recordType: type === "claim" ? "marketing_claim" : "content_asset", recordId: id }, select: { id: true, kind: true, changesJson: true, actorRole: true, occurredAt: true, actor: { select: { name: true, email: true } } }, orderBy: { occurredAt: "desc" }, take: 100 });
+  const owners = prisma.platformUserRole.findMany({ where: { active: true, role: { in: ["owner", "marketing"] } }, select: { userId: true, role: true, user: { select: { name: true, email: true } } }, orderBy: { grantedAt: "asc" } });
+  if (type === "claim") return { claim: await prisma.claimApproval.findUnique({ where: { id } }), asset: null, activities: await activities, owners: await owners };
+  return { claim: null, asset: await prisma.contentAsset.findUnique({ where: { id } }), activities: await activities, owners: await owners };
+}
+
 export async function loadHqClientDetail(id: string) {
   const [client, owners] = await Promise.all([
     prisma.clientEngagement.findUnique({

@@ -312,11 +312,17 @@ Baselines are unknown unless explicitly backed by current evidence.
   status-derived acknowledgement/resolution timestamps, internal targets,
   no-PHI product issue linkage, version conflicts, idempotent retries, case
   activity, and platform audit events. It sends no reply and promises no SLA.
+- Added governed marketing claims and content assets in HQ. Exact claims record
+  evidence, permission, allowed surfaces, owner approval, review/expiry, and
+  replacement linkage. Claim-bearing content cannot be approved against an
+  unapproved, expired, or wrong-surface claim. Mutations are versioned,
+  idempotent, audited, append-only in history, and never publish or send.
 
 ## Next action
 
-Obtain explicit merge/deploy direction for fully green PR #90, validate the
-support-case increment in full CI, then add the marketing claim/content registry described
+Obtain explicit merge/deploy direction for fully green PRs #90 and #91, validate
+the marketing claim/content registry in full CI, then add campaign/source and
+attribution operations described
 in the approved sequence. Separately verify authenticated customer journeys,
 contact routing, monitoring, and data-residency evidence. Do not deploy a new
 artifact, grant production platform roles, change customer-visible pricing,

@@ -45,6 +45,9 @@ model User {
   companyTasks CompanyTask[] @relation("CompanyTaskOwner")
   supportCases SupportCase[] @relation("SupportCaseOwner")
   supportActivities SupportActivity[] @relation("SupportActivityActor")
+  approvedMarketingClaims ClaimApproval[] @relation("ClaimApprover")
+  contentAssets ContentAsset[] @relation("ContentAssetOwner")
+  marketingActivities MarketingActivity[] @relation("MarketingActivityActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1004,6 +1007,77 @@ model SupportActivity {
   actor       User?       @relation("SupportActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([caseId, occurredAt])
+  @@index([actorUserId, occurredAt])
+}
+
+// Evidence and permission registry for exact marketing statements. Approval
+// authorizes only the recorded surfaces; it never publishes content.
+model ClaimApproval {
+  id                          String   @id @default(cuid())
+  exactClaim                  String
+  evidenceType                String
+  evidenceReference           String?
+  customerPermissionReference String?
+  allowedSurfacesJson         String   @default("[]")
+  status                      String   @default("draft")
+  approverUserId              String?
+  approvedAt                  DateTime?
+  reviewAt                    DateTime?
+  expiresAt                   DateTime?
+  replacesClaimId             String?
+  version                     Int      @default(0)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  approver User?          @relation("ClaimApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  replaces  ClaimApproval? @relation("ClaimReplacement", fields: [replacesClaimId], references: [id], onDelete: SetNull)
+  replacedBy ClaimApproval[] @relation("ClaimReplacement")
+  assets    ContentAsset[]
+
+  @@index([status, reviewAt])
+  @@index([approverUserId, status])
+  @@index([replacesClaimId])
+}
+
+model ContentAsset {
+  id                     String   @id @default(cuid())
+  title                  String
+  assetType              String
+  targetSegment          String
+  channel                String
+  status                 String   @default("draft")
+  containsMarketingClaim Boolean  @default(false)
+  claimApprovalId        String?
+  artifactReference      String?
+  ownerUserId            String?
+  plannedAt              DateTime?
+  reviewAt               DateTime?
+  version                Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  claimApproval ClaimApproval? @relation(fields: [claimApprovalId], references: [id], onDelete: SetNull)
+  owner         User?          @relation("ContentAssetOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, channel, plannedAt])
+  @@index([ownerUserId, status, reviewAt])
+  @@index([claimApprovalId])
+}
+
+model MarketingActivity {
+  id          String   @id @default(cuid())
+  recordType  String
+  recordId    String
+  actorUserId String?
+  actorRole   String
+  kind        String
+  mutationId  String   @unique
+  changesJson String
+  occurredAt  DateTime @default(now())
+
+  actor User? @relation("MarketingActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([recordType, recordId, occurredAt])
   @@index([actorUserId, occurredAt])
 }
 
