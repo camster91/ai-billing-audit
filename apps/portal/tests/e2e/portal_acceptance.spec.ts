@@ -610,7 +610,7 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
     expect(state.accepted, "step 8 ran").toBe(true);
     expect(state.encounterId, "encounterId set").toBeTruthy();
     const { PrismaClient } = await import(
-      "../src/generated/prisma/client.js" as string
+      "../../src/generated/prisma/client.js" as string
     );
     const prisma = new PrismaClient();
     try {
@@ -625,7 +625,7 @@ test.describe.serial("portal-acceptance: 10-step signup to invoice", () => {
         expect(actions, "one dismiss row").toContain("dismiss");
       }
       const { verifyChain } = await import(
-        "../src/lib/audit-chain.js" as string
+        "../../src/lib/audit-chain.js" as string
       );
       const brokenAt = verifyChain(rows);
       expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();

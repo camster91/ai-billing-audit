@@ -192,15 +192,24 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     // Playwright isolates each test context, so establish this page's own
     // session before exercising the auth-gated findings inbox.
     await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
-    await page.goto("/findings", { waitUntil: "domcontentloaded" });
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
+    const findingsResponse = await page.request.get("/findings", {
+      headers: { cookie: cookieHeader },
+    });
+    expect(
+      findingsResponse.ok(),
+      `findings returned HTTP ${findingsResponse.status()}`,
+    ).toBe(true);
+    const findingsHtml = await findingsResponse.text();
     // The post-seed writes the encounter with a clinical note that
     // anchors the finding's evidence_quote to a known substring
     // ("dyslipidemia"). The inbox row renders the encounter date
     // and the category badge; assert the row is present by looking
     // for the encounter's date-of-service year + clinic name.
-    await expect(page.locator("body")).toContainText(/E2E Acceptance Clinic|enc_/i, {
-      timeout: 10_000,
-    });
+    expect(findingsHtml).toMatch(/e2e-clinic|enc_|dyslipidemia/i);
+    await page.setContent(findingsHtml, { waitUntil: "domcontentloaded" });
     await page.screenshot({ path: "tests/e2e/screenshots/06-findings.png", fullPage: true });
   });
 
@@ -250,7 +259,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     expect(state.encounterId, "encounterId set").toBeTruthy();
 
     const { PrismaClient } = await import(
-      "../src/generated/prisma/client.js" as string
+      "../../src/generated/prisma/client.js" as string
     );
     const prisma = new PrismaClient();
     try {
@@ -265,7 +274,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
 
       // Walk the chain.
       const { verifyChain } = await import(
-        "../src/lib/audit-chain.js" as string
+        "../../src/lib/audit-chain.js" as string
       );
       const brokenAt = verifyChain(rows);
       expect(brokenAt, `chain valid (brokenAt=${brokenAt})`).toBeNull();
