@@ -130,7 +130,16 @@ surfaces, with written-permission references required for customer-derived
 claims. Claim-bearing assets cannot be approved unless their linked claim is
 currently approved for the asset channel. Records are versioned, retry-safe,
 operator-audited, and have append-only marketing activity. The registry cannot
-publish, send, spend, or alter pricing. Campaign execution and attribution remain.
+publish, send, spend, or alter pricing.
+
+**Implemented local campaign increment (2026-09-01):** campaigns record a stable
+source key, objective, segment, channel, approved content, owner, landing/UTM
+attribution, planned dates, reviews, external-activation approval, and approved
+budget/spend evidence. Marketers can plan and prepare; only the accountable
+owner can record an externally activated campaign, and an approval reference is
+mandatory. Append-only attribution snapshots preserve null as unknown and zero
+as measured zero, require a source reference, validate funnel ordering, and use
+explicit CAD cents. HQ cannot launch, message, publish, or spend.
 
 ### Company reporting
 
@@ -164,8 +173,9 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 5. Support case workflow and product-feedback linkage. Core internal case
    creation, assignment, status, targets, activity, and issue linkage are
    implemented locally; inbound intake and advanced escalation remain.
-6. Marketing claims/content/campaign operations and attribution. Claim and
-   content governance are implemented locally; campaigns and attribution remain.
+6. Marketing claims/content/campaign operations and attribution. Claim/content
+   governance plus campaign/source planning and evidence attribution are
+   implemented locally; automated execution remains absent and approval-gated.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,
    monitoring, and operator runbook verification.
 

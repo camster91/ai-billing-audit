@@ -180,4 +180,6 @@ claims, sensitive production-data access, or acceptance of critical/high risk.
 - Contact delivery and named ownership are not live-verified.
 - Pilot offer, pricing, legal/privacy wording, and customer evidence are not
   approved.
-- Zorva HQ is specified but not implemented.
+- Zorva HQ now implements sales, client work, support, claim/content governance,
+  and campaign/source attribution locally; production role grants and every
+  external execution action remain approval-gated.

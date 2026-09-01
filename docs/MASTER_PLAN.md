@@ -317,13 +317,18 @@ Baselines are unknown unless explicitly backed by current evidence.
   replacement linkage. Claim-bearing content cannot be approved against an
   unapproved, expired, or wrong-surface claim. Mutations are versioned,
   idempotent, audited, append-only in history, and never publish or send.
+- Added campaign/source planning and append-only attribution snapshots. Campaigns
+  link approved content, stable source/UTM identity, owner, dates, external
+  approval, and budget evidence. Only the owner can record observed activation;
+  snapshots require a source and distinguish unknown from measured zero. HQ has
+  no external execution or spending capability.
 
 ## Next action
 
-Obtain explicit merge/deploy direction for fully green PRs #90 and #91, validate
-the marketing claim/content registry in full CI, then add campaign/source and
-attribution operations described
-in the approved sequence. Separately verify authenticated customer journeys,
+Obtain explicit merge/deploy direction for fully green PRs #90 through #92,
+validate the campaign/source attribution increment in full CI, then complete
+company reporting, operator runbooks, and remaining authenticated journey
+evidence. Separately verify authenticated customer journeys,
 contact routing, monitoring, and data-residency evidence. Do not deploy a new
 artifact, grant production platform roles, change customer-visible pricing,
 contact clinics, or access real clinic data without explicit approval.

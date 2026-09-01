@@ -208,12 +208,13 @@ export async function loadHqSupportCaseDetail(id: string) {
 }
 
 export async function loadHqMarketingRegistry() {
-  const [claims, assets, owners] = await Promise.all([
+  const [claims, assets, campaigns, owners] = await Promise.all([
     prisma.claimApproval.findMany({ select: { id: true, exactClaim: true, evidenceType: true, status: true, allowedSurfacesJson: true, reviewAt: true, expiresAt: true, version: true, approver: { select: { name: true, email: true } } }, orderBy: { createdAt: "desc" } }),
     prisma.contentAsset.findMany({ select: { id: true, title: true, assetType: true, targetSegment: true, channel: true, status: true, containsMarketingClaim: true, plannedAt: true, version: true, owner: { select: { name: true, email: true } }, claimApproval: { select: { id: true, exactClaim: true, status: true } } }, orderBy: { createdAt: "desc" } }),
+    prisma.campaign.findMany({ select: { id: true, name: true, sourceKey: true, objective: true, targetSegment: true, channel: true, status: true, plannedStartAt: true, reviewAt: true, version: true, owner: { select: { name: true, email: true } }, contentAsset: { select: { id: true, title: true, status: true } }, _count: { select: { snapshots: true } } }, orderBy: { createdAt: "desc" } }),
     prisma.platformUserRole.findMany({ where: { active: true, role: { in: ["owner", "marketing"] } }, select: { userId: true, role: true, user: { select: { name: true, email: true } } }, orderBy: { grantedAt: "asc" } }),
   ]);
-  return { claims, assets, owners };
+  return { claims, assets, campaigns, owners };
 }
 
 export async function loadHqMarketingRecord(type: "claim" | "asset", id: string) {
@@ -221,6 +222,16 @@ export async function loadHqMarketingRecord(type: "claim" | "asset", id: string)
   const owners = prisma.platformUserRole.findMany({ where: { active: true, role: { in: ["owner", "marketing"] } }, select: { userId: true, role: true, user: { select: { name: true, email: true } } }, orderBy: { grantedAt: "asc" } });
   if (type === "claim") return { claim: await prisma.claimApproval.findUnique({ where: { id } }), asset: null, activities: await activities, owners: await owners };
   return { claim: null, asset: await prisma.contentAsset.findUnique({ where: { id } }), activities: await activities, owners: await owners };
+}
+
+export async function loadHqCampaignDetail(id: string) {
+  const [campaign, owners, assets, activities] = await Promise.all([
+    prisma.campaign.findUnique({ where: { id }, include: { snapshots: { orderBy: { periodEndAt: "desc" }, take: 100 } } }),
+    prisma.platformUserRole.findMany({ where: { active: true, role: { in: ["owner", "marketing"] } }, select: { userId: true, role: true, user: { select: { name: true, email: true } } }, orderBy: { grantedAt: "asc" } }),
+    prisma.contentAsset.findMany({ where: { status: "approved" }, select: { id: true, title: true, channel: true, status: true }, orderBy: { title: "asc" } }),
+    prisma.marketingActivity.findMany({ where: { recordType: "campaign", recordId: id }, select: { id: true, kind: true, changesJson: true, actorRole: true, occurredAt: true, actor: { select: { name: true, email: true } } }, orderBy: { occurredAt: "desc" }, take: 100 }),
+  ]);
+  return { campaign, owners, assets, activities };
 }
 
 export async function loadHqClientDetail(id: string) {

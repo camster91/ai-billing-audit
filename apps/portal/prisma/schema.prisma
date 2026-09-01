@@ -48,6 +48,8 @@ model User {
   approvedMarketingClaims ClaimApproval[] @relation("ClaimApprover")
   contentAssets ContentAsset[] @relation("ContentAssetOwner")
   marketingActivities MarketingActivity[] @relation("MarketingActivityActor")
+  campaigns Campaign[] @relation("CampaignOwner")
+  campaignSnapshots CampaignAttributionSnapshot[] @relation("CampaignSnapshotRecorder")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1058,6 +1060,7 @@ model ContentAsset {
 
   claimApproval ClaimApproval? @relation(fields: [claimApprovalId], references: [id], onDelete: SetNull)
   owner         User?          @relation("ContentAssetOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  campaigns     Campaign[]
 
   @@index([status, channel, plannedAt])
   @@index([ownerUserId, status, reviewAt])
@@ -1079,6 +1082,71 @@ model MarketingActivity {
 
   @@index([recordType, recordId, occurredAt])
   @@index([actorUserId, occurredAt])
+}
+
+// Planning and observation only. No field or mutation launches a campaign,
+// sends outreach, buys media, or changes a public offer.
+model Campaign {
+  id                        String   @id @default(cuid())
+  name                      String
+  sourceKey                 String   @unique
+  objective                 String
+  targetSegment             String
+  channel                   String
+  status                    String   @default("planning")
+  ownerUserId               String?
+  contentAssetId            String?
+  landingPath               String?
+  utmSource                 String?
+  utmMedium                 String?
+  utmCampaign               String?
+  plannedStartAt            DateTime?
+  plannedEndAt              DateTime?
+  reviewAt                  DateTime?
+  externalApprovalReference String?
+  budgetApprovalReference   String?
+  approvedBudgetCents       Int?
+  recordedSpendCents        Int?
+  version                   Int      @default(0)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  owner        User?         @relation("CampaignOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  contentAsset ContentAsset? @relation(fields: [contentAssetId], references: [id], onDelete: SetNull)
+  snapshots    CampaignAttributionSnapshot[]
+
+  @@index([status, channel, plannedStartAt])
+  @@index([ownerUserId, status, reviewAt])
+  @@index([contentAssetId])
+}
+
+// Append-only evidence snapshot. Null means unknown/unavailable; zero is a
+// measured zero and must be backed by sourceReference.
+model CampaignAttributionSnapshot {
+  id              String   @id @default(cuid())
+  campaignId      String
+  mutationId      String   @unique
+  sourceReference String
+  periodStartAt   DateTime
+  periodEndAt     DateTime
+  visitCount      Int?
+  leadCount       Int?
+  qualifiedCount  Int?
+  demoCount       Int?
+  pilotCount      Int?
+  clientCount     Int?
+  revenueCents    Int?
+  currency        String   @default("CAD")
+  notes           String?
+  recordedByUserId String?
+  recordedByRole  String
+  recordedAt      DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  recordedBy User?   @relation("CampaignSnapshotRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, periodEndAt])
+  @@index([recordedByUserId, recordedAt])
 }
 
 // ---------------------------------------------------------------------------
