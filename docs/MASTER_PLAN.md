@@ -169,7 +169,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
 | Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
-| Company administration | Platform foundation, lead workflow, append-only guards, and first client/task journey locally verified | Engagement milestones, custom work, support, reporting, retention-policy approval/export, and production-like security/accessibility remain | Cameron / Engineering |
+| Company administration | Platform foundation, leads, client work, support, marketing governance, campaign attribution, and evidence-conscious reporting locally verified | Retention-policy approval/export, inbound routing, advanced workflows, and production-like security/accessibility/recovery remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
 ## Metrics required before launch claims
@@ -322,13 +322,19 @@ Baselines are unknown unless explicitly backed by current evidence.
   approval, and budget evidence. Only the owner can record observed activation;
   snapshots require a source and distinguish unknown from measured zero. HQ has
   no external execution or spending capability.
+- Added a least-privilege, read-only company report for owner and analyst roles.
+  Acquisition and sales use dated lead/event sources; activation and support use
+  explicit milestone timestamps; campaign outcomes remain non-additive; missing
+  recognized revenue and cost sources render unavailable rather than zero.
+- Added `docs/HQ_OPERATOR_RUNBOOK.md` covering daily triage, lead-to-client,
+  marketing, support, weekly reporting, retry/version behavior, incident routing,
+  access/recovery boundaries, and the remaining production-readiness evidence.
 
 ## Next action
 
-Obtain explicit merge/deploy direction for fully green PRs #90 through #92,
-validate the campaign/source attribution increment in full CI, then complete
-company reporting, operator runbooks, and remaining authenticated journey
-evidence. Separately verify authenticated customer journeys,
+Obtain explicit merge/deploy direction for fully green PRs #90 through #93,
+validate the reporting/runbook increment in full CI, then complete remaining
+authenticated journey evidence. Separately verify authenticated customer journeys,
 contact routing, monitoring, and data-residency evidence. Do not deploy a new
 artifact, grant production platform roles, change customer-visible pricing,
 contact clinics, or access real clinic data without explicit approval.

@@ -10,6 +10,7 @@ export function HqNav() {
       <Link href="/hq/clients" className={styles.navLink}>Clients</Link>
       <Link href="/hq/support" className={styles.navLink}>Support</Link>
       <Link href="/hq/marketing" className={styles.navLink}>Marketing</Link>
+      <Link href="/hq/reports" className={styles.navLink}>Reports</Link>
       <Link href="/dashboard" className={styles.navLink}>Clinic portal</Link>
     </nav>
   );

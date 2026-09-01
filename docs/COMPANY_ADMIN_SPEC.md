@@ -1,6 +1,6 @@
 # Zorva HQ company admin specification
 
-**Status:** roadmap-approved; platform foundation and lead workflow implemented locally
+**Status:** roadmap-approved; core operating modules and read-only reporting implemented locally
 **Owner:** Cameron Ashley  
 **Last reconciled:** 2026-08-28  
 **Authority:** detailed specification supporting `docs/MASTER_PLAN.md`
@@ -148,6 +148,16 @@ explicit CAD cents. HQ cannot launch, message, publish, or spend.
 - Metrics distinguish unknown, zero, delayed, and unavailable. No fabricated
   baselines, customer results, or vanity success states.
 
+**Implemented local increment (2026-09-01):** owner and analyst roles have a
+separate read-only reporting capability and `/hq/reports` surface. The trailing
+30-day report uses lead creation and immutable stage-event timestamps, client
+creation/first-value records, support creation/resolution timestamps, and the
+latest evidence snapshot per campaign. Every metric declares its definition,
+source, period, and known/unknown/unavailable/delayed state. Current account-risk
+counts are labelled as snapshots. Campaign periods are not summed, and company
+recognized revenue and cost to serve remain unavailable until approved
+accounting and allocation sources exist.
+
 ## Data model direction
 
 Extend the existing `Lead` model through related records rather than adding more
@@ -177,7 +187,9 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
    governance plus campaign/source planning and evidence attribution are
    implemented locally; automated execution remains absent and approval-gated.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,
-   monitoring, and operator runbook verification.
+   monitoring, and operator runbook verification. The read-only report and
+   repository-backed `docs/HQ_OPERATOR_RUNBOOK.md` are implemented locally;
+   live journey, recovery, accessibility, and policy evidence remain.
 
 Each increment requires responsive and keyboard-accessible behavior, tenant and
 platform authorization tests, audit evidence, migration and rollback steps,

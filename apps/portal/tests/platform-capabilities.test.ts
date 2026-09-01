@@ -63,4 +63,8 @@ test("role capabilities grant the smallest current read surface", () => {
   assert.equal(hasPlatformCapability("analyst", true, "marketing:read"), true);
   assert.equal(hasPlatformCapability("analyst", true, "marketing:write"), false);
   assert.equal(hasPlatformCapability("sales", true, "marketing:read"), true);
+  assert.equal(hasPlatformCapability("owner", true, "reporting:read"), true);
+  assert.equal(hasPlatformCapability("analyst", true, "reporting:read"), true);
+  assert.equal(hasPlatformCapability("sales", true, "reporting:read"), false);
+  assert.equal(hasPlatformCapability("marketing", true, "reporting:read"), false);
 });
