@@ -1,8 +1,8 @@
-// Playwright config for the marketing -> portal -> findings E2E smoke flow.
+// Playwright config for the HQ authorization and customer E2E journeys.
 //
 // Run from apps/portal with the dev server already up at :3000:
 //
-//   pnpm test:e2e                    # all 8 smoke steps + ordering
+//   pnpm test:e2e                    # all HQ + customer journey steps
 //   pnpm test:e2e -- --headed        # visible browser
 //   pnpm test:e2e -- --project=chromium
 //   pnpm test:e2e -- smoke.spec.ts   # single file
@@ -20,15 +20,14 @@ export default defineConfig({
   testDir: ".",
   // Glob pattern: only pick up *.spec.ts so helpers/fixtures don't run.
   testMatch: /.*\.spec\.ts$/,
-  // Run tests in file order — step 01 must precede step 02, etc.
-  // We use a single file with ordered tests rather than across files so
-  // order is preserved without relying on glob ordering.
+  // Each multi-step journey uses a serial describe block. One worker also
+  // prevents the SQLite-backed seed fixtures from racing across files.
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // Local runs: short suite, no throttle.
-  // CI: 5 minute cap; the suite is designed to finish < 2 min.
+  // Local runs: short suite, no throttle. CI allows enough time for cold
+  // compilation plus the authenticated HQ and customer journeys.
   timeout: process.env.CI ? 5 * 60_000 : 90_000,
   expect: { timeout: 10_000 },
   reporter: process.env.CI

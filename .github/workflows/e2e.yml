@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   e2e:
-    name: smoke (chromium, 8 steps)
+    name: browser journey (chromium; HQ + customer flows)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
