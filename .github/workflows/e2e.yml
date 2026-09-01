@@ -36,6 +36,9 @@ jobs:
       # all read this — must be a syntactically valid email address.
       E2E_USER_EMAIL: e2e+e2e-clinic@ai-billing-audit.test
       E2E_TENANT_SLUG: e2e-clinic
+      # Explicit non-production Auth.js test seam. The one-time URL is stored
+      # mode 0600 on the ephemeral runner and is never printed or uploaded.
+      E2E_AUTH_CAPTURE_FILE: /tmp/portal-e2e-auth-link.json
     steps:
       - uses: actions/checkout@v4
 

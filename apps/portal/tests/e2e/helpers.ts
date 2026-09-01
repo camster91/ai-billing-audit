@@ -43,6 +43,7 @@ export const DEFAULT_TENANT_SLUG = process.env["E2E_TENANT_SLUG"] ?? "e2e-clinic
 // the helper falls back to a 5s grace and assumes the user is
 // already signed in.
 const DEV_LOG = process.env["E2E_DEV_LOG"] ?? "/tmp/portal-dev.log";
+const AUTH_CAPTURE_FILE = process.env["E2E_AUTH_CAPTURE_FILE"];
 
 /** Dev inbox: transactional emails are (dev mock)'d to the dev log. */
 export interface DevEmail {
@@ -135,6 +136,26 @@ export async function captureMagicLinkFromLog(
   logFile: string = DEV_LOG,
   timeoutMs = 20_000,
 ): Promise<string> {
+  if (AUTH_CAPTURE_FILE) {
+    const { createHash } = await import("node:crypto");
+    const identifier =
+      "sha256:" +
+      createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 8);
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const capture = JSON.parse(readFileSync(AUTH_CAPTURE_FILE, "utf8")) as {
+          identifier?: string;
+          url?: string;
+        };
+        if (capture.identifier === identifier && capture.url) return capture.url;
+      } catch {
+        // The file may not exist yet or may be between atomic runner writes.
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    throw new Error(`no captured magic link appeared within ${timeoutMs}ms`);
+  }
   if (!existsSync(logFile)) {
     throw new Error(
       `dev log not found at ${logFile}. The dev server is not writing to a log file — ` +

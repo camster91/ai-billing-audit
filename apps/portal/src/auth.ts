@@ -154,10 +154,23 @@ export const authConfig: NextAuthConfig = {
       normalizeIdentifier: debugNormalizer,
       ...(useResendMock
         ? {
-            async sendVerificationRequest({ identifier }) {
+            async sendVerificationRequest({ identifier, url }) {
               // CRITICAL: never log the magic-link URL — it contains the
               // one-shot token. We log only the redacted identifier
               // (sha256 prefix) and the fact that a link was generated.
+              // Headless CI may opt into an isolated, mode-0600 capture file;
+              // production can never use this path and the value is never
+              // written to stdout or an artifact.
+              const captureFile = process.env.E2E_AUTH_CAPTURE_FILE;
+              if (isDev() && captureFile) {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const { writeFileSync } = require("node:fs") as typeof import("node:fs");
+                writeFileSync(
+                  captureFile,
+                  JSON.stringify({ identifier: devRedactEmail(identifier), url }),
+                  { encoding: "utf8", mode: 0o600 },
+                );
+              }
               if (isDev()) {
                 console.log(
                   `[auth-debug] sendVerificationRequest identifier=${devRedactEmail(identifier)} useResendMock=${useResendMock} (link suppressed — paste the URL from the request handler's return to test signin in dev)`,
