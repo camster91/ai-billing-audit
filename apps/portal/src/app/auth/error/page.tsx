@@ -105,12 +105,12 @@ export default async function AuthErrorPage({ searchParams }: PageProps) {
         </div>
 
         {error && error !== "Default" ? (
-          <p className={styles.codeLine}>
+          <p className={styles.codeLine} data-a11y-tone="secondary">
             Reference: <code className={styles.codeValue}>{error}</code>
           </p>
         ) : null}
       </div>
-      <footer className={styles.footer}>
+      <footer className={styles.footer} data-a11y-tone="secondary">
         <p>
           For your security, sign-in links expire and can only be used
           once. If you didn&rsquo;t request this, you can close this page.

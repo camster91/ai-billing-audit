@@ -339,6 +339,10 @@ button[aria-disabled="true"] {
 }
 
 /* Skip link (accessibility) */
+[data-a11y-tone="secondary"] {
+  color: var(--zorva-ink-2) !important;
+}
+
 .skip-link {
   position: absolute;
   left: -9999px;

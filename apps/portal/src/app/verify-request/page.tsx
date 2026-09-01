@@ -67,7 +67,7 @@ export default async function VerifyRequestPage() {
   return (
     <main id="main" className={styles.page}>
       <div className={styles.card}>
-        <span className={styles.code}>Email sent</span>
+        <span className={styles.code} data-a11y-tone="secondary">Email sent</span>
         <h1 className={styles.title}>Check your email.</h1>
         <p className={styles.lede}>
           {masked ? (
@@ -84,7 +84,7 @@ export default async function VerifyRequestPage() {
           )}
         </p>
 
-        <p className={styles.hint}>
+        <p className={styles.hint} data-a11y-tone="secondary">
           Open the link in this browser to continue. If you don&rsquo;t see
           the email, check your spam folder.
         </p>
@@ -106,7 +106,7 @@ export default async function VerifyRequestPage() {
           </Link>
         </nav>
       </div>
-      <footer className={styles.footer}>
+      <footer className={styles.footer} data-a11y-tone="secondary">
         <p>
           Don&rsquo;t share this link. If someone else asked you to click
           it, close this page.
