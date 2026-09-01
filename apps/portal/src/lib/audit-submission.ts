@@ -14,3 +14,10 @@ export function parsePortalClaimLines(json: string): ClaimLine[] {
   if (canonical.success) return canonical.data.lines;
   return legacyClaimLinesSchema.parse(parsed);
 }
+
+/** Diagnosis codes are retained in canonical claims; legacy claims had none. */
+export function parsePortalDiagnosisCodes(json: string): string[] {
+  const parsed: unknown = JSON.parse(json);
+  const canonical = claimPayloadSchema.safeParse(parsed);
+  return canonical.success ? canonical.data.diagnosisCodes : [];
+}

@@ -89,6 +89,8 @@ export interface LeadEmailInput {
   billingSetup: string;
   /** The lead id (cuid) — included in the subject and body for cross-referencing. */
   leadId: string;
+  /** True when this request was linked to an existing canonical lead. */
+  repeatSubmission?: boolean;
 }
 
 const BILLING_SETUP_LABEL: Record<string, string> = {
@@ -112,13 +114,13 @@ function escapeHtml(s: string): string {
 
 function buildSubject(input: LeadEmailInput): string {
   const claim = input.claimVolume === null ? "n/a" : String(input.claimVolume);
-  return `[Lead] ${input.clinicName} — ${claim} claims/mo (${input.leadId.slice(0, 8)})`;
+  return `[${input.repeatSubmission ? "Repeat lead" : "Lead"}] ${input.clinicName} — ${claim} claims/mo (${input.leadId.slice(0, 8)})`;
 }
 
 function buildText(input: LeadEmailInput): string {
   const claim = input.claimVolume === null ? "n/a" : String(input.claimVolume);
   return [
-    `New marketing-site lead (${input.leadId})`,
+    `${input.repeatSubmission ? "Repeat" : "New"} marketing-site lead (${input.leadId})`,
     "",
     `Name:          ${input.name}`,
     `Clinic:        ${input.clinicName}`,
@@ -134,7 +136,7 @@ function buildText(input: LeadEmailInput): string {
 function buildHtml(input: LeadEmailInput): string {
   const claim = input.claimVolume === null ? "n/a" : String(input.claimVolume);
   return [
-    "<h2>New marketing-site lead</h2>",
+    `<h2>${input.repeatSubmission ? "Repeat" : "New"} marketing-site lead</h2>`,
     "<p><strong>Lead id:</strong> ",
     escapeHtml(input.leadId),
     "</p>",

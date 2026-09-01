@@ -9,6 +9,13 @@ export const LEAD_STAGES = [
 
 export type LeadStage = (typeof LEAD_STAGES)[number];
 
+export const LEAD_QUALIFICATION_STATUSES = [
+  "unreviewed",
+  "qualified",
+  "nurture",
+  "disqualified",
+] as const;
+
 const TRANSITIONS: Record<LeadStage, ReadonlySet<LeadStage>> = {
   new: new Set(["contacted", "lost"]),
   contacted: new Set(["engaged", "demo_scheduled", "lost"]),

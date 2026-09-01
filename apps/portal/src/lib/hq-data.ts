@@ -16,6 +16,12 @@ export interface HqLeadSummary {
   nextAction: string | null;
   nextActionAt: Date | null;
   lostReason: string | null;
+  qualificationStatus: string;
+  qualificationReason: string | null;
+  qualificationEvidenceRef: string | null;
+  qualificationReviewedAt: Date | null;
+  submissionCount: number;
+  lastSubmittedAt: Date | null;
   version: number;
   createdAt: Date;
 }
@@ -47,6 +53,12 @@ const LEAD_SELECT = {
   nextAction: true,
   nextActionAt: true,
   lostReason: true,
+  qualificationStatus: true,
+  qualificationReason: true,
+  qualificationEvidenceRef: true,
+  qualificationReviewedAt: true,
+  submissionCount: true,
+  lastSubmittedAt: true,
   version: true,
   createdAt: true,
 } as const;
