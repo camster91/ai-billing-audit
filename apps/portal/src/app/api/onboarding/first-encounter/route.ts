@@ -9,6 +9,11 @@
 import { NextResponse } from "next/server";
 import { requireOnboardingAuth } from "@/lib/onboarding-auth";
 import { OnboardingError, saveFirstEncounter } from "@/lib/onboarding";
+import {
+  FirstEncounterIngestionError,
+  ingestFirstEncounter,
+} from "@/lib/first-encounter-ingestion";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +23,8 @@ interface Body {
   mode?: unknown;
   filePath?: unknown;
   fileName?: unknown;
+  clinicalNote?: unknown;
+  specialty?: unknown;
 }
 
 export async function POST(request: Request) {
@@ -42,7 +49,34 @@ export async function POST(request: Request) {
   }
 
   try {
-    await requireOnboardingAuth(tenantId);
+    const onboardingAuth = await requireOnboardingAuth(tenantId);
+    const onboardingState = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingStep: true },
+    });
+    if (!onboardingState || onboardingState.onboardingStep < 4) {
+      throw new OnboardingError(
+        "step_not_reached",
+        "Step 4 (EHR connection) must be completed before saving the first encounter.",
+      );
+    }
+    let ingestion: { encounterId: string; created: boolean } | null = null;
+    if (mode === "uploaded") {
+      ingestion = await ingestFirstEncounter({
+        input: {
+          tenantId,
+          filePath: asString(body.filePath) ?? "",
+          fileName: asString(body.fileName) ?? "",
+          clinicalNote: asString(body.clinicalNote) ?? "",
+          specialty: asString(body.specialty) ?? "",
+        },
+        principal: {
+          subject: onboardingAuth.userId,
+          tenantId,
+          portalRole: onboardingAuth.role,
+        },
+      });
+    }
     const result = await saveFirstEncounter({
       tenantId,
       input: {
@@ -51,7 +85,11 @@ export async function POST(request: Request) {
         fileName: asString(body.fileName),
       },
     });
-    return NextResponse.json(result, { status: 200 });
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { firstEncounterEncounterId: ingestion?.encounterId ?? null },
+    });
+    return NextResponse.json({ ...result, ingestion }, { status: 200 });
   } catch (e) {
     return mapError(e);
   }
@@ -62,6 +100,15 @@ function asString(v: unknown): string | undefined {
 }
 
 function mapError(e: unknown): NextResponse {
+  if (e instanceof FirstEncounterIngestionError) {
+    const status =
+      e.code === "parser_unavailable"
+        ? 503
+        : e.code === "upload_unavailable"
+          ? 409
+          : 422;
+    return NextResponse.json({ error: e.code, message: e.message }, { status });
+  }
   if (e instanceof OnboardingError) {
     const status =
       e.code === "unauthenticated"

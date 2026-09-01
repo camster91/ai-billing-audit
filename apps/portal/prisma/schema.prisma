@@ -296,6 +296,7 @@ model Tenant {
   firstEncounterFilePath     String?
   firstEncounterFileName     String?
   firstEncounterUploadedAt   DateTime?
+  firstEncounterEncounterId  String?
 
   // -----------------------------------------------------------------------
   // /settings page (t_1bab62b6) — clinic-level preferences editable
@@ -435,6 +436,9 @@ model Membership {
 
 model Encounter {
   id            String   @id @default(cuid())
+  // Tenant-bound digest of the decrypted onboarding upload. Prevents retry
+  // races from creating a second encounter for the same staged claim.
+  sourceUploadDigest String? @unique
   // Tenant isolation — every query joins through tenantId. Indexed for the
   // /encounters list (server-paginated) and the audit log filter.
   tenantId      String
