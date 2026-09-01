@@ -1,8 +1,8 @@
 // POST /api/leads — public marketing-site contact form endpoint.
 //
-// Captures a single lead submission from the public contact form on
-// the marketing site. Validates the payload, runs a disposable-email
-// check, inserts one row into the `leads` table, and fires the two
+// Captures a lead submission from the public contact form on the marketing
+// site. Validates the payload, runs a disposable-email check, links repeat
+// submissions to one canonical lead, and fires the two
 // notifications (email to sales@, Slack to the configured webhook).
 //
 // Auth: NOT required. The endpoint is public — the contact form is
@@ -35,12 +35,12 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { isDisposableEmail } from "@/lib/disposable-email-domains";
 import { sendLeadNotificationEmail } from "@/lib/leads-email";
 import { postLeadNotificationToSlack } from "@/lib/leads-slack";
 import { internalErrorResponse } from "@/lib/api-errors";
 import { takeLeadSubmission } from "@/lib/public-rate-limit";
+import { capturePublicLead } from "@/lib/lead-capture";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,16 +129,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   //    casing for name and clinicName (display fields).
   let lead;
   try {
-    lead = await prisma.lead.create({
-      data: {
-        name: input.name,
-        clinicName: input.clinicName,
-        email: input.email.toLowerCase(),
-        claimVolume: input.claimVolume,
-        billingSetup: input.billingSetup,
-      },
-      select: { id: true },
-    });
+    lead = await capturePublicLead(input);
   } catch (e) {
     return internalErrorResponse(request, e, "/api/leads", {
       hint: "lead insert failed",
@@ -155,6 +146,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     claimVolume: input.claimVolume,
     billingSetup: input.billingSetup,
     leadId: lead.id,
+    repeatSubmission: lead.deduplicated,
   };
   void Promise.allSettled([
     sendLeadNotificationEmail(notificationInput).then((r) => {
@@ -169,7 +161,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }),
   ]);
 
-  return NextResponse.json({ ok: true, leadId: lead.id });
+  return NextResponse.json({ ok: true, leadId: lead.id, deduplicated: lead.deduplicated });
 }
 
 // Defensive: GET should be a 405, not a 200 with the form HTML.

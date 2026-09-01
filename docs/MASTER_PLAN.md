@@ -59,12 +59,12 @@ Zorva is managed as four connected surfaces with separate release evidence:
 - Automated verification on 2026-08-28: 1,868 Python tests passed and one
   credential-gated MiniMax integration test skipped; portal unit suites, ESLint,
   TypeScript, and the Next.js production build passed locally.
-- GitHub Actions are enabled. Exact `main` SHA
-  `554cdb35ed4d686c8c7e437f75e3f66296378ed8` passed the portal/PostgreSQL/build
-  workflow and the 19-test browser, accessibility, and performance workflow on
-  2026-09-01.
+- GitHub Actions are enabled. PR #97 exact SHA
+  `76e0ef46c4371a023aa2f07b2a8a607c10a57646` passed Python ruff/mypy/pytest,
+  portal PostgreSQL migrations/unit tests/lint/types/build, GitGuardian, and the
+  19-test browser, accessibility, and performance workflow on 2026-09-01.
 - Production was reconciled and deployed from the immutable release directory
-  for SHA `554cdb35ed4d686c8c7e437f75e3f66296378ed8` on 2026-09-01 after an encrypted,
+  for SHA `692ba3cfe960bf2e62fc27f886b645bc335ca52e` on 2026-09-01 after an encrypted,
   verified pre-deploy backup. API health/readiness, worker and portal health,
   database migrations, public root/login/contact, pricing redirect, and HQ auth
   redirect passed. Authenticated customer journeys, monitoring, data residency,
@@ -128,16 +128,16 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 
 | Priority | Outcome | Status | Evidence / dependency | Release consequence |
 | --- | --- | --- | --- | --- |
-| P0 | Restore reproducible green release gates | Implemented and locally verified; CI blocked by GitHub billing | Issues #8, #25, #27, #31; PR #88 and 2026-08-28 local baseline | Blocks release until CI jobs can run and pass |
+| P0 | Restore reproducible green release gates | Implemented and verified in CI | PR #97 exact SHA `76e0ef46`; portal/PostgreSQL, Python, browser, accessibility/performance, and secret checks pass | Preserve as a required release gate |
 | P0 | Verify production identity, tenant isolation, PHI storage/retention, database migrations, backup/restore, and credential rotation | Blocked on operator/live access and accountable approval | Issues #5, #6, #10, #11, #12, #14 | Blocks any real-clinic data |
-| P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Proposed | Issues #7, #9; needs production-like Stripe and audit-provider configuration | Blocks paid pilot |
+| P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Implemented and verified in CI with test checkout and a contract-faithful mock audit engine; production-like provider qualification pending | PR #97; encrypted upload, idempotent encounter ingestion, real audit dispatch/import, rendered findings, and decision trail | Blocks paid pilot until exact artifact is approved/released and real-provider qualification passes |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
-| P0 | Specify and build Zorva HQ platform-admin foundation | Foundation and first mutable lead workflow implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq`, `/hq/leads`, and audited lead mutation API | Blocks operating a pilot safely at company level |
+| P0 | Specify and build Zorva HQ platform-admin foundation | Foundation released; unauthenticated production boundary verified; authenticated production operation still approval-gated | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; HQ workflows and operator runbook | Blocks operating a pilot safely at company level until an approved operator journey is verified |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
-| P0 | Verify qualified-lead journey from source attribution through owner response | Local capture, assignment, stage, next-action, and contact logging implemented; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
+| P0 | Verify qualified-lead journey from source attribution through owner response | Canonical repeat capture, structured qualification, assignment, stage, next-action, and contact logging implemented locally; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | Approval-gated launch kit drafted; public-site reconciliation remains | Issues #14, #22, #77; `docs/launch-kit/CLAIM_MANIFEST.json` | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
-| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Lead conversion and default client-task workflow implemented locally; engagement milestones, account health, and support remain | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
+| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Repeat lead capture and qualification, lead conversion, client tasks, milestones, account health, support, marketing governance, and reporting implemented locally; production-like operation remains | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
 | P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | First controlled-launch asset set drafted and regression-tested; execution remains gated | `docs/launch-kit/`; brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
 | P1 | Run a controlled Alberta clinic pilot with approved offer and privacy terms | Decision-dependent | Issues #76, #78; requires owner, legal/privacy, and customer approval | Required for customer validation |
 | P1 | Establish readiness monitoring, accessibility, performance, rollback, and release qualification | Proposed | Issues #23, #24, #25, #30 | Blocks launch-ready claim |
@@ -162,9 +162,9 @@ Older sequences in `research/00-ROADMAP.md` and
 
 | Area | State | Risk / required action | Owner |
 | --- | --- | --- | --- |
-| Repository | Available with admin/push access | Actions restored for PR #88, but account billing prevents runners from starting; `main` has no branch protection | Cameron |
+| Repository | Available with admin/push access | Actions run successfully for PR #97; `main` still has no branch protection | Cameron |
 | Local development | Available | Default host runtimes differ from CI; use pinned versions | Engineering |
-| Production hosts and secrets | Not inspected | Cannot verify release, residency, credentials, backups, or monitoring | Operator / Cameron |
+| Production hosts and secrets | Release host inspected for the current deployment | Exact artifact, encrypted backup, migrations, service health, and rollback assets verified; residency, rotation, monitoring, and authenticated customer/HQ journeys remain | Operator / Cameron |
 | Billing | Code present, live state unverified | Requires test-mode journey, approved pricing, then production approval | Cameron |
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
@@ -204,6 +204,20 @@ Baselines are unknown unless explicitly backed by current evidence.
 - Exported a visibly approval-gated, single-page PDF. Text extraction, one-page
   geometry, two link annotations, and rendered visual layout passed local QA.
   Publication, outreach, and the unresolved pilot offer remain gated.
+
+### 2026-09-01 — lead identity and qualification increment
+
+- Added concurrency-safe public lead capture keyed by normalized email. Repeat
+  submissions reuse one canonical lead, increment a durable submission count,
+  record freshness, and do not overwrite operator-managed pipeline or
+  qualification decisions.
+- Preserved historical duplicates: migration backfill assigns one canonical key
+  per normalized email and neither deletes nor silently merges prior rows.
+- Added structured qualification status, commercial rationale, optional business
+  evidence reference, review time, version checks, idempotency, append-only lead
+  activity, operator audit evidence, no-PHI validation, and HQ UI.
+- No message, publish, spend, price, tenant, production-role, or customer-data
+  action is introduced by this increment.
 
 ### 2026-08-28
 
@@ -348,13 +362,32 @@ Baselines are unknown unless explicitly backed by current evidence.
   marketing, support, weekly reporting, retry/version behavior, incident routing,
   access/recovery boundaries, and the remaining production-readiness evidence.
 
+### 2026-09-01
+
+- Implemented the first evidence-backed customer activation path in PR #97:
+  encrypted staged 837P upload -> authenticated parser preview -> tenant-scoped,
+  retry-idempotent claim and encounter persistence -> audit dispatch -> imported
+  findings -> rendered findings inbox -> accept/dismiss decision trail.
+- Kept the browser gate honest by replacing fabricated post-seed findings with a
+  contract-faithful mock audit service. This proves the portal integration and
+  audit contract in CI; it is not evidence of production-model quality, latency,
+  cost, or real-clinic safety.
+- Fixed authenticated browser tenant resolution to fall back to the active tenant
+  already verified by the Auth.js session. Explicit `x-tenant-id` overrides remain
+  membership-checked. This restores ordinary portal navigation without weakening
+  tenant isolation.
+- PR #97 exact SHA `76e0ef46c4371a023aa2f07b2a8a607c10a57646`
+  passed all repository gates: 19 browser tests, accessibility/performance,
+  PostgreSQL migrations and portal unit/lint/type/build checks, Python
+  ruff/mypy/pytest, and GitGuardian.
+
 ## Next action
 
-Restore GitHub Actions execution and obtain exact-artifact CI for open product,
-HQ, and launch-kit pull requests. Reconcile the unsafe historical claims still
-present on the public homepage, then obtain owner decisions for issue #76 before
-any launch-kit asset is approved or used. Separately verify authenticated customer
-journeys, contact routing, monitoring, and data-residency evidence. Do not deploy
-a new artifact, publish or send an asset, grant production platform roles, change
-customer-visible pricing, contact clinics, or access real clinic data without
-explicit approval.
+Complete the explicitly approved merge and deploy using an immutable final-main
+artifact, then run migration, backup, rollback, public-route, and authenticated
+synthetic customer-journey checks. GitHub Actions execution remains account-blocked,
+so preserve the local and earlier hosted evidence plus the exact override record.
+Production-like qualification against the configured real audit provider remains
+a separate gate. Do not publish or send launch-kit assets, grant production
+platform roles, change customer-visible pricing, contact clinics, or access real
+clinic data without explicit approval.

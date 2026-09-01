@@ -66,6 +66,9 @@ function input(overrides: Partial<LeadMutationInput> = {}): LeadMutationInput {
     nextAction: "Confirm discovery-call attendees",
     nextActionAt: "2026-09-01T15:00:00.000Z",
     lostReason: null,
+    qualificationStatus: "unreviewed",
+    qualificationReason: null,
+    qualificationEvidenceRef: null,
     logContactNow: true,
     ...overrides,
   };
@@ -85,6 +88,24 @@ test("lead input rejects clinical content, incomplete next actions, and missing 
   assert.equal(leadMutationSchema.safeParse(input({ nextActionAt: null })).success, false);
   assert.equal(leadMutationSchema.safeParse(input({ status: "lost", nextAction: null, nextActionAt: null, lostReason: null })).success, false);
   assert.equal(leadMutationSchema.safeParse(input({ status: "lost", nextAction: null, nextActionAt: null, lostReason: "No current workflow owner" })).success, true);
+  assert.equal(leadMutationSchema.safeParse(input({ qualificationStatus: "qualified", qualificationReason: null })).success, false);
+  assert.equal(leadMutationSchema.safeParse(input({ qualificationStatus: "qualified", qualificationReason: "Patient diagnosis is a fit" })).success, false);
+  assert.equal(leadMutationSchema.safeParse(input({ qualificationStatus: "qualified", qualificationReason: "Alberta clinic with an identified billing owner" })).success, true);
+});
+
+test("qualification is versioned and included in the append-only activity", async () => {
+  const lead = await setup();
+  const mutation = input({
+    qualificationStatus: "qualified",
+    qualificationReason: "Alberta primary-care clinic with an identified billing owner",
+    qualificationEvidenceRef: "discovery-note-2026-09-01",
+  });
+  const now = new Date("2026-09-01T17:00:00.000Z");
+  const updated = await updateLeadWorkflow(lead.id, mutation, operator, now);
+  assert.equal(updated.qualificationStatus, "qualified");
+  assert.equal(updated.qualificationReviewedAt?.toISOString(), now.toISOString());
+  assert.equal(await prisma.leadActivity.count({ where: { mutationId: mutation.mutationId, kind: "qualification_changed" } }), 1);
+  await cleanup();
 });
 
 test("lead update is atomic, field-audited, idempotent, and versioned", async () => {

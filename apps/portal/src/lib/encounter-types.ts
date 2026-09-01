@@ -110,6 +110,7 @@ export type ClaimLine = z.infer<typeof claimLineSchema>;
 
 export const claimPayloadSchema = z.object({
   lines: z.array(claimLineSchema).min(1),
+  diagnosisCodes: z.array(z.string().min(1)).default([]),
   totalCents: z.number().int().nonnegative(),
   payer: z.string().min(1),
   providerNpi: z.string().min(1),

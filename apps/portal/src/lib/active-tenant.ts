@@ -1,13 +1,11 @@
 // Tenant-scoped request helpers.
 //
-// The portal's middleware (see src/proxy.ts) already resolves the
-// current `Tenant` for every authenticated request and stuffs the id
-// into the `x-tenant-id` header. This module re-exports the canonical
-// `getActiveTenant` helper used by every protected route — it reads
-// the header, looks up the `Tenant` row, and returns a fully-typed
-// object. Routes that bypass middleware (e.g. a /api/cron handler
-// that needs to act on a specific tenant by id) call the lower-level
-// `requireTenantById` instead.
+// The portal's Edge middleware can verify session-cookie presence but cannot
+// decode the database session. This module provides the canonical tenant
+// resolver used by protected routes: it accepts an explicit `x-tenant-id`
+// override or falls back to the active tenant resolved by Auth.js, then
+// verifies membership. Routes acting on a known tenant id call the lower-level
+// `requireTenantById` helper directly.
 
 import { headers } from "next/headers";
 import { auth } from "@/auth";
@@ -25,19 +23,19 @@ export interface ActiveTenant {
 
 /**
  * Resolve the current tenant for a request. Returns null when the
- * caller is not signed in, has no memberships, or the `x-tenant-id`
- * header is missing/invalid.
+ * caller is not signed in, has no memberships, or neither the optional
+ * `x-tenant-id` override nor the verified session has an active tenant.
  *
- * The middleware guarantees the header is set on every authenticated
- * request — this helper exists so route handlers and server actions
- * can call it without re-implementing the lookup.
+ * Normal browser navigations use the active tenant resolved by the Auth.js
+ * session callback. API clients may override it with `x-tenant-id`; both
+ * paths are membership-checked by requireTenantById().
  */
 export async function getActiveTenant(): Promise<ActiveTenant | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   const headerStore = await headers();
-  const tenantId = headerStore.get("x-tenant-id");
+  const tenantId = headerStore.get("x-tenant-id") ?? session.user.activeTenantId;
   if (!tenantId) {
     return null;
   }

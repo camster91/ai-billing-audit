@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import type { PlatformRequest } from "@/lib/platform-auth";
-import { canTransitionLead, LEAD_STAGES } from "@/lib/lead-workflow-rules";
+import {
+  canTransitionLead,
+  LEAD_QUALIFICATION_STATUSES,
+  LEAD_STAGES,
+} from "@/lib/lead-workflow-rules";
 
 const prohibitedClinicalContent =
   /\b(patient|diagnos(?:is|es)|date of birth|dob|personal health number|clinical note|medical record|encounter id)\b/i;
@@ -23,6 +27,9 @@ export const leadMutationSchema = z
     nextAction: optionalText(240),
     nextActionAt: z.string().datetime().nullable(),
     lostReason: optionalText(300),
+    qualificationStatus: z.enum(LEAD_QUALIFICATION_STATUSES),
+    qualificationReason: optionalText(500),
+    qualificationEvidenceRef: optionalText(500),
     logContactNow: z.boolean().default(false),
   })
   .strict()
@@ -32,6 +39,34 @@ export const leadMutationSchema = z
         code: "custom",
         path: ["nextAction"],
         message: "Use commercial next steps only; do not enter clinical or patient information.",
+      });
+    }
+    if (value.qualificationReason && prohibitedClinicalContent.test(value.qualificationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["qualificationReason"],
+        message: "Use commercial qualification context only; do not enter clinical or patient information.",
+      });
+    }
+    if (value.qualificationEvidenceRef && prohibitedClinicalContent.test(value.qualificationEvidenceRef)) {
+      context.addIssue({
+        code: "custom",
+        path: ["qualificationEvidenceRef"],
+        message: "Use a business evidence reference only; do not enter clinical or patient information.",
+      });
+    }
+    if (value.qualificationStatus === "unreviewed" && (value.qualificationReason || value.qualificationEvidenceRef)) {
+      context.addIssue({
+        code: "custom",
+        path: ["qualificationStatus"],
+        message: "Unreviewed leads cannot have a qualification decision.",
+      });
+    }
+    if (value.qualificationStatus !== "unreviewed" && !value.qualificationReason) {
+      context.addIssue({
+        code: "custom",
+        path: ["qualificationReason"],
+        message: "Record a commercial rationale for the qualification decision.",
       });
     }
     if (value.status === "lost" && !value.lostReason) {
@@ -93,6 +128,10 @@ export async function updateLeadWorkflow(
       nextAction: true,
       nextActionAt: true,
       lostReason: true,
+      qualificationStatus: true,
+      qualificationReason: true,
+      qualificationEvidenceRef: true,
+      qualificationReviewedAt: true,
       lastContactedAt: true,
       version: true,
     },
@@ -122,6 +161,25 @@ export async function updateLeadWorkflow(
     });
   }
   if (prior.lostReason !== input.lostReason) changes.push({ kind: "lost_reason_changed", fromValue: prior.lostReason, toValue: input.lostReason });
+  const qualificationChanged =
+    prior.qualificationStatus !== input.qualificationStatus ||
+    prior.qualificationReason !== input.qualificationReason ||
+    prior.qualificationEvidenceRef !== input.qualificationEvidenceRef;
+  if (qualificationChanged) {
+    changes.push({
+      kind: "qualification_changed",
+      fromValue: JSON.stringify({
+        status: prior.qualificationStatus,
+        reason: prior.qualificationReason,
+        evidenceRef: prior.qualificationEvidenceRef,
+      }),
+      toValue: JSON.stringify({
+        status: input.qualificationStatus,
+        reason: input.qualificationReason,
+        evidenceRef: input.qualificationEvidenceRef,
+      }),
+    });
+  }
   if (input.logContactNow) changes.push({ kind: "contact_logged", fromValue: dateValue(prior.lastContactedAt), toValue: now.toISOString() });
   if (changes.length === 0) throw new LeadWorkflowError("no_changes", "No lead changes were supplied.");
 
@@ -134,6 +192,10 @@ export async function updateLeadWorkflow(
         nextAction: input.nextAction,
         nextActionAt,
         lostReason: input.lostReason,
+        qualificationStatus: input.qualificationStatus,
+        qualificationReason: input.qualificationReason,
+        qualificationEvidenceRef: input.qualificationEvidenceRef,
+        ...(qualificationChanged ? { qualificationReviewedAt: now } : {}),
         ...(input.logContactNow ? { lastContactedAt: now } : {}),
         version: { increment: 1 },
       },

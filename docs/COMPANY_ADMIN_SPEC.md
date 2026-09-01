@@ -72,8 +72,11 @@ reason, and log contact. Mutations use optimistic version checks and UUID
 idempotency keys, append field-level `LeadActivity` records, and write one
 correlated `PlatformAuditEvent`. The form and API reject common clinical-content
 terms in commercial next actions and never send an external message. Lead
-deduplication, qualification notes, conversion linkage, stage-age reporting,
-and production-like accessibility remain outstanding.
+deduplication, qualification notes, conversion linkage, and stage-age reporting
+remain outstanding. The Chromium gate now covers anonymous redirect, tenant-only
+denial, owner access, same-session revocation, semantic landmarks, keyboard skip
+navigation, freshness evidence, and 390 px overflow; cross-browser and manual
+assistive-technology qualification remain separate launch evidence.
 
 ### Clients and delivery
 
@@ -176,7 +179,12 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 3. Lead pipeline with activity history, assignment, next action, and conversion.
    Assignment, next action, stage history, and loss reason are implemented
    locally; pilot conversion is implemented through the client handoff;
-   deduplication and qualification remain.
+  public submissions now resolve through one concurrency-safe normalized contact
+  identity, preserve historical duplicate rows, and expose repeat-submission
+  count/freshness without rewriting operator decisions. Structured qualification
+  status, rationale, and business-evidence references are versioned and recorded
+  in the append-only lead timeline. Cross-contact/clinic merge review remains a
+  future operator-assisted workflow.
 4. Client/pilot onboarding and company task management. Conversion, default and
    custom tasks, and engagement-level milestones are implemented locally;
    tenant linkage remains approval-gated.
