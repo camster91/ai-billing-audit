@@ -33,7 +33,7 @@
 // marketing-pixel firing on submit, no IP/UA capture. The server route
 // is the single place where data crosses the trust boundary.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./contact.module.css";
 import { track } from "@/components/AnalyticsBoot";
 import { claimVolumeBucket } from "@/lib/analytics-events";
@@ -73,6 +73,7 @@ function formatClaimVolume(n: number): string {
 }
 
 export default function ContactForm({ defaults }: Props) {
+  const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState(defaults?.name ?? "");
   const [clinicName, setClinicName] = useState(defaults?.clinicName ?? "");
   const [email, setEmail] = useState(defaults?.email ?? "");
@@ -87,6 +88,11 @@ export default function ContactForm({ defaults }: Props) {
   // contact_start fires once per page load on the first field focus.
   // contact_submit_success / _failure fire from handleSubmit.
   const contactStartFiredRef = useRef(false);
+
+  // The form has no safe non-JavaScript submission target. Keep its controls
+  // disabled until React owns submit handling so an early click cannot fall
+  // through to the browser default and place contact PII in a GET query string.
+  useEffect(() => setHydrated(true), []);
 
   function onFieldFocus(): void {
     if (contactStartFiredRef.current) return;
@@ -258,7 +264,7 @@ export default function ContactForm({ defaults }: Props) {
     );
   }
 
-  const disabled = status === "busy";
+  const disabled = !hydrated || status === "busy";
 
   return (
     <form
@@ -266,6 +272,7 @@ export default function ContactForm({ defaults }: Props) {
       onSubmit={handleSubmit}
       onFocus={onFieldFocus}
       noValidate
+      aria-busy={status === "busy"}
       aria-describedby={topError ? "contact-top-error" : undefined}
     >
       {topError && (
@@ -396,7 +403,7 @@ export default function ContactForm({ defaults }: Props) {
           className={styles.primaryButton}
           disabled={disabled}
         >
-          {disabled ? "Sending…" : "Talk to sales"}
+          {status === "busy" ? "Sending…" : "Talk to sales"}
         </button>
         <p className={styles.fineprint}>
           We use this information to review your request and respond about the

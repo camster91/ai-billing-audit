@@ -27,6 +27,10 @@ jobs:
       # Auth runs in dev-stub mode (no real Resend key, magic link
       # is logged to /tmp/portal-dev.log).
       AUTH_RESEND_KEY: ""
+      # Contact-to-HQ conversion is exercised with durable local capture only.
+      # These explicit placeholders prevent email or Slack delivery in CI.
+      RESEND_API_KEY: "***"
+      LEADS_SLACK_WEBHOOK_URL: "***"
       AUTH_SECRET: e2e-test-secret-do-not-use-in-prod-please
       DATABASE_URL: "file:./prisma/dev.db"
       # Stable environment so the pricing env fallback in

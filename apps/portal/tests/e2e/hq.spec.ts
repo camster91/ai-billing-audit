@@ -9,6 +9,8 @@ import {
 
 const HQ_USER_EMAIL = "e2e+hq-owner@ai-billing-audit.test";
 const HQ_TENANT_SLUG = "e2e-hq-clinic";
+const SYNTHETIC_LEAD_EMAIL = "practice.manager@e2e-alberta-clinic.test";
+const SYNTHETIC_CLINIC_NAME = "E2E Alberta Primary Care";
 
 function changePlatformRole(action: "grant" | "revoke") {
   const args = [
@@ -107,6 +109,33 @@ test.describe.serial("Zorva HQ authorization and accessible operator entry", () 
     }));
     expect(geometry.content).toBeLessThanOrEqual(geometry.viewport);
     await page.screenshot({ path: "tests/e2e/screenshots/hq-owner-mobile.png", fullPage: true });
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`${authenticatedOrigin}/contact`, { waitUntil: "networkidle" });
+    await page.getByLabel("Your name").fill("Avery Practice Manager");
+    await page.getByLabel("Clinic name").fill(SYNTHETIC_CLINIC_NAME);
+    await page.getByLabel("Work email").fill(SYNTHETIC_LEAD_EMAIL);
+    await page.getByLabel("Monthly claim volume").fill("3200");
+    await page.getByLabel("Current billing setup").selectOption("in_house");
+    const submitLead = page.getByRole("button", { name: "Talk to sales" });
+    await expect(submitLead).toBeEnabled();
+    await submitLead.click();
+    await expect(page.getByRole("heading", { name: "Thanks — we got it." })).toBeVisible();
+    await expect(page.getByText(SYNTHETIC_LEAD_EMAIL)).toBeVisible();
+
+    await page.goto(`${authenticatedOrigin}/hq/leads`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { level: 1, name: "Leads" })).toBeVisible();
+    // Local reruns may reuse a developer database; assert the newest matching
+    // row while CI continues to exercise a fresh database.
+    const capturedLead = page
+      .getByRole("row")
+      .filter({ hasText: SYNTHETIC_CLINIC_NAME })
+      .first();
+    await expect(capturedLead).toContainText("Avery Practice Manager");
+    await expect(capturedLead).toContainText(SYNTHETIC_LEAD_EMAIL);
+    await expect(capturedLead).toContainText("new");
+    await expect(capturedLead).toContainText("Unknown");
+    await page.screenshot({ path: "tests/e2e/screenshots/contact-to-hq-lead.png", fullPage: true });
 
     changePlatformRole("revoke");
     await page.reload({ waitUntil: "networkidle" });
