@@ -86,3 +86,24 @@ test("production middleware rejects a non-canonical forwarded host", () => {
     else process.env.AUTH_URL = previousAuthUrl;
   }
 });
+
+test("production middleware accepts the canonical Traefik forwarded host", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousAuthUrl = process.env.AUTH_URL;
+  process.env.NODE_ENV = "production";
+  process.env.AUTH_URL = "https://zorva.ashbi.ca";
+
+  try {
+    const response = middleware(
+      new NextRequest("http://zorva-portal:3020/api/auth/session", {
+        headers: { "x-forwarded-host": "zorva.ashbi.ca" },
+      }),
+    );
+    assert.notEqual(response.status, 400);
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousAuthUrl === undefined) delete process.env.AUTH_URL;
+    else process.env.AUTH_URL = previousAuthUrl;
+  }
+});
