@@ -20,8 +20,8 @@ const ALL_ROUTES = [
   { name: "login",                  path: "/login",                  auth: false },
   { name: "verify-request",         path: "/verify-request",         auth: false },
   { name: "auth-error",             path: "/auth/error?error=Verification", auth: false },
-  // public but not for the marketing funnel
-  { name: "readyz",                 path: "/readyz",                 auth: false },
+  // /readyz is a JSON health endpoint, so it is validated by health checks
+  // rather than HTML document rules such as title and lang.
   // authed portal
   { name: "dashboard",              path: "/dashboard",              auth: true },
   { name: "encounters-list",        path: "/encounters",             auth: true },

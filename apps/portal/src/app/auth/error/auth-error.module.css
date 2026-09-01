@@ -91,7 +91,7 @@
 .codeLine {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--ink-3, #6b7390);
+  color: var(--ink-2, #9aa3bd);
 }
 
 .codeValue {
@@ -103,7 +103,7 @@
 
 .footer {
   font-size: 0.8125rem;
-  color: var(--ink-3, #6b7390);
+  color: var(--ink-2, #9aa3bd);
   text-align: center;
   max-width: 32rem;
   line-height: 1.5;
