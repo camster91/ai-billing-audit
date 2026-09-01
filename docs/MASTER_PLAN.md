@@ -135,10 +135,10 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Specify and build Zorva HQ platform-admin foundation | Foundation released; unauthenticated production boundary verified; authenticated production operation still approval-gated | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; HQ workflows and operator runbook | Blocks operating a pilot safely at company level until an approved operator journey is verified |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Canonical repeat capture, structured qualification, assignment, stage, next-action, and contact logging implemented locally; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
-| P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
+| P1 | Make all public product and compliance claims evidence-backed | Approval-gated launch kit drafted; public-site reconciliation remains | Issues #14, #22, #77; `docs/launch-kit/CLAIM_MANIFEST.json` | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
 | P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Repeat lead capture and qualification, lead conversion, client tasks, milestones, account health, support, marketing governance, and reporting implemented locally; production-like operation remains | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
-| P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | Proposed | Brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
+| P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | First controlled-launch asset set drafted and regression-tested; execution remains gated | `docs/launch-kit/`; brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
 | P1 | Run a controlled Alberta clinic pilot with approved offer and privacy terms | Decision-dependent | Issues #76, #78; requires owner, legal/privacy, and customer approval | Required for customer validation |
 | P1 | Establish readiness monitoring, accessibility, performance, rollback, and release qualification | Proposed | Issues #23, #24, #25, #30 | Blocks launch-ready claim |
 | P2 | Improve differentiated AHCIP audit quality using a representative, leakage-controlled evaluation set | Proposed | v13 draft exists; real-customer data use requires approval and governance | Does not precede P0 trust gates |
@@ -186,6 +186,24 @@ Older sequences in `research/00-ROADMAP.md` and
 Baselines are unknown unless explicitly backed by current evidence.
 
 ## Work log
+
+### 2026-09-01
+
+- Added the complete issue #77 controlled-launch draft set: a one-page overview,
+  founder announcement, three educational LinkedIn drafts, a three-message
+  low-volume outreach sequence, warm-introduction request, discovery agenda,
+  and objection/FAQ sheet.
+- Registered five bounded claims with their repository sources, evidence types,
+  approval state, and public-use prohibition. Every asset names its owner,
+  approval state, claim IDs, canonical CTA, approved route, and privacy-conscious
+  UTM convention.
+- Added machine and Python regression checks that reject missing draft banners,
+  unknown claims, deferred routes, unsupported attribution parameters, personal
+  attribution, and known unsafe metric, infrastructure, compliance, or financial
+  language.
+- Exported a visibly approval-gated, single-page PDF. Text extraction, one-page
+  geometry, two link annotations, and rendered visual layout passed local QA.
+  Publication, outreach, and the unresolved pilot offer remain gated.
 
 ### 2026-09-01 — lead identity and qualification increment
 
@@ -365,11 +383,11 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ## Next action
 
-After exact-head CI passes, obtain explicit approval to merge and deploy the
-current PR #97 head, then run the immutable release, migration, backup, rollback,
-public-route, and authenticated synthetic customer-journey checks. Production-like
-qualification against the configured real audit provider remains a separate gate.
-Separately verify contact routing, monitoring, data residency, and an approved HQ
-operator journey. Do not deploy a new artifact, grant production platform roles,
-change customer-visible pricing, contact clinics, or access real clinic data
-without explicit approval.
+Complete the explicitly approved merge and deploy using an immutable final-main
+artifact, then run migration, backup, rollback, public-route, and authenticated
+synthetic customer-journey checks. GitHub Actions execution remains account-blocked,
+so preserve the local and earlier hosted evidence plus the exact override record.
+Production-like qualification against the configured real audit provider remains
+a separate gate. Do not publish or send launch-kit assets, grant production
+platform roles, change customer-visible pricing, contact clinics, or access real
+clinic data without explicit approval.
