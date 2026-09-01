@@ -29,6 +29,8 @@
 .freshness { color: var(--zorva-ink-3); font-size: var(--zorva-text-xs); }
 .detailGrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 20px; }
 .form { display: grid; gap: 16px; }
+.fieldset { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--zorva-ink-3); border-radius: var(--zorva-radius-md); }
+.fieldset legend { padding: 0 8px; font-weight: 600; }
 .field { display: grid; gap: 6px; color: var(--zorva-ink); font-size: var(--zorva-text-sm); }
 .input, .select, .textarea { width: 100%; box-sizing: border-box; background: var(--zorva-bg); color: var(--zorva-ink); border: 1px solid var(--zorva-ink-3); border-radius: var(--zorva-radius-md); padding: 10px 12px; font: inherit; }
 .textarea { min-height: 88px; resize: vertical; }

@@ -176,7 +176,12 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
 3. Lead pipeline with activity history, assignment, next action, and conversion.
    Assignment, next action, stage history, and loss reason are implemented
    locally; pilot conversion is implemented through the client handoff;
-   deduplication and qualification remain.
+  public submissions now resolve through one concurrency-safe normalized contact
+  identity, preserve historical duplicate rows, and expose repeat-submission
+  count/freshness without rewriting operator decisions. Structured qualification
+  status, rationale, and business-evidence references are versioned and recorded
+  in the append-only lead timeline. Cross-contact/clinic merge review remains a
+  future operator-assisted workflow.
 4. Client/pilot onboarding and company task management. Conversion, default and
    custom tasks, and engagement-level milestones are implemented locally;
    tenant linkage remains approval-gated.

@@ -134,10 +134,10 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
 | P0 | Specify and build Zorva HQ platform-admin foundation | Foundation and first mutable lead workflow implemented and locally verified; production/CI pending | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; `/hq`, `/hq/leads`, and audited lead mutation API | Blocks operating a pilot safely at company level |
 | P0 | Reconcile brand promise, public claims, and approved offer | In progress | `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
-| P0 | Verify qualified-lead journey from source attribution through owner response | Local capture, assignment, stage, next-action, and contact logging implemented; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
+| P0 | Verify qualified-lead journey from source attribution through owner response | Canonical repeat capture, structured qualification, assignment, stage, next-action, and contact logging implemented locally; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | In progress | Issues #14, #22, #77 | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
-| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Lead conversion and default client-task workflow implemented locally; engagement milestones, account health, and support remain | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
+| P1 | Add sales pipeline, client onboarding/work, account health, and support workflows to Zorva HQ | Repeat lead capture and qualification, lead conversion, client tasks, milestones, account health, support, marketing governance, and reporting implemented locally; production-like operation remains | Zorva HQ foundation and approved operating process | Required before scaling beyond a founder-managed pilot |
 | P1 | Establish content, campaign, SEO/AI-search, attribution, and review cadence | Proposed | Brand/claims reconciliation and analytics consent | Required for repeatable acquisition |
 | P1 | Run a controlled Alberta clinic pilot with approved offer and privacy terms | Decision-dependent | Issues #76, #78; requires owner, legal/privacy, and customer approval | Required for customer validation |
 | P1 | Establish readiness monitoring, accessibility, performance, rollback, and release qualification | Proposed | Issues #23, #24, #25, #30 | Blocks launch-ready claim |
@@ -186,6 +186,20 @@ Older sequences in `research/00-ROADMAP.md` and
 Baselines are unknown unless explicitly backed by current evidence.
 
 ## Work log
+
+### 2026-09-01 — lead identity and qualification increment
+
+- Added concurrency-safe public lead capture keyed by normalized email. Repeat
+  submissions reuse one canonical lead, increment a durable submission count,
+  record freshness, and do not overwrite operator-managed pipeline or
+  qualification decisions.
+- Preserved historical duplicates: migration backfill assigns one canonical key
+  per normalized email and neither deletes nor silently merges prior rows.
+- Added structured qualification status, commercial rationale, optional business
+  evidence reference, review time, version checks, idempotency, append-only lead
+  activity, operator audit evidence, no-PHI validation, and HQ UI.
+- No message, publish, spend, price, tenant, production-role, or customer-data
+  action is introduced by this increment.
 
 ### 2026-08-28
 
