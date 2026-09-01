@@ -1,6 +1,6 @@
 # Zorva marketing and sales plan
 
-**Status:** proposed operating plan; execution and public claims remain gated  
+**Status:** controlled-launch assets drafted; execution and public claims remain gated
 **Owner:** Cameron Ashley  
 **Last reconciled:** 2026-08-28  
 **Authority:** supporting plan under `docs/MASTER_PLAN.md`
@@ -147,6 +147,9 @@ calculate stage history from immutable events and distinguish unknown from zero.
 
 ### Controlled acquisition
 
+- Review and approve the versioned assets in `docs/launch-kit/` only after the
+  pilot offer and each registered claim are approved. The repository drafts do
+  not authorize publication or sending.
 - Assemble a small, evidence-based prospect set from approved sources.
 - Obtain approval for exact outreach and send manually in bounded batches.
 - Record objections and funnel events; improve qualification and materials.
@@ -180,6 +183,9 @@ claims, sensitive production-data access, or acceptance of critical/high risk.
 - Contact delivery and named ownership are not live-verified.
 - Pilot offer, pricing, legal/privacy wording, and customer evidence are not
   approved.
+- Issue #77's complete launch-kit draft set and one-page export exist under
+  `docs/launch-kit/`; every asset remains explicitly prohibited from external
+  use until its claim, offer, audience, and action gates are approved.
 - Zorva HQ now implements sales, client work, support, claim/content governance,
   and campaign/source attribution locally; production role grants and every
   external execution action remain approval-gated.
