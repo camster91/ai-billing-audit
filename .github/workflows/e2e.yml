@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   e2e:
-    name: smoke (chromium, 8 steps)
+    name: browser journey (chromium; mock audit engine)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -41,6 +41,10 @@ jobs:
       AUTH_URL: http://127.0.0.1:3000
       BASE_URL: http://127.0.0.1:3000
       E2E_BASE_URL: http://127.0.0.1:3000
+      FASTAPI_BASE_URL: http://127.0.0.1:8010
+      FASTAPI_BEARER_TOKEN: e2e-bearer-token-at-least-thirty-two-bytes
+      FASTAPI_PRINCIPAL_SIGNING_SECRET: e2e-signing-secret-at-least-thirty-two-bytes
+      PATIENT_HASH_PEPPER: e2e-patient-hash-pepper-at-least-thirty-two-bytes
       # Explicit non-production Auth.js test seam. The one-time URL is stored
       # mode 0600 on the ephemeral runner and is never printed or uploaded.
       E2E_AUTH_CAPTURE_FILE: /tmp/portal-e2e-auth-link.json
@@ -84,6 +88,11 @@ jobs:
       - name: Boot the dev server
         working-directory: apps/portal
         run: |
+          nohup node tests/e2e/mock-audit-engine.mjs > /tmp/mock-audit-engine.log 2>&1 &
+          for i in {1..20}; do
+            if curl -sS http://127.0.0.1:8010/not-found >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
           # Background the dev server; capture its output so the
           # magic-link helper can find the [auth] line in /tmp/portal-dev.log.
           nohup pnpm dev > /tmp/portal-dev.log 2>&1 &

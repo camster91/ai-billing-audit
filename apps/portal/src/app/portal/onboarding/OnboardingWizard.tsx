@@ -32,6 +32,7 @@ interface WizardState {
   ehrConnectionMode: string | null;
   firstEncounterUploadMode: string | null;
   firstEncounterFileName: string | null;
+  firstEncounterEncounterId: string | null;
   sessionId: string;
   alreadyClaimed: boolean;
 }
@@ -81,6 +82,11 @@ export default function OnboardingWizard({ initialState }: Props) {
   // Step 3 (first encounter).
   const [encounterFile, setEncounterFile] = useState<File | null>(null);
   const [encounterSkip, setEncounterSkip] = useState(false);
+  const [clinicalNote, setClinicalNote] = useState("");
+  const [specialty, setSpecialty] = useState("family_medicine");
+  const [firstEncounterId, setFirstEncounterId] = useState<string | null>(
+    initialState.firstEncounterEncounterId,
+  );
   const encounterFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const effectiveStep = useMemo(() => {
@@ -255,18 +261,25 @@ export default function OnboardingWizard({ initialState }: Props) {
       const data = await postJson<{
         onboardingStep?: number;
         mode: "uploaded" | "skipped";
+        ingestion?: { encounterId: string; created: boolean } | null;
       }>("/api/onboarding/first-encounter", {
         tenantId: state.tenantId,
         mode: encounterSkip ? "skipped" : "uploaded",
         filePath,
         fileName,
+        clinicalNote: encounterSkip ? undefined : clinicalNote.trim(),
+        specialty: encounterSkip ? undefined : specialty,
       });
+      setFirstEncounterId(data.ingestion?.encounterId ?? null);
       setState((s) => ({
         ...s,
         step: data.onboardingStep ?? Math.max(s.step, 5),
         firstEncounterUploadMode: data.mode,
         firstEncounterFileName: fileName ?? s.firstEncounterFileName,
       }));
+      if (firstEncounterId) {
+        await postJson("/api/audit/run", { encounterId: firstEncounterId });
+      }
     } catch (err) {
       setError(toUserFacingError(err, "Could not save first encounter"));
     } finally {
@@ -573,6 +586,39 @@ export default function OnboardingWizard({ initialState }: Props) {
               </div>
             )}
           </div>
+
+          {!encounterSkip && (
+            <>
+              <label htmlFor="firstEncounterSpecialty">Specialty</label>
+              <select
+                id="firstEncounterSpecialty"
+                value={specialty}
+                onChange={(event) => setSpecialty(event.target.value)}
+                required
+              >
+                <option value="family_medicine">Family medicine</option>
+                <option value="internal_medicine">Internal medicine</option>
+                <option value="pediatrics">Pediatrics</option>
+                <option value="other">Other</option>
+              </select>
+
+              <label htmlFor="firstEncounterClinicalNote">Clinical note</label>
+              <textarea
+                id="firstEncounterClinicalNote"
+                value={clinicalNote}
+                onChange={(event) => setClinicalNote(event.target.value)}
+                rows={10}
+                minLength={20}
+                maxLength={100000}
+                required
+                placeholder="Paste the clinical narrative for this claim. Patient identifiers are encrypted at rest."
+              />
+              <p className={styles.helpText}>
+                The 837P contains billing data, not the visit narrative. Zorva
+                needs both to compare the documentation with the billed codes.
+              </p>
+            </>
+          )}
 
           <label className={styles.skipRow}>
             <input
