@@ -69,7 +69,6 @@ export async function captureDevEmail(
   // Scan the current log as well as new content. Callers trigger the send
   // before entering this helper, so snapshotting the current size would skip
   // the message that was just emitted.
-  let lastSize = 0;
   while (Date.now() < deadline) {
     let content = "";
     try {
@@ -77,12 +76,11 @@ export async function captureDevEmail(
     } catch {
       content = "";
     }
-    if (content.length > lastSize) {
-      const fresh = content.slice(lastSize);
-      lastSize = content.length;
-      const match = parseDevEmail(fresh, to, templateId);
-      if (match) return match;
-    }
+    // Reparse the complete log on each poll. Console output can become visible
+    // after the header but before the subject/body lines; advancing a byte
+    // cursor at that point would discard the only header for this email.
+    const match = parseDevEmail(content, to, templateId);
+    if (match) return match;
     await new Promise((r) => setTimeout(r, 250));
   }
   throw new Error(

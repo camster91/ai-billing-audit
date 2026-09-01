@@ -138,8 +138,13 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     // serial describe block. Establish this step's own authenticated session
     // before using page.request so the upload exercises the real auth gate.
     await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/dashboard");
+    const cookieHeader = (await page.context().cookies())
+      .map(({ name, value }) => `${name}=${value}`)
+      .join("; ");
+    expect(cookieHeader, "magic-link callback established session cookies").toBeTruthy();
     const buf = await readFile(SAMPLE_837P);
     const res = await page.request.post("/api/onboarding/upload", {
+      headers: { cookie: cookieHeader },
       multipart: {
         tenantId: state.tenantId,
         file: {
