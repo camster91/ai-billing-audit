@@ -1,7 +1,7 @@
 # Zorva product control
 
 **Status:** authoritative repository plan  
-**Last reconciled:** 2026-08-28  
+**Last reconciled:** 2026-09-01
 **Owner:** Cameron Ashley  
 **Review cadence:** before every release and at least weekly while launch work is active
 
@@ -47,10 +47,10 @@ Zorva is managed as four connected surfaces with separate release evidence:
   linked discipline files. They have not yet been fully reconciled with this
   plan's current Alberta-first position and proof standard.
 - Zorva HQ now has database-backed platform roles separate from tenant roles,
-  deny-by-default server authorization, operator audit events, read-only Today
-  and lead-list views, and an audited lead assignment/stage/next-action detail
-  workflow. Client/pilot work, support cases, marketing operations, reporting,
-  and the complete lead-to-renewal journey remain unimplemented.
+  deny-by-default server authorization, operator audit events, Today and lead
+  workflows, pilot conversion, engagement milestones, and no-PHI company task
+  management. Tenant linkage, support cases, marketing operations, reporting,
+  and the complete lead-to-renewal journey remain incomplete.
 - Code versions: Python package `0.4.0`; Next.js `15.5.21`; React `19.2.4`.
 - Canonical development runtimes: Python 3.11, Node 20.19.x, pnpm 9.15.9.
 - Current evaluated engine claim in the README: v12 AHCIP, micro F1 0.690 on
@@ -59,19 +59,16 @@ Zorva is managed as four connected surfaces with separate release evidence:
 - Automated verification on 2026-08-28: 1,868 Python tests passed and one
   credential-gated MiniMax integration test skipped; portal unit suites, ESLint,
   TypeScript, and the Next.js production build passed locally.
-- GitHub Actions workflows exist, but repository Actions were disabled during
-  the 2026-08-28 reconciliation. They were re-enabled for PR #88. Both PR
-  workflows then triggered, but GitHub refused to start every job because of
-  failed account payments or an insufficient Actions spending limit. CI proof
-  is blocked on an owner billing decision, not a reported code/test failure.
-- Read-only production probes on 2026-08-28 confirmed the API root, `/healthz`,
-  and `/readyz` return HTTP 200. The API reports version 0.4.0 and configured
-  readiness dependencies. The portal root and `/contact` return HTTP 200, while
-  the portal `/readyz` route returns HTTP 404. That route reached `main` in
-  commit `f2dea7f` on 2026-08-26, so production is likely serving an older build
-  or an untracked source. GitHub reports no deployments or environments for the
-  repository, so exact release identity is unproven. Backups, monitoring, data
-  residency, and real transaction paths remain unverified.
+- GitHub Actions are enabled. Exact `main` SHA
+  `554cdb35ed4d686c8c7e437f75e3f66296378ed8` passed the portal/PostgreSQL/build
+  workflow and the 19-test browser, accessibility, and performance workflow on
+  2026-09-01.
+- Production was reconciled and deployed from the immutable release directory
+  for SHA `554cdb35ed4d686c8c7e437f75e3f66296378ed8` on 2026-09-01 after an encrypted,
+  verified pre-deploy backup. API health/readiness, worker and portal health,
+  database migrations, public root/login/contact, pricing redirect, and HQ auth
+  redirect passed. Authenticated customer journeys, monitoring, data residency,
+  and real transaction paths remain unverified.
 - Customer usage, retention, conversion, willingness to pay, and paid-pilot
   evidence were not found. Product-market fit and market leadership are
   unvalidated hypotheses.
@@ -92,8 +89,8 @@ Acceptance criteria:
    terminology, account identity, funnel stages, and measurable outcomes.
 4. The first controlled Alberta clinic pilot can be managed from qualified lead
    through onboarding, first reviewed audit, support, and renewal decision.
-5. Existing release-reproducibility work remains green locally and passes CI
-   after the GitHub billing blocker is resolved.
+5. Existing release-reproducibility work remains green locally and in CI for
+   every release candidate.
 
 ## Commercial and marketing plan
 
@@ -172,7 +169,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
 | Brand and claims | Existing system, partially stale | Reconcile anchor claims, market scope, proof, and dark-only implementation before broader use | Product / brand owner |
-| Company administration | Platform foundation, lead workflow, append-only guards, and first client/task journey locally verified | Engagement milestones, custom work, support, reporting, retention-policy approval/export, and production-like security/accessibility remain | Cameron / Engineering |
+| Company administration | Platform foundation, leads, client work, support, marketing governance, campaign attribution, and evidence-conscious reporting locally verified | Retention-policy approval/export, inbound routing, advanced workflows, and production-like security/accessibility/recovery remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
 ## Metrics required before launch claims
@@ -300,13 +297,44 @@ Baselines are unknown unless explicitly backed by current evidence.
   same engagement; owner task mutation and replay returned 200/version 1; a
   stale task edit returned 409. Persistence showed one engagement, four tasks,
   and exactly one audit event for each successful logical operation.
+- Deployed PR #88 at exact merge SHA
+  `554cdb35ed4d686c8c7e437f75e3f66296378ed8` after both required CI workflows
+  passed. The release used an immutable source directory, encrypted verified
+  backup, successful migrations, healthy API/worker/portal services, public
+  route checks, and retained rollback tags.
+- Added controlled engagement milestone editing for status, privacy approval,
+  first value, and client health, plus safe custom company-task creation. Both
+  mutation paths are capability-gated, UUID-idempotent, versioned where
+  applicable, operator-audited, and do not provision tenants, send messages, or
+  accept common clinical-content terms.
+- Added the core internal support-case workflow: scoped support capabilities,
+  client-engagement linkage, safe summary, category, severity, assignment,
+  status-derived acknowledgement/resolution timestamps, internal targets,
+  no-PHI product issue linkage, version conflicts, idempotent retries, case
+  activity, and platform audit events. It sends no reply and promises no SLA.
+- Added governed marketing claims and content assets in HQ. Exact claims record
+  evidence, permission, allowed surfaces, owner approval, review/expiry, and
+  replacement linkage. Claim-bearing content cannot be approved against an
+  unapproved, expired, or wrong-surface claim. Mutations are versioned,
+  idempotent, audited, append-only in history, and never publish or send.
+- Added campaign/source planning and append-only attribution snapshots. Campaigns
+  link approved content, stable source/UTM identity, owner, dates, external
+  approval, and budget evidence. Only the owner can record observed activation;
+  snapshots require a source and distinguish unknown from measured zero. HQ has
+  no external execution or spending capability.
+- Added a least-privilege, read-only company report for owner and analyst roles.
+  Acquisition and sales use dated lead/event sources; activation and support use
+  explicit milestone timestamps; campaign outcomes remain non-additive; missing
+  recognized revenue and cost sources render unavailable rather than zero.
+- Added `docs/HQ_OPERATOR_RUNBOOK.md` covering daily triage, lead-to-client,
+  marketing, support, weekly reporting, retry/version behavior, incident routing,
+  access/recovery boundaries, and the remaining production-readiness evidence.
 
 ## Next action
 
-Complete engagement-level milestones and safe custom company work, then add the
-support-case workflow and marketing claim/content registry described in the
-approved sequence. In parallel, the owner must resolve or explicitly decline
-the GitHub Actions billing requirement before PR #88 can receive independent CI;
-then rerun it and verify contact routing and production release identity. Do not
-deploy, grant production platform roles, change customer-visible pricing, contact
-clinics, or access real clinic data without explicit approval.
+Obtain explicit merge/deploy direction for fully green PRs #90 through #93,
+validate the reporting/runbook increment in full CI, then complete remaining
+authenticated journey evidence. Separately verify authenticated customer journeys,
+contact routing, monitoring, and data-residency evidence. Do not deploy a new
+artifact, grant production platform roles, change customer-visible pricing,
+contact clinics, or access real clinic data without explicit approval.

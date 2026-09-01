@@ -43,6 +43,13 @@ model User {
   leadActivities LeadActivity[] @relation("LeadActivityActor")
   clientEngagements ClientEngagement[] @relation("ClientEngagementOwner")
   companyTasks CompanyTask[] @relation("CompanyTaskOwner")
+  supportCases SupportCase[] @relation("SupportCaseOwner")
+  supportActivities SupportActivity[] @relation("SupportActivityActor")
+  approvedMarketingClaims ClaimApproval[] @relation("ClaimApprover")
+  contentAssets ContentAsset[] @relation("ContentAssetOwner")
+  marketingActivities MarketingActivity[] @relation("MarketingActivityActor")
+  campaigns Campaign[] @relation("CampaignOwner")
+  campaignSnapshots CampaignAttributionSnapshot[] @relation("CampaignSnapshotRecorder")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -931,6 +938,7 @@ model ClientEngagement {
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   owner  User?   @relation("ClientEngagementOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   tasks  CompanyTask[]
+  supportCases SupportCase[]
 
   @@index([status, pilotStartAt])
   @@index([ownerUserId, status])
@@ -958,6 +966,187 @@ model CompanyTask {
 
   @@index([engagementId, status, dueAt])
   @@index([ownerUserId, status, dueAt])
+}
+
+// Internal no-PHI support workflow. Customer-visible SLA commitments and
+// automated replies are deliberately outside this model and require approval.
+model SupportCase {
+  id                 String   @id @default(cuid())
+  engagementId       String
+  category           String
+  severity           String
+  status             String   @default("new")
+  safeSummary        String
+  ownerUserId        String?
+  dueAt              DateTime?
+  acknowledgedAt     DateTime?
+  resolvedAt         DateTime?
+  linkedIssueReference String?
+  version            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  engagement ClientEngagement @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  owner      User?            @relation("SupportCaseOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  activities SupportActivity[]
+
+  @@index([status, severity, dueAt])
+  @@index([engagementId, status, createdAt])
+  @@index([ownerUserId, status, dueAt])
+}
+
+model SupportActivity {
+  id          String   @id @default(cuid())
+  caseId      String
+  actorUserId String?
+  actorRole   String
+  kind        String
+  mutationId  String   @unique
+  changesJson String
+  occurredAt  DateTime @default(now())
+
+  supportCase SupportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("SupportActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, occurredAt])
+  @@index([actorUserId, occurredAt])
+}
+
+// Evidence and permission registry for exact marketing statements. Approval
+// authorizes only the recorded surfaces; it never publishes content.
+model ClaimApproval {
+  id                          String   @id @default(cuid())
+  exactClaim                  String
+  evidenceType                String
+  evidenceReference           String?
+  customerPermissionReference String?
+  allowedSurfacesJson         String   @default("[]")
+  status                      String   @default("draft")
+  approverUserId              String?
+  approvedAt                  DateTime?
+  reviewAt                    DateTime?
+  expiresAt                   DateTime?
+  replacesClaimId             String?
+  version                     Int      @default(0)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  approver User?          @relation("ClaimApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  replaces  ClaimApproval? @relation("ClaimReplacement", fields: [replacesClaimId], references: [id], onDelete: SetNull)
+  replacedBy ClaimApproval[] @relation("ClaimReplacement")
+  assets    ContentAsset[]
+
+  @@index([status, reviewAt])
+  @@index([approverUserId, status])
+  @@index([replacesClaimId])
+}
+
+model ContentAsset {
+  id                     String   @id @default(cuid())
+  title                  String
+  assetType              String
+  targetSegment          String
+  channel                String
+  status                 String   @default("draft")
+  containsMarketingClaim Boolean  @default(false)
+  claimApprovalId        String?
+  artifactReference      String?
+  ownerUserId            String?
+  plannedAt              DateTime?
+  reviewAt               DateTime?
+  version                Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  claimApproval ClaimApproval? @relation(fields: [claimApprovalId], references: [id], onDelete: SetNull)
+  owner         User?          @relation("ContentAssetOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  campaigns     Campaign[]
+
+  @@index([status, channel, plannedAt])
+  @@index([ownerUserId, status, reviewAt])
+  @@index([claimApprovalId])
+}
+
+model MarketingActivity {
+  id          String   @id @default(cuid())
+  recordType  String
+  recordId    String
+  actorUserId String?
+  actorRole   String
+  kind        String
+  mutationId  String   @unique
+  changesJson String
+  occurredAt  DateTime @default(now())
+
+  actor User? @relation("MarketingActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([recordType, recordId, occurredAt])
+  @@index([actorUserId, occurredAt])
+}
+
+// Planning and observation only. No field or mutation launches a campaign,
+// sends outreach, buys media, or changes a public offer.
+model Campaign {
+  id                        String   @id @default(cuid())
+  name                      String
+  sourceKey                 String   @unique
+  objective                 String
+  targetSegment             String
+  channel                   String
+  status                    String   @default("planning")
+  ownerUserId               String?
+  contentAssetId            String?
+  landingPath               String?
+  utmSource                 String?
+  utmMedium                 String?
+  utmCampaign               String?
+  plannedStartAt            DateTime?
+  plannedEndAt              DateTime?
+  reviewAt                  DateTime?
+  externalApprovalReference String?
+  budgetApprovalReference   String?
+  approvedBudgetCents       Int?
+  recordedSpendCents        Int?
+  version                   Int      @default(0)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  owner        User?         @relation("CampaignOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  contentAsset ContentAsset? @relation(fields: [contentAssetId], references: [id], onDelete: SetNull)
+  snapshots    CampaignAttributionSnapshot[]
+
+  @@index([status, channel, plannedStartAt])
+  @@index([ownerUserId, status, reviewAt])
+  @@index([contentAssetId])
+}
+
+// Append-only evidence snapshot. Null means unknown/unavailable; zero is a
+// measured zero and must be backed by sourceReference.
+model CampaignAttributionSnapshot {
+  id              String   @id @default(cuid())
+  campaignId      String
+  mutationId      String   @unique
+  sourceReference String
+  periodStartAt   DateTime
+  periodEndAt     DateTime
+  visitCount      Int?
+  leadCount       Int?
+  qualifiedCount  Int?
+  demoCount       Int?
+  pilotCount      Int?
+  clientCount     Int?
+  revenueCents    Int?
+  currency        String   @default("CAD")
+  notes           String?
+  recordedByUserId String?
+  recordedByRole  String
+  recordedAt      DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  recordedBy User?   @relation("CampaignSnapshotRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, periodEndAt])
+  @@index([recordedByUserId, recordedAt])
 }
 
 // ---------------------------------------------------------------------------

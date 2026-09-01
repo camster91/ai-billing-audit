@@ -6,6 +6,8 @@ import { loadHqClientDetail, loadHqLeads, loadHqOverview } from "../src/lib/hq-d
 const PREFIX = "hq-test-";
 
 async function cleanup() {
+  await prisma.supportActivity.deleteMany({ where: { supportCase: { engagement: { lead: { email: { startsWith: PREFIX } } } } } });
+  await prisma.supportCase.deleteMany({ where: { engagement: { lead: { email: { startsWith: PREFIX } } } } });
   await prisma.platformAuditEvent.deleteMany({ where: { requestId: { startsWith: PREFIX } } });
   await prisma.companyTask.deleteMany({ where: { engagement: { lead: { email: { startsWith: PREFIX } } } } });
   await prisma.clientEngagement.deleteMany({ where: { lead: { email: { startsWith: PREFIX } } } });
@@ -75,6 +77,7 @@ test("HQ overview returns only commercial lead fields and sourced counts", async
   assert.equal(overview.activeClientCount >= 1, true);
   assert.equal(overview.openCompanyTaskCount, 1);
   assert.equal(overview.overdueCompanyTaskCount, 1);
+  assert.equal(overview.openSupportCaseCount, 0);
 
   const detail = await loadHqClientDetail(engagement.id);
   assert.ok(detail.client);
@@ -117,10 +120,12 @@ test("HQ overview does not load or expose modules outside the caller capability 
   const overview = await loadHqOverview(new Date("2026-08-28T20:00:00.000Z"), {
     leads: false,
     clients: false,
+    support: false,
   });
   assert.equal(overview.newLeadCount, null);
   assert.equal(overview.activeClientCount, null);
   assert.equal(overview.openCompanyTaskCount, null);
+  assert.equal(overview.openSupportCaseCount, null);
   assert.deepEqual(overview.recentLeads, []);
 });
 

@@ -14,7 +14,8 @@ export default async function HqTodayPage() {
   const operator = await requirePlatformPage("hq:read", "hq_dashboard");
   const canReadLeads = hasPlatformCapability(operator.role, true, "leads:read");
   const canReadClients = hasPlatformCapability(operator.role, true, "clients:read");
-  const overview = await loadHqOverview(new Date(), { leads: canReadLeads, clients: canReadClients });
+  const canReadSupport = hasPlatformCapability(operator.role, true, "support:read");
+  const overview = await loadHqOverview(new Date(), { leads: canReadLeads, clients: canReadClients, support: canReadSupport });
 
   const metrics = [
     ...(canReadLeads ? [
@@ -26,6 +27,10 @@ export default async function HqTodayPage() {
       ["Open client engagements", overview.activeClientCount],
       ["Open company tasks", overview.openCompanyTaskCount],
       ["Overdue company tasks", overview.overdueCompanyTaskCount],
+    ] as const : []),
+    ...(canReadSupport ? [
+      ["Open support cases", overview.openSupportCaseCount],
+      ["Overdue support cases", overview.overdueSupportCaseCount],
     ] as const : []),
   ];
 

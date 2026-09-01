@@ -1,6 +1,6 @@
 # Zorva HQ company admin specification
 
-**Status:** roadmap-approved; platform foundation and lead workflow implemented locally
+**Status:** roadmap-approved; core operating modules and read-only reporting implemented locally
 **Owner:** Cameron Ashley  
 **Last reconciled:** 2026-08-28  
 **Authority:** detailed specification supporting `docs/MASTER_PLAN.md`
@@ -83,14 +83,16 @@ and production-like accessibility remain outstanding.
 - Client work uses tasks with owner, due date, status, priority, and evidence.
   It does not duplicate clinical encounters or store clinical free text.
 
-**Implemented local increment (2026-08-31):** an authorized platform owner or
+**Implemented increments (2026-08-31 through 2026-09-01):** an authorized platform owner or
 client-success operator can convert one `pilot_signed` lead into one idempotent,
 audited `ClientEngagement`. Conversion creates four no-PHI onboarding tasks but
 does not create a tenant, charge, or message anyone. Authorized operators can
 version and audit task status, priority, owner, due date, and business-evidence
-reference. Stale writes fail; clinical-content terms are rejected. Client
-engagement status, privacy approval, tenant linkage, custom task creation, and
-first-value/health mutations remain controlled follow-on work.
+reference. Stale writes fail; clinical-content terms are rejected. Authorized
+operators can also version and audit engagement status, privacy approval,
+first-value, and health milestones, and create retry-safe custom company tasks
+with controlled ownership, priority, and due dates. Tenant linkage remains a
+separate approved customer action.
 
 ### Support
 
@@ -99,6 +101,16 @@ first-value/health mutations remain controlled follow-on work.
 - Defines acknowledgement and resolution targets as internal operating goals
   until a customer-visible SLA is explicitly approved.
 - Supports escalation, duplicate linking, reopen, and post-incident follow-up.
+
+**Implemented local increment (2026-09-01):** owner, client-success, and support
+operators have separate support read/write capabilities. They can open and
+version internal no-PHI cases linked to an existing client engagement, assign
+an eligible operator, classify category and severity, move status, set an
+internal target, and link a no-PHI product issue. Creation and updates are
+UUID-idempotent and write both a case activity and platform audit event.
+Acknowledgement/resolution timestamps are derived from status. No action sends
+a reply or publishes a customer-visible SLA. Duplicate linking, reopen policy,
+post-incident follow-up, and inbound customer intake remain follow-on work.
 
 ### Marketing operations
 
@@ -110,12 +122,41 @@ first-value/health mutations remain controlled follow-on work.
 - Content calendar and campaign execution do not send or publish externally from
   HQ until separately authorized.
 
+**Implemented local increment (2026-09-01):** a distinct marketing role can
+draft and manage exact claims and content assets; owner, sales, client-success,
+and analyst roles receive bounded claim-registry visibility. Only the accountable
+owner can approve a claim. Approval requires an evidence reference and allowed
+surfaces, with written-permission references required for customer-derived
+claims. Claim-bearing assets cannot be approved unless their linked claim is
+currently approved for the asset channel. Records are versioned, retry-safe,
+operator-audited, and have append-only marketing activity. The registry cannot
+publish, send, spend, or alter pricing.
+
+**Implemented local campaign increment (2026-09-01):** campaigns record a stable
+source key, objective, segment, channel, approved content, owner, landing/UTM
+attribution, planned dates, reviews, external-activation approval, and approved
+budget/spend evidence. Marketers can plan and prepare; only the accountable
+owner can record an externally activated campaign, and an approval reference is
+mandatory. Append-only attribution snapshots preserve null as unknown and zero
+as measured zero, require a source reference, validate funnel ordering, and use
+explicit CAD cents. HQ cannot launch, message, publish, or spend.
+
 ### Company reporting
 
 - Acquisition, sales, activation, client success, support, revenue attribution,
   and cost-to-serve definitions match `docs/MASTER_PLAN.md`.
 - Metrics distinguish unknown, zero, delayed, and unavailable. No fabricated
   baselines, customer results, or vanity success states.
+
+**Implemented local increment (2026-09-01):** owner and analyst roles have a
+separate read-only reporting capability and `/hq/reports` surface. The trailing
+30-day report uses lead creation and immutable stage-event timestamps, client
+creation/first-value records, support creation/resolution timestamps, and the
+latest evidence snapshot per campaign. Every metric declares its definition,
+source, period, and known/unknown/unavailable/delayed state. Current account-risk
+counts are labelled as snapshots. Campaign periods are not summed, and company
+recognized revenue and cost to serve remain unavailable until approved
+accounting and allocation sources exist.
 
 ## Data model direction
 
@@ -136,13 +177,19 @@ export, tenant linkage, audit, and sensitive-data classification before migratio
    Assignment, next action, stage history, and loss reason are implemented
    locally; pilot conversion is implemented through the client handoff;
    deduplication and qualification remain.
-4. Client/pilot onboarding and company task management. Conversion and the
-   default task checklist are implemented locally; engagement-level milestones,
-   custom tasks, and tenant linkage remain.
-5. Support case workflow and product-feedback linkage.
-6. Marketing claims/content/campaign operations and attribution.
+4. Client/pilot onboarding and company task management. Conversion, default and
+   custom tasks, and engagement-level milestones are implemented locally;
+   tenant linkage remains approval-gated.
+5. Support case workflow and product-feedback linkage. Core internal case
+   creation, assignment, status, targets, activity, and issue linkage are
+   implemented locally; inbound intake and advanced escalation remain.
+6. Marketing claims/content/campaign operations and attribution. Claim/content
+   governance plus campaign/source planning and evidence attribution are
+   implemented locally; automated execution remains absent and approval-gated.
 7. Reporting, retention/export/deletion, accessibility, performance, backup,
-   monitoring, and operator runbook verification.
+   monitoring, and operator runbook verification. The read-only report and
+   repository-backed `docs/HQ_OPERATOR_RUNBOOK.md` are implemented locally;
+   live journey, recovery, accessibility, and policy evidence remain.
 
 Each increment requires responsive and keyboard-accessible behavior, tenant and
 platform authorization tests, audit evidence, migration and rollback steps,
