@@ -6,10 +6,14 @@ import {
   ClientEngagementError,
   createClientEngagement,
   createClientEngagementSchema,
+  clientEngagementMutationSchema,
+  updateClientEngagement,
 } from "../src/lib/client-engagement";
 import {
   CompanyTaskError,
   companyTaskMutationSchema,
+  createCompanyTask,
+  createCompanyTaskSchema,
   updateCompanyTask,
 } from "../src/lib/company-task";
 
@@ -156,5 +160,66 @@ test("company task update is versioned, idempotent, audited, and no-PHI", async 
     companyTaskMutationSchema.safeParse({ ...mutation, mutationId: randomUUID(), evidenceReference: "patient claim 123" }).success,
     false,
   );
+  await cleanup();
+});
+
+test("engagement milestones are versioned, retry-safe, and audited", async () => {
+  const lead = await setup();
+  const engagement = await createClientEngagement(lead.id, createClientEngagementSchema.parse(input()), operator);
+  const mutation = clientEngagementMutationSchema.parse({
+    expectedVersion: 0,
+    mutationId: randomUUID(),
+    status: "active_pilot",
+    privacyApprovalStatus: "approved",
+    firstValueAt: "2026-09-20T15:00:00.000Z",
+    healthStatus: "healthy",
+  });
+  const updated = await updateClientEngagement(engagement.id, mutation, operator);
+  assert.equal(updated.version, 1);
+  assert.equal(updated.status, "active_pilot");
+  assert.equal(updated.privacyApprovalStatus, "approved");
+  assert.equal(updated.healthStatus, "healthy");
+  assert.equal(updated.firstValueAt?.toISOString(), "2026-09-20T15:00:00.000Z");
+  assert.equal(await prisma.platformAuditEvent.count({ where: { requestId: mutation.mutationId } }), 1);
+
+  const replay = await updateClientEngagement(engagement.id, mutation, operator);
+  assert.equal(replay.version, 1);
+  await assert.rejects(
+    updateClientEngagement(
+      engagement.id,
+      clientEngagementMutationSchema.parse({ ...mutation, mutationId: randomUUID(), healthStatus: "watch" }),
+      operator,
+    ),
+    (error: unknown) => error instanceof ClientEngagementError && error.code === "version_conflict",
+  );
+  await cleanup();
+});
+
+test("custom company tasks are no-PHI, owner-controlled, retry-safe, and audited", async () => {
+  const lead = await setup();
+  const engagement = await createClientEngagement(lead.id, createClientEngagementSchema.parse(input()), operator);
+  const mutation = createCompanyTaskSchema.parse({
+    mutationId: randomUUID(),
+    title: "Prepare kickoff agenda",
+    priority: "high",
+    ownerUserId: `${PREFIX}success`,
+    dueAt: "2026-09-12T15:00:00.000Z",
+  });
+  const task = await createCompanyTask(engagement.id, mutation, operator);
+  assert.equal(task.title, "Prepare kickoff agenda");
+  assert.equal(task.ownerUserId, `${PREFIX}success`);
+  assert.equal(await prisma.platformAuditEvent.count({ where: { requestId: mutation.mutationId } }), 1);
+
+  const replay = await createCompanyTask(engagement.id, mutation, operator);
+  assert.equal(replay.id, task.id);
+  await assert.rejects(
+    createCompanyTask(
+      engagement.id,
+      createCompanyTaskSchema.parse({ ...mutation, mutationId: randomUUID(), ownerUserId: `${PREFIX}sales` }),
+      operator,
+    ),
+    (error: unknown) => error instanceof CompanyTaskError && error.code === "invalid_owner",
+  );
+  assert.equal(createCompanyTaskSchema.safeParse({ ...mutation, mutationId: randomUUID(), title: "Review patient claim" }).success, false);
   await cleanup();
 });

@@ -27,6 +27,12 @@ function encryptionKey(): Buffer {
     .digest();
 }
 
+function decodeCanonicalBase64Url(value: string): Buffer | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.toString("base64url") === value ? decoded : null;
+}
+
 export function sealPendingMagicLink(state: PendingMagicLink): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
@@ -43,14 +49,18 @@ export function openPendingMagicLink(value: string | undefined): PendingMagicLin
     if (version !== "v1" || !ivPart || !tagPart || !ciphertextPart || extra) {
       return null;
     }
+    const iv = decodeCanonicalBase64Url(ivPart);
+    const tag = decodeCanonicalBase64Url(tagPart);
+    const ciphertext = decodeCanonicalBase64Url(ciphertextPart);
+    if (!iv || iv.length !== 12 || !tag || tag.length !== 16 || !ciphertext) return null;
     const decipher = createDecipheriv(
       "aes-256-gcm",
       encryptionKey(),
-      Buffer.from(ivPart, "base64url"),
+      iv,
     );
-    decipher.setAuthTag(Buffer.from(tagPart, "base64url"));
+    decipher.setAuthTag(tag);
     const plaintext = Buffer.concat([
-      decipher.update(Buffer.from(ciphertextPart, "base64url")),
+      decipher.update(ciphertext),
       decipher.final(),
     ]);
     const parsed = JSON.parse(plaintext.toString("utf8")) as Partial<PendingMagicLink>;

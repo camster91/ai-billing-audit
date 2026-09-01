@@ -7,6 +7,8 @@ import { hasPlatformCapability } from "@/lib/platform-capabilities";
 import { HqNav } from "../../hq-nav";
 import styles from "../../hq.module.css";
 import { TaskEditor } from "./task-editor";
+import { EngagementEditor } from "./engagement-editor";
+import { TaskCreator } from "./task-creator";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -52,6 +54,14 @@ export default async function HqClientDetailPage({ params }: PageProps) {
           <p>{client.tenant ? `Tenant linked: ${client.tenant.name}` : "No clinic tenant linked. Tenant creation remains a separate approved customer action."}</p>
         </aside>
       </div>
+      {canEdit ? <section className={styles.section}><EngagementEditor client={{
+        id: client.id,
+        status: client.status,
+        privacyApprovalStatus: client.privacyApprovalStatus,
+        firstValueAt: client.firstValueAt?.toISOString() ?? null,
+        healthStatus: client.healthStatus,
+        version: client.version,
+      }} /></section> : null}
       <section className={styles.section}>
         <h2>Company work</h2>
         <p className={styles.muted}>No-PHI onboarding checklist. Updates are versioned and operator-audited; they do not send messages.</p>
@@ -79,6 +89,7 @@ export default async function HqClientDetailPage({ params }: PageProps) {
             </div>
           ))}
         </div>
+        {canEdit ? <TaskCreator engagementId={client.id} owners={ownerOptions} /> : null}
       </section>
     </main>
   );
