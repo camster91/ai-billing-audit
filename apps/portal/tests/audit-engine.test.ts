@@ -15,6 +15,7 @@ test("portal claim lines accept the canonical stored payload and legacy arrays",
   assert.deepEqual(
     submission.parsePortalClaimLines(JSON.stringify({
       lines: [{ code: "99213", modifier: "25" }],
+      diagnosisCodes: ["I10"],
       totalCents: 4200,
       payer: "AHCIP",
       providerNpi: "1234567890",
@@ -22,6 +23,18 @@ test("portal claim lines accept the canonical stored payload and legacy arrays",
       dateOfService: "2026-08-08",
     })),
     [{ code: "99213", modifier: "25" }],
+  );
+  assert.deepEqual(
+    submission.parsePortalDiagnosisCodes(JSON.stringify({
+      lines: [{ code: "99213" }],
+      diagnosisCodes: ["I10"],
+      totalCents: 4200,
+      payer: "AHCIP",
+      providerNpi: "1234567890",
+      providerName: "Dr Test",
+      dateOfService: "2026-08-08",
+    })),
+    ["I10"],
   );
   assert.deepEqual(
     submission.parsePortalClaimLines(JSON.stringify([{ code: "99214" }])),
@@ -84,6 +97,33 @@ test("submitPortalAudit sends one authenticated idempotent claim-plus-note reque
     diagnosis_codes: ["I10"],
     clinical_note: "Assessment and plan documented.",
   });
+});
+
+test("previewPortal837P sends encrypted-upload bytes through the authenticated parser boundary", async () => {
+  let captured: { url: string; init?: RequestInit } | null = null;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    captured = { url: String(input), init };
+    return new Response(JSON.stringify({ filename: "claim.edi", rows: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const result = await fastapi.previewPortal837P(
+    "claim.edi",
+    Buffer.from("ISA*fixture~"),
+    principal,
+    { fetchImpl, bearerToken: "bearer", signingSecret: "s".repeat(32) },
+  );
+  assert.equal(result.kind, "ok");
+  assert.ok(captured);
+  const request = captured as { url: string; init?: RequestInit };
+  assert.equal(request.url, "https://ai-billing-audit.ashbi.ca/encounters/upload/preview");
+  assert.equal(request.init?.method, "POST");
+  assert.ok(request.init?.body instanceof FormData);
+  const headers = request.init?.headers as Record<string, string>;
+  assert.equal(headers.Authorization, "Bearer bearer");
+  assert.ok(headers["X-Zorva-Principal"]);
+  assert.ok(headers["X-Zorva-Signature"]);
 });
 
 test("fetchPortalAuditJob returns a typed terminal engine result", async () => {

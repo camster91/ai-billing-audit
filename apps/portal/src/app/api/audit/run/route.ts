@@ -10,7 +10,10 @@ import {
   reserveAuditDispatch,
 } from "@/lib/audit-quota";
 import { decryptPortalString } from "@/lib/data-encryption";
-import { parsePortalClaimLines } from "@/lib/audit-submission";
+import {
+  parsePortalClaimLines,
+  parsePortalDiagnosisCodes,
+} from "@/lib/audit-submission";
 import { submitPortalAudit } from "@/lib/fastapi";
 import { assertMembershipCapability } from "@/lib/membership-gate";
 import { prisma } from "@/lib/prisma";
@@ -92,9 +95,11 @@ export async function POST(request: Request) {
 
   let clinicalNote: string;
   let lines: ReturnType<typeof parsePortalClaimLines>;
+  let diagnosisCodes: string[];
   try {
     clinicalNote = decryptPortalString(encounter.clinicalNote);
     lines = parsePortalClaimLines(encounter.claim.cptCodesJson);
+    diagnosisCodes = parsePortalDiagnosisCodes(encounter.claim.cptCodesJson);
   } catch {
     await releaseAuditDispatchReservation({
       tenantId: tenant.id,
@@ -118,7 +123,7 @@ export async function POST(request: Request) {
         cptCodes: lines.map((line) =>
           line.modifier ? `${line.code}-${line.modifier}` : line.code,
         ),
-        diagnosisCodes: [],
+        diagnosisCodes,
         clinicalNote,
       },
       {

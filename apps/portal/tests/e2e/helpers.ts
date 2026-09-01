@@ -37,6 +37,29 @@ import type { APIRequestContext, Page } from "@playwright/test";
 export const DEFAULT_USER_EMAIL = process.env["E2E_USER_EMAIL"] ?? "e2e+e2e-clinic@ai-billing-audit.test";
 export const DEFAULT_TENANT_SLUG = process.env["E2E_TENANT_SLUG"] ?? "e2e-clinic";
 
+export function readImportedEncounter(encounterId: string, tenantId: string): {
+  id: string;
+  sourceUploadDigest: string | null;
+  status: string;
+  findingIds: string[];
+  claimJson: string;
+} {
+  const result = spawnSync(
+    "pnpm",
+    ["exec", "tsx", "scripts/e2e_acceptance_read_encounter.ts", encounterId, tenantId],
+    { cwd: resolvePortalCwd(), env: process.env, encoding: "utf8" },
+  );
+  if (result.status !== 0) throw new Error(`encounter read failed: ${result.stderr || result.stdout}`);
+  const lines = result.stdout.trim().split("\n");
+  return JSON.parse(lines.at(-1) ?? "{}") as {
+    id: string;
+    sourceUploadDigest: string | null;
+    status: string;
+    findingIds: string[];
+    claimJson: string;
+  };
+}
+
 // /tmp/portal-dev.log is the default dev server log path used by
 // `pnpm dev:background`. When the dev server is already attached to
 // a TTY the magic link prints to the terminal instead — in that case
