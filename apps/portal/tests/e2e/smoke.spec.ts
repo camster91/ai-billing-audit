@@ -243,19 +243,7 @@ test.describe.serial("smoke: marketing -> portal -> findings", () => {
     // Playwright isolates each test context, so establish this page's own
     // session before exercising the auth-gated findings inbox.
     await loginViaMagicLink(page, DEFAULT_USER_EMAIL, "/findings");
-    const cookieHeader = (await page.context().cookies())
-      .map(({ name, value }) => `${name}=${value}`)
-      .join("; ");
-    const findingsResponse = await page.request.get("/findings", {
-      headers: { cookie: cookieHeader },
-    });
-    expect(
-      findingsResponse.ok(),
-      `findings returned HTTP ${findingsResponse.status()}`,
-    ).toBe(true);
-    const findingsHtml = await findingsResponse.text();
-    expect(findingsHtml).toMatch(/code mismatch|documentation|2025/i);
-    await page.setContent(findingsHtml, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toContainText(/code mismatch|documentation|2025/i);
     await page.screenshot({ path: "tests/e2e/screenshots/06-findings.png", fullPage: true });
   });
 
