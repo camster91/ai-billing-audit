@@ -50,6 +50,16 @@ export async function POST(request: Request) {
 
   try {
     const onboardingAuth = await requireOnboardingAuth(tenantId);
+    const onboardingState = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingStep: true },
+    });
+    if (!onboardingState || onboardingState.onboardingStep < 4) {
+      throw new OnboardingError(
+        "step_not_reached",
+        "Step 4 (EHR connection) must be completed before saving the first encounter.",
+      );
+    }
     let ingestion: { encounterId: string; created: boolean } | null = null;
     if (mode === "uploaded") {
       ingestion = await ingestFirstEncounter({
