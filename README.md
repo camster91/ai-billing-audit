@@ -62,7 +62,7 @@ Backup/restore for the Postgres `audit_trail` table lives at
 | --- | --- |
 | **What** | the user-facing marketing site — hero ("Find the revenue..."), `/pricing` (CAD $499 / $1,499 / $2,999 tiers), `/what-zorva-finds` (8 finding cards), `/security` controls matrix, `/robots.txt` split rules, plus `/contact`, `/pilot`, `/how-it-works`. Authenticated workspace (`/portal/*`) runs the OnboardingWizard, billing dashboard, encounters/findings/audit workspace. |
 | **Source** | `apps/portal/` (Next.js 15 + React 19 + Prisma/SQLite-dev/Postgres-prod + Stripe + Resend) |
-| **Public target** | **`https://zorva.ashbi.ca`** — separate Traefik router, PostgreSQL, and Node 22-slim container, with no shared process tree with the API |
+| **Public target** | **`https://zorva.ashbi.ca`** — separate Traefik router, PostgreSQL, and digest-pinned Node 22.23.2-slim container, with no shared process tree with the API |
 | **Pipeline** | `./deploy-portal.sh` → rsync → write `/opt/projects/ai-billing-audit/portal.env` from host secrets → configure Traefik → start PostgreSQL → apply `portal-migrate` → start portal → verify health and trusted HTTPS |
 | **Status** | Production-ready repository topology; public deployment and provider configuration remain operator-verified gates. |
 
