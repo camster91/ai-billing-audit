@@ -1,13 +1,15 @@
 # Zorva — Logo System
 
-Status: spec, awaiting asset production.
-Owner: branding kit, P0 logo task (`t_5e07dc47`).
-Last updated: 2026-06-24.
+Status: candidate asset pack implemented; human brand approval, trademark review,
+and production publication remain gated.
+Owner: Cameron Ashley.
+Last updated: 2026-09-01.
 
 This document is the **single source of truth** for the Zorva logo system:
-wordmark, logomark, favicon, app icons, and usage rules. It is a spec — actual
-SVG/PNG rasterization is a follow-up build task, but everything described here
-should be produced byte-identical to the spec.
+wordmark, logomark, favicon, app icons, and usage rules. Deterministic source
+SVGs now live in `assets/brand/source/`; optimized delivery files and hashes are
+recorded in `docs/BRAND_ASSET_MANIFEST.json`. These are review candidates, not
+approved trademarks or authorization to publish.
 
 Zorva is a pre-submit medical-billing auditor. The logo must read as **calm,
 clinical, and trustworthy** — closer to a piece of healthcare software than a
@@ -203,14 +205,19 @@ do not introduce any colors outside that palette.
 
 Before marking this done:
 
-- [ ] Wordmark SVG exports at any size without rasterization artifacts.
-- [ ] Logomark SVG is identifiable in a browser tab favicon at default zoom.
-- [ ] Light + dark mode SVGs swap correctly when OS theme changes.
-- [ ] App icons cover all sizes listed above.
-- [ ] `apps/portal/src/app/layout.tsx` references `icon` and `apple-icon`
-      metadata pointing at the new assets.
-- [ ] No 404s in the portal's network panel for `/favicon.ico` or
-      `/app-icons/*`.
+- [x] Wordmark and lockup source SVGs export without rasterization artifacts;
+      the Inter text must be converted to approved outlines after visual sign-off.
+- [x] Candidate logomark remains identifiable at 16, 32, and 48 px.
+- [x] Light-field and dark-field SVG variants are versioned.
+- [x] Candidate app icons cover all sizes listed above.
+- [x] `apps/portal/src/app/layout.tsx` and metadata reference the mark, favicon,
+      manifest, and Apple touch icon.
+- [ ] Cameron approves the geometry, typography, and small-size appearance.
+- [ ] Trademark/name clearance and final ownership acceptance are recorded.
+- [ ] A production release is separately approved and verified.
+- [x] No 404s occur in the isolated production-candidate browser journey for
+      `/favicon.ico`, `/brand/*`, `/app-icons/*`, or metadata pointing at the
+      new assets.
 
 ---
 

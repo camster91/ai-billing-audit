@@ -43,7 +43,7 @@ REQUIRED_CAPS = (
     "@capacitor/preferences",
 )
 
-EXPECTED_DASHBOARD_URL = "https://ai-billing-audit.ashbi.ca/"
+EXPECTED_DASHBOARD_URL = "https://zorva.ashbi.ca/"
 
 
 # --- 1. scaffold files exist ------------------------------------------
@@ -137,8 +137,8 @@ def test_capacitor_config_web_dir_is_www() -> None:
 
 def test_capacitor_config_server_url_is_live_dashboard() -> None:
     """The WebView target must be the live dashboard URL. The
-    kanban card scopes the wrap to the Next.js marketing site at
-    https://ai-billing-audit.ashbi.ca/.
+    kanban card scopes the wrap to the Next.js portal at
+    https://zorva.ashbi.ca/.
     """
     data = json.loads(CAPACITOR_CONFIG.read_text(encoding="utf-8"))
     server = data.get("server", {}) or {}

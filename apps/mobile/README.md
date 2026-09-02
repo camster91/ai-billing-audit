@@ -11,7 +11,7 @@ pointing at the live dashboard, and the dependency manifest.
 ## What it does
 
 The Capacitor WebView loads the live Zorva dashboard at
-**https://ai-billing-audit.ashbi.ca/**, so any update shipped to
+**https://zorva.ashbi.ca/**, so any update shipped to
 the web dashboard is immediately visible in the wrapped app —
 no App Store / Play Store resubmission needed for a content
 change.
@@ -34,8 +34,9 @@ apps/mobile/
 │                         @capacitor/app, @capacitor/preferences)
 ├── capacitor.config.json — WebView target, plugin config
 └── www/
-    └── index.html      — local splash + JS redirect to the
-                          dashboard URL (fallback only)
+    ├── index.html      — local splash + JS redirect to the
+    │                     dashboard URL (fallback only)
+    └── zorva-mark.svg  — local accessible fallback mark
 ```
 
 The `ios/` and `android/` directories are **not** checked in —

@@ -9,7 +9,7 @@
     "open:android": "cap open android",
     "add:ios": "cap add ios",
     "add:android": "cap add android",
-    "build:web": "echo 'Web assets live at https://ai-billing-audit.ashbi.ca/ — no local web build step is required for the Capacitor wrap.'"
+    "build:web": "echo 'Web assets live at https://zorva.ashbi.ca/ — no local web build step is required for the Capacitor wrap.'"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.0",

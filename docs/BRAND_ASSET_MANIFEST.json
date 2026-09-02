@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate_pending_human_brand_approval",
+  "brandOwner": "Cameron Ashley",
+  "constructionSource": "assets/brand/source",
+  "generator": "scripts/build-brand-assets.sh",
+  "creatorRecord": "Original geometric construction produced within this repository; no stock artwork or third-party logo asset was used.",
+  "rightsBasis": "Candidate project artwork. Inter is referenced but not embedded in wordmark SVGs. Final ownership acceptance and trademark clearance have not been completed.",
+  "approvalGates": {
+    "humanBrandApproval": false,
+    "trademarkClearance": false,
+    "productionPublication": false
+  },
+  "accessibility": {
+    "standaloneMark": "Use the accessible name Zorva.",
+    "adjacentToBrandText": "Treat as decorative with empty alt text.",
+    "faviconsAndAppIcons": "The surrounding browser or operating system supplies the app name."
+  },
+  "consumers": [
+    "Next.js metadata and web manifest",
+    "Next.js public header",
+    "FastAPI browser and structured-data metadata",
+    "Capacitor mobile fallback splash"
+  ],
+  "assets": [
+    {
+      "path": "apps/mobile/www/zorva-mark.svg",
+      "bytes": 470,
+      "sha256": "3f55237744211ad5411795fb51ed0902d77b333d4854d1044ff46c7dc09b1fff"
+    },
+    {
+      "path": "apps/portal/public/app-icons/android-192.png",
+      "bytes": 2503,
+      "sha256": "5719918867225368603efaee31d0ed2c99eab6a3ef94168785ef90191db363a7"
+    },
+    {
+      "path": "apps/portal/public/app-icons/android-512.png",
+      "bytes": 7691,
+      "sha256": "04e8c79fbd14d366af0772bf9e26330611959f1dcfc37f68a5a2efc40fff8734"
+    },
+    {
+      "path": "apps/portal/public/app-icons/android-adaptive-background.png",
+      "bytes": 1352,
+      "sha256": "b2190a5cf95a87883aebbc5193c488839d273e37e142128fe856dd6bedde7573"
+    },
+    {
+      "path": "apps/portal/public/app-icons/android-adaptive-foreground.png",
+      "bytes": 6404,
+      "sha256": "c613c2f76d1f843b5b8049761d9d63a455ccec353024859ccee64d21c482aa78"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-1024.png",
+      "bytes": 16955,
+      "sha256": "f4c5681fba3d62cbf0618ce4fffa4e88b75f2c7aa65c9a31b437ebbdf156b8ff"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-120.png",
+      "bytes": 1638,
+      "sha256": "d762bdb7b69a777bc3ea1805f1cc968bf76ca384b2165b603c1fd6c866274a2d"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-152.png",
+      "bytes": 2047,
+      "sha256": "0b16f4b9472166e6910ec5c62b7dc47ceac548fd621e8672976d4bd5c798ce77"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-167.png",
+      "bytes": 2194,
+      "sha256": "ed2fdfc094efd2519502f2397c79a053784561a366f0d2212ce8227a70cb019a"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-180.png",
+      "bytes": 2364,
+      "sha256": "c4c82ed0950667445012635786457604654b7b2a2a762540ed5115a4ffbfe149"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-29.png",
+      "bytes": 505,
+      "sha256": "54703f65165e3ab39fc9704376115aa7165651fb00eab631323e69123ce7bf6e"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-40.png",
+      "bytes": 592,
+      "sha256": "ba5cd3fb9d53abd055b44c879a7f63524d24b52678ba4eda3acdf4fbe921d628"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-58.png",
+      "bytes": 878,
+      "sha256": "8ef48b2acaf72e95ed5a474fc261439fe5e74ac089eae651db7a77503a6040bf"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-60.png",
+      "bytes": 913,
+      "sha256": "a9b0a8deeeed88017e31bf1918f9fdaff8e8388dd816b30ca696760b2e86879b"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-80.png",
+      "bytes": 1127,
+      "sha256": "5a607f50b42f45be00aac4c45fe5a72089090c1c72ac33f1e91a947276460627"
+    },
+    {
+      "path": "apps/portal/public/app-icons/ios-87.png",
+      "bytes": 1273,
+      "sha256": "def7b55efa4954477921ae79c22acdb5ffbd3c3b9234b744f91e545d9e8812d7"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-1024.png",
+      "bytes": 16955,
+      "sha256": "f4c5681fba3d62cbf0618ce4fffa4e88b75f2c7aa65c9a31b437ebbdf156b8ff"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-128.png",
+      "bytes": 1783,
+      "sha256": "43b780261b70aac182c7266ef3d1e3947aac4247615dffd19fa32a20b830564c"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-16.png",
+      "bytes": 344,
+      "sha256": "98c9bf8910a4e5fabce489108fa75ba8d2d8e533942b85b5a0411aa32038a2a0"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-256.png",
+      "bytes": 3368,
+      "sha256": "b3396740692c2b1087dfa75103031b1d544c198bf04099c817b556e0467ec1f5"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-32.png",
+      "bytes": 541,
+      "sha256": "f9e8ccd491849b010fa07168f0cade908882e5c8a6a6798ae0706abe3420b540"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-512.png",
+      "bytes": 7691,
+      "sha256": "04e8c79fbd14d366af0772bf9e26330611959f1dcfc37f68a5a2efc40fff8734"
+    },
+    {
+      "path": "apps/portal/public/app-icons/macos-64.png",
+      "bytes": 951,
+      "sha256": "f4678b2721461f7a82c927826bff07d76e68390f4d5d3be33aa6aa755ea5fa6c"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-lockup-dark.svg",
+      "bytes": 695,
+      "sha256": "6f50d97decc7169dbea9e101c4047f314d63f296e264a9df3b619267afece8ce"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-lockup-light.svg",
+      "bytes": 695,
+      "sha256": "d348728865cc2612993fff840465bfc1be57fe4b04a7a3d6c3160beb3c0a22d5"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-mark-dark.svg",
+      "bytes": 470,
+      "sha256": "3f55237744211ad5411795fb51ed0902d77b333d4854d1044ff46c7dc09b1fff"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-mark.svg",
+      "bytes": 470,
+      "sha256": "e85f24cb171b630da79ea410136dbfa1e8b3dc2d4a8eafe5bb3ff9461e33e885"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-wordmark-dark.svg",
+      "bytes": 324,
+      "sha256": "0d87a13e90ac5fa9570d164ebe4832a8059d53c7cee8d894445670e6c5bacf77"
+    },
+    {
+      "path": "apps/portal/public/brand/zorva-wordmark-light.svg",
+      "bytes": 324,
+      "sha256": "5ee81dc89df92570583e56276758d4a119db213c4be865bb031612c211ce7be5"
+    },
+    {
+      "path": "apps/portal/public/favicon-16x16.png",
+      "bytes": 467,
+      "sha256": "5c30ec2608e76988cbda4495a0223ba24b6fff1bef5f92650632d1589981754f"
+    },
+    {
+      "path": "apps/portal/public/favicon-32x32.png",
+      "bytes": 662,
+      "sha256": "8c1e0aa8fd967db53853824f33be0accd1ce947710b0c24c4e4b17df489a243e"
+    },
+    {
+      "path": "apps/portal/public/favicon-48x48.png",
+      "bytes": 920,
+      "sha256": "6adfb7f808d7cde2beb15ec06630bdf31849fd0097052a69baf423049efc2940"
+    },
+    {
+      "path": "apps/portal/public/favicon.ico",
+      "bytes": 15086,
+      "sha256": "952db4c33b5de22f26911e39b7190435f6dac2ffc541f8e98d8402b1977a8b28"
+    },
+    {
+      "path": "apps/portal/public/icon-dark.svg",
+      "bytes": 470,
+      "sha256": "3f55237744211ad5411795fb51ed0902d77b333d4854d1044ff46c7dc09b1fff"
+    },
+    {
+      "path": "apps/portal/public/icon.svg",
+      "bytes": 470,
+      "sha256": "e85f24cb171b630da79ea410136dbfa1e8b3dc2d4a8eafe5bb3ff9461e33e885"
+    },
+    {
+      "path": "assets/brand/source/zorva-adaptive-background.svg",
+      "bytes": 140,
+      "sha256": "2f583ab29445aada7178824c325c5b5d8762b41965737ef16673e779c99431a8"
+    },
+    {
+      "path": "assets/brand/source/zorva-app-icon.svg",
+      "bytes": 334,
+      "sha256": "f154ce094896ca0ef592785c1cbc54bc2b8d1a604309cf6e52338e3b93fc2f76"
+    },
+    {
+      "path": "assets/brand/source/zorva-lockup-dark.svg",
+      "bytes": 695,
+      "sha256": "6f50d97decc7169dbea9e101c4047f314d63f296e264a9df3b619267afece8ce"
+    },
+    {
+      "path": "assets/brand/source/zorva-lockup-light.svg",
+      "bytes": 695,
+      "sha256": "d348728865cc2612993fff840465bfc1be57fe4b04a7a3d6c3160beb3c0a22d5"
+    },
+    {
+      "path": "assets/brand/source/zorva-mark-dark.svg",
+      "bytes": 470,
+      "sha256": "3f55237744211ad5411795fb51ed0902d77b333d4854d1044ff46c7dc09b1fff"
+    },
+    {
+      "path": "assets/brand/source/zorva-mark.svg",
+      "bytes": 470,
+      "sha256": "e85f24cb171b630da79ea410136dbfa1e8b3dc2d4a8eafe5bb3ff9461e33e885"
+    },
+    {
+      "path": "assets/brand/source/zorva-wordmark-dark.svg",
+      "bytes": 324,
+      "sha256": "0d87a13e90ac5fa9570d164ebe4832a8059d53c7cee8d894445670e6c5bacf77"
+    },
+    {
+      "path": "assets/brand/source/zorva-wordmark-light.svg",
+      "bytes": 324,
+      "sha256": "5ee81dc89df92570583e56276758d4a119db213c4be865bb031612c211ce7be5"
+    },
+    {
+      "path": "src/ai_billing_audit/static/apple-touch-icon.png",
+      "bytes": 2364,
+      "sha256": "c4c82ed0950667445012635786457604654b7b2a2a762540ed5115a4ffbfe149"
+    },
+    {
+      "path": "src/ai_billing_audit/static/favicon-32.png",
+      "bytes": 662,
+      "sha256": "8c1e0aa8fd967db53853824f33be0accd1ce947710b0c24c4e4b17df489a243e"
+    },
+    {
+      "path": "src/ai_billing_audit/static/favicon.ico",
+      "bytes": 15086,
+      "sha256": "952db4c33b5de22f26911e39b7190435f6dac2ffc541f8e98d8402b1977a8b28"
+    },
+    {
+      "path": "src/ai_billing_audit/static/favicon.svg",
+      "bytes": 470,
+      "sha256": "3f55237744211ad5411795fb51ed0902d77b333d4854d1044ff46c7dc09b1fff"
+    }
+  ]
+}

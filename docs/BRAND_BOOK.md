@@ -132,11 +132,12 @@ surface, and review/expiry date.
 
 ### Logo status
 
-The production portal currently renders a text “Zorva” brand in navigation. The
-Z-in-rounded-hex mark and full raster inventory in `docs/BRANDING_LOGO.md` are a
-specification awaiting verified asset production; the repository does not yet
-contain the promised Zorva favicon/app-icon set. Do not represent proposed logo
-assets as shipped or licensed deliverables.
+The repository now contains a deterministic candidate Z-in-rounded-hex mark,
+light/dark wordmarks and lockups, favicons, and the documented iOS, Android, and
+macOS raster inventory. Sources, hashes, consumers, accessibility treatment,
+and approval state are recorded in `docs/BRAND_ASSET_MANIFEST.json`. Human visual
+approval, trademark review, ownership acceptance, and production publication
+remain separate gates; do not describe these candidates as approved or shipped.
 
 When produced, the mark must retain title-case Zorva, a teal recognition hook,
 clear space, small-size legibility, monochrome viability, and documented source
@@ -175,9 +176,8 @@ performance review. Never render essential text below 12 px.
 
 ### Imagery and product evidence
 
-The homepage uses a code-drawn illustrative review panel. The current
-`origin/main` panel still contains fabricated fee-code and dollar examples;
-PR #101 removes them. The target contract requires a visible `Illustrative`
+The homepage uses a code-drawn illustrative review panel. Main now carries the
+claim-safe version from PR #101. The contract requires a visible `Illustrative`
 label and prohibits patient identity, fabricated fee code, dollar result,
 customer outcome, or an implication that the panel is live output.
 
@@ -232,7 +232,7 @@ Before approving a new asset, test it in these situations:
 | --- | --- |
 | Portal colour and font tokens | Implemented; rendered checks remain release-specific |
 | Text navigation wordmark | Implemented |
-| Z-in-hex logo, favicons, app icons | Proposed in `docs/BRANDING_LOGO.md`; promised files not found |
+| Z-in-hex logo, favicons, app icons | Candidate source and delivery pack implemented with manifest/tests; human approval, clearance, and publication remain gated |
 | Nine line illustrations | Proposed in `docs/BRANDING_IMAGERY.md`; directory not found |
 | Icon wrapper inventory | Specification exists; verify each implementation before use |
 | Pitch deck | Reconciled approval-gated specification only; no approved source deck/export |

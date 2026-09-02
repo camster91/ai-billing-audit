@@ -134,7 +134,7 @@ retention, revenue attribution, gross margin, and AI cost per active clinic.
 | P0 | Verify pricing-to-checkout-to-onboarding-to-first-audit journey | Implemented and verified in CI with test checkout and a contract-faithful mock audit engine; production-like provider qualification pending | PR #97; encrypted upload, idempotent encounter ingestion, real audit dispatch/import, rendered findings, and decision trail | Blocks paid pilot until exact artifact is approved/released and real-provider qualification passes |
 | P0 | Verify production contact delivery and assign a lead owner | Blocked on operator confirmation | Issue #74 | Blocks public acquisition |
 | P0 | Specify and build Zorva HQ platform-admin foundation | Foundation released; unauthenticated production boundary verified; authenticated production operation still approval-gated | Issue #89; `docs/COMPANY_ADMIN_SPEC.md`; HQ workflows and operator runbook | Blocks operating a pilot safely at company level until an approved operator journey is verified |
-| P0 | Reconcile brand promise, public claims, and approved offer | Brand promise, production rules, and core homepage reconciled locally; offer and visual-asset approval remain | `docs/PUBLIC_CLAIM_REGISTER.md`, `docs/BRAND_BOOK.md`, `docs/BRAND_NARRATIVE.md`, `docs/BRAND_SYSTEM_CONTRACT.json`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
+| P0 | Reconcile brand promise, public claims, and approved offer | Brand promise, production rules, core homepage, and deterministic candidate logo/icon pack implemented; offer, human visual approval, trademark review, illustration production, and publication remain | `docs/PUBLIC_CLAIM_REGISTER.md`, `docs/BRAND_BOOK.md`, `docs/BRAND_ASSET_MANIFEST.json`, `docs/BRAND_SYSTEM_CONTRACT.json`, `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` | Blocks promotion of deferred marketing routes |
 | P0 | Verify qualified-lead journey from source attribution through owner response | Canonical repeat capture, structured qualification, assignment, stage, next-action, and contact logging implemented locally; delivery and live journey unverified | Contact form, Lead activity workflow, notifications; issues #74 and #89 | Blocks measurable acquisition |
 | P1 | Make all public product and compliance claims evidence-backed | Indexable core claim register, homepage regression guard, and approval-gated launch kit implemented locally; deferred routes remain | Issues #14, #22, #77; `docs/PUBLIC_CLAIM_REGISTER.md`; `docs/launch-kit/CLAIM_MANIFEST.json` | Blocks broad public launch |
 | P1 | Promote the smallest complete marketing website journey | Core routes released; broader site gated | Homepage, how-it-works, contact, deferred route register | Blocks broad public marketing |
@@ -169,7 +169,7 @@ Older sequences in `research/00-ROADMAP.md` and
 | Billing | Code present, live state unverified | Requires test-mode journey, approved pricing, then production approval | Cameron |
 | Legal/privacy | Draft artifacts only | HIA/privacy representations require accountable professional review | Cameron / counsel |
 | Analytics and customers | No current evidence found | Cannot claim activation, retention, ROI, or product-market fit | Product owner |
-| Brand and claims | Alberta-first strategy and cross-surface production contract reconciled locally | Produce missing assets, complete claim/offer approvals, and validate recognition with real buyers before broader use | Product / brand owner |
+| Brand and claims | Alberta-first strategy, cross-surface contract, and candidate logo/favicon/app-icon pack implemented and isolated-build verified | Cameron must approve the visual candidate; trademark/ownership review, nine illustrations, claim/offer approvals, publication, and real-buyer recognition testing remain | Product / brand owner |
 | Company administration | Platform foundation, leads, client work, support, marketing governance, campaign attribution, and evidence-conscious reporting locally verified | Retention-policy approval/export, inbound routing, advanced workflows, and production-like security/accessibility/recovery remain | Cameron / Engineering |
 | Marketing operations | Core site released, broader routes gated | Lead delivery, ownership, attribution, consent, and content governance need live proof | Cameron / Marketing |
 
@@ -392,6 +392,19 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ### 2026-09-01
 
+- Produced a deterministic candidate Zorva identity pack from repository source:
+  light/dark mark, wordmarks and lockups; 16/32/48 favicons and ICO; complete
+  iOS, Android/adaptive, and macOS raster sizes; mobile and legacy API variants.
+  A 47-file SHA-256 manifest records generator, consumers, accessibility
+  treatment, original-construction basis, and unapproved trademark/publication
+  state. Human visual approval remains required.
+- Integrated the candidate across Next.js metadata, web manifest, accessible
+  header, Capacitor fallback/portal target, and FastAPI browser/structured-data
+  surfaces. The isolated production build generated 39 routes; every asset URL
+  returned 200; public Axe scans reported zero violations across nine routes;
+  320, 390, and 1440 px browser checks showed no overflow, failed response, or
+  console error. The candidate was not published and live traffic was unchanged.
+
 - Implemented the first evidence-backed customer activation path in PR #97:
   encrypted staged 837P upload -> authenticated parser preview -> tenant-scoped,
   retry-idempotent claim and encounter persistence -> audit dispatch -> imported
@@ -411,11 +424,11 @@ Baselines are unknown unless explicitly backed by current evidence.
 
 ## Next action
 
-Complete the explicitly approved merge and deploy using an immutable final-main
-artifact, then run migration, backup, rollback, public-route, and authenticated
-synthetic customer-journey checks. GitHub Actions execution remains account-blocked,
-so preserve the local and earlier hosted evidence plus the exact override record.
-Production-like qualification against the configured real audit provider remains
-a separate gate. Do not publish or send launch-kit assets, grant production
-platform roles, change customer-visible pricing, contact clinics, or access real
-clinic data without explicit approval.
+Review the Node-runtime and candidate brand-asset pull requests. The brand pack
+requires Cameron visual approval and a separate exact-artifact merge/publication
+decision; trademark clearance remains unproven. Continue the unblocked nine-
+illustration production backlog and authenticated synthetic customer/HQ journey
+preparation. Production-like qualification against the configured real audit
+provider remains separate. Do not publish or send launch-kit assets, grant
+production platform roles, change customer-visible pricing, contact clinics, or
+access real clinic data without explicit approval.
