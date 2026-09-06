@@ -44,6 +44,8 @@ import { FindingCard } from "./_components/finding-card";
 import { DeepAuditPanel } from "./_components/deep-audit-panel";
 import { AuditRunControl } from "./_components/audit-run-control";
 import { hasCapability } from "@/lib/roles";
+import { PortalNav } from "../../portal-nav";
+import shell from "../../shell.module.css";
 import styles from "./_components/split-review.module.css";
 
 interface PageProps {
@@ -127,7 +129,12 @@ export default async function EncounterDetailPage({ params }: PageProps) {
     : encounter.claim.cptCodesJson;
 
   return (
-    <div className={styles.splitScreen}>
+    <main id="main" className={shell.shell}>
+      <PortalNav current="/encounters" tenant={tenant} />
+      <h1 className={shell.srOnly}>
+        Encounter {encounter.id}
+      </h1>
+      <div className={styles.splitScreen}>
       {/* ---- Left pane: clinical note + claim --------------------- */}
       <section
         className={`${styles.pane} ${styles.paneNote}`}
@@ -158,7 +165,7 @@ export default async function EncounterDetailPage({ params }: PageProps) {
           </dl>
         </header>
 
-        <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted, #94a3b8)" }}>
+        <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--zorva-ink-2, #b6bfd6)" }}>
           Clinical narrative
         </h3>
         <ClinicalNote html={noteHtml} evidenceToCard={evidenceToCard} />
@@ -237,6 +244,7 @@ export default async function EncounterDetailPage({ params }: PageProps) {
           fastapiOrigin={FASTAPI_ORIGIN}
         />
       </section>
-    </div>
+      </div>
+    </main>
   );
 }

@@ -165,7 +165,7 @@ export function FtueWalkthrough({ enabled = true }: FtueWalkthroughProps) {
             <Link
               href={current.href}
               className={styles.linkCta}
-              onClick={isLast ? complete : undefined}
+              onClick={complete}
             >
               {current.cta}
             </Link>

@@ -7,6 +7,14 @@
   pointer-events: none;
 }
 
+@media (max-width: 720px) {
+  .viewport {
+    /* Keep toasts clear of sticky mobile chrome and action bars. */
+    top: max(72px, env(safe-area-inset-top));
+    bottom: auto;
+  }
+}
+
 .list {
   list-style: none;
   margin: 0;

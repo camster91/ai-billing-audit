@@ -8,6 +8,7 @@
 import { useState, useTransition } from "react";
 import { toUserFacingError } from "@/lib/ui-error";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyStateCTA } from "@/components/EmptyStateCTA";
 import { InlineBanner } from "@/components/InlineBanner";
 import { useToastOptional } from "@/components/Toast";
 import styles from "../shell.module.css";
@@ -259,7 +260,7 @@ export function TeamClient({
   return (
     <>
       {canManage && (
-        <section className={styles.card}>
+        <section className={styles.card} id="invite-teammate">
           <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Invite a teammate</h2>
           <form
             onSubmit={handleInvite}
@@ -318,10 +319,21 @@ export function TeamClient({
       {info ? <InlineBanner tone="success">{info}</InlineBanner> : null}
 
       {memberships.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>No members yet</h2>
-          <p>Invite a teammate to get started.</p>
-        </section>
+        <EmptyStateCTA
+          testId="team-empty-members-cta"
+          title="No members yet"
+          description={
+            canManage
+              ? "Use the invite form above to add your first teammate."
+              : "Ask a clinic owner to invite you to this team."
+          }
+          primaryAction={{ label: "Back to dashboard", href: "/dashboard" }}
+          secondaryAction={
+            canManage
+              ? { label: "How roles work", href: "/how-it-works" }
+              : undefined
+          }
+        />
       ) : (
         <>
           {active.length > 0 && renderTable("Active members", active)}

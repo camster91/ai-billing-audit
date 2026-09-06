@@ -22,8 +22,12 @@
   width: 100%;
   font-size: 15px;
   line-height: 1.45;
-  color: var(--fg, #e2e8f0);
-  background: var(--bg, #0f172a);
+  color: var(--zorva-ink, #e7ecf6);
+  background: var(--zorva-panel, #131a2e);
+  border: 1px solid var(--zorva-line, #28324f);
+  border-radius: var(--zorva-radius-xl, 18px);
+  overflow: hidden;
+  color-scheme: dark;
 }
 
 .split-screen *,
@@ -37,15 +41,16 @@
   min-width: 0;
   padding: 1.5rem 1.75rem;
   overflow-y: auto;
-  max-height: calc(100vh - 7rem);
+  max-height: calc(100vh - 10rem);
 }
 
 .paneNote {
-  border-right: 1px solid #475569;
+  border-right: 1px solid var(--zorva-line, #28324f);
+  background: var(--zorva-panel, #131a2e);
 }
 
 .paneFindings {
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--zorva-bg, #0b1020);
 }
 
 .paneHeader {
@@ -63,14 +68,14 @@
 
 .paneCount {
   margin: 0;
-  color: var(--muted, #94a3b8);
+  color: var(--zorva-ink-2, #b6bfd6);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .emptyState {
-  color: var(--muted, #94a3b8);
+  color: var(--zorva-ink-2, #b6bfd6);
   font-style: italic;
   padding: 1.5rem 0;
 }

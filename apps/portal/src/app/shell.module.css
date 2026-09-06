@@ -792,34 +792,49 @@
 }
 
 .filterSelect {
-  background: #0b1020;
-  border: 1px solid #28324f;
+  background: var(--zorva-bg, #0b1020);
+  border: 1px solid var(--zorva-line, #28324f);
   border-radius: 8px;
-  color: #e7ecf6;
+  color: var(--zorva-ink, #e7ecf6);
   font-size: 14px;
   font-family: inherit;
-  padding: 8px 10px;
-  min-height: 38px;
+  padding: 10px 12px;
+  min-height: 44px;
 }
 
 .filterSelect:focus {
   outline: none;
-  border-color: #2dd4bf;
+  border-color: var(--zorva-green, #34d399);
+}
+
+.filterSelect:focus-visible {
+  outline: var(--zorva-focus-ring, 2px solid #60a5fa);
+  outline-offset: var(--zorva-focus-ring-offset, 2px);
 }
 
 .exportLink {
   margin-left: auto;
-  color: #2dd4bf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  color: var(--zorva-green, #34d399);
   font-size: 13px;
   text-decoration: none;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #28324f;
-  background: #0b1020;
+  border: 1px solid var(--zorva-line, #28324f);
+  background: var(--zorva-bg, #0b1020);
 }
 
 .exportLink:hover {
-  background: rgba(45, 212, 191, 0.08);
+  background: var(--zorva-green-soft, rgba(52, 211, 153, 0.12));
+}
+
+.exportLink:focus-visible {
+  outline: var(--zorva-focus-ring, 2px solid #60a5fa);
+  outline-offset: var(--zorva-focus-ring-offset, 2px);
 }
 
 .bulkBar {
@@ -828,16 +843,19 @@
   gap: 12px;
   margin-bottom: 16px;
   padding: 12px 16px;
-  background: rgba(45, 212, 191, 0.06);
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: var(--zorva-green-soft, rgba(52, 211, 153, 0.12));
+  border: 1px solid rgba(52, 211, 153, 0.3);
   border-radius: 12px;
   font-size: 14px;
+  flex-wrap: wrap;
 }
 
 .bulkBar button {
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
+  min-height: 44px;
+  min-width: 44px;
   padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -845,8 +863,8 @@
 }
 
 .bulkAccept {
-  background: #2dd4bf;
-  color: #042f2e;
+  background: var(--zorva-green, #34d399);
+  color: var(--zorva-ink-inverse, #0b1020);
 }
 
 .bulkAccept:hover { background: #5eead4; }
@@ -854,7 +872,7 @@
 
 .bulkDismiss {
   background: transparent;
-  color: #e7ecf6;
+  color: var(--zorva-ink, #e7ecf6);
   border-color: #f87171;
 }
 
@@ -863,22 +881,24 @@
 
 .bulkClear {
   background: transparent;
-  color: #9aa3bd;
-  border-color: #28324f;
+  color: var(--zorva-ink-2, #b6bfd6);
+  border-color: var(--zorva-line, #28324f);
   margin-left: auto;
 }
 
-.bulkClear:hover { color: #e7ecf6; }
+.bulkClear:hover { color: var(--zorva-ink, #e7ecf6); }
 
 .selectCell {
-  width: 32px;
+  width: 44px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: #2dd4bf;
+  width: 20px;
+  height: 20px;
+  margin: 12px;
+  accent-color: var(--zorva-green, #34d399);
   cursor: pointer;
 }
 
@@ -893,7 +913,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: var(--zorva-z-modal, 60);
   padding: 16px;
 }
 
@@ -929,22 +949,27 @@
 
 .modalCancel {
   background: transparent;
-  color: #9aa3bd;
-  border: 1px solid #28324f;
+  color: var(--zorva-ink-2, #b6bfd6);
+  border: 1px solid var(--zorva-line, #28324f);
   border-radius: 8px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 8px 14px;
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
 }
 
-.modalCancel:hover { color: #e7ecf6; }
+.modalCancel:hover { color: var(--zorva-ink, #e7ecf6); }
 
 .modalConfirm {
-  background: #2dd4bf;
-  color: #042f2e;
+  background: var(--zorva-green, #34d399);
+  color: var(--zorva-ink-inverse, #0b1020);
   border: 0;
   border-radius: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 14px;
   padding: 8px 14px;
   font-size: 14px;
   font-weight: 600;
