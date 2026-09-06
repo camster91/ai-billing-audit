@@ -1,0 +1,118 @@
+.viewport {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: var(--zorva-z-toast, 80);
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zorva-space-2, 8px);
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--zorva-space-3, 12px);
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--zorva-radius-lg, 12px);
+  border: 1px solid var(--zorva-line, #28324f);
+  background: var(--zorva-panel, #131a2e);
+  color: var(--zorva-ink, #e7ecf6);
+  box-shadow: var(--zorva-shadow-md);
+  animation: toastIn var(--zorva-duration-base, 240ms) var(--zorva-easing-emphasized, ease);
+}
+
+.success {
+  border-color: rgba(110, 231, 183, 0.35);
+  background: linear-gradient(180deg, rgba(110, 231, 183, 0.12), var(--zorva-panel, #131a2e));
+}
+
+.error {
+  border-color: var(--zorva-error-border, rgba(252, 165, 165, 0.35));
+  background: linear-gradient(180deg, var(--zorva-error-bg, rgba(252, 165, 165, 0.1)), var(--zorva-panel, #131a2e));
+}
+
+.info {
+  border-color: rgba(147, 197, 253, 0.35);
+  background: linear-gradient(180deg, var(--zorva-info-bg, rgba(147, 197, 253, 0.1)), var(--zorva-panel, #131a2e));
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--zorva-text-sm, 13.5px);
+  font-weight: 600;
+  line-height: var(--zorva-leading-snug, 1.3);
+}
+
+.description {
+  margin: 4px 0 0;
+  font-size: var(--zorva-text-xs, 12px);
+  color: var(--zorva-ink-2, #b6bfd6);
+  line-height: var(--zorva-leading-base, 1.55);
+}
+
+.close {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px -8px 0;
+  border: 0;
+  border-radius: var(--zorva-radius-md, 8px);
+  background: transparent;
+  color: var(--zorva-ink-2, #b6bfd6);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--zorva-ink, #e7ecf6);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.close:focus-visible {
+  outline: var(--zorva-focus-ring, 2px solid #60a5fa);
+  outline-offset: var(--zorva-focus-ring-offset, 2px);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

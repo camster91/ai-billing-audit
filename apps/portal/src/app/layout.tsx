@@ -9,6 +9,7 @@ import {
 } from "next/font/google";
 import { MobileMenu } from "@/components/MobileMenu";
 import AnalyticsBoot from "@/components/AnalyticsBoot";
+import { Providers } from "@/components/Providers";
 import { publicMarketingMetadata } from "@/lib/public-marketing-metadata";
 import "./globals.css";
 
@@ -159,7 +160,7 @@ export default function RootLayout({
           </div>
         </header>
         <AnalyticsBoot />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -1,0 +1,33 @@
+.banner {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: var(--zorva-radius-md, 8px);
+  border: 1px solid var(--zorva-line, #28324f);
+  font-size: var(--zorva-text-sm, 13.5px);
+  line-height: var(--zorva-leading-base, 1.55);
+  color: var(--zorva-ink, #e7ecf6);
+}
+
+.error {
+  color: var(--zorva-error, #fca5a5);
+  background: var(--zorva-error-bg, rgba(252, 165, 165, 0.1));
+  border-color: var(--zorva-error-border, rgba(252, 165, 165, 0.35));
+}
+
+.success {
+  color: var(--zorva-success, #6ee7b7);
+  background: var(--zorva-success-bg, rgba(110, 231, 183, 0.1));
+  border-color: rgba(110, 231, 183, 0.35);
+}
+
+.info {
+  color: var(--zorva-info, #93c5fd);
+  background: var(--zorva-info-bg, rgba(147, 197, 253, 0.1));
+  border-color: rgba(147, 197, 253, 0.35);
+}
+
+.warning {
+  color: var(--zorva-warning, #fbbf24);
+  background: var(--zorva-warning-bg, rgba(251, 191, 36, 0.1));
+  border-color: rgba(251, 191, 36, 0.35);
+}

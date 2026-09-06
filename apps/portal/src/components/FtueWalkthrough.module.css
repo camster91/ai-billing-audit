@@ -1,0 +1,205 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--zorva-z-modal, 60);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 8, 18, 0.78);
+  backdrop-filter: blur(6px);
+  animation: fadeIn var(--zorva-duration-fast, 160ms) var(--zorva-easing-standard, ease);
+}
+
+.dialog {
+  width: min(480px, 100%);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(45, 212, 191, 0.12), transparent 55%),
+    var(--zorva-panel, #131a2e);
+  border: 1px solid var(--zorva-line, #28324f);
+  border-radius: var(--zorva-radius-xl, 18px);
+  padding: 28px;
+  box-shadow: var(--zorva-shadow-lg);
+  color: var(--zorva-ink, #e7ecf6);
+  animation: riseIn var(--zorva-duration-base, 240ms) var(--zorva-easing-emphasized, ease);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--zorva-text-xs, 12px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--zorva-ink-2, #b6bfd6);
+  font-family: var(--zorva-font-mono, ui-monospace), monospace;
+}
+
+.skip {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--zorva-radius-md, 8px);
+  background: transparent;
+  color: var(--zorva-ink-2, #b6bfd6);
+  font-size: var(--zorva-text-sm, 13.5px);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.skip:hover {
+  color: var(--zorva-ink, #e7ecf6);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dots {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.dot,
+.dotActive {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.dot::after,
+.dotActive::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: var(--zorva-line, #28324f);
+}
+
+.dotActive::after {
+  width: 22px;
+  background: var(--zorva-green, #34d399);
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 3vw, 30px);
+  letter-spacing: -0.4px;
+  line-height: var(--zorva-leading-tight, 1.06);
+}
+
+.body {
+  margin: 0 0 28px;
+  color: var(--zorva-ink-2, #b6bfd6);
+  font-size: var(--zorva-text-base, 16px);
+  line-height: var(--zorva-leading-relaxed, 1.6);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.primary,
+.secondary,
+.linkCta {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: var(--zorva-radius-md, 8px);
+  font-size: var(--zorva-text-sm, 13.5px);
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--zorva-green, #34d399);
+  color: var(--zorva-ink-inverse, #0b1020);
+  border: 1px solid var(--zorva-green, #34d399);
+}
+
+.primary:hover {
+  filter: brightness(1.05);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--zorva-ink, #e7ecf6);
+  border: 1px solid var(--zorva-line, #28324f);
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.linkCta {
+  background: transparent;
+  color: var(--zorva-green, #34d399);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.linkCta:hover {
+  background: var(--zorva-green-soft, rgba(52, 211, 153, 0.12));
+}
+
+.skip:focus-visible,
+.dot:focus-visible,
+.dotActive:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+.linkCta:focus-visible {
+  outline: var(--zorva-focus-ring, 2px solid #60a5fa);
+  outline-offset: var(--zorva-focus-ring-offset, 2px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog {
+    animation: none;
+  }
+}
