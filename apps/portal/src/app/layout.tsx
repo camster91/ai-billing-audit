@@ -10,6 +10,7 @@ import {
 import { MobileMenu } from "@/components/MobileMenu";
 import AnalyticsBoot from "@/components/AnalyticsBoot";
 import { Providers } from "@/components/Providers";
+import { MarketingHeader } from "@/components/MarketingHeader";
 import { publicMarketingMetadata } from "@/lib/public-marketing-metadata";
 import "./globals.css";
 
@@ -136,29 +137,7 @@ export default function RootLayout({
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <header className="site-header">
-          <div className="site-header-inner">
-            <Link href="/" className="site-brand" aria-label="Zorva — home">
-              <Image
-                src="/brand/zorva-mark-dark.svg"
-                width={24}
-                height={24}
-                alt=""
-                aria-hidden="true"
-                priority
-              />
-              <span>Zorva</span>
-            </Link>
-            <nav aria-label="Primary" className="site-nav site-nav-desktop">
-              {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className="site-nav-link">
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
-            <MobileMenu links={NAV} />
-          </div>
-        </header>
+        <MarketingHeader links={NAV} />
         <AnalyticsBoot />
         <Providers>{children}</Providers>
       </body>
