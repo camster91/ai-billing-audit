@@ -14,6 +14,125 @@ hashes are abbreviated to 7 characters, matching `git log --oneline`.
 
 ---
 
+## [Unreleased]
+
+Work merged after the 0.5.0 tag (2026-06-24) through `24f969e`
+(2026-09-01). Grouped by area, each bullet carrying the abbreviated commit
+hash of the change, per this file's convention.
+
+The package version is still `0.4.0` in `pyproject.toml` and the deployed
+image is tagged `0.4.0`, so this section is deliberately `[Unreleased]`
+rather than a guessed version number. Reconciling the package source of
+truth, the image tag, and this changelog is open — `SECURITY.md` flags it
+and issue #16 covers the related licensing question.
+
+### Features
+
+- **Zorva HQ operator application**: database-backed platform roles
+  separate from tenant membership, deny-by-default server authorization,
+  operator audit events, Today and lead surfaces, and an explicit
+  grant/revoke CLI that refuses unconfirmed production changes.
+  (`554cdb3`, `3a4707d`)
+- **Lead-to-client lifecycle in HQ**: canonical repeat lead capture keyed
+  by normalized email, structured qualification with commercial rationale,
+  guarded stage transitions, dated next actions, optimistic version checks,
+  UUID idempotency, append-only activity, and immutable platform audit
+  events. (`05cbe81`, `d72a768`, `a6c1bee`)
+- **Client engagement and company task layer**: no-PHI engagements
+  convertible only from a `pilot_signed` lead, four default onboarding
+  tasks, versioned and audited task mutation, and controlled milestone
+  editing for privacy approval, first value, and client health. (`56f08d8`)
+- **Internal support case workflow**: scoped capabilities, engagement
+  linkage, status-derived acknowledgement and resolution timestamps,
+  versioned mutation, and no external sending. (`c618984`)
+- **Governed marketing claims and content**: exact claims recording
+  evidence, permission, allowed surfaces, owner approval, review/expiry,
+  and replacement linkage; claim-bearing content cannot be approved against
+  an unapproved or expired claim. (`2bd6a53`, `ed70d25`)
+- **Campaign attribution and company reporting**: campaign/source planning
+  with append-only attribution snapshots, and a least-privilege read-only
+  company report that renders missing revenue and cost sources as
+  unavailable rather than zero. (`dee753f`, `e11af03`)
+- **Authenticated customer activation path**: encrypted staged 837P upload →
+  authenticated parser preview → tenant-scoped retry-idempotent persistence →
+  audit dispatch → imported findings → findings inbox → accept/dismiss
+  decision trail. (`2dd334c`, `f53f417`, `d4d89db`, `7fb2aa6`, `76e0ef4`)
+- **Zorva brand system and asset pack**: brand book, narrative, verbal
+  identity, machine-readable cross-surface contract, and a deterministic
+  candidate identity pack (mark, wordmarks, favicons, iOS/Android/macOS
+  rasters) with a SHA-256 manifest recording unapproved trademark state.
+  (`ffcfbf6`, `8f85c6d`, `24f969e`)
+- **Evidence-safe controlled launch kit** and lead-qualification workflow.
+  (`99b8d1a`, `d72a768`)
+- **Portal design-token foundation** and fail-closed accessibility and
+  performance gates. (`4c08e5d`, `a50c4af`)
+- **Magic-link authentication lifecycle** completed for the portal.
+  (`5a7a883`)
+- **Webhook signing-key rotation** with bounded overlap and a migration
+  path. (`3614750`)
+- **Readiness probing**: portal-specific `/readyz` and a
+  dependency-aware readiness endpoint for the API. (`f2dea7f`, `260d2a4`,
+  `7d87eed`)
+- **Privacy-conscious launch attribution and funnel reporting**.
+  (`0b86b63`)
+- **v13 auditor prompt drafted** with targeted worked-example additions
+  (`cf7d858`). Not yet measured against a live provider and not wired up;
+  v12 remains the default.
+- **Marketing homepage redesign** on the warm editorial system, then
+  reconciled against approved claims. (`da0a99e`, `ffcfbf6`)
+
+### Security and fixes
+
+- Recursive sanitization of audit job results and logs, removing residual
+  raw exception leakage. (`5e18569`)
+- Webhook signature verification contract added. (`3cf573f`)
+- Production pepper moved behind a startup guard and file-backed input.
+  (`54611dd`)
+- Production dependency advisories patched in the portal. (`2e7dd7f`)
+- Unsafe social metadata fallback removed from public marketing surfaces.
+  (`ddbc540`, `373d78b`, `e8ca5b9`)
+- Unsupported public claims removed and indexing policy centralized.
+  (`ff61cd9`, `f1e0252`, `e2bf41e`, `f68d84b`)
+- Public lead submissions rate-limited and the recipient workflow bounded.
+  (`dcd7e27`, `fe47bbf`, `303d6d0`)
+- Production authentication host and forwarded-host handling corrected
+  behind Traefik. (`08dbcbe`, `692ba3c`)
+- Release version metadata aligned across API surfaces. (`b9d9a44`)
+- Portal Docker builds made database-independent. (`5c54c3e`)
+
+### Documentation
+
+- `docs/MASTER_PLAN.md` established as the authoritative product control
+  document, with the roadmap re-baselined and every commitment classified.
+  (`554cdb3`)
+- `docs/COMPANY_ADMIN_SPEC.md`, `docs/MARKETING_PLAN.md`, and
+  `docs/HQ_OPERATOR_RUNBOOK.md` added for the operator system.
+- `docs/BRAND_BOOK.md`, `docs/BRAND_SYSTEM_CONTRACT.json`,
+  `docs/PUBLIC_CLAIM_REGISTER.md`, and
+  `docs/MARKETING_PUBLIC_LAUNCH_GATES.md` added for brand and claim
+  governance.
+- Operator and security docs marked historical, with the version mismatch
+  flagged rather than silently patched. (`c1653f9`)
+- Ops documentation for incident response and daily verification.
+  (`9e409e9`)
+
+### Build and CI
+
+- Reproducible release gates and PR verification restored, including the
+  `test-on-pr` and `e2e` workflows. (`554cdb3`, `3ba6a56`, `5d5368c`)
+
+### Known gaps at this revision
+
+- **GitHub Actions stopped executing after 2026-09-02.** Every run on
+  `main` and on PRs fails in 3–6 seconds with zero steps executed — jobs
+  are refused before the first step. Treat the CI gate as inactive until
+  that is resolved, and treat any "CI passed" claim about a later commit as
+  unverified.
+- **`main` has no branch protection.**
+- The five critical and high findings from the 2026-09-20 code review are
+  addressed on `gate/critical-high-fixes` (PR #119) and were not on the
+  `0.5.0`-era tree.
+
 ## [0.5.0] — 2026-06-24
 
 The **"pilot-ready" release**: every Kanban task in the

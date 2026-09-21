@@ -1,1 +1,12 @@
+# Binary assets: never attempt a text diff, never normalise line endings.
+# 139 tracked PNGs (~26 MB) plus the demo recording dominated the repo
+# footprint without this, and git would otherwise try to diff them.
+*.png binary -diff
+*.jpg binary -diff
+*.jpeg binary -diff
+*.ico binary -diff
+*.webm binary -diff
+*.mp4 binary -diff
+*.pdf binary -diff
+*.zip binary -diff
 output/pdf/*.pdf binary

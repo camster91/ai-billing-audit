@@ -7,11 +7,23 @@ name = "ai-billing-audit"
 version = "0.4.0"
 description = "Pre-bill medical-claim auditor — flags dx-code, modifier, and global-window issues before submission."
 readme = "README.md"
-license = { text = "MIT" }
+# Proprietary, matching README.md ("Proprietary — all rights reserved").
+# This previously said "MIT" while the README said proprietary — the SPDX
+# field is what packaging tooling and registries read, so the two must agree.
+# A LICENSE file with the full terms is still open (issue #16).
+license = { text = "Proprietary" }
 authors = [
     { name = "Cameron Ashley" },
 ]
 keywords = ["llm", "billing", "audit", "medical-claims", "dspy"]
+# Canonical baseline is Python 3.11 (pinned in .python-version and the only
+# version .github/workflows/test-on-pr.yml runs); the runtime image is
+# 3.12-slim. The floor is set to 3.10 rather than 3.11 because the full suite
+# has been verified passing on 3.10 — blocking it would be gratuitous. Raising
+# the floor to 3.11 is a policy choice, not a technical one, so it is left to
+# the maintainer. Previously this field was absent entirely, so packaging
+# enforced no floor at all.
+requires-python = ">=3.10"
 # Pinned to dated versions — see docs/SEC_REVIEW_deps.md (kanban t_c7d352a7)
 # Audit run: 2026-06-17 (CVE-2025-69872 diskcache open, no fix available)
 dependencies = [
@@ -43,6 +55,15 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# auditor.py loads the auditor prompt via importlib.resources. Declared
+# explicitly so it stays in the wheel deterministically: setuptools already
+# includes in-package data files by default (verified — a wheel built without
+# this section still contained auditor_prompt.txt), so this is belt-and-braces
+# against a future include-package-data = false rather than a fix for a
+# current break.
+[tool.setuptools.package-data]
+ai_billing_audit = ["auditor_prompt.txt"]
 
 [project.scripts]
 zorva-admin = "ai_billing_audit.admin_cli:main"

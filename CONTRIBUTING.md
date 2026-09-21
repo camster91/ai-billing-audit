@@ -90,7 +90,7 @@ project rules in those files are not optional.
 
 ### Prerequisites
 
-- **Python 3.10+** (the project tests against 3.10, 3.11, 3.12)
+- **Python 3.11** is the canonical baseline — pinned in `.python-version` and the only version `.github/workflows/test-on-pr.yml` runs; there is no version matrix. The package floor is `>=3.10` and the runtime image is `python:3.12-slim`. Earlier revisions of this file claimed the project tested 3.10/3.11/3.12; CI has only ever run 3.11.
 - **Node 20.x or 22.x** (for `apps/portal`)
 - **pnpm 9.x** (the portal uses pnpm — npm may work for a
   one-off install but the lockfile is pnpm-only)
