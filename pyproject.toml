@@ -68,6 +68,38 @@ ai_billing_audit = ["auditor_prompt.txt"]
 [project.scripts]
 zorva-admin = "ai_billing_audit.admin_cli:main"
 
+[tool.ruff]
+# CI runs `ruff check .` and `ruff format --check .` as blocking steps, but
+# there was no [tool.ruff] section at all, so both ran on ruff's defaults and
+# nothing about the enforced style was reviewable. This makes the effective
+# settings explicit without changing them.
+line-length = 88
+# Matches requires-python above. Raising this to py311 changes which
+# version-gated rules fire, so it is a deliberate change, not a tidy-up.
+target-version = "py310"
+# `select` is intentionally omitted: ruff's default is E4/E7/E9/F, and
+# declaring a different set here would silently change what CI enforces.
+# Adding rules is a deliberate change to make alongside a green CI run.
+
+[tool.mypy]
+# CI runs `mypy src/ai_billing_audit`; `files` lets a contributor run a bare
+# `mypy` and get exactly what CI checks, instead of a different scope.
+files = ["src/ai_billing_audit"]
+# The three settings below were verified clean against the current tree, so
+# they tighten the check without failing it. Left off deliberately:
+#   * warn_unused_ignores — 8 of the 31 `# type: ignore` comments are now
+#     unnecessary (analytics.py:203, feedback.py:863, per_clinic_f1.py:1026,
+#     per_clinic_f1.py:1114, newsletter.py:43, contact.py:215, api.py:2420,
+#     api.py:4755). Several are circular-import guards whose necessity
+#     depends on how mypy resolves the deferred `from .api import ...`, so
+#     removing them should be done in a change that also runs CI.
+#   * warn_return_any — 14 errors today. Real work, not a config toggle.
+#   * disallow_untyped_defs / strict — not attempted; this package has a lot
+#     of untyped surface and strictness should be adopted incrementally.
+warn_redundant_casts = true
+strict_equality = true
+no_implicit_optional = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
