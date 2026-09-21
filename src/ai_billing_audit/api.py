@@ -830,10 +830,10 @@ def compute_revenue_opportunities(
     Each returned dict carries the original finding fields plus:
         - ``rule_name``           human-readable rule label
         - ``estimated_dollar``    SOMB-derived uplift estimate (float)
-        - ``somh_fee``            fee from SOMB_FEE_SCHEDULE, or None
-        - ``somh_code``           which SOMB code we priced, or None
-        - ``somh_descriptor``     short descriptor for the priced code, or None
-        - ``somh_confidence``     "high" / "medium" / "low" — confidence of
+        - ``somb_fee``            fee from SOMB_FEE_SCHEDULE, or None
+        - ``somb_code``           which SOMB code we priced, or None
+        - ``somb_descriptor``     short descriptor for the priced code, or None
+        - ``somb_confidence``     "high" / "medium" / "low" — confidence of
                                   the priced value (always None when the
                                   hardcoded fallback was used)
         - ``estimated_source``    "somb_schedule" or "rule_default" — which
