@@ -182,6 +182,6 @@ If all four checks pass, you're done. The pilot clinic onboarding script (`scrip
 - **Data processing agreement:** `docs/legal/HIA-DPA-TEMPLATE.md` — HIA-compliant DPA, signable by a privacy officer.
 - **Webhook events:** `docs/api/WEBHOOK-EVENTS.md` — every event the API emits, payload shapes, sample curl to subscribe.
 - **Specialty landing pages:** `/for/family-medicine` — what the auditor finds on Alberta FP claims, with the missed-revenue math per 1,000 claims.
-- **Pilot program overview:** `/pilot` — what the 60-day no-cost pilot actually covers, week by week.
+- **Pilot program overview:** `/pilot` — what the 60-day pilot actually covers, week by week, and what it costs.
 
 When you're ready to roll into the paid engagement, the ops handoff is in `docs/DEPLOYMENT.md`.

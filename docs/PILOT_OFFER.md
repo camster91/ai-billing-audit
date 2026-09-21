@@ -8,12 +8,12 @@ One flat fee, no contract beyond the pilot itself, and you can walk away at the
 end — at which point we delete everything you shared with us. This page is
 what we'd hand to your billing lead.
 
-**Decision recorded 2026-09-20.** Earlier drafts of this page described the
-pilot as free of charge, and the pricing page and other sales documents
-described it inconsistently (60 days free, or 30 days free, or free then
-$499/mo). The offer is now a paid pilot: a clinic that pays for a pilot has
-told us something real, and a clinic that accepts a free one has not. If you
-are reading a document that still promises a free pilot, it is out of date.
+**Decision recorded 2026-09-20.** Earlier drafts of this page quoted no
+pilot fee at all, and the pricing page and other sales documents each
+described different terms (60 days with no fee, 30 days with no fee, or no
+fee followed by a monthly charge). The offer is now a paid pilot: a clinic
+that pays has told us something real, and a clinic that pays nothing has
+not. Any document that still describes an unpaid pilot is out of date.
 
 ---
 

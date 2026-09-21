@@ -117,7 +117,7 @@ encounter — recovered $38 in modifier-25 alone."
    human signs off."
 4. **0:50–0:60** — "Flat monthly fee. No percentage of revenue.
    HIPAA-aligned, HIA-aligned, with data residency confirmed in
-   the BAA. Book a 60-day free pilot at zorva.health/demo."
+   the BAA. Book a 60-day pilot at zorva.ashbi.ca/contact."
 
 The script is on a 4×6 index card taped to the back of the
 monitor. Booth staff rehearses it twice before opening.
@@ -132,7 +132,7 @@ on the counter:
 
 ```
    ┌────────────────────────────────────────────┐
-   │  Yes, I'd like a 60-day free pilot.        │
+   │  Yes, I'd like the 60-day pilot.          │
    │                                            │
    │  Name:    _________________________________│
    │  Clinic:  _________________________________│

@@ -125,7 +125,7 @@ Each party will protect the other's Confidential Information with at least the s
 
 ## 13. Limitation of Liability & Indemnity
 
-- **Liability cap:** Each party's aggregate liability under this Agreement is limited to the fees paid by the Clinic to Ashbi in the twelve (12) months preceding the claim (or, during the free Pilot, **CAD $1,000**).
+- **Liability cap:** Each party's aggregate liability under this Agreement is limited to the fees paid by the Clinic to Ashbi in the twelve (12) months preceding the claim (or, during the Pilot, the **CAD $1,500** Pilot Fee paid).
 - **No consequential damages:** Neither party is liable for indirect, incidental, or consequential damages.
 - **Indemnity:** Ashbi will indemnify the Clinic against third-party claims arising from Ashbi's breach of §§5, 6, or 10.
 - **Mutual cooperation:** Both parties will cooperate on OIPC inquiries, audits, and patient access requests.
@@ -150,7 +150,7 @@ These are placeholder terms only and **must be reviewed by counsel** before sign
 
 ## 15. Pricing
 
-- **Pilot (60 days):** Free of charge. No fees, no automatic conversion to paid.
+- **Pilot (60 days):** CAD $1,500, one time, invoiced at the start of the Pilot. Credited against the first month of a Subscription if the Customer elects to continue. No per-claim charges, no setup fee, and no automatic conversion to paid.
 - **Post-pilot subscription (if elected):** Per Ashbi's published tiers at the Effective Date:
   - **Starter:** CAD $499 / month
   - **Growth:** CAD $1,499 / month

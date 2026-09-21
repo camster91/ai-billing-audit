@@ -163,7 +163,8 @@ CFOs because it maps to their existing SaaS line item.
 >
 > Honest current state as of 2026-07-01:
 >
-> - **0 clinics in pilot** — the first 60-day no-cost pilot is
+> - **0 clinics in pilot** — the first 60-day paid pilot (CAD $1,500,
+>   credited against the first month if the clinic continues) is
 >   scoped (privacy-officer brief at `docs/PRIVACY_OFFICER_BRIEF.md`,
 >   cold-outreach queue ready) but has not yet started.
 > - **v12 auditor benchmark**: F1=0.690 micro on the cleaned

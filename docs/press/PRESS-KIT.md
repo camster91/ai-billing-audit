@@ -27,8 +27,10 @@ EXAMPLE 6/7 leakage correction that made the v12 number
 defensible. Per-rule precision and recall are available on
 request and in the published run outputs.
 
-Zorva's commercial model is a 100-claim no-cost pilot followed by
-per-claim pricing tied to the volume the auditor catches. We do
+Zorva's commercial model is a CAD $1,500 60-day pilot, credited against
+the first month if the clinic continues, followed by tiered monthly
+pricing from $499/month (no per-claim charges). A free 100-claim sample
+report is available before any pilot. We do
 not sell claim data, we do not train models on customer data, and
 the pilot deliverable is owned by the clinic — we delete it on one
 email at the end of the engagement.
@@ -110,8 +112,10 @@ defensible against the cited source.
 > per-rule precision and recall are published in the company's
 > technical disclosure.
 >
-> Zorva's commercial model is a no-cost 100-claim pilot followed
-> by per-claim pricing. Pilot customers retain ownership of every
+> Zorva's commercial model is a CAD $1,500 60-day pilot (credited
+> against the first month if the clinic continues), followed by tiered
+> monthly pricing from $499/month. A free 100-claim sample report is
+> available before any pilot. Pilot customers retain ownership of every
 > claim, every finding, and every audit-log entry; the company
 > deletes the entire engagement on one email at the pilot's end.
 >
