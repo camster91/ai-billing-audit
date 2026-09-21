@@ -16,7 +16,7 @@
 > AHCIP revenue on the table — not because the physicians are bad
 > billers, but because AHCIP denies claims for preventable reasons
 > that a pre-submit auditor catches in under a second. We'd like to
-> prove that on **your real claims**, at no cost, for 60 days."
+> prove that on **your real claims**, over a 60-day pilot."
 
 ---
 
@@ -88,11 +88,11 @@ That's the number a single clinic CFO can sign off on.
 
 ---
 
-## The ask: 60-day no-cost pilot
+## The ask: 60-day pilot
 
 | Term | Detail |
 |---|---|
-| **Cost to Strathcona PCN** | **$0.** No fees, no procurement form, no automatic conversion. |
+| **Cost to Strathcona PCN** | **CAD $1,500, one time.** Credited against your first month if you continue. No procurement form, no automatic conversion. |
 | **Duration** | 60 calendar days (vs. industry-standard 30, because PCN member onboarding takes time). |
 | **Data scope** | A representative sample of 1,000–5,000 AHCIP claims from across the network. We accept a CSV or 837P extract from your existing billing system. |
 | **Privacy** | Canadian data residency (`ca-central-1`), no training on Strathcona data, hash-chained audit trail, **60-day hard delete at pilot end** with a written deletion certificate. Full HIA-compliant DPA template is ready (2 pages, privacy-officer signable). |

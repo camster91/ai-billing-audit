@@ -1,4 +1,4 @@
-Subject: Free 60-day pilot — pre-submit audit for AHCIP claims
+Subject: 60-day pilot — pre-submit audit for AHCIP claims
 
 Hi [First Name],
 
@@ -7,15 +7,18 @@ Alberta clinics. We run every claim through an LLM auditor before it
 goes to AHCIP, flag the ones that would come back denied or under-paid,
 and let your biller accept or dismiss each finding on screen.
 
-We just finished a 60-day no-cost pilot at an Ontario family-medicine
-clinic. The pitch is simple: send us your last 100 AHCIP claims
+The pitch is simple: send us your last 100 AHCIP claims
 (837P / CSV / paste-form) plus the clinical note, we run the auditor,
-and at the end of the month we sit down and walk through every
-finding. No fee, no contract, no software to install.
+and at the end of the pilot we sit down and walk through every finding.
+No software to install. Start with a free 100-claim sample report, or go
+straight to the 60-day pilot — CAD $1,500 one-time, credited against
+your first month if you continue, with no automatic conversion.
 
-What we caught in the Ontario pilot: about 77 of every 100 real
-billing errors before they went to the payer, at about 6 of every 10
-flags being real. The rest of the misses are the cases where the
+On our published v12 AHCIP benchmark — 10 encounters, 13 audited gold
+findings, a repository benchmark rather than a customer result — the
+auditor caught about 77 of every 100 real billing errors before they
+reached the payer, with about 6 of every 10 flags being real. The rest
+of the misses are the cases where the
 clinical note doesn't mention the right modifier or the right
 place-of-service — exactly the kind of thing a biller's pre-submit
 check is supposed to catch but rarely does in practice.

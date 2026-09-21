@@ -179,7 +179,7 @@ and will not provide Clinic Data to anyone other than the Clinic.
 
 Each party's aggregate liability under this DPA is limited to the
 fees paid by the Clinic to Ashbi in the 12 months preceding the claim
-(or, during the free pilot, **CAD $1,000**). Neither party is liable
+(or, during the pilot, the **CAD $1,500** pilot fee paid). Neither party is liable
 for indirect, incidental, or consequential damages. This clause does
 not limit liability for breach of confidentiality, gross negligence,
 or wilful misconduct.

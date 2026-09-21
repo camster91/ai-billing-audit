@@ -1,4 +1,4 @@
-Subject: Free 30-day pilot — pre-submit claims audit for [Clinic]
+Subject: 60-day pilot — pre-submit AHCIP audit for [Clinic]
 
 Hi [First Name],
 
@@ -7,10 +7,12 @@ We run every claim through an auditor before it goes to the payer, flag the
 ones that would otherwise come back underpaid or denied, and let your biller
 accept or dismiss each finding.
 
-We've been working with Ontario primary-care clinics on a 30-day no-cost
-pilot. The pitch is simple: send us your last 100 claims (837P, CSV, or
-FHIR), we run the auditor, and at the end of the month we sit down and
-walk through every finding. No fee, no contract.
+We work with Alberta primary-care clinics. The easiest way to start is a
+free 100-claim sample report: send us your last 100 claims (837P, CSV, or
+FHIR), de-identified if you prefer, and we send back a one-page
+finding-by-finding report. If that's useful, the 60-day pilot is CAD
+$1,500 one-time, credited against your first month if you continue. No
+software to install.
 
 Three things we'd want to know on a 10-minute call:
   1. What does your current pre-submit review look like — manual, software,

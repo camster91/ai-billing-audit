@@ -8,7 +8,7 @@ A pre-submit claims audit for clinics. We run your claims through an auditor bef
 - Catches missed charges, missing modifiers, and coding errors that drive underpayments.
 - Dashboard review with accept or dismiss per finding. You stay in control of what gets changed.
 - Flat monthly fee. No per-claim charges, no surprise bills at the end of the month.
-- 60-day no-cost pilot. No commitment, no contract. You can walk away at the end.
+- 60-day pilot: **CAD $1,500 one-time**, credited against your first month if you continue. No contract beyond the pilot, no automatic conversion, and you can walk away at the end.
 
 **Book a 15-minute walkthrough** to see the auditor run on your own claim mix.
 
@@ -24,4 +24,4 @@ Three flat monthly tiers, billed monthly in CAD. No per-claim charges, no surpri
 | Growth    | **$1,499**        | 1,000 – 3,000  | Multi-physician clinic or small group    |
 | Scale     | **$2,999**        | 3,000+         | Billing firm or hospital outpatient dept |
 
-Volume above 3,000 audits / month is custom-quoted. Annual contracts get two months free. The 60-day pilot remains free of charge regardless of tier.
+Volume above 3,000 audits / month is custom-quoted. Annual contracts get two months free. The 60-day pilot fee is CAD $1,500 regardless of tier, credited against the first month if you continue.

@@ -46,12 +46,15 @@ Open the chosen template (`templates/email/alberta_pcn_v1.txt` or
 
 ## Step 4 — sanity-check before send (2 minutes)
 
-- Subject line is the trigger event, not a self-promo: "Free 60-day pilot
-  — pre-submit audit for AHCIP claims" for a clinic, or "60-day no-cost
-  pilot — pre-submit AHCIP audit for [PCN] member clinics" for a PCN.
-- First paragraph is the audit finding (pre-submit, 60-day no-cost, AHCIP
-  recall ≈ 77 of 100), not "I'm Cameron" — the audit-first opener is the
-  rule.
+- Subject line is the trigger event, not a self-promo: "60-day pilot —
+  pre-submit AHCIP audit for [Clinic]" for a clinic, or "60-day pilot —
+  pre-submit AHCIP audit for [PCN] member clinics" for a PCN.
+- First paragraph is the audit finding (pre-submit, AHCIP, published v12
+  benchmark ≈ 77 of 100 recall), not "I'm Cameron" — the audit-first
+  opener is the rule.
+- The pilot is paid: CAD $1,500 one-time, credited against the first month
+  if they continue. Do not describe it as free or no-cost. The free
+  100-claim sample report is a separate first-touch offer.
 - One line of credentials: "Founder, Zorva · cameron@ashbi.ca" only.
 - Signature line is contact info + the privacy brief URL so the privacy
   officer can self-serve.

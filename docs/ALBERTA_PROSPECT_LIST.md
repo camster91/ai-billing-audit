@@ -124,7 +124,7 @@ catalogue against the SOMB. Live product at https://ai-billing-audit.ashbi.ca if
 you want to poke at it.
 
 What we're looking for: one anchor Alberta PCN or multi-clinic group willing to
-run a 30-day free pilot — no contract, no fee, we delete everything at the end.
+run a 60-day pilot — CAD $1,500 one-time, credited against your first month if you continue, and we delete everything at the end. (A free 100-claim sample report is available first, if that is an easier starting point.)
 In exchange we'd ask for a 10-minute call with whoever owns billing at the PCN,
 plus a sample batch of ~100 anonymized AHCIP claims so we can show what the
 auditor catches on your real mix.
@@ -138,7 +138,7 @@ Zorva / ai-billing-audit
 
 ### 4b. Email template (independent clinic billing lead)
 
-**Subject line:** Free 30-day AHCIP claim-audit pilot — [Clinic name]
+**Subject line:** 60-day AHCIP claim-audit pilot — [Clinic name]
 
 ```
 Hi [First name / "Office Manager"],
@@ -174,14 +174,14 @@ Zorva — https://ai-billing-audit.ashbi.ca
 Hi [First name] — I'm working with a small Toronto team that's built a
 pre-submit AHCIP claim auditor (SOMB-tuned, Canadian data centre with
 region confirmed in the BAA, PIPEDA-aligned). We're looking for one
-Alberta PCN or multi-clinic group willing to run a free 30-day pilot. Is this something [PCN name] would have interest in, or is there
+Alberta PCN or multi-clinic group willing to run a 60-day pilot (CAD $1,500 one-time, credited against your first month if you continue). Is this something [PCN name] would have interest in, or is there
 someone on your team better placed to look at it? Happy to send a one-pager.
 ```
 
 **Tone notes (do not deviate):**
 - Short. 200 words max.
 - No "99% accuracy" claims. No "AI will replace your billing staff" framing.
-- Concrete ask (10-min call) and concrete offer (free 30-day pilot).
+- Concrete ask (10-min call) and concrete offer (60-day paid pilot; a free 100-claim sample report is the softer first step).
 - Single follow-up if no response in 7 business days, then stop. No sequences.
 
 ### 4d. Model Improvement — the 90-day personalization pivot

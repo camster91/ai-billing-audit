@@ -12,7 +12,7 @@ Three patterns I see on real Alberta claims that almost certainly show up across
 
 I'm Cameron Ashley. I built Zorva — a pre-submit auditor for AHCIP claims. It reads every claim against the SOMB before it goes to H-Link, flags the ones that would come back denied or undercoded, and your biller accepts or dismisses each finding. Nothing ships to AHCIP until a human signs off.
 
-I know the MAPS-to-Central-Corridor-RPHCN consolidation is in motion — that's why the timing of this email matters. The pilot is 60 days, no-cost, and the data is deleted on one email at the end. We can start after the RPHCN is up if that's the cleaner timeline.
+I know the MAPS-to-Central-Corridor-RPHCN consolidation is in motion — that's why the timing of this email matters. The 100-claim report is free; the 60-day pilot itself is CAD $1,500 one-time (credited against your first month if you continue), and the data is deleted on one email at the end. We can start after the RPHCN is up if that's the cleaner timeline.
 
 The v12 auditor scores F1=0.690 on the cleaned AHCIP validation set (10 encounters, 13 audited gold findings, P=0.647, R=0.846). The findings are real SOMB codes, not US CPT. Validation set lives at `data/synth/val_ca.json`; shadow-run report at `runs/shadow/val_ca-20260630T193918.md`. Both public.
 

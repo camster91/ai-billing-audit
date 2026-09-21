@@ -1,4 +1,4 @@
-// /pilot — 60-day no-cost pilot program page.
+// /pilot — 60-day pilot program page (paid: CAD $1,500 one-time).
 //
 // Audience: clinic administrators and billing leads evaluating Zorva
 // for a paid rollout. The page lays out, in two clearly labeled
@@ -12,7 +12,9 @@
 //
 // P11 reality-check fix (2026-06-30): the previous version of this page
 // claimed a "30/60/90 day pilot" but the program is actually a 60-day
-// no-cost pilot (the df9bf0f reality-check commit established this).
+// pilot (the df9bf0f reality-check commit established the duration). Note
+// the fee was decided later, on 2026-09-20 (#76/#108): it is now paid, not
+// no-cost, so every "no-cost" string on this page was updated then.
 // The 90-day framing was leftover marketing copy from before the
 // pilot was scoped down. Other inconsistencies fixed:
 //   - Removed the "daily digest email" promise — Zorva surfaces
@@ -28,9 +30,9 @@ import Link from "next/link";
 import styles from "./pilot.module.css";
 
 export const metadata: Metadata = {
-  title: "Pilot program — 60-day no-cost rollout for Alberta clinics",
+  title: "Pilot program — 60-day AHCIP audit pilot for Alberta clinics",
   description:
-    "The Zorva 60-day no-cost pilot for Alberta clinics: import historical claims, baseline missed revenue, then roll into full coverage. Human-reviewed throughout, no revenue share.",
+    "The Zorva 60-day pilot for Alberta clinics: import historical claims, baseline missed revenue, then roll into full coverage. CAD $1,500 one-time, credited against the first month if you continue. Human-reviewed throughout, no revenue share.",
 };
 
 type Phase = {
@@ -95,11 +97,12 @@ export default function PilotPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <span className={styles.eyebrow}>Pilot program</span>
-        <h1>60-day no-cost pilot</h1>
+        <h1>60-day pilot</h1>
         <p>
           A two-month pilot with a written baseline on day 30, a weekly
           review during the second month, and a measured ROI on day 60.
-          No-cost, no-commitment, no auto-conversion to a paid tier.
+          CAD $1,500 one-time, credited against your first month if you
+          continue, and no auto-conversion to a paid tier.
           Here is what we expect from you and what you can expect from
           us.
         </p>
@@ -146,7 +149,7 @@ export default function PilotPage() {
         <section className={styles.ctaSection} aria-labelledby="pilot-cta">
           <h2 id="pilot-cta">Ready to start the 60-day pilot?</h2>
           <p className={styles.ctaSub}>
-            Flat monthly pricing during the pilot. No percentage of revenue,
+            One flat pilot fee. No percentage of revenue,
             no per-claim fees. If you walk away at day 60, we delete your
             data within 30 days and send you a deletion certificate.
           </p>

@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   title:
     "Zorva for Family Medicine — AHCIP claim audit built for Alberta FPs",
   description:
-    "The 11 AHCIP / SOMB v12 rules that fire most often on Alberta family-medicine claims, the missed-revenue calculation for an average FP practice ($14,800 per 1,000 claims), an anonymized worked example, and a CTA to book a 60-day no-cost pilot.",
+    "The 11 AHCIP / SOMB v12 rules that fire most often on Alberta family-medicine claims, the missed-revenue calculation for an average FP practice ($14,800 per 1,000 claims), an anonymized worked example, and a CTA to start a 60-day pilot.",
   keywords: [
     "AHCIP billing audit",
     "family medicine billing Alberta",
@@ -248,7 +248,7 @@ export default function FamilyMedicinePage() {
         </p>
         <div className={styles.ctaRow}>
           <Link href="/pilot" className={styles.ctaPrimary}>
-            Book a 60-day no-cost pilot
+            Start a 60-day pilot
           </Link>
           <Link href="/case-studies" className={styles.ctaSecondary}>
             See the full case-study gallery
@@ -444,7 +444,7 @@ export default function FamilyMedicinePage() {
             <li>Privacy-officer-friendly DPA template (HIA + PIPEDA)</li>
           </ul>
           <Link href="/pilot" className={styles.ctaPrimary}>
-            Book a 60-day no-cost pilot →
+            Start a 60-day pilot →
           </Link>
           <p className={styles.muted}>
             Prefer to read the pilot agreement first? The{" "}

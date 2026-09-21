@@ -1,4 +1,4 @@
-Subject: 60-day no-cost pilot — pre-submit AHCIP audit for [PCN] member clinics
+Subject: 60-day pilot — pre-submit AHCIP audit for [PCN] member clinics
 
 Hi [First Name],
 
@@ -8,16 +8,18 @@ claim through an LLM auditor before it goes to AHCIP, flag the ones
 that would come back denied or under-paid, and let the biller accept
 or dismiss each finding on screen.
 
-What we'd want to do for [PCN]: a 60-day no-cost pilot covering
-[a subset / all member] clinics, the same shape as the run we just
-finished at an Ontario family-medicine clinic. The biller at each
-member clinic gets a private dashboard, we run the auditor in the
-background, and at the end of the 60 days we walk through every
-finding with your central-office billing lead.
+What we'd want to do for [PCN]: a 60-day pilot covering [a subset /
+all member] clinics. The biller at each member clinic gets a private
+dashboard, we run the auditor in the background, and at the end of the
+60 days we walk through every finding with your central-office billing
+lead. It's CAD $1,500 one-time, credited against your first month if you
+continue, and there's no automatic conversion.
 
-What we caught in the Ontario pilot: about 77 of every 100 real
-billing errors before they went to the payer, at about 6 of every 10
-flags being real. The rest of the misses are the cases where the
+On our published v12 AHCIP benchmark — 10 encounters, 13 audited gold
+findings, a repository benchmark rather than a customer result — the
+auditor caught about 77 of every 100 real billing errors before they
+reached the payer, with about 6 of every 10 flags being real. The rest
+of the misses are the cases where the
 clinical note doesn't mention the right modifier or place-of-service
 — exactly the kind of thing a PCN's central pre-submit review is
 supposed to catch but rarely has bandwidth for.
