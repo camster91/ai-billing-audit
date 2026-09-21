@@ -305,13 +305,15 @@ def test_viewer_blocked_from_bulk_flag(client):
 
 
 def test_audit_row_records_user_id_and_role_when_admin_writes(tmp_path: Path):
-    """Manually call audit_actions.append() with user_id + user_role
-    and verify the row carries both fields. We do NOT call
-    ``verify_chain`` because audit_actions.verify_chain is a thin wrapper
-    around ``src/audit_log.verify_chain`` which uses a different field
-    separator (``|`` vs concat); it doesn't verify rows written by
-    ``audit_actions.append`` (the consolidation is tracked as a
-    follow-up). What we verify here is the additive row shape."""
+    """Manually call audit_actions.append() with user_id + user_role,
+    verify the row carries both fields, and verify the chain.
+
+    This test previously declined to call ``verify_chain`` because the
+    writer and the verifier disagreed on how ``data_elements`` renders,
+    so verification reported rows written by ``append`` as tampered
+    (issue #113). The note attributed it to a field separator, which was
+    not the cause. Both now share one implementation, so the chain is
+    asserted directly."""
     audit_log = Path(_TMP_AUDIT_LOG)
     try:
         # Genesis row (no user_id) — writes with default chain
@@ -339,23 +341,27 @@ def test_audit_row_records_user_id_and_role_when_admin_writes(tmp_path: Path):
         # First row (no user) doesn't carry the fields
         assert "user_id" not in rows[0]
         assert "user_role" not in rows[0]
-        # Both rows carry a cryptographic_signature (the chain
-        # is locally consistent; cross-verification with audit_log.py
-        # is intentionally not checked here).
+        # Both rows carry a cryptographic_signature.
         assert "cryptographic_signature" in rows[0]
         assert "cryptographic_signature" in last
+        # And the chain they form actually verifies (issue #113).
+        # ``user_id`` / ``user_role`` are deliberately outside the chain
+        # field set, so adding them must not break verification.
+        assert audit_actions.verify_chain(rows) is None
     finally:
         if audit_log.exists():
             audit_log.unlink()
 
 
 def test_old_audit_rows_without_user_id_still_verify(tmp_path: Path):
-    """Pre-existing audit rows (without user_id + user_role) continue
-    to write successfully after the schema extension. We can't call
-    verify_chain (different chain shape than audit_actions writes), so
-    we assert the round-trip: read back what we wrote, all rows have
-    cryptographic_signature, and the user fields are only on the
-    post-feature row."""
+    """Pre-existing audit rows (without user_id + user_role) continue to
+    write successfully after the schema extension, and still verify.
+
+    Asserts the round-trip plus chain verification, which is now possible
+    because the writer and verifier share one implementation (issue
+    #113). The additive ``user_id`` / ``user_role`` fields must not affect
+    the chain, which is what makes the backward-compatibility guarantee
+    real rather than assumed."""
     audit_log = Path(_TMP_AUDIT_LOG)
     try:
         # Clean up any pre-existing rows from an earlier test run
@@ -396,6 +402,137 @@ def test_old_audit_rows_without_user_id_still_verify(tmp_path: Path):
         assert last["user_id"] == "u-admin-1"
         assert last["user_role"] == "admin"
         assert "cryptographic_signature" in last
+        # Rows written before and after the RBAC field extension chain
+        # together and verify cleanly.
+        assert audit_actions.verify_chain(rows) is None
     finally:
         if audit_log.exists():
             audit_log.unlink()
+
+
+# --------------------------------------------------------------------
+# Per-route authorization on state-changing and admin endpoints
+# (issue #117)
+# --------------------------------------------------------------------
+#
+# The bearer middleware is one org-wide gate; these routes additionally need
+# a per-user role check. Each was verified to be missing one. FastAPI resolves
+# dependencies before invoking the handler, so a role rejection surfaces as
+# 403 even when the handler would have returned 404 (feature flag off) or 410
+# (expired token).
+
+
+_ADMIN_ONLY = [
+    ("GET", "/api/admin/teaching-signal-queue", {}),
+    ("POST", "/api/admin/feedback-loop/run", {}),
+    ("PUT", "/api/clinic/default/prompt-version", {"prompt_version_id": "v12"}),
+    ("POST", "/api/clinic/default/owner-email", {}),
+    (
+        "POST",
+        "/api/integrations/slack",
+        {
+            "webhook_url": "https://hooks.slack.com/services/T/B/X",
+            "channel": "#x",
+            "events": [],
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(("method", "path", "body"), _ADMIN_ONLY)
+def test_non_admin_roles_blocked_from_admin_routes(client, method, path, body):
+    """Viewer and biller must both get 403 on admin-only routes."""
+    for role in ("viewer", "biller"):
+        r = client.request(method, path, json=body, headers=_hdr(f"u-{role}", role))
+        assert r.status_code == 403, (method, path, role, r.status_code, r.text[:200])
+
+
+@pytest.mark.parametrize(("method", "path", "body"), _ADMIN_ONLY)
+def test_admin_routes_reject_an_unverified_principal(monkeypatch, method, path, body):
+    """In production mode, a bearer holder with no verified identity gets 401.
+
+    This is the case that matters: in dev (``AUDIT_ALLOW_NO_AUTH=1``) a
+    header-less request is synthesised as ``dev_user``/``admin`` — see
+    ``test_healthz_works_for_all_roles_when_dev_mode`` — so the assertion
+    only means something once that fallback is off. Follows the pattern of
+    ``test_production_bearer_holder_cannot_promote_self_to_admin``.
+    """
+    monkeypatch.setenv("AUDIT_BEARER_TOKEN", "production-test-token")
+    monkeypatch.delenv("AUDIT_ALLOW_NO_AUTH", raising=False)
+    monkeypatch.delenv("AUDIT_ALLOW_HEADER_RBAC", raising=False)
+    production_client = TestClient(api.create_app())
+
+    r = production_client.request(
+        method,
+        path,
+        json=body,
+        headers={
+            "Authorization": "Bearer production-test-token",
+            "X-User-Id": "attacker",
+            "X-User-Role": "admin",
+        },
+    )
+    assert r.status_code == 401, (method, path, r.status_code, r.text[:200])
+
+
+def test_viewer_blocked_from_undo_token(client):
+    """Undo reverts a prior decision, so it is a write action."""
+    r = client.post(
+        "/api/undo-token",
+        json={"action": "accept", "encounter_id": "e-1", "finding_id": "f-1"},
+        headers=_hdr("u-viewer", "viewer"),
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("POST", "/encounter/e-1/appeal"),
+        ("POST", "/encounter/e-1/appeal/ap-1/outcome"),
+    ],
+)
+def test_appeal_routes_require_a_biller_or_admin(client, method, path):
+    """A viewer must be rejected; these previously had no role dependency.
+
+    A biller is only asserted *not* to be rejected for role reasons — the
+    handler may still fail for other reasons (unknown encounter), which is
+    fine for this test's purpose.
+    """
+    viewer = client.request(method, path, json={}, headers=_hdr("u-viewer", "viewer"))
+    assert viewer.status_code == 403, (method, path, viewer.status_code)
+
+    biller = client.request(method, path, json={}, headers=_hdr("u-biller", "biller"))
+    assert biller.status_code != 403, (method, path, biller.status_code)
+
+
+def test_activity_feed_requires_a_principal_but_allows_viewers(client):
+    """/api/activity/recent exposes the audit trail.
+
+    It must not be reachable anonymously, but viewers legitimately read the
+    activity feed, so the gate is "authenticated principal", not
+    "biller-or-admin".
+    """
+    viewer = client.get("/api/activity/recent", headers=_hdr("u-viewer", "viewer"))
+    assert viewer.status_code == 200, viewer.text[:200]
+
+
+def test_activity_feed_rejects_an_unverified_principal(monkeypatch):
+    """No verified identity means no audit-trail read.
+
+    Asserted in production mode only, because dev mode synthesises an admin
+    principal for header-less requests.
+    """
+    monkeypatch.setenv("AUDIT_BEARER_TOKEN", "production-test-token")
+    monkeypatch.delenv("AUDIT_ALLOW_NO_AUTH", raising=False)
+    monkeypatch.delenv("AUDIT_ALLOW_HEADER_RBAC", raising=False)
+    production_client = TestClient(api.create_app())
+
+    r = production_client.get(
+        "/api/activity/recent",
+        headers={
+            "Authorization": "Bearer production-test-token",
+            "X-User-Role": "admin",
+        },
+    )
+    assert r.status_code == 401, (r.status_code, r.text[:200])

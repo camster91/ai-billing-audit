@@ -119,11 +119,34 @@ def test_feedback_store_last_signature_is_cached(monkeypatch, tmp_path):
     _FEEDBACK_LAST_SIG_CACHE.clear()  # force cold read for first sig
 
     sig1 = store._last_signature()
-    # Cache populated after first read.
-    cache_key = (str(log), log.stat().st_mtime)
+    # Cache populated after first read. The key is (path, mtime_ns, size):
+    # mtime alone does not reliably advance when a line is appended, and a
+    # stale key returned the previous row's signature, chaining the next row
+    # to the wrong predecessor and forking the log so ``verify_chain()``
+    # rejected a log the store had just written.
+    st = log.stat()
+    cache_key = (str(log), st.st_mtime_ns, st.st_size)
     assert cache_key in _FEEDBACK_LAST_SIG_CACHE
     assert _FEEDBACK_LAST_SIG_CACHE[cache_key] == sig1
 
     # Second read hits the cache — same value, no file walk.
     sig2 = store._last_signature()
     assert sig2 == sig1
+    assert _FEEDBACK_LAST_SIG_CACHE[cache_key] == sig1
+
+    # Appending must advance the key and invalidate the cached signature.
+    # This is the assertion the fork bug needed: without it, a cached key
+    # that survives a write silently serves a stale predecessor.
+    store.append(
+        FeedbackEntry(
+            action="dismiss",
+            encounter_id="enc-1",
+            finding_id="f-2",
+            severity="info",
+            rule_id="rule_x",
+            category="evaluation",
+        )
+    )
+    sig3 = store._last_signature()
+    assert sig3 != sig1
+    assert store.verify_chain() is True

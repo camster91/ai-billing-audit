@@ -150,3 +150,100 @@ def test_validate_handles_non_string_quote():
     }
     with pytest.raises(AuditValidationError):
         validate_findings(payload, clinical_note=NOTE)
+
+
+# ---------------------------------------------------------------------------
+# Findings with no evidence at all must not be easier to get past the
+# guardrail than findings with unverifiable evidence (issue #115).
+# ---------------------------------------------------------------------------
+
+
+def test_finding_with_no_quote_and_no_explanation_is_rejected():
+    """The bypass this fixes.
+
+    The guard was ``if clinical_note and quote and not _quote_in_note(...)``,
+    so an empty ``quote`` short-circuited the check and the finding was
+    accepted with ``quote=''``. A finding supplying a *fabricated* quote was
+    rejected while one supplying *nothing* sailed through — which inverted
+    the incentive and left the guardrail trivially bypassable.
+    """
+    payload = {
+        "findings": [
+            {
+                "category": "modifier",
+                "suggested_code": "03.04A",
+                "severity": "high",
+                "rule_ids": ["MOD-25"],
+                # no quote, no explanation
+            }
+        ],
+        "summary": "test",
+    }
+    with pytest.raises(AuditValidationError) as excinfo:
+        validate_findings(payload, clinical_note=NOTE)
+    assert "no evidence" in str(excinfo.value)
+
+
+def test_finding_with_unverifiable_explanation_is_rejected():
+    """An explanation that isn't in the note is not evidence."""
+    payload = {
+        "findings": [
+            {
+                "category": "modifier",
+                "suggested_code": "03.04A",
+                "severity": "high",
+                "rule_ids": ["MOD-25"],
+                "explanation": (
+                    "the note documents a comprehensive assessment lasting "
+                    "over fifteen minutes of counselling"
+                ),
+            }
+        ],
+        "summary": "test",
+    }
+    with pytest.raises(AuditValidationError):
+        validate_findings(payload, clinical_note=NOTE)
+
+
+def test_finding_with_explanation_sentence_in_note_is_accepted():
+    """A real excerpt from the explanation still counts as support.
+
+    The synthesis path pulls the first sentence of ``explanation`` and uses
+    it as the quote when it appears in the note — that must keep working, so
+    the fix above does not reject legitimate quote-less findings.
+    """
+    payload = {
+        "findings": [
+            {
+                "category": "modifier",
+                "suggested_code": "03.04A",
+                "severity": "high",
+                "rule_ids": ["MOD-25"],
+                "explanation": "Plan continue metformin 1000 mg BID",
+            }
+        ],
+        "summary": "test",
+    }
+    findings = validate_findings(payload, clinical_note=NOTE)
+    assert len(findings) == 1
+    # The synthesised quote is the explanation's first sentence, and it is
+    # only accepted because its tokens really do appear in the note.
+    assert findings[0].quote
+    assert _quote_in_note(findings[0].quote, NOTE)
+
+
+def test_no_evidence_still_allowed_without_a_note():
+    """Back-compat: synth-only audits carry no note, so the guard is inert."""
+    payload = {
+        "findings": [
+            {
+                "category": "modifier",
+                "suggested_code": "03.04A",
+                "severity": "high",
+                "rule_ids": ["MOD-25"],
+            }
+        ],
+        "summary": "test",
+    }
+    findings = validate_findings(payload, clinical_note="")
+    assert len(findings) == 1

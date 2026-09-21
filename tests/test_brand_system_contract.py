@@ -73,7 +73,9 @@ def test_documented_typography_matches_the_implemented_portal_families() -> None
         assert label in typography
 
 
-def test_candidate_logo_assets_and_missing_illustrations_are_reported_honestly() -> None:
+def test_candidate_logo_assets_and_missing_illustrations_are_reported_honestly() -> (
+    None
+):
     assert not (ROOT / "apps" / "portal" / "public" / "illustrations").exists()
     assert (ROOT / "apps" / "portal" / "public" / "icon.svg").exists()
     book = (DOCS / "BRAND_BOOK.md").read_text()

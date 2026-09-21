@@ -68,158 +68,34 @@ The verifier is re-runnable as a one-line command — see
 
 from __future__ import annotations
 
-import hashlib
-from typing import Any, Iterable, Mapping
+# ---------------------------------------------------------------------------
+# Implementation note (issue #113)
+# ---------------------------------------------------------------------------
+# The hash shape now lives in exactly one place: ``ai_billing_audit.chain``.
+# This module is kept as the historical import surface — ``audit_trail.sql``,
+# ``docs/RUNBOOK.md``, ``scripts/qa_audit_chain_*.py``, and
+# ``tests/test_audit_log.py`` all import from ``audit_log``, and the runbook
+# tells auditors to run the verifier from here.
+#
+# Previously this module held its own copy of the hash rule that rendered
+# ``data_elements`` with ``str()`` while the live writer
+# (``ai_billing_audit/audit_actions.py``) canonicalised it to JSON. The two
+# disagreed on every row the writer produced, so verification reported
+# tampering from row 0. Both now import from ``ai_billing_audit.chain``.
+
+from ai_billing_audit.chain import (  # noqa: F401
+    CHAIN_FIELDS,
+    GENESIS_PREVIOUS_SIGNATURE,
+    coerce_field as _coerce_field,
+    compute_signature,
+    verify_chain,
+    walk_chain,
+)
 
 __all__ = [
     "CHAIN_FIELDS",
     "GENESIS_PREVIOUS_SIGNATURE",
     "compute_signature",
     "verify_chain",
+    "walk_chain",
 ]
-
-
-# Ordered tuple of fields whose concatenation forms the hash payload
-# (after the leading ``previous_signature``). Kept as a module constant
-# so the unit test, the runbook, and the SQL trigger all agree on the
-# exact ordering — any reorder changes every signature and breaks the
-# chain.
-CHAIN_FIELDS: tuple[str, ...] = (
-    "event_id",
-    "timestamp",
-    "user_identifier",
-    "action",
-    "patient_hash",
-    "data_elements",
-    "model_run_id",
-)
-
-# Genesis row's previous_signature. 64 ASCII zeros, per the spec.
-GENESIS_PREVIOUS_SIGNATURE: str = "0" * 64
-
-# Field on the row that stores the signature of the previous row in
-# the chain. The row stored in audit_trail is expected to carry both
-# ``previous_signature`` (set at insert time) and
-# ``cryptographic_signature`` (the row's own signature).
-_PREVIOUS_SIGNATURE_FIELD = "previous_signature"
-_STORED_SIGNATURE_FIELD = "cryptographic_signature"
-
-
-def _coerce_field(row: Mapping[str, Any], field: str) -> str:
-    """Return ``row[field]`` rendered as the exact string we hash.
-
-    Every field in the chain is concatenated as text. The DB stores
-    ``timestamp`` as ISO-8601 text (we use ``TIMESTAMP NOT NULL`` with
-    a CHECK that it round-trips through ``str()`` unchanged), the
-    identifiers as text, ``data_elements`` as canonical JSON text
-    (sorted keys, no whitespace), and ``patient_hash`` as hex text.
-    Numeric ``None`` is rendered as the empty string so missing values
-    are stable and detectably different from present-but-empty ones.
-    """
-    value = row.get(field)
-    if value is None:
-        return ""
-    return str(value)
-
-
-def compute_signature(previous_signature: str, row: Mapping[str, Any]) -> str:
-    """Return the SHA-256 hex digest of the row chained to ``previous_signature``.
-
-    Parameters
-    ----------
-    previous_signature:
-        The 64-character hex digest of the prior row's
-        ``cryptographic_signature``. Use
-        :data:`GENESIS_PREVIOUS_SIGNATURE` for the oldest row in the
-        chain partition.
-    row:
-        Mapping (dict / ``sqlite3.Row`` / ``psycopg2`` dict-row) carrying
-        every field in :data:`CHAIN_FIELDS` plus
-        ``previous_signature``. The row's own stored
-        ``cryptographic_signature`` (if any) is ignored — we recompute
-        from the payload.
-
-    Returns
-    -------
-    str
-        64-character lowercase hex SHA-256 digest.
-    """
-    if not isinstance(previous_signature, str):
-        raise TypeError(
-            f"previous_signature must be str, got {type(previous_signature).__name__}"
-        )
-    if len(previous_signature) != 64:
-        raise ValueError(
-            f"previous_signature must be 64 hex chars, got len={len(previous_signature)}"
-        )
-
-    hasher = hashlib.sha256()
-    hasher.update(previous_signature.encode("utf-8"))
-    for field in CHAIN_FIELDS:
-        hasher.update(_coerce_field(row, field).encode("utf-8"))
-    return hasher.hexdigest()
-
-
-def verify_chain(
-    rows: Iterable[Mapping[str, Any]],
-    *,
-    key: Any = None,
-) -> int | None:
-    """Walk ``rows`` in chain order and return the first broken row's position.
-
-    The chain is walked in the order the iterable yields rows. The
-    caller is responsible for sorting by ``timestamp`` (and breaking
-    ties deterministically — by ``event_id`` is the project convention).
-    See :func:`walk_chain` for the canonical ordering helper used by
-    the live verifier and the runbook.
-
-    Parameters
-    ----------
-    rows:
-        Iterable of row mappings. Each row must carry
-        ``previous_signature`` and ``cryptographic_signature`` plus
-        every field in :data:`CHAIN_FIELDS`.
-    key:
-        Optional callable for re-sorting the iterable in place; the
-        default is to trust the caller's order.
-
-    Returns
-    -------
-    int | None
-        0-based index of the first row whose recomputed signature
-        does not match its stored ``cryptographic_signature``. Returns
-        ``None`` if the entire chain verifies cleanly. The genesis row
-        must carry :data:`GENESIS_PREVIOUS_SIGNATURE` as its
-        ``previous_signature``; a different value at index 0 also
-        reports index 0.
-    """
-    previous_signature = GENESIS_PREVIOUS_SIGNATURE
-    for index, row in enumerate(rows):
-        stored_prev = _coerce_field(row, _PREVIOUS_SIGNATURE_FIELD)
-        if stored_prev != previous_signature:
-            return index
-        expected = compute_signature(previous_signature, row)
-        stored = _coerce_field(row, _STORED_SIGNATURE_FIELD)
-        if stored != expected:
-            return index
-        # Advance the chain using the just-verified stored signature.
-        # Using the stored value (not the recomputed one) lets the
-        # verifier tolerate a non-canonical encoding choice on the row
-        # we just verified, while still detecting any downstream break
-        # because the stored value propagates forward.
-        previous_signature = stored
-    return None
-
-
-def walk_chain(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    """Return ``rows`` sorted by ``(timestamp, event_id)`` ascending.
-
-    Convenience for the runbook and the live verifier — both of which
-    want the same canonical order without re-deriving the sort key
-    each time.
-    """
-    materialized = list(rows)
-    materialized.sort(
-        key=lambda r: (_coerce_field(r, "timestamp"), _coerce_field(r, "event_id"))
-    )
-    return materialized
