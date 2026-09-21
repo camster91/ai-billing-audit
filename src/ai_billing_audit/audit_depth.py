@@ -207,6 +207,18 @@ def _last_signature(path: Path) -> str:
 
 
 def _sign(previous: str, row: dict[str, object]) -> str:
+    """Digest for a tenant-config row.
+
+    NOTE: this log hashes the *whole row* with the keys sorted, which is a
+    different shape from the canonical field-ordered audit chain — it chains
+    configuration changes (a tenant's audit depth), not reviewer actions on
+    claims, and it is not part of the audit-trail evidence surface. It is
+    kept as its own rule deliberately and is documented as such here so a
+    future reader does not "unify" it and invalidate every existing row.
+
+    See ai_billing_audit/audit_chain.py for the canonical chain rule that
+    the audit-trail, feedback, and feature-flag logs share.
+    """
     import hashlib
 
     payload = "|".join(

@@ -22,6 +22,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from .audit_chain import (
+    compute_signature as _canonical_compute_signature,
+    verify_chain as _canonical_verify_chain,
+)
 from .clinical_note_storage import (
     append_encrypted_json_record,
     migrate_plaintext_jsonl,
@@ -60,7 +64,13 @@ _GENESIS_SIG = "0" * 64
 # by a test or by another process) invalidates the cache.
 _FEEDBACK_LAST_SIG_CACHE: dict[tuple[str, float], str] = {}
 
-# Fields included in the chain hash. Order matters.
+# Fields included in the feedback chain hash. Order matters.
+#
+# NOTE: the feedback log has a DIFFERENT field set from the audit chain
+# (it chains a biller's decision, not a reviewer action). It keeps its own
+# tuple on purpose. What it must NOT keep is its own hash *rule* — see
+# compute_signature below, which now delegates to the canonical
+# implementation so the digest shape cannot drift again.
 _CHAIN_FIELDS = (
     "event_id",
     "timestamp",
@@ -381,17 +391,28 @@ class FeedbackStore:
         }
 
     def verify_chain(self) -> bool:
-        """True iff every row's signature matches and links to the prior row."""
+        """True iff every row's signature matches and links to the prior row.
+
+        Each row is checked against the canonical digest rule, falling back
+        to the pre-#113 separator rule that older rows were written under.
+        Accepting the historical rule is deliberate: those rows are already
+        on disk and re-signing them would rewrite history. Accepting a
+        *forged* row is not possible — the fallback still has to match the
+        exact stored bytes of the row and its predecessor's signature.
+        """
         if not self._path.is_file():
             return True
         prev = _GENESIS_SIG
         for row in read_encrypted_json_records(self._path):
             if row.get("previous_signature") != prev:
                 return False
-            expected = _sign(row.get("previous_signature", prev), row)
-            if row.get("cryptographic_signature") != expected:
+            stored = row.get("cryptographic_signature")
+            previous = row.get("previous_signature", prev)
+            if stored != _sign(previous, row) and stored != _legacy_separator_signature(
+                previous, row
+            ):
                 return False
-            prev = row.get("cryptographic_signature", prev)
+            prev = stored
         return True
 
     def _last_signature(self) -> str:
@@ -425,7 +446,31 @@ class FeedbackStore:
 
 
 def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
-    """SHA-256(previous_sig || chain_fields) — same shape as audit_actions."""
+    """SHA-256 over the feedback chain fields, chained to ``previous_signature``.
+
+    The digest rule (no separator between fields, ``None`` as ``""``,
+    canonical JSON for structured values) comes from
+    :mod:`ai_billing_audit.audit_chain` so this log cannot drift away from
+    the audit chain again. The *field set* is this module's own
+    :data:`_CHAIN_FIELDS`, because the feedback log records a biller
+    decision rather than a reviewer action.
+
+    Historical note: this function used to inject a ``b"|"`` separator
+    before every field, which made the feedback chain match neither of the
+    other implementations despite a docstring claiming it did (issue #113).
+    Rows already written under the separator rule therefore do NOT verify
+    against this rule. ``verify_chain`` below carries a compatibility
+    fallback for them; see the comment there.
+    """
+    return _canonical_compute_signature(previous_signature, row, fields=_CHAIN_FIELDS)
+
+
+def _legacy_separator_signature(previous_signature: str, row: dict[str, Any]) -> str:
+    """The pre-#113 feedback digest: ``previous|field1|field2|...``.
+
+    Retained only so rows written before the consolidation can still be
+    verified. Never used to write.
+    """
     h = hashlib.sha256()
     h.update(previous_signature.encode("utf-8"))
     for name in _CHAIN_FIELDS:
