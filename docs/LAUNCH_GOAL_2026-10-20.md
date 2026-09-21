@@ -70,17 +70,34 @@ this plan treats it as P0 because the compliance story rests on that chain.
 
 | Decision | Issue | Needed by | State |
 | --- | --- | --- | --- |
-| Pilot offer: paid or free, term, single fee, inclusions | #76 | 2026-09-22 | open — three contradictory versions exist in-repo |
-| Pricing, packaging, unit economics | #108 | 2026-09-22 | open |
-| Counsel engaged on the HIA IMA | #14 | 2026-09-21 | open — longest external lead time |
-| GitHub Actions billing restored; branch protection on | — | 2026-09-21 | CI failing since 2026-09-02 with zero steps executed |
+| Pilot offer: paid or free, term, single fee, inclusions | #76 | 2026-09-22 | **DECIDED 2026-09-20** — paid: 60-day pilot, CAD $1,500 one-time, credited against the first month if the clinic continues, no automatic conversion. Applied across 23 surfaces in PR #121. Qualification boundaries remain open on #76. |
+| Pricing, packaging, unit economics | #108 | 2026-09-22 | Partially decided — the pilot fee is set; unit economics and packaging remain open on #108. |
+| Counsel engaged on the HIA IMA | #14 | 2026-09-21 | **open — now the critical path.** Longest external lead time and the only item not under our control. |
+| GitHub Actions billing restored; branch protection on | — | 2026-09-21 | **open — still the top action.** CI has been failing since 2026-09-02 with zero steps executed, so nothing on this repo is independently verified, including three open PRs. |
 | Lead owner named; contact delivery proven | #74 | 2026-10-11 | open |
 
-The offer decision is the critical path. `docs/PILOT_OFFER.md` promises 60 days
-free with no contract, `apps/portal/src/app/pricing/page.tsx` promises 60 days
-free then $499/mo, `README.md` says 30-day paid, and
-`docs/DATA_AGREEMENT_TEMPLATE.md:153` says free of charge. No downstream artifact
-can be built against four prices.
+### Critical path, revised 2026-09-20
+
+The offer decision — originally day 2 — is **done, ahead of schedule**, and it
+turned out to be smaller than feared: the pricing tiers themselves were never
+in question, only the pilot's terms, and the four contradictory versions are now
+one. That removes the largest piece of ambiguity from outreach, the agreement,
+and the pricing page.
+
+Two items now dominate:
+
+1. **GitHub Actions billing.** Everything else is unverified until this is
+   fixed. Three PRs are waiting on a working gate (#119 gate fixes, #120 docs,
+   #121 offer), and no release can be cut responsibly without it.
+2. **Counsel on the HIA IMA (#14).** Unchanged and not under our control. If it
+   is not engaged during week 1, reset the target to 60 days rather than
+   discovering it on day 28.
+
+A related find while applying the offer decision: the Alberta outreach email
+templates asserted a completed 60-day pilot at an Ontario clinic, with derived
+"what we caught" numbers, while the investor one-pager records 0 clinics in
+pilot. That is now removed and locked by `tests/test_offer_consistency.py`. Worth
+confirming whether any of those templates were actually sent.
 
 ## Weekly checkpoints
 
