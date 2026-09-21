@@ -17,12 +17,27 @@ Three contracts:
 from __future__ import annotations
 
 import sys
+
+import pytest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
+
+
+@pytest.fixture(autouse=True)
+def _artifacts_in_tmp(tmp_path, monkeypatch):
+    """Keep the optimizer's output out of the tracked ``artifacts/`` dir.
+
+    These tests call ``main()`` for real, and it writes
+    ``miprov2_summary.json`` plus a metadata file and a ``miprov2_best.json``
+    symlink target. Without this redirect every test run rewrote three
+    committed files with absolute paths and wall-clock timings, so the tree
+    was dirty after any ``pytest`` invocation.
+    """
+    monkeypatch.setenv("ZORVA_ARTIFACTS_DIR", str(tmp_path / "artifacts"))
 
 
 def test_optimize_main_with_no_argv_uses_defaults():

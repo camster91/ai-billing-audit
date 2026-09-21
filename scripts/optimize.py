@@ -1001,7 +1001,14 @@ def main(argv: list[str] | None = None) -> int:
     # Make the trial-log deterministic across runs.
     _trial_log.scores.clear()
 
-    artifacts_dir = PROJECT_ROOT / "artifacts"
+    # Overridable so tests and CI do not write into the tracked
+    # ``artifacts/`` directory. ``tests/test_swarm_batch5.py`` calls
+    # ``main()`` for real, which used to rewrite the committed
+    # ``miprov2_summary.json`` (including absolute paths and wall-clock
+    # timings) on every test run, leaving a dirty tree behind.
+    artifacts_dir = Path(
+        os.environ.get("ZORVA_ARTIFACTS_DIR") or (PROJECT_ROOT / "artifacts")
+    )
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Configure DSPy with a deterministic dummy LM.
