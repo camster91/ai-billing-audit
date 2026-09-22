@@ -43,6 +43,7 @@ import hmac
 import base64
 import io
 import json
+import logging
 import os
 import re
 import secrets
@@ -53,6 +54,8 @@ from html import escape
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
+
+logger = logging.getLogger(__name__)
 
 from fastapi import (
     Depends,
@@ -2760,8 +2763,10 @@ def create_app() -> FastAPI:
         # dedicated biller_corrections.jsonl log. This is the
         # high-quality training signal the spec'd biller-correction
         # form exists to capture: (corrected) severity, category,
-        # rationale, biller_id, and a SHA-256 chain signature. Best
-        # effort; never raises.
+        # rationale, biller_id, and a SHA-256 chain signature. A failure
+        # here must not fail the biller's edit, but it must not be silent
+        # either: the response reports whether the signal was recorded.
+        correction_recorded = True
         try:
             from .feedback import record_biller_correction
 
@@ -2773,13 +2778,22 @@ def create_app() -> FastAPI:
                 rationale=why,
                 biller_id=user.user_identifier or "default_biller",
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+            correction_recorded = False
+            logger.error(
+                "biller-correction persist failed for finding %s: %s",
+                finding_id,
+                exc,
+            )
         return JSONResponse(
             {
                 "ok": True,
                 "finding_id": finding_id,
                 "action": "modify",
+                # The modification is applied regardless; this reports
+                # whether the correction reached the training log, so a
+                # lost signal is visible instead of silent.
+                "correction_recorded": correction_recorded,
                 "new_severity": new_severity,
                 "new_category": new_category,
                 "why": why,
@@ -3514,6 +3528,7 @@ def create_app() -> FastAPI:
         resolved_finding_id = (
             (target_finding or {}).get("finding_id") if target_finding else finding_id
         ) or None
+        letter_persisted = True
         try:
             log_appeal_letter(
                 letter,
@@ -3521,9 +3536,13 @@ def create_app() -> FastAPI:
                 tenant_id=_TENANT_ID,
                 finding_id=resolved_finding_id,
             )
-        except Exception:
-            # Persisting is best-effort.
-            pass
+        except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+            letter_persisted = False
+            logger.error(
+                "appeal-letter persist failed for encounter %s: %s",
+                encounter_id,
+                exc,
+            )
         return JSONResponse(
             {
                 "ok": True,
@@ -3531,6 +3550,10 @@ def create_app() -> FastAPI:
                 "finding_id": finding_id
                 or (target_finding.get("finding_id", "") if target_finding else ""),
                 "letter": letter,
+                # The letter is returned either way — the caller has it and
+                # can act on it — but they can now tell that outcome tracking
+                # will not find it later.
+                "letter_persisted": letter_persisted,
             }
         )
 
@@ -7549,7 +7572,17 @@ def create_app() -> FastAPI:
                 ),
             )
 
-        # Write the deletion event BEFORE purging anything.
+        # Purge first, then record. The order matters: the purge event
+        # must survive the purge, so it is written after the tenant's
+        # rows have been removed — otherwise the record of the deletion
+        # is itself deleted, which is the one thing a compliance trail
+        # cannot afford.
+        from .tenant_purge import purge_boundary_marker, purge_tenant
+
+        report = purge_tenant(_TENANT_ID)
+
+        requested_at = datetime.now(timezone.utc).isoformat()
+        audit_recorded = True
         try:
             from .audit_actions import append as _audit_append
 
@@ -7558,29 +7591,44 @@ def create_app() -> FastAPI:
                 encounter_id="*",
                 user_identifier="data_delete_endpoint",
                 tenant_id=_TENANT_ID,
-                extra={
-                    "confirmation": confirmation,
-                    "requested_at": datetime.now(timezone.utc).isoformat(),
-                    "note": (
-                        "tenant requested purge of all data; "
-                        "actual file deletion is a v2 worker task"
-                    ),
-                },
+                extra=purge_boundary_marker(report, at=requested_at),
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - surfaced, never swallowed
+            # A purge whose record could not be written is not a
+            # successful purge. Say so instead of returning ok.
+            audit_recorded = False
+            logger.error(
+                "tenant purge audit write failed for tenant %s: %s",
+                _TENANT_ID,
+                exc,
+            )
 
-        return JSONResponse(
+        body = report.as_dict()
+        body.update(
             {
-                "ok": True,
-                "tenant_id": _TENANT_ID,
-                "purge_status": "audit_recorded",
-                "note": (
-                    "v1: deletion is recorded in the audit trail. "
-                    "v2: actual file purge is queued in a background worker."
+                "ok": audit_recorded and report.complete,
+                "purge_status": (
+                    "complete"
+                    if audit_recorded and report.complete
+                    else "partial"
                 ),
+                "audit_recorded": audit_recorded,
+                "requested_at": requested_at,
             }
         )
+        if report.unscoped:
+            body["note"] = (
+                "These stores have no tenant field and were NOT purged, "
+                "because deleting them would remove other tenants' data: "
+                + ", ".join(report.unscoped)
+            )
+        if report.failed:
+            body["note"] = (
+                (body.get("note", "") + " ").lstrip()
+                + "Some stores failed to purge: "
+                + ", ".join(f"{k} ({v})" for k, v in report.failed.items())
+            )
+        return JSONResponse(body)
 
     @app.post("/encounters/{encounter_id}/audit")
     async def encounters_audit(
