@@ -31,6 +31,7 @@ import {
 } from "@/lib/encounter-types";
 import { upsertCalibrationSignal } from "@/lib/calibration-write";
 import { encryptPortalNullableString } from "@/lib/data-encryption";
+import { AUDIT_EXPORT_FINDING_ID } from "@/lib/audit-export-anchor";
 
 /**
  * Inputs to the audit-trail writer. The Finding's own state is
@@ -609,4 +610,136 @@ function cryptoRandomId(): string {
     out += bytes[i]!.toString(16).padStart(2, "0");
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Audit-log-export self-logging (t_d609557c follow-up)
+//
+// /api/audit/export appends one row per successful pull so the privacy
+// officer can see who read the chain, when, and how much. `AuditTrailEntry`
+// carries two non-null FKs (`findingId`, `encounterId`) but an export is
+// not bound to a single finding, so the caller passes a server-resolved
+// anchor pair (see audit-export-anchor.ts) and the truthful export metadata
+// goes into `dataElements` — which is part of the chain hash, so the
+// recorded row count and format cannot be edited after the fact without
+// breaking the chain.
+//
+// The chain `action` stays "accept" / "dismiss" (the only values the
+// shared Python/SQL chain contract defines, and AUDIT_ACTIONS is a closed
+// union). The distinguishing marker is the synthetic `findingId`
+// (`__audit_export__`) plus the `kind` field inside `dataElements`.
+// ---------------------------------------------------------------------------
+
+export const AUDIT_EXPORT_ACTION = "accept";
+export const AUDIT_EXPORT_MODEL_RUN_ID = "audit-export";
+
+export interface WriteAuditExportInput {
+  tenantId: string;
+  /** Session email when present, else the user id. */
+  userIdentifier: string;
+  /** "csv" or "json" — the requested export format. */
+  format: string;
+  /** Number of rows serialized into the response. */
+  rowCount: number;
+  /** The route's hard row cap, recorded so the count is interpretable. */
+  rowCap: number;
+  /** Server-resolved anchor triple — see resolveAuditExportAnchor(). */
+  encounterId: string;
+  findingId: string;
+  patientHash: string;
+}
+
+/**
+ * Append one `audit_log_export` row to the tenant's chain.
+ *
+ * Unlike {@link writeAuditEntry} there is no finding state to mutate in
+ * the same transaction — an export produces no finding transition — so
+ * this writes the chain row alone. Throws on failure; the route decides
+ * whether to surface that or serve the export anyway.
+ */
+export async function writeAuditExportEntry(
+  input: WriteAuditExportInput,
+): Promise<WriteAuditResult> {
+  const { tenantId, encounterId, findingId } = input;
+
+  // Reject the reserved synthetic finding id as a real anchor: a caller
+  // that passed it would create a row whose FK points at a finding that
+  // does not exist.
+  if (findingId === AUDIT_EXPORT_FINDING_ID) {
+    throw new Error("audit-export anchor must be a real finding");
+  }
+
+  const tail = await prisma.auditTrailEntry.findFirst({
+    where: { tenantId },
+    orderBy: [{ timestamp: "desc" }, { eventId: "desc" }],
+    select: { cryptographicSignature: true },
+  });
+  const previousSignature =
+    tail?.cryptographicSignature ?? GENESIS_PREVIOUS_SIGNATURE;
+
+  const eventId = cryptoRandomId();
+  const timestamp = new Date();
+  const isoTimestamp = timestamp.toISOString();
+
+  const dataElements = JSON.stringify(
+    {
+      kind: "audit_log_export",
+      format: input.format,
+      rowCount: input.rowCount,
+      rowCap: input.rowCap,
+      findingId,
+    },
+    Object.keys({
+      kind: "audit_log_export",
+      format: input.format,
+      rowCount: input.rowCount,
+      rowCap: input.rowCap,
+      findingId,
+    }).sort(),
+  );
+
+  const chainPayload: ChainRow = {
+    eventId,
+    timestamp: isoTimestamp,
+    userIdentifier: input.userIdentifier,
+    action: AUDIT_EXPORT_ACTION,
+    patientHash: input.patientHash,
+    dataElements,
+    modelRunId: AUDIT_EXPORT_MODEL_RUN_ID,
+    previousSignature,
+    cryptographicSignature: "",
+  };
+  const cryptographicSignature = computeSignature(previousSignature, chainPayload);
+
+  const auditEntry = await prisma.auditTrailEntry.create({
+    data: {
+      tenantId,
+      eventId,
+      timestamp,
+      userIdentifier: input.userIdentifier,
+      action: AUDIT_EXPORT_ACTION,
+      findingId,
+      reason: null,
+      reasonText: null,
+      patientHash: input.patientHash,
+      dataElements,
+      modelRunId: AUDIT_EXPORT_MODEL_RUN_ID,
+      previousSignature,
+      cryptographicSignature,
+      encounterId,
+      bulkActionId: null,
+    },
+    select: { id: true, eventId: true },
+  });
+
+  return {
+    auditEntryId: auditEntry.id,
+    eventId,
+    cryptographicSignature,
+    previousSignature,
+    // The export row has no finding disposition; the field is part of the
+    // shared result shape and is only meaningful for accept/dismiss.
+    newFindingStatus: "accepted",
+    bulkActionId: null,
+  };
 }

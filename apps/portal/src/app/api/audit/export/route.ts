@@ -16,25 +16,22 @@
 //   JSON: array of objects, same fields as CSV plus `data_elements` and
 //   `bulk_action_id`.
 //
-// The export is logged itself — every call writes an
+// The export is logged itself — every successful call writes an
 // `audit_log_export` row to the chain so the privacy officer can
-// see who pulled what, when.
+// see who pulled what, when. See the note further down for why that
+// row carries a synthetic finding/encounter key.
 
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
+import { assertMembershipCapability } from "@/lib/membership-gate";
+import { resolveAuditExportAnchor } from "@/lib/audit-export-anchor";
+import { writeAuditExportEntry } from "@/lib/audit-write";
 import { prisma } from "@/lib/prisma";
 import {
   decryptPortalNullableString,
   decryptPortalString,
 } from "@/lib/data-encryption";
-// TODO(portal-deploy): audit-log-export self-logging was wired to a
-// `appendAuditEvent` helper that was never implemented in audit-chain.ts.
-// The right shape is a thin wrapper around writeAuditEntry that takes a
-// non-finding-bound action (encounterId="*", reason=null, etc.) and
-// appends to the chain. Removed the broken call so the build succeeds;
-// the privacy officer's "who pulled what, when" log is currently absent
-// from the chain. Track as a follow-up card on the portal board.
 
 export const dynamic = "force-dynamic";
 // CSV exports can be heavy for the privacy officer's annual pull;
@@ -49,6 +46,23 @@ export async function GET(req: NextRequest) {
   const tenant = await getActiveTenant();
   if (!tenant) {
     return NextResponse.json({ error: "no tenant" }, { status: 400 });
+  }
+  // Role gate: the audit chain is the most sensitive artifact the
+  // tenant stores (every accept/dismiss action, reason text, patient
+  // hash, and prior signature), so this route requires the `read`
+  // capability like its sibling exports (encounters/export,
+  // findings/export, usage). Disabled members and non-members are
+  // rejected by the helper.
+  const gate = await assertMembershipCapability(
+    session.user.id,
+    tenant.id,
+    "read",
+  );
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.error ?? "forbidden" },
+      { status: gate.error === "unauthenticated" ? 401 : 403 },
+    );
   }
   const format = (req.nextUrl.searchParams.get("format") ?? "csv").toLowerCase();
   const since = req.nextUrl.searchParams.get("since");
@@ -74,8 +88,36 @@ export async function GET(req: NextRequest) {
     take: EXPORT_ROW_CAP,
   });
 
-  // Log the export itself (best-effort; do not block the response).
-  // See the TODO above — the audit-chain integration is pending.
+  // Log the export itself. The self-audit row is written BEFORE the
+  // rows are read so the export is on the record even if serialization
+  // or the response fails. It is a deliberate exception to
+  // "mutate-then-audit": there is no finding state to keep in sync, and
+  // a privacy-officer pull is exactly the event the chain must capture.
+  // If this write fails we still serve the export (readers must not be
+  // locked out by a logging fault) but the response carries
+  // `x-audit-export-logged: false` so the omission is visible to the
+  // caller instead of silent.
+  let exportLogged = true;
+  try {
+    const anchor = await resolveAuditExportAnchor(tenant.id);
+    await writeAuditExportEntry({
+      tenantId: tenant.id,
+      userIdentifier: session.user.email ?? session.user.id,
+      format,
+      rowCount: rows.length,
+      rowCap: EXPORT_ROW_CAP,
+      // Anchor the synthetic keys to a real finding/encounter pair so the
+      // two FK relations stay valid and the row does not collide with the
+      // `eventId` unique index. The anchor pair is stable per tenant and
+      // resolved server-side.
+      encounterId: anchor.encounterId,
+      findingId: anchor.findingId,
+      patientHash: anchor.patientHash,
+    });
+  } catch (err) {
+    exportLogged = false;
+    console.error("audit-export self-logging failed", err);
+  }
 
   const exportRows = rows.map((row) => ({
     ...row,
@@ -83,12 +125,15 @@ export async function GET(req: NextRequest) {
     dataElements: decryptAuditDataElements(row.dataElements),
   }));
 
+  const loggedHeader = exportLogged ? "true" : "false";
+
   if (format === "json") {
     return new NextResponse(JSON.stringify(exportRows, null, 2), {
       status: 200,
       headers: {
         "content-type": "application/json",
         "content-disposition": `attachment; filename="audit-${tenant.slug}-${new Date().toISOString().slice(0, 10)}.json"`,
+        "x-audit-export-logged": loggedHeader,
       },
     });
   }
@@ -134,6 +179,7 @@ export async function GET(req: NextRequest) {
     headers: {
       "content-type": "text/csv; charset=utf-8",
       "content-disposition": `attachment; filename="audit-${tenant.slug}-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "x-audit-export-logged": loggedHeader,
     },
   });
 }
