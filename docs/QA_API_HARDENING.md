@@ -184,7 +184,7 @@ done
 
 ```bash
 # Same endpoints as case 8, plus:
-curl -sS -H 'authorization: Bearer obviously-not-a-real-token-zzz' \
+curl -sS -H "Authorization: Bearer deliberately-invalid-test-token" \
   -o /dev/null -w "%{http_code}  $ep\n" -m 15 "https://ai-billing-audit.ashbi.ca$ep"
 ```
 
