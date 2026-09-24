@@ -184,7 +184,7 @@ done
 
 ```bash
 # Same endpoints as case 8, plus:
-curl -sS -H 'authorization: Bearer obviously-not-a-real-token-zzz' \
+curl -sS -H "Authorization: Bearer ${AI_BILLING_AUDIT_TOKEN:?Set AI_BILLING_AUDIT_TOKEN before running this request}" \
   -o /dev/null -w "%{http_code}  $ep\n" -m 15 "https://ai-billing-audit.ashbi.ca$ep"
 ```
 
