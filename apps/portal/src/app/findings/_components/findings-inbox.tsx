@@ -391,7 +391,7 @@ export function FindingsInbox({
         </a>
       </form>
 
-      {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
+      {error ? <div role="alert" aria-live="assertive" className={styles.flash}>{error}</div> : null}
 
       {someSelected ? (
         <div className={styles.bulkBar} role="region" aria-label="Bulk actions">
@@ -429,12 +429,20 @@ export function FindingsInbox({
       ) : null}
 
       {rows.length === 0 ? (
-        <section className={styles.empty}>
+        <section className={styles.empty} data-testid="findings-filtered-empty">
           <h2>Nothing in this view</h2>
           <p>
-            No {initialStatus} findings match the current filters. Adjust
-            the filters above, or switch the status to see the rest.
+            No {initialStatus} findings match the current filters. Clear a
+            filter, switch status, or open Encounters to run a new audit.
           </p>
+          <div className={styles.emptyInlineActions} style={{ justifyContent: "center", marginTop: 20 }}>
+            <a className={styles.ctaPrimary} href="/findings">
+              Reset filters
+            </a>
+            <a className={styles.ctaSecondary} href="/encounters">
+              Browse encounters
+            </a>
+          </div>
         </section>
       ) : (
         <div className={styles.findingsTableScroller} tabIndex={0} aria-label="Findings table; scroll horizontally">
@@ -576,7 +584,7 @@ function AcceptModal({
         </p>
         <p style={{ marginBottom: 4 }}>Total estimated impact</p>
         <p className={impactClassName}>{formatImpact(totalImpactCents)}</p>
-        {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
+        {error ? <div role="alert" aria-live="assertive" className={styles.flash}>{error}</div> : null}
         <div className={styles.modalActions}>
           <button
             type="button"
@@ -671,7 +679,7 @@ function DismissModal({
             />
           </>
         ) : null}
-        {error ? <div role="status" aria-live="polite" className={styles.flash}>{error}</div> : null}
+        {error ? <div role="alert" aria-live="assertive" className={styles.flash}>{error}</div> : null}
         <div className={styles.modalActions}>
           <button
             type="button"

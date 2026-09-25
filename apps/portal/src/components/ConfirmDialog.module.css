@@ -1,0 +1,122 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--zorva-z-modal, 60);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 8, 18, 0.72);
+  backdrop-filter: blur(4px);
+  animation: fadeIn var(--zorva-duration-fast, 160ms) var(--zorva-easing-standard, ease);
+}
+
+.dialog {
+  width: min(420px, 100%);
+  background: var(--zorva-panel, #131a2e);
+  border: 1px solid var(--zorva-line, #28324f);
+  border-radius: var(--zorva-radius-xl, 18px);
+  padding: 24px;
+  box-shadow: var(--zorva-shadow-lg);
+  color: var(--zorva-ink, #e7ecf6);
+  animation: riseIn var(--zorva-duration-base, 240ms) var(--zorva-easing-emphasized, ease);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: var(--zorva-text-xl, 20px);
+  letter-spacing: -0.3px;
+}
+
+.description {
+  margin: 0 0 20px;
+  color: var(--zorva-ink-2, #b6bfd6);
+  font-size: var(--zorva-text-sm, 13.5px);
+  line-height: var(--zorva-leading-base, 1.55);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cancel,
+.confirm,
+.confirmDanger {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: var(--zorva-radius-md, 8px);
+  font-size: var(--zorva-text-sm, 13.5px);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cancel:focus-visible,
+.confirm:focus-visible,
+.confirmDanger:focus-visible {
+  outline: var(--zorva-focus-ring, 2px solid #60a5fa);
+  outline-offset: var(--zorva-focus-ring-offset, 2px);
+}
+
+.cancel {
+  background: transparent;
+  color: var(--zorva-ink, #e7ecf6);
+  border: 1px solid var(--zorva-line, #28324f);
+}
+
+.cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.confirm {
+  background: var(--zorva-accent-bg, #2563eb);
+  color: #fff;
+  border: 1px solid var(--zorva-accent-bg, #2563eb);
+}
+
+.confirm:hover:not(:disabled) {
+  background: var(--zorva-accent-bg-hover, #1d4ed8);
+}
+
+.confirmDanger {
+  background: transparent;
+  color: var(--zorva-error, #fca5a5);
+  border: 1px solid var(--zorva-error-border, rgba(252, 165, 165, 0.35));
+}
+
+.confirmDanger:hover:not(:disabled) {
+  background: var(--zorva-error-bg, rgba(252, 165, 165, 0.1));
+}
+
+.cancel:disabled,
+.confirm:disabled,
+.confirmDanger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog {
+    animation: none;
+  }
+}

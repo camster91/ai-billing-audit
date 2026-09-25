@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents } from "@/lib/encounter-format";
 import { toUserFacingError } from "@/lib/ui-error";
+import { useToastOptional } from "@/components/Toast";
 import {
   DISMISS_REASONS,
   DISMISS_REASON_LABEL,
@@ -52,13 +53,17 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function FindingCard(props: FindingCardProps) {
   const router = useRouter();
+  const toast = useToastOptional();
   const [isPending, startTransition] = useTransition();
   const [dismissOpen, setDismissOpen] = useState(false);
   const [dismissReason, setDismissReason] = useState<DismissReason>("wrong_payer_policy");
   const [dismissText, setDismissText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Optimistic status — shown immediately on Accept/Dismiss click.
+  const [optimisticStatus, setOptimisticStatus] = useState<FindingStatus | string | null>(null);
 
-  const terminal = props.status === "accepted" || props.status === "dismissed";
+  const displayStatus = optimisticStatus ?? props.status;
+  const terminal = displayStatus === "accepted" || displayStatus === "dismissed";
   const impactClass =
     props.estFinancialImpactCents > 0
       ? styles.impactPositive
@@ -67,8 +72,8 @@ export function FindingCard(props: FindingCardProps) {
         : styles.impactZero;
   const findingClass = [
     styles.finding,
-    props.status === "accepted" && styles.findingAccepted,
-    props.status === "dismissed" && styles.findingDismissed,
+    displayStatus === "accepted" && styles.findingAccepted,
+    displayStatus === "dismissed" && styles.findingDismissed,
     // Visual hint for category — match the auditor template.
     props.category === "documentation" && styles.findingWarn,
   ]
@@ -77,6 +82,7 @@ export function FindingCard(props: FindingCardProps) {
 
   async function handleAccept() {
     setError(null);
+    setOptimisticStatus("accepted");
     try {
       const res = await fetch(
         `/api/encounters/${encodeURIComponent(props.encounterId)}/findings/${encodeURIComponent(props.findingId)}/accept`,
@@ -88,11 +94,15 @@ export function FindingCard(props: FindingCardProps) {
           (body && body.error) || `Accept failed (${res.status})`,
         );
       }
+      toast.push({ title: "Finding accepted", tone: "success" });
       startTransition(() => {
         router.refresh();
       });
     } catch (err) {
-      setError(toUserFacingError(err, "Could not accept this finding. Please try again."));
+      setOptimisticStatus(null);
+      const message = toUserFacingError(err, "Could not accept this finding. Please try again.");
+      setError(message);
+      toast.push({ title: "Accept failed", description: message, tone: "error" });
     }
   }
 
@@ -106,6 +116,8 @@ export function FindingCard(props: FindingCardProps) {
       setError("Reason text exceeds 2000 characters.");
       return;
     }
+    setOptimisticStatus("dismissed");
+    setDismissOpen(false);
     try {
       const res = await fetch(
         `/api/encounters/${encodeURIComponent(props.encounterId)}/findings/${encodeURIComponent(props.findingId)}/dismiss`,
@@ -126,12 +138,16 @@ export function FindingCard(props: FindingCardProps) {
           (body && body.error) || `Dismiss failed (${res.status})`,
         );
       }
-      setDismissOpen(false);
+      toast.push({ title: "Finding dismissed", tone: "success" });
       startTransition(() => {
         router.refresh();
       });
     } catch (err) {
-      setError(toUserFacingError(err, "Could not dismiss this finding. Please try again."));
+      setOptimisticStatus(null);
+      setDismissOpen(true);
+      const message = toUserFacingError(err, "Could not dismiss this finding. Please try again.");
+      setError(message);
+      toast.push({ title: "Dismiss failed", description: message, tone: "error" });
     }
   }
 
@@ -165,14 +181,14 @@ export function FindingCard(props: FindingCardProps) {
         </span>
         <span
           className={
-            props.status === "accepted"
+            displayStatus === "accepted"
               ? `${styles.findingStatus} ${styles.findingStatusAccepted}`
-              : props.status === "dismissed"
+              : displayStatus === "dismissed"
                 ? `${styles.findingStatus} ${styles.findingStatusDismissed}`
                 : styles.findingStatus
           }
         >
-          {props.status}
+          {displayStatus}
         </span>
       </div>
 
@@ -296,7 +312,11 @@ export function FindingCard(props: FindingCardProps) {
         </div>
       )}
 
-      {error && <p className={styles.errorBanner}>{error}</p>}
+      {error && (
+        <p className={styles.errorBanner} role="alert">
+          {error}
+        </p>
+      )}
     </article>
   );
 }

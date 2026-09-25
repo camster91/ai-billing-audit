@@ -18,6 +18,7 @@ import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
 import { EmptyStateCTA, onboardingWizardHref } from "@/components/EmptyStateCTA";
+import { FtueWalkthrough } from "@/components/FtueWalkthrough";
 import { FPARTile } from "@/components/fpar-tile";
 import { CalibrationCard } from "@/components/calibration-card";
 import { computeFPAR } from "@/lib/fpar";
@@ -110,6 +111,8 @@ export default async function DashboardPage() {
   return (
     <main id="main" className={styles.shell}>
       {tenant ? <PortalNav current="/dashboard" tenant={tenant} /> : null}
+      {/* Product tour for returning / onboarded clinics — not for zero-data fresh signups. */}
+      {tenant && !isFreshTenant ? <FtueWalkthrough enabled /> : null}
 
       <h1 className={styles.heading}>Dashboard</h1>
       <p className={styles.subheading}>

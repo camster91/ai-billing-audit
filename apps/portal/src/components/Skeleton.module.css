@@ -1,20 +1,22 @@
+/* Dark-aligned skeleton tokens — matches --zorva-* surfaces. */
+
 .box {
   display: inline-block;
   background: linear-gradient(
     90deg,
-    var(--skeleton-base, #e5e7eb) 0%,
-    var(--skeleton-highlight, #f3f4f6) 50%,
-    var(--skeleton-base, #e5e7eb) 100%
+    var(--skeleton-base, #1a2340) 0%,
+    var(--skeleton-highlight, #243056) 50%,
+    var(--skeleton-base, #1a2340) 100%
   );
   background-size: 200% 100%;
-  border-radius: 0.375rem;
+  border-radius: var(--zorva-radius-sm, 4px);
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .box {
     animation: none;
-    background: var(--skeleton-base, #e5e7eb);
+    background: var(--skeleton-base, #1a2340);
   }
 }
 
@@ -34,9 +36,9 @@
   flex-direction: column;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--card-border, #e5e7eb);
-  border-radius: 0.5rem;
-  background: var(--card-bg, #fff);
+  border: 1px solid var(--zorva-line, #28324f);
+  border-radius: var(--zorva-radius-lg, 12px);
+  background: var(--zorva-panel, #131a2e);
 }
 
 .cardHeader {
@@ -70,10 +72,22 @@
   gap: 1rem;
 }
 
-.encounterList {
+.encounterList,
+.findingsList,
+.dashboardSkeleton {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.dashboardHero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--zorva-line, #28324f);
+  border-radius: var(--zorva-radius-xl, 18px);
+  background: var(--zorva-panel, #131a2e);
 }
 
 @media (max-width: 768px) {

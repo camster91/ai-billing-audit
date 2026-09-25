@@ -15,6 +15,7 @@ import { auth } from "@/auth";
 import { getActiveTenant } from "@/lib/active-tenant";
 import { prisma } from "@/lib/prisma";
 import { PortalNav } from "../portal-nav";
+import { EmptyStateCTA } from "@/components/EmptyStateCTA";
 import styles from "../shell.module.css";
 import { TeamClient } from "./team-client";
 
@@ -37,10 +38,13 @@ export default async function TeamPage() {
     return (
       <main id="main" className={styles.shell}>
         <h1 className={styles.heading}>Team</h1>
-        <section className={styles.empty}>
-          <h2>No clinic connected</h2>
-          <p>You aren&rsquo;t a member of a clinic yet.</p>
-        </section>
+        <EmptyStateCTA
+          testId="team-no-clinic-cta"
+          title="No clinic connected"
+          description="You aren't a member of a clinic yet. Ask an owner to invite you, or start a plan."
+          primaryAction={{ label: "View pricing", href: "/pricing" }}
+          secondaryAction={{ label: "Contact support", href: "/contact" }}
+        />
       </main>
     );
   }

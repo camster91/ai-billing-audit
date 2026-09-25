@@ -38,8 +38,9 @@
 
   /* ── text ─────────────────────────────────────────────────── */
   --zorva-ink: #e7ecf6;            /* primary text */
-  --zorva-ink-2: #9aa3bd;          /* secondary text */
-  --zorva-ink-3: #6b7390;          /* tertiary / muted text */
+  /* Secondary text bumped for WCAG AA (~4.7:1 on --zorva-bg). */
+  --zorva-ink-2: #b6bfd6;          /* secondary text */
+  --zorva-ink-3: #8b93ad;          /* tertiary / muted text */
   --zorva-ink-inverse: #0b1020;    /* on a light / accent surface */
 
   /* ── brand ────────────────────────────────────────────────── */

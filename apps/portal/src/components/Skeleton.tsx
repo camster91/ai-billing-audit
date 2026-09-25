@@ -130,3 +130,38 @@ export function EncounterListSkeleton({ rows = 5 }: { rows?: number }) {
     </div>
   );
 }
+
+/** Findings inbox skeleton — card rows matching the review list. */
+export function FindingsListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div
+      role="presentation"
+      aria-busy="true"
+      aria-label="Loading findings"
+      className={styles.findingsList}
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** Dashboard overview skeleton. */
+export function DashboardSkeleton() {
+  return (
+    <div
+      role="presentation"
+      aria-busy="true"
+      aria-label="Loading dashboard"
+      className={styles.dashboardSkeleton}
+    >
+      <div className={styles.dashboardHero}>
+        <SkeletonBox width="40%" height="1.75rem" />
+        <SkeletonText lines={2} lastLineWidth="45%" />
+      </div>
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  );
+}

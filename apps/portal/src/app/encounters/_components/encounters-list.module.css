@@ -95,25 +95,31 @@
 .facetOption {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 4px;
   font-size: 13px;
-  color: #e7ecf6;
+  color: var(--zorva-ink, #e7ecf6);
   cursor: pointer;
 }
 
 .facetOption input[type="checkbox"] {
-  accent-color: #2dd4bf;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--zorva-green, #34d399);
 }
 
 .facetOptionMuted {
-  color: #6b7280;
+  color: var(--zorva-ink-3, #8b93ad);
 }
 
 .clearButton {
   background: transparent;
-  border: 1px solid #28324f;
-  color: #9aa3bd;
-  padding: 6px 12px;
+  border: 1px solid var(--zorva-line, #28324f);
+  color: var(--zorva-ink-2, #b6bfd6);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 14px;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -121,8 +127,8 @@
 }
 
 .clearButton:hover {
-  border-color: #2dd4bf;
-  color: #2dd4bf;
+  border-color: var(--zorva-green, #34d399);
+  color: var(--zorva-green, #34d399);
 }
 
 /* ---- Bulk action toolbar --------------------------------------- */
@@ -141,7 +147,7 @@
 
 .selectionSummary {
   font-size: 13px;
-  color: #9aa3bd;
+  color: var(--zorva-ink-2, #b6bfd6);
 }
 
 .exportForm {
@@ -152,11 +158,15 @@
 }
 
 .button {
-  display: inline-block;
-  background: #2dd4bf;
-  color: #042f2e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--zorva-green, #34d399);
+  color: var(--zorva-ink-inverse, #0b1020);
   border: 0;
   border-radius: 8px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
@@ -222,8 +232,9 @@
 }
 
 .checkboxCol {
-  width: 36px;
+  width: 44px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .sortable {
