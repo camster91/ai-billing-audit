@@ -37,6 +37,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .audit_chain import (
+    CHAIN_FIELDS,
+    GENESIS_PREVIOUS_SIGNATURE,
+    coerce_field,
+    compute_signature,
+    verify_chain as _canonical_verify_chain,
+)
 from .clinical_note_storage import (
     append_encrypted_json_record,
     migrate_plaintext_jsonl,
@@ -104,51 +111,17 @@ def audit_trail_path() -> Path:
     return Path("/app/logs/audit_trail.jsonl")
 
 
-_GENESIS_SIG = "0" * 64
+# The chain rule now lives in exactly one place: ai_billing_audit.audit_chain.
+# This module used to carry its own copy of _CHAIN_FIELDS / _coerce_field /
+# compute_signature, and that copy diverged from the verifier's (canonical
+# JSON here, str() there), so verify_chain rejected rows this module wrote
+# (issue #113). These names are re-exported rather than redefined.
+_CHAIN_FIELDS = CHAIN_FIELDS
 
+# Retained for readability at call sites in this module.
+_GENESIS_SIG = GENESIS_PREVIOUS_SIGNATURE
 
-# Fields included in the chain hash. Must match audit_trail.sql.
-_CHAIN_FIELDS = (
-    "event_id",
-    "timestamp",
-    "user_identifier",
-    "action",
-    "patient_hash",
-    "data_elements",
-    "model_run_id",
-)
-
-
-def _coerce_field(row: dict[str, Any], field: str) -> str:
-    """Stringify a chain field for hashing.
-
-    Same rule as src/audit_log.py:
-    - dict/list: canonical JSON, no spaces, sorted keys
-    - timestamp: ISO 8601 string (caller passes an ISO string)
-    - other: str(value)
-    """
-    v = row.get(field)
-    if isinstance(v, (dict, list)):
-        return json.dumps(v, sort_keys=True, separators=(",", ":"))
-    return str(v)
-
-
-def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
-    """Compute the SHA-256 hex digest for a single row.
-
-    Uses the same concatenation-as-:func:`audit_log.compute_signature`
-    shape (no separator byte) so rows written by this module are
-    byte-for-byte interoperable with rows written by the canonical
-    ``src/audit_log.py`` chain. The older ``"|"`` separator broke
-    cross-module ``verify_chain`` (rows written here failed
-    ``audit_log.verify_chain`` and vice versa) — this is the
-    consolidation that the module docstring deferred.
-    """
-    h = hashlib.sha256()
-    h.update(previous_signature.encode("utf-8"))
-    for field in _CHAIN_FIELDS:
-        h.update(_coerce_field(row, field).encode("utf-8"))
-    return h.hexdigest()
+compute_signature = compute_signature
 
 
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -424,6 +397,4 @@ def verify_chain(
         not match its stored ``cryptographic_signature``, or ``None`` if
         the entire chain verifies cleanly.
     """
-    from audit_log import verify_chain as _canonical_verify_chain  # src/audit_log.py
-
-    return _canonical_verify_chain(rows, key=key)
+    return _canonical_verify_chain(rows)

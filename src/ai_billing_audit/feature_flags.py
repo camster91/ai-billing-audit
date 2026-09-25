@@ -155,6 +155,16 @@ def _last_signature(path: Path) -> str:
 
 
 def _sign(previous: str, row: dict[str, object]) -> str:
+    """Digest for a feature-flag change event.
+
+    NOTE: like the tenant-audit-depth log, this hashes the whole row with
+    sorted keys rather than the canonical field-ordered audit chain. Flag
+    toggles are configuration, not claim-audit evidence, so they stay on
+    their own rule; it is documented here so nobody unifies it by accident
+    and invalidates the existing log.
+
+    See ai_billing_audit/audit_chain.py for the canonical rule.
+    """
     import hashlib
 
     payload = "|".join(
