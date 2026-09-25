@@ -49,7 +49,7 @@ from .clinical_note_storage import (
     write_encrypted_json_records,
 )
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # ---- Constants --------------------------------------------------------
@@ -854,6 +854,13 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
     """Wire the clinical-impact routes onto a FastAPI app."""
     from . import feature_flags
 
+    # Lazy import to break the circular dependency: api.py imports this
+    # module INSIDE create_app(), so importing api.UserContext /
+    # require_admin at module top would re-enter create_app() during this
+    # module's import and fail with "partially initialised module". Same
+    # pattern as ux_polish.register_routes (swarm-audit B-Sec-1).
+    from .api import UserContext, require_admin
+
     @app.get("/api/doctor/{doctor_id}/effectiveness")
     def get_doctor_effectiveness(
         doctor_id: str, request: Request, clinic_id: str = "default"
@@ -865,7 +872,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
 
     @app.get("/api/admin/teaching-signal-queue")
     def get_teaching_queue(
-        request: Request, clinic_id: str | None = None
+        request: Request,
+        clinic_id: str | None = None,
+        user: UserContext = Depends(require_admin),
     ) -> JSONResponse:
         cid = clinic_id or "default"
         if not feature_flags.is_enabled(cid, "rejected_fix_teaching_signal"):
@@ -882,6 +891,7 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
         verdict: str = "doctor_right",
         notes: str = "",
         actor: str = "admin",
+        user: UserContext = Depends(require_admin),
     ) -> JSONResponse:
         if not feature_flags.is_enabled(clinic_id, "rejected_fix_teaching_signal"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
@@ -921,6 +931,7 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
         request: Request,
         prompt_version_id: str = "latest",
         actor: str = "admin",
+        user: UserContext = Depends(require_admin),
     ) -> JSONResponse:
         if not feature_flags.is_enabled(clinic_id, "per_tenant_prompt_version"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
@@ -987,6 +998,7 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
         estimated_savings_usd: float = 0.0,
         review_resolution_days: float = 0.0,
         peer_percentile: int = 50,
+        user: UserContext = Depends(require_admin),
     ) -> JSONResponse:
         if not feature_flags.is_enabled(clinic_id, "monthly_owner_email"):
             raise HTTPException(status_code=404, detail="feature disabled for clinic")
@@ -1025,7 +1037,9 @@ def mount_clinical_metrics_routes(app: FastAPI) -> None:  # noqa: C901 - many sm
     # ---- Reviewer feedback loop (t_2ab66102) ----
     @app.post("/api/admin/feedback-loop/run")
     def post_feedback_loop_run(
-        request: Request, clinic_id: str | None = None
+        request: Request,
+        clinic_id: str | None = None,
+        user: UserContext = Depends(require_admin),
     ) -> JSONResponse:
         cid = clinic_id or "default"
         if not feature_flags.is_enabled(cid, "reviewer_feedback_loop"):

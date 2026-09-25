@@ -112,6 +112,19 @@ def webhook_server() -> dict[str, Any]:
 # ─── Fixtures ──────────────────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def _allow_loopback_webhooks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Permit loopback webhook receivers for this file.
+
+    ``register_slack`` now runs the SSRF validator from ``webhooks``
+    (issue #116), which rejects loopback / link-local / private addresses.
+    Every test here stands up an in-process ``HTTPServer`` on 127.0.0.1, so
+    the validator's documented test escape hatch is enabled. The rejection
+    tests at the bottom of this file explicitly unset it.
+    """
+    monkeypatch.setenv("ZORVA_WEBHOOK_ALLOW_PRIVATE", "1")
+
+
 @pytest.fixture
 def tmp_log_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("ZORVA_SLACK_LOG_PATH", str(tmp_path / "slack.jsonl"))
@@ -619,3 +632,102 @@ def test_bulk_accept_high_finding_fires_slack(
         server.shutdown()
         server.server_close()
         thread.join(timeout=2.0)
+
+
+# ─── SSRF controls on webhook registration (issue #116) ────────────────────
+#
+# ``register_slack`` used to validate only that the URL was a non-empty
+# string, then ``_deliver_one`` fetched it with ``urlopen``. An authenticated
+# caller could therefore point the server at internal hosts. It now runs
+# ``webhooks.validate_webhook_url``, the same control the generic webhook
+# path already used.
+
+
+@pytest.fixture
+def deny_private_webhooks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Re-disable the loopback escape hatch for the rejection tests.
+
+    The autouse ``_allow_loopback_webhooks`` fixture enables it for the rest
+    of the file, which would also make ``http://`` acceptable — so these
+    tests turn it back off.
+    """
+    monkeypatch.delenv("ZORVA_WEBHOOK_ALLOW_PRIVATE", raising=False)
+
+
+@pytest.mark.parametrize(
+    ("url", "why"),
+    [
+        ("http://hooks.slack.com/services/T/B/X", "plain http is refused"),
+        ("file:///etc/passwd", "non-http scheme"),
+        ("ftp://hooks.slack.com/x", "non-http scheme"),
+        ("https://user:pass@hooks.slack.com/x", "userinfo is refused"),
+        ("https://localhost/hook", "loopback hostname"),
+        ("http://127.0.0.1:9/hook", "loopback address"),
+        ("http://169.254.169.254/latest/meta-data/", "cloud metadata address"),
+        ("https://127.0.0.1/hook", "loopback address over https"),
+        ("", "empty"),
+        ("   ", "whitespace only"),
+        ("not-a-url", "no scheme"),
+    ],
+)
+def test_register_slack_rejects_non_public_urls(
+    url: str,
+    why: str,
+    deny_private_webhooks: None,
+) -> None:
+    """Every one of these must raise before anything is persisted."""
+    with pytest.raises(ValueError):
+        slack.register_slack(webhook_url=url, channel="#x", events=[])
+
+
+def test_register_slack_rejection_reaches_the_api_as_400(
+    client: TestClient,
+    tmp_log_dir: Path,
+    fast_queue: JobQueue,
+    deny_private_webhooks: None,
+) -> None:
+    """The HTTP surface must refuse a hostile URL, not 201 it."""
+    r = client.post(
+        "/api/integrations/slack",
+        json={
+            "webhook_url": "http://169.254.169.254/latest/meta-data/",
+            "channel": "#x",
+            "events": [],
+        },
+    )
+    assert r.status_code == 400, r.text
+    log = tmp_log_dir / "slack.jsonl"
+    assert not log.exists() or log.read_text().strip() == ""
+
+
+def test_delivery_revalidates_and_blocks_a_hostile_url(
+    tmp_log_dir: Path,
+    fast_queue: JobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Registration-time checks alone would miss DNS rebinding.
+
+    Simulates a stored hook whose URL becomes hostile after registration:
+    ``_deliver_one`` must refuse to fetch it, report ``False``, and write a
+    delivery-log row rather than performing the request.
+    """
+    monkeypatch.setenv("ZORVA_WEBHOOK_ALLOW_PRIVATE", "1")
+    hook = slack.register_slack(
+        webhook_url="http://127.0.0.1:9/hook",
+        channel="#x",
+        events=["audit_complete"],
+    )
+    # Now revoke the allowance, as production would never have it.
+    monkeypatch.delenv("ZORVA_WEBHOOK_ALLOW_PRIVATE", raising=False)
+
+    hooked = {**hook, "webhook_url": "http://169.254.169.254/latest/meta-data/"}
+    delivered = slack._deliver_one(hooked, "audit_complete", {"encounter_id": "e"})
+    assert delivered is False
+
+    rows = read_encrypted_json_records(tmp_log_dir / "slack.jsonl")
+    blocked = [
+        r
+        for r in rows
+        if r.get("_kind") == "delivery" and "SSRF validation" in str(r.get("error", ""))
+    ]
+    assert blocked, "expected a blocked-delivery audit row"

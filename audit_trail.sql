@@ -134,6 +134,21 @@ CREATE INDEX IF NOT EXISTS audit_trail_bulk_action_id_idx
 --    The Python helper is intentionally out of scope for this card
 --    (see Zorva §9.D "out of scope: external signing/HSM integration").
 -- -------------------------------------------------------------------
+-- -------------------------------------------------------------------
+-- WARNING — this backfill does NOT match ai_billing_audit.chain.
+--
+-- ``data_elements::text`` renders JSONB with Postgres's own spacing
+-- (``{"a": 1, "b": 2}``). The Python implementation hashes canonical JSON
+-- with no whitespace (``{"a":1,"b":2}``), so any row signed by this block
+-- will fail ``verify_chain()`` in Python. This path only runs for rows
+-- whose ``cryptographic_signature`` IS NULL (legacy rows predating the
+-- column), so rows written by ``audit_actions.append`` are unaffected.
+--
+-- The correct fix is to run the legacy backfill through
+-- ``ai_billing_audit.chain`` rather than hashing in SQL. Tracked as a
+-- follow-up to issue #113; do not "fix" the spacing with a regex, which
+-- would corrupt legal text containing colon-space sequences.
+-- -------------------------------------------------------------------
 DO $$
 DECLARE
     prev_sig TEXT := REPEAT('0', 64);

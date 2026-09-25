@@ -65,6 +65,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .webhooks import validate_webhook_url
+
 from ai_billing_audit.clinical_note_storage import (
     append_encrypted_json_record,
     migrate_plaintext_jsonl,
@@ -128,10 +130,12 @@ def register_slack(
     ----------
     webhook_url:
         The Slack incoming-webhook URL (``https://hooks.slack.com/...``).
-        We don't enforce the Slack domain in v1 — a custom proxy or
-        dev-channel mock (e.g. ``http://127.0.0.1:NNN/`` for tests)
-        can substitute, and the operator is responsible for sanity-
-        checking at registration time. Empty strings are refused.
+        Validated by :func:`webhooks.validate_webhook_url`: https only,
+        no userinfo, host must resolve and must not resolve to a
+        loopback / link-local / private / reserved address. A custom
+        proxy on a public address is still allowed; a loopback dev
+        receiver is allowed only when ``ZORVA_WEBHOOK_ALLOW_PRIVATE=1``.
+        The sanitized URL is what gets stored. Empty strings are refused.
     channel:
         Human-readable channel label (``"#billing-audits"``). The
         Block Kit ``channel`` field overrides the webhook's default
@@ -159,7 +163,14 @@ def register_slack(
         raise ValueError("webhook_url must be a non-empty string")
     if not isinstance(channel, str) or not channel.strip():
         raise ValueError("channel must be a non-empty string")
-    webhook_url = webhook_url.strip()
+    # SSRF control (issue #116). This module used to accept any non-empty
+    # string and then fetch it with ``urlopen``, which let an authenticated
+    # caller point the server at internal hosts. ``validate_webhook_url`` is
+    # the project's existing control — https-only, rejects userinfo, resolves
+    # the host, and rejects loopback / link-local / private / reserved
+    # addresses. Hermetic tests that need a loopback receiver set
+    # ``ZORVA_WEBHOOK_ALLOW_PRIVATE=1`` (see ``webhooks``).
+    webhook_url = validate_webhook_url(webhook_url)
     channel = channel.strip()
     record = {
         "slack_id": _new_slack_id(),
@@ -342,8 +353,28 @@ def _deliver_one(
         ),
         separators=(",", ":"),
     ).encode("utf-8")
+    # Re-validate at delivery time, not just at registration. A hostname can
+    # resolve to a public address when registered and to a private one when
+    # delivered (DNS rebinding), which registration-time-only checks miss.
+    # ``webhooks`` re-validates on its own delivery path for the same reason.
+    try:
+        safe_url = validate_webhook_url(str(hook.get("webhook_url", "")))
+    except ValueError as exc:
+        _append_delivery_log(
+            {
+                "_kind": "delivery",
+                "slack_id": hook.get("slack_id"),
+                "event": event,
+                "webhook_url": hook.get("webhook_url"),
+                "status_code": None,
+                "ok": False,
+                "error": f"blocked by SSRF validation: {exc}",
+                "attempted_at": _now_iso(),
+            }
+        )
+        return False
     req = urllib.request.Request(
-        hook["webhook_url"],
+        safe_url,
         data=body,
         method="POST",
         headers={

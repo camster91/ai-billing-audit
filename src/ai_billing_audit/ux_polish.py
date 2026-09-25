@@ -754,14 +754,25 @@ def register_routes(app: Any) -> None:
     # / require_* at module top would trigger create_app() during
     # ux_polish's own import and crash with "partially initialised
     # module".
-    from .api import UserContext, require_admin, require_biller_or_admin
+    from .api import (
+        UserContext,
+        get_request_user,
+        require_admin,
+        require_biller_or_admin,
+    )
 
     @app.get("/api/activity/recent", response_class=JSONResponse)
-    def api_activity_recent(limit: int = 10) -> JSONResponse:
+    def api_activity_recent(
+        limit: int = 10,
+        user: UserContext = Depends(get_request_user),
+    ) -> JSONResponse:
         return JSONResponse({"events": recent_activity(limit=min(limit, 50))})
 
     @app.post("/api/undo-token", response_class=JSONResponse)
-    async def api_undo_token_create(request: Request) -> JSONResponse:
+    async def api_undo_token_create(
+        request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         try:
             body = await request.json()
         except Exception:
@@ -774,7 +785,10 @@ def register_routes(app: Any) -> None:
         return JSONResponse({"token": token, "window_seconds": UNDO_WINDOW_SECONDS})
 
     @app.post("/api/undo-token/{token}", response_class=JSONResponse)
-    def api_undo_token_consume(token: str) -> JSONResponse:
+    def api_undo_token_consume(
+        token: str,
+        user: UserContext = Depends(require_biller_or_admin),
+    ) -> JSONResponse:
         rec = consume_undo_token(token)
         if rec is None:
             raise HTTPException(status_code=410, detail="undo window expired")

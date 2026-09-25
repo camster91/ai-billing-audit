@@ -5416,6 +5416,7 @@ def create_app() -> FastAPI:
     async def encounter_appeal(
         encounter_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .appeal_letter import (
@@ -5605,6 +5606,7 @@ def create_app() -> FastAPI:
         encounter_id: str,
         appeal_id: str,
         request: Request,
+        user: UserContext = Depends(require_biller_or_admin),
     ) -> JSONResponse:
         try:
             from .appeal_letter import (
@@ -8003,7 +8005,10 @@ def create_app() -> FastAPI:
     from ai_billing_audit import slack_notify as _slack
 
     @app.post("/api/integrations/slack")
-    async def integrations_register_slack(request: Request) -> JSONResponse:
+    async def integrations_register_slack(
+        request: Request,
+        user: UserContext = Depends(require_admin),
+    ) -> JSONResponse:
         try:
             body = await request.json()
         except Exception:

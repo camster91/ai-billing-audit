@@ -13,7 +13,6 @@ shape mirrors the spec'd ``biller_feedback`` SQL table.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import time
 import uuid
@@ -22,6 +21,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from .chain import coerce_field
 from .clinical_note_storage import (
     append_encrypted_json_record,
     migrate_plaintext_jsonl,
@@ -58,7 +58,7 @@ _GENESIS_SIG = "0" * 64
 # Process-local cache of ``FeedbackStore._last_signature()`` results.
 # Keyed by ``(str(path), mtime)`` so a rewrite of the file (e.g.
 # by a test or by another process) invalidates the cache.
-_FEEDBACK_LAST_SIG_CACHE: dict[tuple[str, float], str] = {}
+_FEEDBACK_LAST_SIG_CACHE: dict[tuple[str, int, int], str] = {}
 
 # Fields included in the chain hash. Order matters.
 _CHAIN_FIELDS = (
@@ -402,10 +402,18 @@ class FeedbackStore:
         # path + mtime — a no-op fast path on the hot path. The
         # cache key includes the path so a different FeedbackStore
         # pointing at a different log doesn't see stale data.
-        cache_key = (
-            str(self._path),
-            self._path.stat().st_mtime if self._path.is_file() else 0.0,
-        )
+        # The cache key must change on every append. mtime alone does not
+        # reliably advance: writing a small line can leave ``st_mtime``
+        # unchanged (coarse timestamp resolution), which made this return a
+        # stale signature and chain the next row to the wrong predecessor —
+        # forking the log so ``verify_chain()`` rejected a log this store had
+        # just written. Include ``st_size``, which always advances on append,
+        # and use nanosecond mtime for sub-second resolution.
+        if self._path.is_file():
+            _st = self._path.stat()
+            cache_key = (str(self._path), _st.st_mtime_ns, _st.st_size)
+        else:
+            cache_key = (str(self._path), -1, -1)
         cached = _FEEDBACK_LAST_SIG_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -425,17 +433,30 @@ class FeedbackStore:
 
 
 def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
-    """SHA-256(previous_sig || chain_fields) — same shape as audit_actions."""
+    """SHA-256(previous_sig || chain_fields) for the *feedback* chain.
+
+    This is a different chain from the ``audit_trail`` chain in
+    :mod:`ai_billing_audit.chain`. It hashes its own field set
+    (:data:`_CHAIN_FIELDS` — encounter/finding/rule/severity identifiers
+    rather than patient/rules-payload fields) and inserts a ``b"|"``
+    separator between fields, so its digests are not interchangeable with
+    ``audit_trail`` digests.
+
+    That shape is deliberately preserved rather than migrated: historical
+    feedback rows on disk and in the VPS volume were written with it, and
+    changing the shape would make every one of them unverifiable. An
+    earlier version of this docstring claimed it was "same shape as
+    audit_actions", which was never true — the separator alone differed.
+
+    The per-field *rendering* rule (``None`` -> ``""``, ``dict``/``list``
+    -> canonical JSON, otherwise ``str``) is imported from
+    :mod:`ai_billing_audit.chain` so it cannot drift from the audit chain.
+    """
     h = hashlib.sha256()
     h.update(previous_signature.encode("utf-8"))
     for name in _CHAIN_FIELDS:
-        v = row.get(name, "")
-        if isinstance(v, (dict, list)):
-            v = json.dumps(v, sort_keys=True, separators=(",", ":"))
-        elif v is None:
-            v = ""
         h.update(b"|")
-        h.update(str(v).encode("utf-8"))
+        h.update(coerce_field(row, name).encode("utf-8"))
     return h.hexdigest()
 
 

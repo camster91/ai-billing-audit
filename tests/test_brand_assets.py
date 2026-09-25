@@ -53,15 +53,23 @@ def test_favicon_and_app_icon_dimensions() -> None:
     for size in (16, 32, 48):
         assert png_size(PORTAL_PUBLIC / f"favicon-{size}x{size}.png") == (size, size)
     for size in (192, 512):
-        assert png_size(PORTAL_PUBLIC / "app-icons" / f"android-{size}.png") == (size, size)
+        assert png_size(PORTAL_PUBLIC / "app-icons" / f"android-{size}.png") == (
+            size,
+            size,
+        )
     for size in (1024, 180, 167, 152, 120, 87, 80, 60, 58, 40, 29):
         assert png_size(PORTAL_PUBLIC / "app-icons" / f"ios-{size}.png") == (size, size)
     for size in (16, 32, 64, 128, 256, 512, 1024):
-        assert png_size(PORTAL_PUBLIC / "app-icons" / f"macos-{size}.png") == (size, size)
+        assert png_size(PORTAL_PUBLIC / "app-icons" / f"macos-{size}.png") == (
+            size,
+            size,
+        )
 
 
 def test_consumers_reference_existing_assets_and_safe_alt_treatment() -> None:
-    metadata = (ROOT / "apps" / "portal" / "src" / "lib" / "public-marketing-metadata.ts").read_text()
+    metadata = (
+        ROOT / "apps" / "portal" / "src" / "lib" / "public-marketing-metadata.ts"
+    ).read_text()
     layout = (ROOT / "apps" / "portal" / "src" / "app" / "layout.tsx").read_text()
     mobile = (ROOT / "apps" / "mobile" / "www" / "index.html").read_text()
     assert 'manifest: "/manifest.webmanifest"' in metadata
@@ -69,4 +77,9 @@ def test_consumers_reference_existing_assets_and_safe_alt_treatment() -> None:
     assert 'alt=""' in layout and 'aria-hidden="true"' in layout
     assert 'src="zorva-mark.svg" alt="Zorva"' in mobile
     assert "https://zorva.ashbi.ca/" in mobile
-    assert "#2563eb" not in (ROOT / "src" / "ai_billing_audit" / "static" / "favicon.svg").read_text()
+    assert (
+        "#2563eb"
+        not in (
+            ROOT / "src" / "ai_billing_audit" / "static" / "favicon.svg"
+        ).read_text()
+    )

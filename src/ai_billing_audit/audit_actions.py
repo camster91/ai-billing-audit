@@ -29,8 +29,6 @@ prod Postgres ``audit_trail`` rows are interchangeable; either
 
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import time
 import uuid
@@ -104,51 +102,27 @@ def audit_trail_path() -> Path:
     return Path("/app/logs/audit_trail.jsonl")
 
 
-_GENESIS_SIG = "0" * 64
-
-
-# Fields included in the chain hash. Must match audit_trail.sql.
-_CHAIN_FIELDS = (
-    "event_id",
-    "timestamp",
-    "user_identifier",
-    "action",
-    "patient_hash",
-    "data_elements",
-    "model_run_id",
+# --- Chain shape imported from the shared module ----------------------
+#
+# Field order, per-field rendering, and the absence of a separator byte are
+# defined once in ``ai_billing_audit.chain`` so this writer and the
+# verifier cannot drift apart. Previously this module carried its own copy
+# that disagreed with ``src/audit_log.py`` on how ``data_elements`` renders
+# (canonical JSON here, ``str()`` there). Because ``append()`` always
+# stores ``data_elements`` as a dict, the verifier reported every row this
+# module wrote as tampered. See issue #113.
+from .chain import (  # noqa: E402  (kept below the path helpers on purpose)
+    CHAIN_FIELDS as _chain_fields,
+    GENESIS_PREVIOUS_SIGNATURE as _GENESIS_SIG,
+    coerce_field,
+    compute_signature,
 )
+from .chain import verify_chain as _chain_verify_chain  # noqa: E402
 
-
-def _coerce_field(row: dict[str, Any], field: str) -> str:
-    """Stringify a chain field for hashing.
-
-    Same rule as src/audit_log.py:
-    - dict/list: canonical JSON, no spaces, sorted keys
-    - timestamp: ISO 8601 string (caller passes an ISO string)
-    - other: str(value)
-    """
-    v = row.get(field)
-    if isinstance(v, (dict, list)):
-        return json.dumps(v, sort_keys=True, separators=(",", ":"))
-    return str(v)
-
-
-def compute_signature(previous_signature: str, row: dict[str, Any]) -> str:
-    """Compute the SHA-256 hex digest for a single row.
-
-    Uses the same concatenation-as-:func:`audit_log.compute_signature`
-    shape (no separator byte) so rows written by this module are
-    byte-for-byte interoperable with rows written by the canonical
-    ``src/audit_log.py`` chain. The older ``"|"`` separator broke
-    cross-module ``verify_chain`` (rows written here failed
-    ``audit_log.verify_chain`` and vice versa) — this is the
-    consolidation that the module docstring deferred.
-    """
-    h = hashlib.sha256()
-    h.update(previous_signature.encode("utf-8"))
-    for field in _CHAIN_FIELDS:
-        h.update(_coerce_field(row, field).encode("utf-8"))
-    return h.hexdigest()
+# Back-compat aliases: older call sites, docstrings, and tests refer to
+# these private names.
+_CHAIN_FIELDS = _chain_fields
+_coerce_field = coerce_field
 
 
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -203,15 +177,24 @@ def _read_last_signature() -> str:
     log, which is correct: chain integrity must be exact, not
     cached.
     """
-    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH
+    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH, _LAST_SIG_SIZE
     path = audit_trail_path()
     try:
-        mtime = path.stat().st_mtime if path.is_file() else 0.0
+        _stat = path.stat() if path.is_file() else None
     except OSError:
         return _GENESIS_SIG
+    # The cache key has to change on every append. ``st_mtime`` alone does not
+    # reliably advance — writing one line can leave it unchanged — and when
+    # that happened this returned a stale signature, so the next appended row
+    # chained to the wrong predecessor and forked the log (``verify_chain``
+    # then rejected a log this process had just written). ``st_size`` always
+    # advances on append; nanosecond mtime adds sub-second resolution.
+    mtime = _stat.st_mtime_ns if _stat is not None else 0
+    size = _stat.st_size if _stat is not None else 0
     if (
         _LAST_SIG_CACHE is not None
         and _LAST_SIG_MTIME == mtime
+        and _LAST_SIG_SIZE == size
         and _LAST_SIG_PATH == path
     ):
         return _LAST_SIG_CACHE
@@ -227,6 +210,7 @@ def _read_last_signature() -> str:
                 last_sig = rec["cryptographic_signature"]
     _LAST_SIG_CACHE = last_sig
     _LAST_SIG_MTIME = mtime
+    _LAST_SIG_SIZE = size
     _LAST_SIG_PATH = path
     return last_sig
 
@@ -236,16 +220,18 @@ def _reset_last_signature_cache() -> None:
     the audit-trail log out-of-band (e.g. via direct file writes)
     and need the next ``_read_last_signature()`` to re-read.
     """
-    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH
+    global _LAST_SIG_CACHE, _LAST_SIG_MTIME, _LAST_SIG_PATH, _LAST_SIG_SIZE
     _LAST_SIG_CACHE = None
     _LAST_SIG_MTIME = None
+    _LAST_SIG_SIZE = None
     _LAST_SIG_PATH = None
 
 
 # Process-local cache for ``_read_last_signature``. Set by the
 # function on a cache miss; cleared by ``_reset_last_signature_cache``.
 _LAST_SIG_CACHE: str | None = None
-_LAST_SIG_MTIME: float | None = None
+_LAST_SIG_MTIME: int | None = None  # st_mtime_ns
+_LAST_SIG_SIZE: int | None = None  # st_size
 _LAST_SIG_PATH: Path | None = None
 
 
@@ -395,17 +381,16 @@ def verify_chain(
 ) -> int | None:
     """Walk ``rows`` in chain order and return the first broken row's position.
 
-    Thin wrapper around :func:`audit_log.verify_chain` (src/audit_log.py:162)
-    that returns the 0-based index of the first row whose stored
+    Thin wrapper around :func:`ai_billing_audit.chain.verify_chain` that
+    returns the 0-based index of the first row whose stored
     ``cryptographic_signature`` does not match the recomputed value, or
     ``None`` if the entire chain verifies cleanly.
 
-    NOTE: This is now a thin pass-through to the canonical
-    :func:`audit_log.verify_chain`. As of the P11 bug-sweep fix,
-    :func:`compute_signature` in this module matches
-    :func:`audit_log.compute_signature` byte-for-byte (no separator),
-    so rows written by this module's :func:`append` verify cleanly
-    against the canonical chain and vice versa.
+    Rows written by this module's :func:`append` verify cleanly, because
+    the writer and the verifier now share one implementation in
+    ``ai_billing_audit.chain`` (issue #113). Before that they disagreed on
+    how ``data_elements`` renders, and this function reported every row
+    ``append`` wrote as tampered.
 
     Parameters
     ----------
@@ -424,6 +409,4 @@ def verify_chain(
         not match its stored ``cryptographic_signature``, or ``None`` if
         the entire chain verifies cleanly.
     """
-    from audit_log import verify_chain as _canonical_verify_chain  # src/audit_log.py
-
-    return _canonical_verify_chain(rows, key=key)
+    return _chain_verify_chain(rows, key=key)
